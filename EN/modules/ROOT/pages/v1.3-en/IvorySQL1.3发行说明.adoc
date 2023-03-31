@@ -1,0 +1,63 @@
+:toc:
+:toc: marco
+:toc: left
+:toc-title: 目录
+:sectnums:
+:sectnumlevels: 5
+:toclevels: 5
+
+== Versions Introduction
+
+[**Release Date: May 27, 2022**]
+
+IvorySQL 1.3 is based on PostgreSQL 14.3 and includes and incorporates various fixes and new features from IvorySQL 1.2. For information about the new features in major version 1.0, see https://www.ivorysql.org/zh-CN/ivorysql-v1-0-release-page[IvorySQL 1.0 Release Notes].
+
+This version is compatible with IvorySQL 1.2 and does not require a data dump/restore for users running IvorySQL 1.X.
+
+If you have any GiST indexes on ltree type columns (provided by contrib/ltree extension), you should re-index them after updating to IovrySQL 1.3. See the second update log entry in the PostgreSQL 14.3 release notes.
+
+For updates and bug fixes in PostgreSQL 14.3, see the https://www.postgresql.org/docs/release/14.3/[Official Release Notes for PostgreSQL 14.3].
+
+== Features  Introduction
+
+- Anonymous blocks are supported. Anonymous is an unnamed PL block in PL / iSQL. Unlike named blocks, anonymous blocks are not stored in the database server and are for one-time use only. https://github.com/IvorySQL/IvorySQL/issues/56[Details]
+
+== Known Issues
+
+* There are no known issues with the current version at this time.
+
+== Fixed issues
+
+- Fixed a crash caused by using pseudo-columns. https://github.com/IvorySQL/IvorySQL/issues/80[Details]
+
+- Fixes an issue where using extended data types in packages caused an error. https://github.com/IvorySQL/IvorySQL/pull/91[Details]
+
+- Fixes an issue where pg_catalog is created in a namespace (implicit part of search_path) if the package
+calling a package object without architectural qualification raised a function/procedure not found error. https://github.com/IvorySQL/IvorySQL/issues/88[Details]
+
+- Fixed an issue with NCHAR and NVARCHAR not supporting nls_length_semantics. https://github.com/IvorySQL/IvorySQL/issues/46[Details]
+
+- Fixed the issue that dragging and dropping package body does not clean up package body. https://github.com/IvorySQL/IvorySQL/issues/107[Details]
+
+- Fix an issue where specifying END tag in PL/iSQL raises an error. https://github.com/IvorySQL/IvorySQL/issues/67[Details]
+
+
+== Source Code
+
+IvorySQL contains 2 main code repositories, the database IvorySQL code bin, and the IvorySQL blog bin.
+
+* IvorySQL code bin for database: https://github.com/IvorySQL/IvorySQL[https://github.com/IvorySQL/IvorySQL]
+* IvorySQL blog bin: https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
+
+
+== Contributors
+
+The following individuals have contributed to this release as patch authors, committers, reviewers, testers, or issue reporters.
+
+- Asif Rehman
+- Grant Zhou
+- Jack Lan
+- Shengbin Zhao
+- Muhammad Usama
+
+**https://github.com/IvorySQL/IvorySQL/commits/Ivory_REL_1_3[Complete Change Log]**
