@@ -8,7 +8,7 @@
 * xref:v1.0-cn/安装部署-中文版-0.1.adoc[安装部署]
 * xref:v1.0-cn/开发者指南.adoc[开发者指南]
 * xref:v1.0-cn/运维管理指南-中文版-0.2.adoc[运维管理指南]
-* xref:v1.0-cn/IvorySQL迁移指南-中午版-0.1.adoc[迁移指南]
+* xref:v1.0-cn/IvorySQL迁移指南-中文版-0.1.adoc[迁移指南]
 * xref:v1.0-cn/IvorySQL社区贡献指南-中文版-0.3.adoc[社区贡献指南]
 * xref:v1.0-cn/工具参考.adoc[工具参考]
 * xref:v1.0-cn/FAQ.adoc[FAQ]
