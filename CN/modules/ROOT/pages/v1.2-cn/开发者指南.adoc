@@ -22,7 +22,6 @@ IvorySQL沿用了PostgreSQL的一般架构，并增加了一些内容，但它�
 下图基本上描述了IvorySQL的运行方式。
 
 image::p4.png[]
-
 image::p5.png[]
 
 
