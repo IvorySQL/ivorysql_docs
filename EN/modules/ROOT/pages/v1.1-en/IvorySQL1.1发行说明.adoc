@@ -1,0 +1,65 @@
+:toc:
+:toc: marco
+:toc: left
+:toc-title: 目录
+:sectnums:
+:sectnumlevels: 5
+:toclevels: 5
+
+== Versions Introduction
+
+[**Release date: January 25, 2022**]
+
+IvorySQL 1.1 is based on PostgreSQL 14.1 and includes various fixes from IvorySQL 1.0. For information about the new features in major version 1.0, see https://www.ivorysql.org/zh-CN/ivorysql-v1-0-release-page[IvorySQL 1.0 Release Notes]。
+
+For updates and bug fixes in PostgreSQL 14.1, see the official https://www.postgresql.org/docs/release/14.1/[PostgreSQL 14.1 Release Notes].
+
+== Features Introduction
+
+- Orafce Orafce extensions are automatically installed with the IvorySQL server at initdb, so all Oracle-compatible objects and types are available out of the box.
+
+- Support for Oracle Compatible Number(p,s) types Add support for Oracle compatible number data types with configurable precision and scale NUMBER[(precision , scale)]
+
+- Allows Oracle-compatible objects without schema qualification. https://github.com/IvorySQL/IvorySQL/issues/30[View Details]
+
+- Add DROP PACKAGE BODY support Add support for deleting the package body without deleting the full package. https://github.com/IvorySQL/IvorySQL/issues/29[View Details]
+
+== Known Issues
+
+* Package Array type variables lose their values after the first execution.
+* Package functions cannot use user-defined types as their return types
+
+== Fixed issue
+
+- Fixed Oracle compatibility documentation https://github.com/IvorySQL/IvorySQL/issues/23[Issue Details]
+- SELECT sysdate FROM dual does not work https://github.com/IvorySQL/IvorySQL/issues/23[Issue Details]
+- Fixed problematic details of handling CHAR, VARCHAR, VARCHAR2 and NVARCHAR2 data types: https://github.com/IvorySQL/IvorySQL/issues/33[1] https://github.com/IvorySQL/IvorySQL/issues/46[2]
+- Allows the log collector to collect PACKAGE DDL statements. https://github.com/IvorySQL/IvorySQL/issues/23[Issue Details]
+- Fixed an issue with VARCHAR2 comparison operator. https://github.com/IvorySQL/IvorySQL/issues/23[Issue Details]
+- Fixed the regression of make check-world https://github.com/IvorySQL/IvorySQL/issues/23[Issue Details]
+- Fixed an issue where the cursor defined in the packet body was not closed when the packet body was discarded https://github.com/IvorySQL/IvorySQL/issues/23[Issue Details]
+
+== Source Code
+
+IvorySQL contains 2 main code repositories, the database IvorySQL code bin, and the IvorySQL blog bin.
+
+* Database IvorySQL code bin： https://github.com/IvorySQL/IvorySQL[https://github.com/IvorySQL/IvorySQL]
+* IvorySQL blog bin： https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
+
+== Contributors
+
+The following individuals have contributed to this release as patch authors, committers, reviewers, testers, or issue reporters.
+
+- Asif Rehman
+- Andy Qinshy
+- Bing Ao
+- Denis Lussier
+- Grant Zhou
+- Haruka Takatsuka
+- Huajianjin
+- Japin Li
+- Jack Lan
+- Shengbin Zhao
+- Muhammad Usama
+
+**https://github.com/IvorySQL/IvorySQL/commits/Ivory_REL_1_1[Complete Change Log]**
