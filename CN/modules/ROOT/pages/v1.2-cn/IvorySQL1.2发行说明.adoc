@@ -1,0 +1,55 @@
+:toc:
+:toc: marco
+:toc: left
+:toc-title: 目录
+:sectnums:
+:sectnumlevels: 5
+:toclevels: 5
+
+== 版本介绍
+
+[**发行日期: 2022年2月28日**]
+
+IvorySQL 1.2 基于 PostgreSQL 14.2 并包含并包含 IvorySQL 1.1 的各种修复和新功能，有关主要版本 1.0 中的新功能的信息，请参阅 https://www.ivorysql.org/zh-CN/ivorysql-v1-0-release-page[IvorySQL 1.0 发行说明]。
+
+此版本与 IvorySQL 1.1 兼容，并且不需要为运行 IvorySQL 1.1 的用户进行数据转储(dump)/恢复(restore)。
+
+<font color=red>注意：</font>在 PostgreSQL 14.2 中已经修复了一些关于可能的索引损坏的错误(参见 https://www.postgresql.org/docs/release/14.2/[PostgreSQL 14.2 更改日志]第1、2条)。
+
+如果这些情况中的任何一种适用于您，建议在更新到 IvorySQL 1.2 后重新索引受影响的索引。
+
+有关 PostgreSQL 14.2 中的更新和错误修复，请参阅 https://www.postgresql.org/docs/release/14.2/[PostgreSQL 14.2的官方版本发行说明]。
+
+
+== 特性介绍
+
+- 支持层级查询（Hierarchical Queries） 层级查询允许对包含层级数据的表使用层级查询子句以层级顺序选择数据。 https://github.com/IvorySQL/IvorySQL/pull/61[查看细节]
+
+== 已知问题
+
+* 使用伪列导致崩溃的问题。
+
+== 已修复问题
+
+- 修复了 Package Array 类型变量在首次执行后丢失值的问题。 https://github.com/IvorySQL/IvorySQL/issues/53[问题细节]
+- 修复了 Package 函数无法使用用户定义类型作为其返回类型的问题。 https://github.com/IvorySQL/IvorySQL/issues/50[问题细节]
+
+
+== 源代码
+
+IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL博客仓：
+
+* 数据库IvorySQL代码仓：https://github.com/IvorySQL/IvorySQL[https://github.com/IvorySQL/IvorySQL]
+* IvorySQL博客仓：https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
+
+== 贡献人员
+
+以下个人作为补丁作者、提交者、审阅者、测试者或问题报告者为本版本做出了贡献。
+
+- Asif Rehman
+- Grant Zhou
+- Jack Lan
+- Shengbin Zhao
+- Muhammad Usama
+
+**https://github.com/IvorySQL/IvorySQL/commits/Ivory_REL_1_2[完整的变更日志]**
