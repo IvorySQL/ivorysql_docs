@@ -1,0 +1,51 @@
+:toc:
+:toc: marco
+:toc: left
+:toc-title: 目录
+:sectnums:
+:sectnumlevels: 5
+:toclevels: 5
+
+== Versions Introduction
+
+[**Release Date: June 28, 2022**]
+
+IvorySQL 1.4 is based on PostgreSQL 14.4 and includes various fixes and new features from IvorySQL 1.3.
+
+This version is compatible with IvorySQL 1.3 and does not require data backup/restore for users running IvorySQL 1.X.
+
+It includes various fixes from 14.3, in particular fixes for https://www.postgresql.org/docs/current/sql-createindex.html[CREATE INDEX CONCURRENTLY] and https://www.postgresql.org/docs/current/sql-reindex.html[REINDEX CONCURRENTLY], which could cause unprompted data corruption for indexes. Until fixed, CREATE INDEX CONCURRENTLY and REINDEX CONCURRENTLY can build indexes with missing entries, causing SELECT queries using that index to not find certain rows. More details can be found in https://www.postgresql.org/about/news/postgresql-144-released-2470/[14.4 release].
+
+If you have any indexes created using the CONCURRENTLY option under 14.X, you should re-index them after updating. See the first change entry in PostgreSQL https://www.postgresql.org/docs/release/14.4/[14.4 Release Notes].
+
+For updates and bug fixes in PostgreSQL 14.4, see the official PostgreSQL https://www.postgresql.org/docs/release/14.4/[14.4 Release Notes].
+
+== Feature  Introduction
+
+- Fixes various issues caused by version upgrade updates.
+
+== Known issues
+
+* Crash caused by using pseudo-columns.
+
+== Fixed issues
+
+- Fixed package permission issue https://github.com/IvorySQL/IvorySQL/pull/139[details]
+
+== Source Code
+
+IvorySQL contains 2 main code repositories, the database IvorySQL code bin, and the IvorySQL blog bin.
+
+* Fix QL code bin: https://github.com/IvorySQL/IvorySQL[https://github.com/IvorySQL/IvorySQL]
+* IvorySQL blog bin: https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
+
+== Contributors
+
+The following individuals have contributed to this release as patch authors, committers, reviewers, testers, or issue reporters
+
+- Asif Rehman
+- Grant Zhou
+- Shengbin Zhao
+- Muhammad Usama
+
+**https://github.com/IvorySQL/IvorySQL/commits/Ivory_REL_1_4[Full Change Log]**

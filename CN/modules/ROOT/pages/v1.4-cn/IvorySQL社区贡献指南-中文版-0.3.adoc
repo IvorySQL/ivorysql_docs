@@ -5,7 +5,7 @@
 :sectnums:
 :sectnumlevels: 5
 :toclevels: 5
-:imagesdir: ./image
+:imagesdir: ./_images
 = **IvorySQL社区贡献指南**
 
 == **概述**
