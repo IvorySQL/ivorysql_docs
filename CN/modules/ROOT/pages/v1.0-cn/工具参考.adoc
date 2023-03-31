@@ -1,0 +1,5006 @@
+:toc:
+:toc: marco
+:toc: left
+:toc-title: 目录
+:sectnums:
+:sectnumlevels: 5
+:toclevels: 5
+
+= 工具参考
+
+== 工具一览表
+
+这部份包含IvorySQL客户端应用和工具的参考信息。不是所有这些命令都是通用工具，某些需要特殊权限。这些应用的共同特征是它们可以被运行在任何主机上，而不管数据库服务器在哪里。
+
+当在命令行上指定用户和数据库名时，它们的大小写会被保留 — 空格或特殊字符的出现可能需要使用引号。表名和其他标识符的大小写不会被保留并且可能需要使用引号。
+
+[%autowidth]
+|====
+| 分类 | 工具名称  | 描述
+| 客户端工具 | clusterdb    | clusterdb是一个工具，它用来对一个IvorySQL数据库中的表进行重新聚簇。它会寻找之前已经被聚簇过的表，并且再次在最后使用过的同一个索引上对它们重新聚簇。没有被聚簇过的表将不会被影响。clusterdb是 SQL 命令 http://www.postgres.cn/docs/14/sql-cluster.html[CLUSTER] 的一个包装器。在通过这个工具和其他方法访问服务器来聚簇数据库之间没有实质性的区别。 
+|            | createdb                  | createdb创建一个新的IvorySQL数据库。通常，执行这个命令的数据库用户将成为新数据库的所有者。但是，如果执行用户具有合适的权限，可以通过 `-O` 选项指定一个不同的所有者。createdb是SQL命令 http://www.postgres.cn/docs/14/sql-createdatabase.html[`CREATE DATABASE`]的一个包装器。在通过这个工具和其他方法访问服务器来创建数据库之间没有实质性的区别。 
+|            | createuser                | createuser创建一个新的IvorySQL用户（或者更准确些，是一个角色）。只有超级用户和具有 `CREATEROLE` 特权的用户才能创建新用户，因此createuser必须被以上两种用户调用。如果你希望创建一个新的超级用户，你必须作为一个超级用户连接，而不仅仅是具有 `CREATEROLE` 特权。作为一个超级用户意味着绕过数据库中所有访问权限检查的能力，因此超级用户访问权限不能轻易被授予。createuser是SQL命令 http://www.postgres.cn/docs/14/sql-createrole.html[`CREATE ROLE`]的一个包装器。在通过这个工具和其他方法访问服务器来创建用户之间没有实质性的区别。 
+|            | dropdb                    | ropdb毁掉一个现有的IvorySQL数据库。执行这个命令的用户必须是一个数据库超级用户或该数据库的拥有者。dropdb是SQL命令 http://www.postgres.cn/docs/14/sql-dropdatabase.html[DROP DATABASE] 的一个包装器。在通过这个工具和其他方法访问服务器来删除数据库之间没有实质性的区别。 
+|            | dropuser                  | dropuser移除一个已有的IvorySQL用户。只有超级用户以及具有 `CREATEROLE` 特权的用户能够移除IvorySQL用户（要移除一个超级用户，你必须自己是一个超级用户）。dropuser是SQL命令 http://www.postgres.cn/docs/14/sql-droprole.html[DROP ROLE] 的一个包装器。在通过这个工具和其他方法访问服务器来删除用户之间没有实质性的区别。 
+|            | ecpg                      | `ecpg` 是用于 C 程序的嵌入式 SQL 预处理器。它通过将 SQL 调用替换为特殊函数调用把带有嵌入式 SQL 语句的 C 程序转换为普通 C 代码。输出文件可以被任何 C 编译器工具链处理。`ecpg` 将把命令行中给出的每一个输入文件转换为相应的 C 输出文件。 如果输入文件名没有任何扩展名，则假定为 `.pgc`。文件扩展名将由 `.c` 替换以构造输出文件名。 但是输出文件名可以使用 `-o` 选项覆盖。如果输入文件名只是 `-`，`ecpg` 从标准输入 读取程序（并写入标准输出，除非用 `-o` 重写）。 
+|            | pg_amcheck          | pg_amcheck支持对一个或多个数据库运行 http://www.postgres.cn/docs/14/amcheck.html[amcheck] 的损坏检查函数，并提供选项来选择要检查的模式、表和索引、要执行的检查类型以及是否并行执行检查，如果是，按并行数建立连接并使用。当前仅支持表关系和btree索引。其他关系类型将自动跳过。如果指定了 `dbname`，则它应该是要检查的单个数据库的名称，并且不应该存在其他数据库选择选项。否则，如果存在任何数据库选择选项，将检查所有匹配的数据库。如果不存在此类选项，将选中默认数据库。数据库选择选项包括 `--all`，`--database` 和 `--exclude-database`。它们还包括 `--relation`，`--exclude-relation`， `--table`，`--exclude-table`，`--index`，和 `--exclude-index`，但仅当这些选项与三段式模式一起使用时（例如，`mydb*.myschema*.myrel*`）。最后，它们包括 `--schema` 和 `--exclude-schema` 当这些选项与两段式模式一起使用时（例如 `mydb*.myschema*` ）。 
+|            | pg_basebackup             | pg_basebackup被用于获得一个正在运行的IvorySQL数据库集簇的基础备份。获得这些备份不会影响数据库的其他客户端，并且可以被用于时间点恢复，以及用作一个日志传送或流复制后备服务器的开始点。pg_basebackup对数据库群集的文件进行精确复制，同时确保服务器自动进入和退出备份模式。备份总是从整个数据库集簇获得，不可能备份单个数据库或数据库对象。关于选择性备份，必须使用一个像 http://www.postgres.cn/docs/14/app-pgdump.html[pg_dump] 的工具。备份通过一个使用复制协议常规IvorySQL连接制作。该连接必须由一个具有 `REPLICATION` 权限或者具有超级用户权限的用户ID建立，并且 http://www.postgres.cn/docs/14/auth-pg-hba-conf.html[`pg_hba.conf`]必须允许该复制连接。该服务器还必须被配置，使 http://www.postgres.cn/docs/14/runtime-config-replication.html#GUC-MAX-WAL-SENDERS[max_wal_senders] 设置得足够高以提供至少一个walsender用于备份以及一个用于WAL流（如果使用流）。在同一时间可以有多个 `pg_basebackup` 运行，但是从性能的角度来说，只进行一次备份并且复制结果通常更好。pg_basebackup不仅能从主控机也能从后备机创建一个基础备份。要从后备机获得一个备份，设置后备机让它能接受复制连接（也就是，设置 `max_wal_senders` 和 http://www.postgres.cn/docs/14/runtime-config-replication.html#GUC-HOT-STANDBY[hot_standby]，并且适当配置其 `pg_hba.conf` ）。你将也需要在主控机上启用 http://www.postgres.cn/docs/14/runtime-config-wal.html#GUC-FULL-PAGE-WRITES[full_page_writes]。注意在来自后备机的备份中有一些限制：不会在被备份的数据库集簇中创建备份历史文件。 pg_basebackup不能强制备用服务器在备份结束时切换到新的WAL文件。 当正在使用 `-X none` 时，如果服务器上的写活动比较低，pg_basebackup可能需要等待很长时间，以便切换和归档备份所需要的最后的WAL文件。 在这种情况下，在主服务器上运行 `pg_switch_wal` 以触发立即的WAL文件切换可能是有用的。 如果在备份期间后备机被提升为主控机，备份会失败。 备份所需的所有 WAL 记录必须包含足够的全页写，这要求你在主控机上启用 `full_page_writes` 并且不使用一个类似pg_compresslog的工具以 `archive_command` 从 WAL 文件中移除全页写。每当pg_basebackup进行基本备份时，服务器的 `pg_stat_progress_basebackup` 视图将报告备份的进度。 
+|            | pgbench                   | pgbench是一种在IvorySQL上运行基准测试的简单程序。它可能在并发的数据库会话中一遍一遍地运行相同序列的 SQL 命令，并且计算平均事务率（每秒的事务数）。默认情况下，pgbench会测试一种基于 TPC-B 但是要更宽松的场景，其中在每个事务中涉及五个 `SELECT`、 `UPDATE` 以及 `INSERT` 命令。但是，通过编写自己的事务脚本文件很容易用来测试其他情况。 
+|            | pg_config                 | pg_config工具打印当前安装版本的IvorySQL的配置参数。它的设计目的之一是便于想与IvorySQL交互的软件包能够找到所需的头文件和库。 
+|            | pg_dump                   | pg_dumppg_dump是用于备份一种IvorySQL数据库的工具。即使数据库正在被并发使用，它也能创建一致的备份。pg_dump不阻塞其他用户访问数据库（读取或写入）。pg_dump只转储单个数据库。要备份一个集簇或者集簇中 对于所有数据库公共的全局对象（例如角色和表空间），应使用 http://www.postgres.cn/docs/14/app-pg-dumpall.html[pg_dumpall]。转储可以被输出到脚本或归档文件格式。脚本转储是包含 SQL 命令的纯文本文件，它们可以用来重构数据库到它被转储时的状态。要从这样一个脚本恢复，将它喂给 http://www.postgres.cn/docs/14/app-psql.html[psql]。脚本文件甚至可以被用来在其他机器和其他架构上重构数据库。在经过一些修改后，甚至可以在其他 SQL 数据库产品上重构数据库。另一种可选的归档文件格式必须与 http://www.postgres.cn/docs/14/app-pgrestore.html[pg_restore] 配合使用来重建数据库。它们允许pg_restore能选择恢复什么，或者甚至在恢复之前对条目重排序。归档文件格式被设计为在架构之间可移植。当使用归档文件格式之一并与pg_restore组合时，pg_dump提供了一种灵活的归档和传输机制。pg_dump可以被用来备份整个数据库，然后pg_restore可以被用来检查归档并/或选择数据库的哪些部分要被恢复。最灵活的输出文件格式是“自定义”格式（ `-Fc` ）和“目录”格式（ `-Fd` ）。它们允许选择和重排序所有已归档项、支持并行恢复并且默认是压缩的。“目录”格式是唯一一种支持并行转储的格式。当运行pg_dump时，我们应该检查输出中有没有任何警告（打印在标准错误上） 
+|            | pg_dumpall                | pg_dumpall工具可以一个集簇中所有的IvorySQL数据库写出到（“转储”）一个脚本文件。该脚本文件包含可以用作 http://www.postgres.cn/docs/14/app-psql.html[psql] 的输入SQL命令来恢复数据库。它会对集簇中的每个数据库调用 http://www.postgres.cn/docs/14/app-pgdump.html[pg_dump] 来完成该工作。pg_dumpall还转储对所有数据库公用的全局对象（ http://www.postgres.cn/docs/14/app-pgdump.html[pg_dump] 不保存这些对象），也就是说数据库角色和表空间都会被转储。 目前这包括适数据库用户和组、表空间以及适合所有数据库的访问权限等属性。因为pg_dumpall从所有数据库中读取表，所以你很可能需要以一个数据库超级用户的身份连接以便生成完整的转储。同样，你也需要超级用户特权执行保存下来的脚本，这样才能增加角色和组以及创建数据库。SQL 脚本将被写出到标准输出。使用 `-f` / `--file` 选项或者 shell 操作符可以把它重定向到一个文件。pg_dumpall需要多次连接到IvorySQL服务器（每个数据库一次）。如果你使用口令认证，可能每次都会要求口令。这种情况下使用一个 `~/.pgpass` 会比较方便 
+|            | pg_isready                | pg_isready是一个用来检查一个IvorySQL数据库服务器的连接状态的工具。其退出状态指定了连接检查的结果。 
+|            | pg_receivewal             | pg_receivewal被用来从一个运行着的IvorySQL集簇以流的方式得到预写式日志。预写式日志会被使用流复制协议以流的方式传送，并且被写入到文件的一个本地目录。这个目录可以被用作归档位置来做一次使用时间点恢复的恢复。当预写式日志在服务器上被产生时，pg_receivewal实时以流的方式传输预写式日志，并且不像 http://www.postgres.cn/docs/14/runtime-config-wal.html#GUC-ARCHIVE-COMMAND[archive_command] 那样等待段完成。由于这个原因，在使用pg_receivewal时不必设置 http://www.postgres.cn/docs/14/runtime-config-wal.html#GUC-ARCHIVE-TIMEOUT[archive_timeout]。与 IvorySQL 后备服务器上的 WAL 接收进程不同，pg_receivewal默认只在一个 WAL 文件被关闭时才刷入 WAL 数据。要实时刷入 WAL 数据，必须指定选项 `--synchronous`。 由于pg_receivewal不应用于WAL，当 http://www.postgres.cn/docs/14/runtime-config-wal.html#GUC-SYNCHRONOUS-COMMIT[synchronous_commit] 等于 `remote_apply` 时，你将不允许它成为同步备用。 如果发生这样的情况，它将成为一个永远不能拉起的备用数据库，并且会导致事务提交阻塞。 为了避免这种情况，你应该为 http://www.postgres.cn/docs/14/runtime-config-replication.html#GUC-SYNCHRONOUS-STANDBY-NAMES[synchronous_standby_names] 配置一个适当的值，或规定为pg_receivewal 的 `application_name` 与它不匹配，或将 `synchronous_commit` 的值更改为 `remote_apply` 以外的内容。预写式日志在一个常规IvorySQL连接上被以流式传送，并且使用复制协议。连接必须由一个具有 `REPLICATION` 权限的用户或者一个超级用户建立，并且 `pg_hba.conf` 必须允许复制连接。服务器也必须被配置一个足够高的 http://www.postgres.cn/docs/14/runtime-config-replication.html#GUC-MAX-WAL-SENDERS[max_wal_senders] 来至少留出一个可用会话给流。首先，扫描WAL段文件所写入的目录，并发现最新完成的段文件，作为下一个段文件的开始的起始点。 这是独立计算的，根据用于压缩每个段的压缩方法。 如果用前面的方法无法计算出起点，最新的WAL刷写位置用作由服务器通过 `IDENTIFY_SYSTEM` 命令的报告。 
+|            | pg_recvlogical            | `pg_recvlogical` 控制逻辑解码复制槽以及来自这种复制槽的流数据。它会创建一个复制模式的连接，因此它受到和 http://www.postgres.cn/docs/14/app-pgreceivewal.html[pg_receivewal] 相同的约束，还有逻辑复制的约束。`pg_recvlogical` 与逻辑解码SQL接口的peek和get模式没有等效性。它咋接收到数据以及干净地退出时，它会惰性地发送数据的确认。为了检查一个槽上还未消费的待处理数据，可以使用 http://www.postgres.cn/docs/14/functions-admin.html#FUNCTIONS-REPLICATION[`pg_logical_slot_peek_changes`]。 
+|            | pg_restore                | pg_restore是一个用来从 http://www.postgres.cn/docs/14/app-pgdump.html[pg_dump] 创建的非文本格式归档恢复IvorySQL数据库的工具。它将发出必要的命令把该数据库重建成它被保存时的状态。这些归档文件还允许pg_restore选择恢复哪些内容或者在恢复前对恢复项重排序。这些归档文件被设计为可以在不同的架构之间迁移。pg_restore可以在两种模式下操作。如果指定了一个数据库名称，pg_restore会连接那个数据库并且把归档内容直接恢复到该数据库中。否则，会创建一个脚本，其中包含着重建该数据库所必要的 SQL 命令，它会被写入到一个文件或者标准输出。这个脚本输出等效于pg_dump的纯文本输出格式。因此，一些控制输出的选项与pg_dump的选项类似。显然，pg_restore无法恢复不在归档文件中的信息。例如，如果归档使用“以 `INSERT` 命令转储数据”选项创建， pg_restore将无法使用 `COPY` 语句装载数据。 
+|            | pg_verifybackup   | pg_verifybackup用于根据备份时服务器生成的 `backup_manifest` 检查使用 `pg_basebackup` 进行的数据库群集备份的完整性。备份必须以“普通”格式存储；“tar”格式的备份可以在解压缩后进行检查。需要注意的是，由pg_verifybackup执行的验证不包括也不可能包括运行中的服务器在尝试使用备份时执行的所有检查。 即使使用此工具，也应执行测试还原，并验证生成的数据库是否按预期工作，以及它们是否包含正确的数据。但是，pg_verifybackup可以检测到由于存储问题或用户错误而经常出现的许多问题。备份验证分四个阶段进行。首先，`pg_verifybackup` 读取 `backup_manifest` 文件。如果该文件不存在、无法读取、格式不正确或无法根据其内部校验和进行验证，`pg_verifybackup` 将以致命错误终止。其次，`pg_verifybackup` 将尝试验证当前存储在磁盘上的数据文件是否与服务器打算发送的数据文件完全相同，下面将介绍一些例外情况。 除了少数例外，额外和丢失的文件将被检测到。此步骤将忽略  `postgresql.auto.conf`、`standby.signal` 和 `recovery.signal` 的存在与否或对其的任何修改，因为预计这些文件可能是在备份过程中创建或修改的。它也不会抱怨目标目录中的 `backup_manifest` 文件或 `pg_wal` 中的任何内容，即使这些文件不会列在备份清单中。只检查文件；不验证目录的存在与否，除非间接验证：如果目录丢失，则它应该包含的任何文件也必然会丢失。 
+|            | psql                      | psql是一个IvorySQL的基于终端的前端。它让你能交互式地键入查询，把它们发送给IvorySQL，并且查看查询结果。或者，输入可以来自于一个文件或者命令行参数。此外，psql还提供一些元命令和多种类似 shell 的特性来为编写脚本和自动化多种任务提供便利。 
+|            | reindexdb                 | reindexdb是用于重建一个IvorySQL数据库中索引的工具。reindexdb是 SQL 命令 http://www.postgres.cn/docs/14/sql-reindex.html[`REINDEX`]的一个包装器。 在通过这个工具和其他方法访问服务器来重索引数据库之间没有实质性的区别。 
+|            | vacuumdb                  | vacuumdb是用于清理一个IvorySQL数据库的工具。vacuumdb也将产生由IvorySQL查询优化器所使用的内部统计信息。 
+| 服务器应用 | initdb            | `initdb` 创建一个新的IvorySQL数据库集簇。一个数据库集簇是由一个单一服务器实例管理的数据库的集合。一个数据库集簇的创建包括创建存放数据库数据的目录、生成共享目录表（属于整个集簇而不是任何特定数据库的表）并且创建 `template1` 和 `postgres` 数据库。当你后来创建一个新的数据库时，任何在 `template1` 数据库中的东西都会被复制（因此，任何已安装在 `template1` 中的东西都会被自动地复制到后来创建的每一个数据库中）。 `postgres` 数据库是便于用户、工具和第三方应用使用的默认数据库。尽管 `initdb` 将尝试创建指定的数据目录，它可能没有权限（如果想要的数据目录的父目录被根用户拥有）。要在这样一种设置中初始化，作为 root 创建一个空数据目录，然后使用 `chown` 将该目录赋予给数据库用户账户，再然后 `su` 成为该数据库用户并运行 `initdb`。`initdb` 必须以将拥有该服务器进程的用户运行，因为该服务器需要访问 `initdb` 创建的文件和目录。因为该服务器不能作为 root 运行，你不能以 root 运行 `initdb` （事实上它会拒绝这样做）。由于安全原因，由 `initdb` 创建的新集簇默认将只能由集簇拥有者访问。`--allow-group-access` 选项允许与集簇拥有者同组的任何用户读取集簇中的文件。这对非特权用户执行备份很有用。`initdb` 初始化该数据库集簇的默认区域和字符集编码。当一个数据库被创建时，其字符集编码、排序顺序（ `LC_COLLATE` ）和字符集类（ `LC_CTYPE` ，例如大写、小写、数字）可以被独立设置。`initdb` 为 `template1` 数据库确定那些设置，它们将作为所有其他数据库的默认值。要修改默认排序顺序或字符集类，使用 `--lc-collate` 和 `--lc-ctype` 选项。除 `C` 或 `POSIX` 之外的排序顺序也有性能罚值。由于这些原因，在运行 `initdb` 时选择正确的区域很重要。余下的区域分类可以在服务器启动之后改变。你也可以使用 `--locale` 来为所有区域分类设置默认值，包括排序顺序和字符集类。所有服务器区域值（ `lc_*` ）可以通过 `SHOW ALL` 显示。要修改默认编码，使用 `--encoding` 。 
+|            | pg_archivecleanup | pg_archivecleanup被设计用作  `archive_cleanup_command` 在作为后备服务器运行时来清理 WAL 文件归档。 pg_archivecleanup也可以被用作一个单独的程序来清理 WAL 文件归档。要配置一个后备服务器以使用pg_archivecleanup，把下面 的内容放在 `postgresql.conf` 配置文件中：archive_cleanup_command = 'pg_archivecleanup archivelocation %r' 其中 *`archivelocation`* 是要从中移除 WAL 段文件的目录。当被用在 http://www.postgres.cn/docs/14/runtime-config-wal.html#GUC-ARCHIVE-CLEANUP-COMMAND[archive_cleanup_command]中时，所有逻辑上在 `%r` 参数的值之前的 WAL 文件都将被从 *`archivelocation`* 移除。这能最小化需要被保留的文件数量， 同时能保留崩溃后重启的能力。如果对于这台特定的后备服务器， *`archivelocation`* 是一个短暂需要的区域，使用这个参数就是合适的，但是当 *`archivelocation`* 要用作一个长期的 WAL 归档 区域或者当多个后备服务器正在从这个归档位置恢复时，使用这个参数就 不合适。当被用作一个单独的程序时，所有逻辑上在 *`oldestkeptwalfile`* 之前的 WAL 文件将被从 *`archivelocation`* 中移除。在这种模式中，如果指定了 `.partial` 或者 `.backup` 文件名，则 只有该文件前缀将被用作 *`oldestkeptwalfile`*。这种对 `.backup` 文件名的处理允许你移除所有在一个特定基础备份之前归档的 WAL 文件而不出错。 
+|            | pg_checksums              | pg_checksums在IvorySQL集簇中检查、启用或禁用数据校验和。运行pg_checksums之前，必须彻底关闭服务器。验证校验和时，如果没有校验和错误，则退出状态为零，如果检测到至少一个校验和失败，则退出状态为非零。启用或禁用校验和时，如果操作失败，则退出状态为非零。验证校验和时，集簇中的每个文件都要被扫描。启用校验和时，集簇中的每个文件都会被原地重写。禁用校验和时，仅更新 `pg_control` 文件。 
+|            | pg_controldata            | `pg_controldata` 打印在 `initdb` 期间初始化的信息，例如目录版本。它也显示关于预写式日志和检查点处理的信息。这种信息是集簇范围的，并且不针对任何一个数据库。这个工具只能由初始化集簇的用户运行，因为它要求对数据目录的读访问。你可以在命令行中指定数据目录，或者使用环境变量 `PGDATA`。这个工具支持选项 `-V` 和 `--version`，它们打印pg_controldata版本并退出。它也支持选项 `-?` 和 `--help`，它们输出支持的参数。 
+|            | pg_ctl                    | pg_ctl是一个用于初始化IvorySQL数据库集簇，启动、停止或重启IvorySQL数据库服务器（ http://www.postgres.cn/docs/14/app-postgres.html[postgres]），或者显示一个正在运行服务器的状态的工具。尽管服务器可以被手工启动，pg_ctl包装了重定向日志输出以及正确地从终端和进程组脱离等任务。它也提供了方便的选项用来控制关闭。 
+|            | pg_resetwal               | `pg_resetwal` 会清除预写式日志（WAL）并且有选择地重置存储在 `pg_control` 文件中的一些其他控制信息。如果这些文件已经被损坏，某些时候就需要这个功能。当服务器由于这样的损坏而无法启动时，这只应该被用作最后的手段。在运行这个命令之后，就可能可以启动服务器，但是记住数据库可能包含由于部分提交事务产生的不一致数据。你应当立刻转储你的数据、运行 `initdb` 并且重新载入。重新载入后，检查不一致并且根据需要修复之。这个工具只能被安装服务器的用户运行，因为它要求对数据目录的读写访问。出于安全原因，你必须在命令行中指定数据目录。`pg_resetwal` 不使用环境变量 `PGDATA`。如果 `pg_resetwal` 抱怨它无法为 `pg_control` 决定合法数据，你可以通过指定 `-f` （强制）选项强制它继续。在这种情况下，丢失的数据将被替换为看似合理的值。可以期望大部分域是匹配的，但是下一个 OID、下一个事务 ID 和纪元、下一个多事务 ID 和偏移以及 WAL 开始位置域可能还是需要人工协助。这些域可以使用下面讨论的选项设置。如果你不能为所有这些域决定正确的值，`-f` 还是可以被使用，但是恢复的数据库还是值得怀疑：一次立即的转储和重新载入是势在必行的。在你转储之前不要在该数据库中执行任何数据修改操作，因为任何这样的动作都可能使破坏更严重。 
+|            | pg_rewind                 | pg_rewind是用于在集簇的时间线分叉以后，同步一个 IvorySQL 集簇和同一集簇的另一份拷贝的工具。一种典型的场景是在失效后让一个旧的主服务器重新上线，同时有一个后备机跟随着新的主机。成功回放后，目标数据目录的状态类似于源数据目录的基本备份。与进行新的基本备份或使用rsync等工具不同，pg_rewind不需要比较或复制集群中未更改的关系块。仅复制现有关系文件中更改的块；所有其他文件（包括新的关系文件、配置文件和WAL段）都将被完整复制。因此，当数据库很大并且集群之间只有一小部分块不同时，倒带操作比其他方法要快得多。pg_rewind检查源集簇和目标集簇的时间线历史来判断它们在哪一点分叉，并且期望在目标集簇的 `pg_wal` 目录中找到 WAL 来返回到分叉点。分叉点可能会在目标时间线、源时间线或者它们的共同祖先上找到。在典型的失效场景中，目标集簇在分叉后很快就被关闭，这不是问题，但是如果目标集簇在分叉后已经运行了很长时间，旧的 WAL 文件可能已经不存在了。在这样的情况下，您可以手动将它们从WAL存档复制到 `pg_wal` 目录，或使用 `-c` 选项运行pg_rewind以自动从WAL存档检索它们。pg_rewind的使用并不限于失效的场景，例如一个后备服务器可能被提升、运行一些写事务，然后被倒回再次成为一个后备。在运行pg_rewind之后，需要完成WAL重放以使数据目录处于一致状态。当目标服务器再次启动时，它将进入归档恢复，并从分歧点之前的最后一个检查点重放源服务器中生成的所有 WAL。当pg_rewind被运行时有某些 WAL 在源服务器上不可用，并且因此无法被pg_rewind会话所复制，则在目标服务器被启动时必须让这些 WAL 可用。 这可以通过在目标数据目录中创建一个 `recovery.signal` 文件并且在 `postgresql.conf` 中配置适合的 http://www.postgres.cn/docs/14/runtime-config-wal.html#GUC-RESTORE-COMMAND[restore_command] 来实现。pg_rewind要求目标服务器在 `postgresql.conf` 中启用了 http://www.postgres.cn/docs/14/runtime-config-wal.html#GUC-WAL-LOG-HINTS[wal_log_hints] 选项，或者在用initdb初始化集簇时启用了数据校验。目前默认情况下这两者都没有被打开。 http://www.postgres.cn/docs/14/runtime-config-wal.html#GUC-FULL-PAGE-WRITES[full_page_writes] 也必须被设置为 `on`，这是默认的。 
+|            | pg_test_fsync             | pg_test_fsync是想告诉你在特定的系统上，哪一种 http://www.postgres.cn/docs/14/runtime-config-wal.html#GUC-WAL-SYNC-METHOD[wal_sync_method] 最快，还可以在发生认定的 I/O 问题时提供诊断信息。不过，pg_test_fsync 显示的区别可能不会在真实的数据库吞吐量上产生显著的区别，特别是由于 很多数据库服务器被它们的预写日志限制了速度。 pg_test_fsync为 `wal_sync_method` 报告以微秒计的平均文件同步操作时间， 也能被用来提示用于优化 http://www.postgres.cn/docs/14/runtime-config-wal.html#GUC-COMMIT-DELAY[commit_delay] 值的方法。 
+|            | pg_test_timing            | pg_test_timing是一种度量在你的系统上计时开销以及确认系统时间绝不会回退的工具。收集计时数据很慢的系统会给出不太准确的 `EXPLAIN ANALYZE` 结果。 
+|            | pg_upgrade                | pg_upgrade允许存储在IvorySQL数据文件中的数据被升级到一个较晚 的IvorySQL主版本而无需进行主版本升级通常所需的数据转储/重载。 对于次版本升级则不需要这个程序。IvorySQL主发行版本通常会加入新的特性，这些新特性常常会更改系统表的布局，但是内部数据存储格式很少会改变。pg_upgrade 使用这一事实来通过创建新系统表并且重用旧的用户数据文件来执行快速升级。 如果未来的主发行版本更改了数据存储格式，导致旧数据格式不可读，那么 pg_upgrade将无法用于此类升级。（社区将努力避免这种情况）。pg_upgrade会尽力（例如通过检查兼容的编译时设 置）确保新旧集簇在二进制上也是兼容的，包括 32/64 位二进制。保持外部模块也是二进制兼容的也很重要，不过pg_upgrade无法检查这一点。 
+|            | pg_waldump                | `pg_waldump` 显示预写式日志（WAL），它主要用于调试或者教育目的。这个工具只能由安装该服务器的用户运行，因为它要求对数据目录的只读访问。 
+|            | postgres                  | `postgres` 是IvorySQL数据库服务器。一个客户端应用为了能访问一个数据库，它会（通过一个网络或者本地）连接到一个运行着的 `postgres` 实例。该 `postgres` 实例接着会开始一个独立的服务器进程来处理该连接。一个 `postgres` 实例总是管理正好一个数据库集簇的数据。一个数据库集簇是一个数据库的集合，它们被存储在一个共同的文件系统位置（“数据区”）上。 一个系统上可以同时运行多个 `postgres` 实例，只要它们使用不同的数据区和不同的通信端口（见下文）。`postgres` 启动时需要知道数据区的位置，该位置必须通过 `-D` 选项或 `PGDATA` 环境变量指定，对此是没有默认值的。通常，`-D` 或 `PGDATA` 会直接指向由 http://www.postgres.cn/docs/14/app-initdb.html[initdb] 创建的数据区目录。默认情况下，`postgres` 会在前台启动并将日志消息打印到标准错误流。但在实际应用中，`postgres` 应当作为一个后台进程启动，而且多数是在系统启动时自动启动。`postgres` 还能在单用户模式中被调用。这种模式的主要用途是在启动过程中由 http://www.postgres.cn/docs/14/app-initdb.html[initdb] 使用。有时候它也被用于调试或者灾难性恢复。注意，运行一个单用户模式服务器并不真地适合调试服务器，因为不会发生实际的进程间通信和锁定。当从 shell 中调用单用户模式时，用户可以输入查询并且结果会被以一种更适合开发者阅读（不适合普通用户）的形式打印在屏幕上。在单用户模式中，会话用户将被设置为 ID 为 1 的用户，并且这个用户会被隐式地赋予超级用户权限。该用户不必实际存在，因此单用户模式运行可以被用来对某些意外损坏的系统目录进行手工恢复。
+|====
+
+== 客户端工具
+
+=== clusterdb
+
+==== 大纲
+
+`clusterdb` [*`connection-option`*...] [ `--verbose` | `-v` ] [ `--table` | `-t` *`table`* ] ... [*`dbname`*]
+
+```
+clusterdb` [*`connection-option`*...] [ `--verbose` | `-v` ] `--all` | `-a
+```
+
+==== 选项
+
+clusterdb接受下列命令行参数：
+
+- `-a` `--all`
+
+聚簇所有数据库。
+
+- `[-d] *dbname*` `[--dbname=] *dbname*`
+
+当不使用 `-a`/ `--all` 时，指定要被聚簇的数据库名称。 如果数据库名称未指定，则从环境变量 `PGDATABASE` 中读取数据库名称。 如果该环境变量也没有被设置，则使用为连接指定的用户名作数据库名。 *`dbname`* 可以是 http://www.postgres.cn/docs/14/libpq-connect.html#LIBPQ-CONNSTRING[connection string]。 如果是这样，连接时的字符串参数将覆盖所有冲突的命令行选项。
+
+- `-e` `--echo`
+
+回显clusterdb生成并发送给服务器的命令。
+
+- `-q` `--quiet`
+
+不显示进度消息。
+
+- `-t *table*` `--table=*table*`
+
+只聚簇 *`table`*。可以通过写多个 `-t` 开关来聚簇多个表。
+
+- `-v` `--verbose`
+
+在处理期间打印详细信息。
+
+- `-V` `--version`
+
+打印clusterdb版本并退出。
+
+- `-?` `--help`
+
+显示关于clusterdb命令行参数的帮助并退出。clusterdb也接受下列命令行参数用于连接参数：
+
+- `-h *host*` `--host=*host*`
+
+指定运行服务器的机器的主机名。如果该值以一个斜线开始，它被用作 Unix 域套接字的目录。
+
+- `-p *port*` `--port=*port*`
+
+指定服务器正在监听连接的 TCP 端口或本地 Unix 域套接字文件扩展。
+
+- `-U *username*` `--username=*username*`
+
+要作为哪个用户连接。
+
+- `-w` `--no-password`
+
+从不发出一个口令提示。如果服务器要求口令认证并且没有其他方式提供口令（例如一个 `.pgpass` 文件），那儿连接尝试将失败。这个选项对于批处理任务和脚本有用，因为在其中没有一个用户来输入口令。
+
+- `-W` `--password`
+
+强制clusterdb在连接到一个数据库之前提示要求一个口令。这个选项不是必不可少的，因为如果服务器要求口令认证，clusterdb将自动提示要求一个口令。但是，clusterdb将浪费一次连接尝试来发现服务器想要一个口令。在某些情况下值得用 `-W` 来避免额外的连接尝试。
+
+- `--maintenance-db= *dbname*`
+
+当使用 `-a` / `--all` 时，指定要连接到的数据库名称来发现哪些其他数据库应该被聚簇。 如果没有指定，将使用 `postgres` 数据库。而如果它也不存在，将使用 `template1`。 这可以是 http://www.postgres.cn/docs/14/libpq-connect.html#LIBPQ-CONNSTRING[connection string]。如果是这样，连接时的字符串参数将覆盖所有冲突的命令行选项。 另外，连接到其他数据库时，除了数据库名字本身其他的连接时字符串参数将被重新使用。
+
+==== 环境
+
+- `PGDATABASE` `PGHOST` `PGPORT` `PGUSER`
+
+  默认连接参数
+
+- `PG_COLOR`
+
+  规定在诊断消息中是否使用颜色。可选的值为 `always` ， `auto` ， `never`
+
+和大部分其他IvorySQL工具相似，这个工具也使用libpq支持的环境变量。
+
+==== 诊断
+
+在有困难时，可以在 http://www.postgres.cn/docs/14/sql-cluster.html[CLUSTER] 和 http://www.postgres.cn/docs/14/app-psql.html[psql] 中找潜在问题和错误消息的讨论。数据库服务器必须运行在目标主机上。同样，任何libpq前端库使用的默认连接设置和环境变量都将适用于此。
+
+==== 例子
+
+要聚簇数据库 `test`：
+
+```
+$ clusterdb test
+```
+
+要聚簇在数据库 `xyzzy` 中的一个表 `foo`：
+
+```
+$ clusterdb --table=foo xyzzy
+```
+
+=== createdb
+
+==== 大纲
+
+`createdb` [*`connection-option`*...] [*`option`*...] [*`dbname`* [*`description`*]]
+
+==== 选项
+
+createdb接受下列命令行参数：
+
+- *`dbname`*
+
+指定要被创建的数据库名。该名称必须在这个集簇中所有IvorySQL数据库中唯一。默认是创建一个与当前系统用户同名的数据库。
+
+- *`description`*
+
+指定与新创建的数据库相关联的一段注释。
+
+- `-D *tablespace*` `--tablespace=*tablespace*`
+
+指定该数据库的默认表空间（这个名称被当做一个双引号引用的标识符处理）。
+
+- `-e` `--echo`
+
+回显createdb生成并发送到服务器的命令。
+
+- `-E *encoding*` `--encoding=*encoding*`
+
+指定要在这个数据库中使用的字符编码模式。
+
+- `-l *locale*` `--locale=*locale*`
+
+指定要在这个数据库中使用的区域。这等效于同时指定`--lc-collate`和`--lc-ctype`。
+
+- `--lc-collate=*locale*`
+
+指定要在这个数据库中使用的 LC_COLLATE 设置。
+
+- `--lc-ctype=*locale*`
+
+指定要在这个数据库中使用的 LC_CTYPE 设置。
+
+- `-O *owner*` `--owner=*owner*`
+
+指定拥有这个新数据库的数据库用户（这个名称被当做一个双引号引用的标识符处理）。
+
+- `-T *template*` `--template=*template*`
+
+指定用于创建这个数据库的模板数据库（这个名称被当做一个双引号引用的标识符处理）。
+
+- `-V` `--version`
+
+打印createdb版本并退出。
+
+- `-?` `--help`
+
+显示关于createdb命令行参数的帮助并退出。选项 `-D`、`-l` 、 `-E` 、 `-O`和 `-T` 对应于底层 SQL 命令 http://www.postgres.cn/docs/14/sql-createdatabase.html[`CREATE DATABASE`]的选项，关于这些选项的信息可见该命令的内容。
+
+createdb也接受下列命令行参数用于连接参数：
+
+- `-h *host*` `--host=*host*`
+
+指定运行服务器的机器的主机名。如果该值以一个斜线开始，它被用作 Unix 域套接字的目录。 这可以是 http://www.postgres.cn/docs/14/libpq-connect.html#LIBPQ-CONNSTRING[connection string]。如果是这样，连接时字符串参数将覆盖所有冲突的命令行选项。
+
+- `-p *port*` `--port=*port*`
+
+指定服务器正在监听连接的 TCP 端口或本地 Unix 域套接字文件扩展。
+
+- `-U *username*` `--username=*username*`
+
+要作为哪个用户连接。
+
+- `-w` `--no-password`
+
+从不发出一个口令提示。如果服务器要求口令认证并且没有其他方式提供口令（例如一个 `.pgpass` 文件），那儿连接尝试将失败。这个选项对于批处理任务和脚本有用，因为在其中没有一个用户来输入口令。
+
+- `-W` `--password`
+
+强制createdb在连接到一个数据库之前提示要求一个口令。这个选项不是必不可少的，因为如果服务器要求口令认证，createdb将自动提示要求一个口令。但是，createdb将浪费一次连接尝试来发现服务器想要一个口令。在某些情况下值得用 `-W` 来避免额外的连接尝试。
+
+- `--maintenance-db=*dbname*`
+
+指定要连接到来发现哪些其他数据库应该被聚簇的数据库名。如果没有指定，将使用 `postgres` 数据库。而如果它也不存在（或者如果它就是要创建新数据库的名称），将使用 `template1`。
+
+==== 环境
+
+- `PGDATABASE`
+
+如果被设置，就是要创建的数据库名，除非在命令行中覆盖。
+
+- `PGHOST` `PGPORT` `PGUSER`
+
+默认连接参数。如果没有在命令行或 `PGDATABASE` 指定要创建的数据库名， `PGUSER` 也决定要创建的数据库名。
+
+- `PG_COLOR`
+
+规定在诊断消息中是否使用颜色。 可能的值为 `always`，`auto` 和 `never`。
+
+和大部分其他IvorySQL工具相似，这个工具也使用libpq支持的环境变量。
+
+==== 诊断
+
+在有困难时，可以在 http://www.postgres.cn/docs/14/sql-createdatabase.html[CREATE DATABASE]和 http://www.postgres.cn/docs/14/app-psql.html[psql] 中找潜在问题和错误消息的讨论。数据库服务器必须运行在目标主机上。同样，任何libpq前端库使用的默认连接设置和环境变量都将适用于此。
+
+==== 例子
+
+要使用默认数据库服务器创建数据库 `demo`：
+
+```
+$ createdb demo
+```
+
+要在主机 `eden`、端口 5000 上使用 `template0` 模板数据库创建数据库 `demo`，这里是命令行命令和底层SQL命令：
+
+```
+$ createdb -p 5000 -h eden -T template0 -e demo
+CREATE DATABASE demo TEMPLATE template0;
+```
+
+=== createuser
+
+createuser — 定义一个新的IvorySQL用户账户
+
+==== 大纲
+
+`createuser` [*`connection-option`*...] [*`option`*...] [*`username`*]
+
+==== 选项
+
+createuser接受下列命令行参数：
+
+- *`username`*
+
+指定要被创建的IvorySQL用户的名称。这个名称必须与这个IvorySQL安装中所有现存角色不同。
+
+- `-c *number*` `--connection-limit=*number*`
+
+为该新用户设置一个最大连接数。默认值为不设任何限制。
+
+- `-d` `--createdb`
+
+新用户将被允许创建数据库。
+
+- `-D` `--no-createdb`
+
+新用户将不被允许创建数据库。这是默认值。
+
+- `-e` `--echo`
+
+回显createuser生成并发送给服务器的命令。
+
+- `-E` `--encrypted`
+
+此选项已过时，但为了实现向后兼容仍然接受。
+
+- `-g *role*` `--role=*role*`
+
+指定一个角色，这个角色将立即加入其中成为其成员。 如果要把这个角色加入到多个角色中作为成员， 可以写多个 `-g` 开关。
+
+- `-i` `--inherit`
+
+新角色将自动继承把它作为成员的角色的特权。这是默认值。
+
+- `-I` `--no-inherit`
+
+新角色将不会自动继承把它作为成员的角色的特权。
+
+- `--interactive`
+
+如果在命令行没有指定用户名，提示要求用户名，并且在命令行没有指定选项 `-d` / `-D`、 `-r` / `-R`、 `-s` / `-S`时也提示。
+
+- `-l` `--login`
+
+新用户将被允许登入（即，该用户名能被用作初始会话用户标识符）。这是默认值。
+
+- `-L` `--no-login`
+
+新用户将不被允许登入（一个没有登录特权的角色仍然可以作为管理数据库权限的方式而存在）。
+
+- `-P` `--pwprompt`
+
+如果给定，createuser将发出一个提示要求新用户的口令。如果你没有计划使用口令认证，这就不是必须的。
+
+- `-r` `--createrole`
+
+新用户将被允许创建新的角色（即，这个用户将具有 `CREATEROLE` 特权）。
+
+- `-R` `--no-createrole`
+
+新用户将不被允许创建新角色。这是默认值。
+
+- `-s` `--superuser`
+
+新用户将成为一个超级用户。
+
+- `-S` `--no-superuser`
+
+新用户将不会成为一个超级用户。这是默认值。
+
+- `-V` `--version`
+
+打印createuser版本并退出。
+
+- `--replication`
+
+新用户将具有 `REPLICATION` 特权，这在 http://www.postgres.cn/docs/14/sql-createrole.html[CREATE ROLE] 的文档中有更完整的描述。
+
+- `--no-replication`
+
+新用户将不具有 `REPLICATION` 特权，这在 http://www.postgres.cn/docs/14/sql-createrole.html[CREATE ROLE] 的文档中有更完整的描述。
+
+- `-?` `--help`
+
+显示有关createuser命令行参数的帮助并退出。
+
+createuser也接受下列命令行参数作为连接参数：
+
+- `-h *host*` `--host=*host*`
+
+指定运行服务器的机器的主机名。如果该值以一个斜线开始，它被用作 Unix 域套接字的目录。
+
+- `-p *port*` `--port=*port*`
+
+指定服务器正在监听连接的 TCP 端口或本地 Unix 域套接字文件扩展。
+
+- `-U *username*` `--username=*username*`
+
+要作为哪个用户连接（不是要创建的用户名）。
+
+- `-w` `--no-password`
+
+从不发出一个口令提示。如果服务器要求口令认证并且没有其他方式提供口令（例如一个 `.pgpass` 文件），那儿连接尝试将失败。这个选项对于批处理任务和脚本有用，因为在其中没有一个用户来输入口令。
+
+- `-W` `--password`
+
+强制createuser在连接到一个数据库之前提示要求一个口令（用来连接到服务器，而不是新用户的口令）。这个选项不是必不可少的，因为如果服务器要求口令认证，createuser将自动提示要求一个口令。但是，createuser将浪费一次连接尝试来发现服务器想要一个口令。在某些情况下值得用 `-W` 来避免额外的连接尝试。
+
+#### 环境
+
+- `PGHOST` `PGPORT` `PGUSER`
+
+默认连接参数
+
+- `PG_COLOR`
+
+规定在诊断消息中是否使用颜色。可能的值为 `always`， `auto` 和 `never`。
+
+和大部分其他IvorySQL工具相似，这个工具也使用libpq支持的环境变量。
+
+####  诊断
+
+在有困难时，可以在 http://www.postgres.cn/docs/14/sql-createrole.html[CREATE ROLE] 和 http://www.postgres.cn/docs/14/app-psql.html[psql] 中找潜在问题和错误消息的讨论。数据库服务器必须运行在目标主机上。同样，任何libpq前端库使用的默认连接设置和环境变量都将适用于此。
+
+####  例子
+
+要在默认数据库服务器上创建一个用户 `joe`：
+
+```
+$ createuser joe
+```
+
+要在默认数据库服务器上创建一个用户 `joe` 并提示要求一些额外属性：
+
+```
+$ createuser --interactive joe
+Shall the new role be a superuser? (y/n) n
+Shall the new role be allowed to create databases? (y/n) n
+Shall the new role be allowed to create more new roles? (y/n) n
+```
+
+要使用在主机 `eden`、端口 5000 上的服务器创建同一个用户 `joe`，并带有显式指定的属性，看看下面的命令：
+
+```
+$ createuser -h eden -p 5000 -S -D -R -e joe
+CREATE ROLE joe NOSUPERUSER NOCREATEDB NOCREATEROLE INHERIT LOGIN;
+```
+
+要创建用户 `joe` 为一个超级用户并且立刻分配一个口令：
+
+```
+$ createuser -P -s -e joe
+Enter password for new role: xyzzy
+Enter it again: xyzzy
+CREATE ROLE joe PASSWORD 'md5b5f5ba1a423792b526f799ae4eb3d59e' SUPERUSER CREATEDB CREATEROLE INHERIT LOGIN;
+```
+
+在上面的例子中，在录入新口令时新口令并没有真正地被回显，但是为了清晰，我们特意把它列了出来。如你所见，该口令在被发送给客户端之前会被加密。
+
+=== dropdb
+
+dropdb — 移除一个IvorySQL数据库
+
+==== 大纲
+
+`dropdb` [*`connection-option`*...] [*`option`*...] *`dbname`*
+
+==== 选项
+
+dropdb接受下列命令行参数：
+
+- *`dbname`*
+
+指定要被移除的数据库的名字。
+
+- `-e` `-−echo`
+
+回显dropdb生成并发送给服务器的命令。
+
+- `-f` `-−force`
+
+在删除目标数据库之前，尝试终止与该数据库的所有现有连接。有关此选项的详细信息，请参见 http://www.postgres.cn/docs/14/sql-dropdatabase.html[DROP DATABASE]。
+
+- `-i` `-−interactive`
+
+在做任何破坏性的工作之前发出一个验证提示。
+
+- `-V` `-−version`
+
+打印dropdb版本并退出。
+
+- `-−if-exists`
+
+如果数据库不存在也不抛出一个错误。在这种情况下会发出一个提示。
+
+- `-?` `-−help`
+
+显示有关dropdb命令行参数的帮助并退出。
+
+
+dropdb也接受下列命令行参数作为连接参数：
+
+- `-h *host*` `-−host=*host*`
+
+指定运行服务器的机器的主机名。如果该值以一个斜线开始，它被用作Unix域套接字的目录。
+
+- `-p *port*` `-−port=*port*`
+
+指定服务器正在监听连接的TCP端口或本地Unix域套接字文件扩展。
+
+- `-U *username*` `-−username=*username*`
+
+要作为哪个用户连接。
+
+- `-w` `-−no-password`
+
+不发出口令提示。如果服务器要求口令认证并且没有可用的口令（例如一个 `.pgpass` 文件），那么连接尝试将失败。这个选项对于批处理任务和脚本有用，因为在其中没有一个用户来输入口令。
+
+- `-W` `-−password`
+
+强制dropdb在连接到一个数据库之前提示要求一个口令。这个选项不是必不可少的，因为如果服务器要求口令认证，dropdb将自动提示要求一个口令。但是，dropdb将浪费一次连接尝试来发现服务器想要一个口令。在某些情况下值得用 `-W` 来避免额外的连接尝试。
+
+- `-−maintenance-db=*dbname*`
+
+指定一个数据库的名称，将连接到这个数据库以便删除目标数据库。如果没有指定，将使用 `postgres` 数据库。而如果它也不存在（或者它就是正在被删除的目标数据库），将使用 `template1`。这个值可以是一个 http://www.postgres.cn/docs/14/libpq-connect.html#LIBPQ-CONNSTRING[连接字符串]。 如果是这样，连接字符串参数将覆盖任何有冲突的命令行选项。
+
+#### 环境
+
+- `PGHOST` `PGPORT` `PGUSER`
+
+默认连接参数
+
+- `PG_COLOR`
+
+规定在诊断消息中是否使用颜色。可能的值为 `always`、 `auto` 以及 `never`。
+
+和大部分其他IvorySQL工具相似，这个工具也使用libpq支持的环境变量。
+
+#### 诊断
+
+在有困难时，可以在 http://www.postgres.cn/docs/14/sql-dropdatabase.html[DROP DATABASE] 和 http://www.postgres.cn/docs/14/app-psql.html[psql] 中找找潜在问题和错误消息的讨论。数据库服务器必须运行在目标主机上。同样，任何libpq前端库使用的默认连接设置和环境变量都将适用于此。
+
+#### 示例
+
+要在默认数据库服务器上毁掉数据库 `demo`：
+
+```
+$ dropdb demo
+```
+
+
+
+要使用在主机 `eden`、端口5000上的服务器中毁掉数据库 `demo`，并带有验证和回显，看看下面的命令：
+
+```
+$ dropdb -p 5000 -h eden -i -e demo
+Database "demo" will be permanently deleted.
+Are you sure? (y/n) y
+DROP DATABASE demo;
+```
+
+=== dropuser
+
+dropuser — 移除一个IvorySQL用户账户
+
+==== 大纲
+
+`dropuser` [*`connection-option`*...] [*`option`*...] [*`username`*]
+
+==== 选项
+
+dropuser接受下列命令行参数：
+
+- *`username`*
+
+指定要移除的IvorySQL用户的名字。如果没有在命令行指定并且使用了 `-i` / `-−interactive` 选项，你将被提醒要求一个用户名。
+
+- `-e` `-−echo`
+
+回显dropuser生成并发送给服务器的命令。
+
+- `-i` `-−interactive`
+
+在实际移除该用户之前提示要求确认，并且在没有在命令行指定用户名提示要求一个用户名。
+
+- `-V` `-−version`
+
+打印dropuser版本并退出。
+
+- `-−if-exists`
+
+如果用户不存在时不要抛出一个错误。在这种情况下将发出一个提示。
+
+- `-?` `-−help`
+
+显示有关dropuser命令行参数的帮助并退出。
+
+
+
+dropuser也接受下列命令行参数作为连接参数：
+
+- `-h *host*` `-−host=*host*`
+
+指定运行服务器的机器的主机名。如果该值以一个斜线开始，它被用作Unix域套接字的目录。
+
+- `-p *port*` `-−port=*port*`
+
+指定服务器正在监听连接的TCP端口或本地Unix域套接字文件扩展。
+
+- `-U *username*` `-−username=*username*`
+
+要作为哪个用户连接。
+
+- `-w` `-−no-password`
+
+不发出口令提示。如果服务器要求口令认证并且没有可用的口令（例如一个 `.pgpass` 文件），那么连接尝试将失败。这个选项对于批处理任务和脚本有用，因为在其中没有一个用户来输入口令。
+
+- `-W` `-−password`
+
+强制dropuser在连接到一个数据库之前提示要求一个口令。这个选项不是必不可少的，因为如果服务器要求口令认证，dropuser将自动提示要求一个口令。但是，dropuser将浪费一次连接尝试来发现服务器想要一个口令。在某些情况下值得用 `-W` 来避免额外的连接尝试。
+
+==== 环境
+
+- `PGHOST` `PGPORT` `PGUSER`
+
+默认连接参数
+
+- `PG_COLOR`
+
+规定在诊断消息中是否使用颜色。可能的值为 `always`、 `auto` 以及 `never`。
+
+和大部分其他IvorySQL工具相似，这个工具也使用libpq支持的环境变量。
+
+#### 诊断
+
+在有困难时，可以在 http://www.postgres.cn/docs/14/sql-droprole.html[DROP ROLE] 和 http://www.postgres.cn/docs/14/app-psql.html[psql] 中找潜在问题和错误消息的讨论。数据库服务器必须运行在目标主机上。同样，任何libpq前端库使用的默认连接设置和环境变量都将适用于此。
+
+==== 示例
+
+要从默认数据库服务器移除用户 `joe`：
+
+```
+$ dropuser joe
+```
+
+要使用在主机 `eden`、端口5000上的服务器移除用户 `joe`，并带有验证和回显，可使用下面的命令：
+
+```
+$ dropuser -p 5000 -h eden -i -e joe
+Role "joe" will be permanently removed.
+Are you sure? (y/n) y
+DROP ROLE joe;
+```
+
+=== ecpg
+
+ecpg — 嵌入式 SQL C 预处理器
+
+==== 大纲
+
+`ecpg` [*`option`*...] *`file`*...
+
+- `-c`
+
+自动从 SQL 代码生成确定的 C 代码。当前，这对 `EXEC SQL TYPE` 起效。
+
+- `-C *mode*`
+
+设置一个兼容性模式。*`mode`* 可以是 `INFORMIX`，`INFORMIX_SE` 或 `ORACLE`。
+
+- `-D *symbol*`
+
+定义一个 C 预处理器符号。
+
+- `-h`
+
+处理头文件。指定此选项后，输出文件扩展名变为 `.h` 而不是 `.c`，默认输入文件扩展名为 `.pgh` 而不是 `.pgc`。此外，将强制启用 `-c` 选项。
+
+- `-i`
+
+分析系统也包括文件。
+
+- `-I *directory*`
+
+指定一个额外的包括路径，用来寻找通过 `EXEC SQL INCLUDE` 包括的文件。默认值是 `.` （当前目录）、 `/usr/local/include` 、在编译时定义的IvorySQL包括目录（默认： `/usr/local/pgsql/include` ）以及 `/usr/include`。
+
+- `-o *`filename`*`
+
+指定 `ecpg` 应该将它的所有输出写到给定的 *`filename`*。 写 `-o-` 将所有输出发送到标准输出。
+
+- `-r *`option`*`
+
+选择运行时行为。*`option`* 可以是下列之一： `no_indicator` 不使用指示器而使用特殊值来表示空值。历史上曾有数据库使用这种方法。`prepare` 在使用所有语句之前准备它们。libecpg 将保持一个预备语句的缓冲并当语句再被执行时重用该语句。如果缓冲满了，libecpg 将释放最少使用的语句。`questionmarks`为兼容性原因允许使用问号作为占位符。在很久以前这被用作默认值。
+
+- `-t`
+
+打开事务的自动提交。在这种模式下，每一个 SQL 命令会被自动提交，除非它位于一个显式事务块中。在默认模式中，命令只有当 `EXEC SQL COMMIT` 被发出时才被提交。
+
+- `-v`
+
+打印额外信息，包括版本和“包括”路径。
+
+- `--version`
+
+打印ecpg版本并退出。
+
+- `-?` `--help`
+
+显示关于ecpg命令行参数的帮助并退出。
+
+==== 注解
+
+在编译预处理好的 C 代码文件时，编译器需要能够找到IvorySQL包括目录中的ECPG头文件。因此，在调用编译器时，你可能必须使用 `-I` 选项（例如， `-I/usr/local/pgsql/include` ）。
+
+使用带有嵌入式 SQL 的 C 代码的程序必须被链接到 `libecpg` 库，例如使用链接器选项 `-L/usr/local/pgsql/lib -lecpg`。
+
+适合于安装的这些目录的值可以使用 http://www.postgres.cn/docs/14/app-pgconfig.html[pg_config] 找到。
+
+==== 例子
+
+如果你有一个名为 `prog1.pgc` 的嵌入式 SQL C 源文件，你可以使用下列命令序列创建一个可执行程序：
+
+```
+ecpg prog1.pgc
+cc -I/usr/local/pgsql/include -c prog1.c
+cc -o prog1 prog1.o -L/usr/local/pgsql/lib -lecpg
+```
+
+=== pg_amcheck
+
+pg_amcheck — 在一个或多个IvorySQL数据库中检查损坏
+
+==== 大纲
+
+`pg_amcheck` [*`option`*...] [*`dbname`*]
+
+==== 选项
+
+以下命令行选项控制要检查的内容：
+
+- `-a` `--all`
+
+检查所有数据库，但通过`--exclude-database`排除的数据库除外。
+
+- `-d *pattern*` `--database=*pattern*`
+
+检查与指定的 http://www.postgres.cn/docs/14/app-psql.html#APP-PSQL-PATTERNS[*`pattern`*]匹配的数据库，但`--exclude-database`排除的数据库除外。可以多次指定此选项。
+
+- `-D *pattern*` `--exclude-database=*pattern*`
+
+排除与给定的 http://www.postgres.cn/docs/14/app-psql.html#APP-PSQL-PATTERNS[*`pattern`*]匹配的数据库。可以多次指定此选项。
+
+- `-i *pattern*` `--index=*pattern*`
+
+检查与指定的 http://www.postgres.cn/docs/14/app-psql.html#APP-PSQL-PATTERNS[*`pattern`*]匹配的索引，除非它们被排除在外。可以多次指定此选项。这类似于 `--relation` 选项，只是它只适用于索引，而不适用于表。
+
+- `-I *pattern*` `--exclude-index=*pattern*`
+
+排除与指定的 http://www.postgres.cn/docs/14/app-psql.html#APP-PSQL-PATTERNS[*`pattern`*]匹配的索引。可以多次指定此选项。这类似于 `--exclude-relation` 选项，只是它只适用于索引，而不适用于表。
+
+- `-r *pattern*` `--relation=*pattern*`
+
+检查与指定的 http://www.postgres.cn/docs/14/app-psql.html#APP-PSQL-PATTERNS[*`pattern`*]匹配的关系，除非它们被排除在外。可以多次指定此选项。模式可能是非限定的，例如 `myrel*`，或者它们可能是模式限定的，如 `myschema*.myrel*` 或数据库限定和模式限定，例如 `mydb*.myscheam*.myrel*`。数据库限定模式将向要检查的数据库列表中添加匹配的数据库。
+
+- `-R *pattern*` `--exclude-relation=*pattern*`
+
+排除与指定的 http://www.postgres.cn/docs/14/app-psql.html#APP-PSQL-PATTERNS[*`pattern`*]匹配的关系。可以多次指定此选项。As with `--relation`, the http://www.postgres.cn/docs/14/app-psql.html#APP-PSQL-PATTERNS[*`pattern`*] may be unqualified, schema-qualified, or database- and schema-qualified. 与 `--relation`一样， http://www.postgres.cn/docs/14/app-psql.html#APP-PSQL-PATTERNS[*`pattern`*]可以是非限定的、模式限定的或数据库和模式限定的。
+
+- `-s *pattern*` `--schema=*pattern*`
+
+检查模式中与指定的 http://www.postgres.cn/docs/14/app-psql.html#APP-PSQL-PATTERNS[*`pattern`*]匹配的表和索引，除非另有排除。可以多次指定此选项。要仅选择与特定模式匹配的模式中的表，请考虑使用类似  `--table=SCHEMAPAT.* --no-dependent-indexes`。要仅选择索引，请考虑使用类似 `--index=SCHEMAPAT.*` 的方法。模式模式可以是数据库限定的。例如，你可以编写 `--schema=mydb*.myschema*` 在数据库中选择匹配 `mydb*` 的模式。
+
+- `-S *pattern*` `--exclude-schema=*pattern*`
+
+排除模式中与指定的 http://www.postgres.cn/docs/14/app-psql.html#APP-PSQL-PATTERNS[*`pattern`*]匹配的表和索引。可以多次指定此选项。与`--schema`一样，模式可以是数据库限定的。
+
+- `-t *pattern*` `--table=*pattern*`
+
+检查与指定的 http://www.postgres.cn/docs/14/app-psql.html#APP-PSQL-PATTERNS[*`pattern`*]匹配的表，除非它们被排除在外。可以多次指定此选项。这类似于`--relation`选项，只是它只适用于表，而不适用于索引。
+
+- `-T *pattern*` `--exclude-table=*pattern*`
+
+排除与指定的 http://www.postgres.cn/docs/14/app-psql.html#APP-PSQL-PATTERNS[*`pattern`*] 匹配的表。可以多次指定此选项。这类似于 `--exclude-relation` 选项，只是它只适用于表，而不适用于索引。
+
+- `--no-dependent-indexes`
+
+默认情况下，如果选中了一个表，则该表的任何btree索引也将被选中，即使它们没有被诸如 `--index` 或 `--relation` 之类的选项显式选择。此选项将抑制该行为。
+
+- `--no-dependent-toast`
+
+默认情况下，如果选中了一个表，则也将检查它的toast表（如果有），即使它没有通过诸如 `--table` 或 `--relation` 之类的选项显式选择。此选项将抑制该行为。
+
+- `--no-strict-names`
+
+默认情况下，如果 `--database`， `--table`， `--index`，或  `--relation` 的参数不匹配任何对象，则这是一个致命错误。此选项将该错误降级为警告。
+
+
+
+以下命令行选项用于控制表的检查：
+
+- `--exclude-toast-pointers`
+
+默认情况下，每当在表中遇到toast指针时，都会执行查找以确保它引用toast表中明显有效的条目。这些检查可能非常慢，可以使用此选项跳过这些检查。
+
+- `--on-error-stop`
+
+在发现损坏的表的第一页上报告所有损坏后，停止处理该表关系，并转到下一个表或索引。请注意，索引检查总是在第一个损坏页之后停止。此选项仅与表关系相关。
+
+- `--skip=*option*`
+
+如果给定 `all-frozen`，表损坏检查将跳过所有表中标记为全部冻结的页面。如果给定了 `all-visible`，则表损坏检查将跳过所有表中标记为所有可见的页面。默认情况下，不跳过任何页面。这可以指定为 `none`，但由于这是默认值，因此无需提及。
+
+- `--startblock=*block*`
+
+从指定的块号开始检查。如果正在检查的表关系的块数少于此数，则会发生错误。此选项不适用于索引，可能仅在检查单个表关系时有用。请参阅 `--endblock` 了解更多注意事项。
+
+- `--endblock=*`block`*`
+
+在指定的块号结束检查。如果正在检查的表关系的块数少于此数，则会发生错误。此选项不适用于索引，可能仅在检查单个表关系时有用。如果同时选中常规表和toast表，则此选项将同时适用于这两个表，但在验证toast指针时，仍然可以访问编号更高的toast块，除非使用 `--exclude-toast-pointers` 抑制。
+
+
+
+以下命令行选项用来控制B树索引的检查：
+
+- `--heapallindexed`
+
+对于每个选中的索引，使用 http://www.postgres.cn/docs/14/amcheck.html[amcheck]'s  `heapallindexed` 选项验证索引中是否存在作为索引元组的所有堆元组。
+
+- `--parent-check`
+
+对于检查的每个btree索引，使用 http://www.postgres.cn/docs/14/amcheck.html[amcheck] 的 `bt_index_parent_check` 函数，该函数在索引检查期间对父/子关系执行其他检查。默认情况是使用amcheck的 `bt_index_check` 函数，但请注意，使用 `--rootdescend` 选项会隐式选择 `bt_index_parent_check`。
+
+- `--rootdescend`
+
+对于每个选中的索引，通过使用 http://www.postgres.cn/docs/14/amcheck.html[amcheck]'s  `rootdescend` 选项从根页面对每个元组执行新搜索，在叶级重新查找元组。使用此选项也会隐式选择 `--parent-check` 选项。这种形式的验证最初是为了帮助开发btree索引功能而编写的。它在帮助检测实践中发生的损坏类型方面可能用处有限，甚至毫无用处。它还可能导致损坏检查花费相当长的时间，并消耗服务器上相当多的资源。
+
+==== 警告
+
+当指定 `--parent-check` 选项或 `--rootdescend` 选项时，对B树索引执行的额外检查需要相对强的关系级锁。这些检查是唯一会阻止 `INSERT`， `UPDATE`，和 `DELETE` 命令并发数据修改的检查。
+
+以下命令行选项用来控制与服务器的连接：
+
+- `-h *hostname*` `--host=*hostname*`
+
+指定运行服务器的计算机的主机名。如果该值以斜杠开头，它将用作Unix域套接字的目录。
+
+- `-p *port*` `--port=*port*`
+
+指定服务器正在侦听连接的TCP端口或本地Unix域套接字文件扩展名。
+
+- `-U` `--username=*username*`
+
+连接的用户名。
+
+- `-w` `--no-password`
+
+永远不要发出密码提示。如果服务器需要密码身份验证，并且密码无法通过其他方式（如 `.pgpass` 文件，连接尝试将失败。在没有用户输入密码的批处理作业和脚本中，此选项非常有用。
+
+- `-W` `--password`
+
+在连接到数据库之前，强制pg_amcheck提示输入密码。此选项从来都不是必需的，因为如果服务器要求密码身份验证，pg_amcheck将自动提示输入密码。但是，pg_amcheck将浪费一次连接尝试，以发现服务器需要密码。在某些情况下，键入 `-W` 以避免额外的连接尝试是值得的。
+
+- `--maintenance-db=*dbname*`
+
+指定用于发现要检查的数据库列表的数据库或 http://www.postgres.cn/docs/14/libpq-connect.html#LIBPQ-CONNSTRING[连接字符串]。如果既不使用 `--all` 也不使用任何包含数据库模式的选项，则不需要这种连接，并且该选项不起任何作用。否则，连接到正在检查的数据库时，也将使用此选项值中包含的数据库名称以外的任何连接字符串参数。如果省略此选项，则默认值为 `postgres`，或如果失败，则为 `template1`。
+
+
+
+其它允许的选项：
+
+- `-e` `--echo`
+
+回显发送到服务器的所有SQL。
+
+- `-j *num*` `--jobs=*num*`
+
+使用 *`num`* 个到服务器的并发连接，或每个要检查的对象使用一个连接，以较小者为准。默认情况是使用单个连接。
+
+- `-P` `--progress`
+
+显示进度信息。进度信息包括已完成检查的关系数以及这些关系的总大小。它还包括最终要检查的关系的总数，以及这些关系的估计大小。
+
+- `-v` `--verbose`
+
+打印更多消息。特别是，这将为每个正在检查的关系打印一条消息，并将增加服务器错误的详细程度。
+
+- `-V` `--version`
+
+打印pg_amcheck版本并退出。
+
+- `--install-missing` `--install-missing=*`schema`*`
+
+安装检查数据库所需的任何缺少的扩展。如果尚未安装，每个扩展的对象将安装到给定的 *`schema`* 中，或者如果未指定则安装到 `pg_catalog` 模式中。目前，唯一需要的扩展是 http://www.postgres.cn/docs/14/amcheck.html[amcheck]。
+
+- `-?` `--help`
+
+显示有关pg_amcheck命令行参数的帮助，然后退出。
+
+=== pg_basebackup
+
+pg_basebackup — 获得一个IvorySQL集簇的一个基础备份
+
+==== 大纲
+
+`pg_basebackup` [*`option`*...]
+
+==== 选项
+
+下列命令行选项控制输出的位置和格式：
+
+- `-D *directory*` `--pgdata=*directory*`
+
+设置目标目录以将输出写入。如果该目录不存在，pg_basebackup将创建该目录（以及所有丢失的父目录）。如果已经存在，则必须为空。当备份处于 tar 模式中，目标目录可以被指定为 `-` （破折号），从而将 tar 文件写入 `stdout`。这个选项是必需的。
+
+- `-F *format*` `--format=*format*`
+
+为输出选择格式。*`format`* 可以是下列之一： `p` `plain` 把输出写成平面文件，使用和源服务器数据目录和表空间相同的布局。 当集簇没有额外表空间时，整个数据库将被放在目标目录中。 如果集簇包含额外的表空间，主数据目录将被放置在目标目录中，但是所有其他表空间将被放在它们位于源服务器上的相同的绝对路径中。 (参见 `--tablespace-mapping` 来更改。)这是默认格式。`t` `tar` 将输出作为tar文件写入目标目录中。 主数据目录的内容将被写入名为 `base.tar` 的文件，而其他表空间将被写入以该表空间的OID命名的单独的tar文件。如果将目标目录指定为 `-`（破折号），则tar内容将被写入标准输出，该标准输出适用于管道传输至gzip（例如）。 只有当集簇没有额外表空间并且没有使用WAL流时才允许这样做。
+
+- `-R` `--write-recovery-conf`
+
+创建一个 http://www.postgres.cn/docs/14/warm-standby.html#FILE-STANDBY-SIGNAL[`standby.signal`] 文件，并将连接设置附加到目标目录（或使用tar格式的基本存档文件中）的 `postgresql.auto.conf` 文件中。 这样可以简化使用备份结果设置备用服务器的过程。 `postgresql.auto.conf` 文件将记录连接设置（如果有）以及pg_basebackup所使用的复制槽，这样流复制后面就会使用相同的设置。
+
+- `-T *olddir*=*newdir*` `--tablespace-mapping=*olddir*=*newdir*`
+
+在备份期间将目录 *`olddir`* 中的表空间重定位到 *`newdir`* 中。为使之有效，*`olddir`* 必须与源服务器上定义的表空间的路径规范完全匹配。（但如果备份中没有包含 *`olddir`* 中的表空间也不是错误）。同时，*`newdir`* 是接收主机文件系统中的目录。与主目标目录一样，*`newdir`* 不必已经存在，但是如果确实存在，则必须为空。*`olddir`* 和 *`newdir`* 必须是绝对路径。如果一个路径凑巧包含了一个 `=` 符号，可用反斜线对它转义。对于多个表空间可以多次使用这个选项。如果以这种方法重定位一个表空间，主数据目录中的符号链接会被更新成指向新位置。因此新数据目录已经可以被一个所有表空间位于更新后位置的新服务器实例使用。目前，这个选项仅以普通输出格式工作，如果选择了tar格式，请忽略它。
+
+- `--waldir=*waldir*`
+
+指定用于预写式日志目录的位置。*`waldir`* 必须是绝对路径。只有当备份是平面文件模式时才能指定事务日志目录。 设置要写入WAL（预写日志）文件的目录。 默认情况下，WAL文件将放置在目标目录的 `pg_wal` 子目录中，但是此选项可用于将它们放置在其他位置。*`waldir`* 必须是绝对路径。与主目标目录一样，*`waldir`* 不必已经存在，但是如果确实存在，则必须为空。只有当备份是平面文件模式时才可以指定此选项。
+
+- `-X *method*` `--wal-method=*method*`
+
+在备份中包括所需的WAL（预写式日志）文件。这包括所有在备份期间产生的预写式日志。除非指定了方法 `none`，可以在目标目录中启动postmaster而无需参考日志归档，从而使输出成为完全独立的备份。支持下列收集预写式日志的 *`方法`*：`n` `none` 不要在备份中包括预写式日志。`f` `fetch` 在备份末尾收集预写式日志文件。因此，有必要把源服务器的 http://www.postgres.cn/docs/14/runtime-config-replication.html#GUC-WAL-KEEP-SIZE[wal_keep_size] 参数设置得足够高，这样在备份末尾之前需要的日志数据不会被移除。如果所需的日志数据在传输之前已被回收，则备份将失败并且无法使用。如果使用tar格式，预写式日志文件将被包含在 `base.tar` 文件。`s` `stream` 在进行备份时，流式传输预写式日志数据。将开启一个到服务器的第二连接并且在运行备份时并行开始流传输预写式日志。因此，它将需要两个复制连接，而不仅仅是一个。 只要客户端可以跟上预写式日志数据，使用此方法就不需要在源服务器上保存额外的预写式日志。如果使用tar格式，预写式日志文件被写入到一个单独的名为 `pg_wal.tar` 的文件（如果服务器的版本超过10，该文件将被命名为 `pg_xlog.tar` ）。这个值是默认值。
+
+- `-z` `--gzip`
+
+启用对 tar 文件输出的 gzip 压缩，使用默认的压缩级别。只有使用 tar 格式时压缩才可用，并且会在所有tar文件名后面自动加上后缀 `.gz`。
+
+- `-Z *level*` `--compress=*level*`
+
+启用对 tar 文件输出的 gzip 压缩，并且制定压缩机别（0 到 9，0 是不压缩，9 是最佳压缩）。只有使用 tar 格式时压缩才可用，并且会在所有tar文件名后面自动加上后缀 `.gz`。
+
+
+
+下列命令行选项控制备份的生成和程序的调用：
+
+- `-c *fast|spread*` `--checkpoint=*fast|spread*`
+
+将检查点模式设置为 fast（立刻）或 spread（默认）。
+
+- `-C` `--create-slot`
+
+指定在启动备份之前应创建由 `--slot` 选项命名的复制插槽。如果插槽已存在，则会引发错误。
+
+- `-l *label*` `--label=*label*`
+
+为备份设置标签。如果没有指定，将使用一个默认值“ `pg_basebackup base backup` ”。
+
+- `-n` `--no-clean`
+
+默认情况下，当 `pg_basebackup` 因为一个错误而中止时，它会把它意识到无法完成该工作之前已经创建的目录（例如目标目录和预写式日志目录）都移除。这个选项可以禁止这种清洗，因此可以用于调试。注意不管哪一种方式都不会清除表空间目录。
+
+- `-N` `--no-sync`
+
+默认情况下，`pg_basebackup` 将等待所有文件被安全地写到磁盘上。这个选项导致 `pg_basebackup` 不做这种等待就返回，这样会更快一些，但是也意味着后续发生的操作系统崩溃可能会使得这个基础备份损坏。通常这个选项对测试比较有用，在创建生产安装时不应该使用。
+
+- `-P` `--progress`
+
+启用进度报告。启用这个选项将在备份期间发表一个大致的进度报告。由于数据库可能在备份期间改变，这仅仅是一种近似并且可能不会刚好在 `100%` 结束。特别地，当 WAL 日志被包括在备份中时，总数据量无法预先估计，并且在这种情况中估计的目标尺寸会在它经过不带 WAL 的总估计后增加。
+
+- `-r *rate*` `--max-rate=*rate*`
+
+设置从源服务器收集数据的最大传输速率。这有助于限制pg_basebackup对服务器的影响。值以每秒千字节为单位。使用后缀 `M` 表示每秒兆字节数。后缀 `k` 也可以接受，没有任何影响。有效值介于每秒32千字节和每秒1024兆字节之间。此选项始终影响数据目录的传输。只有收集方法为 `fetch` 时，才会影响WAL文件的传输。
+
+- `-S *slotname*` `--slot=*slotname*`
+
+这个选项仅能与 `-X stream` 一起使用。它导致WAL流使用指定的复制槽。如果该基础备份的目的是被用作一台使用复制槽的流复制后备，则它应该使用与 http://www.postgres.cn/docs/14/runtime-config-replication.html#GUC-PRIMARY-SLOT-NAME[primary_slot_name] 中相同的复制槽名称。这可以确保主服务器不会移除位于该基础备份结束与新备用数据库上流复制开始之间产生的任何所需的WAL数据。指定的复制槽必须已经存在，除非同时使用了选项 `-C`。如果这个选项没有被指定并且服务器支持临时复制槽（版本10以后），则会自动使用一个临时复制槽来进行WAL流。
+
+- `-v` `--verbose`
+
+启用冗长模式。将在启动和关闭期间输出一些额外步骤，并且如果进度报告也被启用，还会显示当前正在被处理的确切文件名。
+
+- `--manifest-checksums=*algorithm*`
+
+指定应应用于备份清单中包含的每个文件的校验和算法。目前，可用的算法有 `NONE`、 `CRC32C`、 `SHA224`、 `SHA256`、 `SHA384` 和 `SHA512`。默认值为 `CRC32C`。如果选择了 `NONE`，备份清单将不包含任何校验和。否则，它将包含备份中使用指定算法的每个文件的校验和。此外，清单将始终包含自身内容的 `SHA256` 校验和。`SHA` 算法比 `CRC32C` 算法占用大量CPU，因此选择其中一种算法可能会增加完成备份所需的时间。使用SHA散列函数可为希望验证备份是否遭到篡改的用户提供每个文件的加密安全摘要，而CRC32C算法提供的校验和计算速度更快。它擅长捕获由于意外更改引起的错误，但不能抵抗恶意修改。 请注意，为了对有权访问备份的对手有用，备份清单必须安全地存储在其他位置，否则必须经过验证以确保自从进行备份以来未进行任何修改。 http://www.postgres.cn/docs/14/app-pgverifybackup.html[pg_verifybackup] 可用于根据备份清单检查备份的完整性。
+
+- `--manifest-force-encode`
+
+强制备份清单中的所有文件名采用十六进制编码。如果未指定此选项，则仅对非UTF8文件名进行十六进制编码。此选项主要用于测试读取备份清单文件的工具是否正确处理此情况。
+
+- `--no-estimate-size`
+
+阻止服务器估计将要流式传输的备份数据总量，从而导致 `pg_stat_progress_basebackup` 视图中的 `backup_total` 列始终为 `NULL` 。如果没有此选项，则备份将从枚举整个数据库的大小开始，然后返回并发送实际内容。这可能会使备份花费的时间稍长一些，特别是在发送第一个数据之前，备份将花费更长的时间。 如果估计时间过长，此选项将有助于避免此类估计时间。使用 `--progress` 时不允许使用此选项。
+
+- `--no-manifest`
+
+禁用备份清单的生成。如果未指定此选项，则服务器将生成并发送备份清单，可以使用 http://www.postgres.cn/docs/14/app-pgverifybackup.html[pg_verifybackup] 进行验证。清单是备份中存在的每个文件的列表，可能包含的所有WAL文件除外。它还存储大小、上次修改时间和每个文件的可选校验和。
+
+- `--no-slot`
+
+防止为备份创建临时复制插槽。默认情况下，如果选择了日志流，但没有用选项 `-S` 指定槽名称，则会创建一个临时复制插槽（如果源服务器支持）。这个选项的主要目的是允许在服务器没有空闲复制槽可用时制作基础备份。使用复制槽几乎总是最好的方式，因为它能防止备份期间所需的WAL被删除。
+
+- `--no-verify-checksums`
+
+如果在取基础备份的服务器上启用了校验码验证，则禁用校验码验证。默认情况下，校验码会被验证并且校验码失败将会导致一种非零的退出状态。不过，基础备份在这种情况下将不会被移除，就好像使用了 `--no-clean` 选项一样。校验和验证失败也将报告在 http://www.postgres.cn/docs/14/monitoring-stats.html#MONITORING-PG-STAT-DATABASE-VIEW[`pg_stat_database`] 视图中。
+
+
+
+以下命令行选项控制到源服务器的连接：
+
+- `-d *connstr*` `--dbname=*connstr*`
+
+指定用于连接到服务器的参数，比如 http://www.postgres.cn/docs/14/libpq-connect.html#LIBPQ-CONNSTRING[连接字符串]；这些将覆盖所有冲突的命令行选项。为了和其他客户端应用一致，该选项被称为 `--dbname`。但是因为pg_basebackup并不连接到集簇中的任何特定数据库，连接字符串中的任何数据库名将被忽略。
+
+- `-h *host*` `--host=*host*`
+
+指定运行服务器的机器的主机名。如果该值以一个斜线开始，它被用作 Unix 域套接字的目录。默认值取自 `PGHOST` 环境变量（如果设置），否则会尝试一个 Unix 域套接字连接。
+
+- `-p *port*` `--port=*port*`
+
+指定服务器正在监听连接的 TCP 端口或本地 Unix 域套接字文件扩展。默认用 `PGPORT` 环境变量中的值（如果设置），或者一个编译在程序中的默认值。
+
+- `-s *interval*` `--status-interval=*interval*`
+
+指定发送回源服务器的状态包之间的秒数。较小的值可以更准确地监视服务器的备份进度。一个零值完全禁用这种周期性的状态更新，不过当服务器需要时还是会有一个更新会被发送来避免超时导致的断开连接。默认值是 10 秒。
+
+- `-U *username*` `--username=*username*`
+
+指定连接的用户名。
+
+- `-w` `--no-password`
+
+防止发出口令提示。如果服务器要求口令认证并且没有其他方式提供口令（例如一个 `.pgpass` 文件），那儿连接尝试将失败。这个选项对于批处理任务和脚本有用，因为在其中没有一个用户来输入口令。
+
+- `-W` `--password`
+
+强制pg_basebackup在连接到源服务器之前提示要求一个口令。这个选项不是必不可少的，因为如果服务器要求口令认证，pg_basebackup将自动提示要求一个口令。但是，pg_basebackup将浪费一次连接尝试来发现服务器想要一个口令。在某些情况下值得用 `-W` 来避免额外的连接尝试。
+
+
+
+其他选项也可用：
+
+- `-V` `--version`
+
+打印pg_basebackup版本并退出。
+
+- `-?` `--help`
+
+显示有关pg_basebackup命令行参数的帮助并退出。
+
+==== 环境
+
+和大部分其他IvorySQL工具相似，这个工具也使用libpq支持的环境变量。
+
+环境变量 `PG_COLOR` 规定在诊断消息中是否使用颜色。可能的值为 `always`、 `auto`、 `never`。
+
+==== 注解
+
+在备份的开始时，需要在源服务器上执行检查点。这可能需要一点时间（尤其在没有使用选项 `--checkpoint=fast` 时），在此期间pg_basebackup看起来处于闲置状态。
+
+备份将包括数据目录和表空间中的所有文件，包括配置文件以及由第三方放在该目录中的任何额外文件，不过由IvorySQL管理的特定临时文件除外。但只有常规文件和目录会被拷贝，但用于表空间的符号链接会被保留。指向IvorySQL已知的特定目录的符号链接被拷贝为空目录。其他符号链接和特殊设备文件会被跳过。
+
+在普通格式中，表空间将备份到源服务器上的相同路径，除非使用了 `--tablespace-mapping` 选项。如果没有这个选项并且表空间正在使用，在同一台服务器上进行普通格式的基础备份将无法工作，因为备份必须要写入到与原始表空间相同的目录位置。
+
+在使用 tar 格式时，用户应负责在启动使用数据的 IvorySQL 服务器前解压每一个 tar 文件。如果有额外的表空间，用于它们的 tar 文件需要被解压到正确的位置。在这种情况下，服务器将根据包含在 `base.tar` 文件中的 `tablespace_map` 文件的内容为那些表空间创建符号链接。
+
+pg_basebackup可以和具有相同或较低主版本的服务器一起工作.
+
+如果在源集簇上启用了组权限，pg_basebackup将保留数据文件的组权限。
+
+==== 例子
+
+要创建服务器 `mydbserver` 的一个基础备份并将它存储在本地目录 `/usr/local/pgsql/data` 中：
+
+```
+$ pg_basebackup -h mydbserver -D /usr/local/pgsql/data
+```
+
+要创建本地服务器的一个备份，为其中每一个表空间产生一个压缩过的 tar 文件，并且将它存储在目录 `backup` 中，在运行期间显示一个进度报告：
+
+```
+$ pg_basebackup -D backup -Ft -z -P
+```
+
+要创建一个单一表空间本地数据库的备份并且使用bzip2压缩它：
+
+```
+$ pg_basebackup -D - -Ft -X fetch | bzip2 > backup.tar.bz2
+```
+
+（如果在该数据库中有多个表空间，这个命令将失败）。
+
+要创建一个本地数据库的备份，其中 `/opt/ts` 中的表空间被重定位到 `./backup/ts`：
+
+```
+$ pg_basebackup -D backup/data -T /opt/ts=$(pwd)/backup/ts
+```
+
+=== pgbench
+
+pgbench — 在IvorySQL上运行一个基准测试
+
+==== 大纲
+
+`pgbench` `-i` [*`option`*...] [*`dbname`*]
+
+`pgbench` [*`option`*...] [*`dbname`*]
+
+==== 小心
+
+`pgbench -i` 会创建四个表 `pgbench_accounts`、 `pgbench_branches`、 `pgbench_history` 以及 `pgbench_tellers`，如果同名表已经存在会被先删除。如果你已经有同名表，一定注意要使用另一个数据库！
+
+在默认的情况下“比例因子”为 1，这些表初始包含的行数为：
+
+```
+table                   # of rows
+---------------------------------
+pgbench_branches        1
+pgbench_tellers         10
+pgbench_accounts        100000
+pgbench_history         0
+```
+
+你可以使用 `-s` （比例因子）选项增加行的数量。`-F` （填充因子）选项也可以在这里使用。
+
+一旦你完成了必要的设置，你就可以用不包括 `-i` 的命令运行基准，也就是：
+
+```
+pgbench [ options ] dbname
+```
+
+在近乎所有的情况中，你将需要一些选项来做一次有用的测试。最重要的选项是 `-c` （客户端数量）、 `-t` （事务数量）、`-T` （时间限制）以及 `-f` （指定一个自定义脚本文件）。完整的列表见下文。
+
+==== 选项
+
+下面分成三个部分。数据库初始化期间使用的选项和运行基准时会使用不同的选项，但也有一些选项在两种情况下都使用。
+
+==== 初始化选项
+
+pgbench接受下列命令行初始化参数：
+
+- *`dbname`*
+
+指定要测试的数据库的名称。 如果这个没有被指定，将使用环境变量 `PGDATABASE` 。 如果那个也没有设定，将使用指定要连接的用户名称。
+
+- `-i` `--initialize`
+
+要求调用初始化模式。
+
+- `-I *init_steps*` `--init-steps=*init_steps*`
+
+只执行选出的一组普通初始化步骤。*`init_steps`* 指定要被执行的初始化步骤，每一个步骤使用一个字符代表。每一个步骤都以指定的顺序被调用。默认是 `dtgvp`。可用的步骤是：`d` （删除）删除任何已有的pgbench表。`t` （创建表）创建标准pgbench场景使用的表，即 `pgbench_accounts`、 `pgbench_branches`、 `pgbench_history` 以及 `pgbench_tellers`。 `g` 或 `G`（生成数据、客户端或服务器端）生成数据并且装入到标准的表中，替换掉已经存在的任何数据。使用 `g` （客户端数据生成），数据在 `pgbench` 客户端生成，然后发送到服务器。 这通过 `COPY` 广泛使用客户端/服务器带宽。 使用 `g` 会导致日志记录每 100,000 行打印一条消息，同时为 `pgbench_accounts` 表生成数据。使用 `G`（服务器端数据生成），仅从 `pgbench` 客户端发送少量查询，然后在服务器中实际生成数据。 此变体不需要大量带宽，但服务器将完成更多工作。 使用 `G` 会导致日志记录在生成数据时不打印任何进度消息。默认的初始化行为使用客户端数据生成（相当于 `g` ）。 `v` （清理）在标准的表上调用 `VACUUM` 。 `p` （创建主键）在标准的表上创建主键索引。`f` （创建外键）在标准的表之间创建外键约束（注意这一步默认不会被执行）。
+
+- `-F` *`fillfactor`* `--fillfactor=` *`fillfactor`*
+
+用给定的填充因子创建表 `pgbench_accounts`、 `pgbench_tellers` 以及 `pgbench_branches`。默认是100。
+
+- `-n` `--no-vacuum`
+
+在初始化期间不执行清理（这个选项会抑制 `v` 初始化步骤，即便在 `-I` 中指定了该步骤）。
+
+- `-q` `--quiet`
+
+把记录切换到安静模式，只是每 5 秒产生一个进度消息。默认的记录会每 100,000 行打印一个消息，这经常会在每秒钟输出很多行（特别是在好的硬件上）。如果在 `-I` 中指定了 `G`，则此设置无效。
+
+- `-s` *`scale_factor`* `--scale=` *`scale_factor`*
+
+将生成的行数乘以比例因子。例如，`-s 100` 将在 `pgbench_accounts` 表中创建 10,000,000 行。默认为 1。当比例为 20,000 或更高时，用来保存账号标识符的列（ `aid` 列）将切换到使用更大的整数（ `bigint` ），这样才能足以保存账号标识符。
+
+- `--foreign-keys`
+
+在标准的表之间创建外键约束（如果 `f` 在初始化步骤序列中不存在，这个选项会把它加入）。
+
+- `--index-tablespace=*index_tablespace*`
+
+在指定的表空间而不是默认表空间中创建索引。
+
+- `--partition-method=*NAME*`
+
+使用 *`NAME`* 方法创建一个分区的 `pgbench_accounts` 表。 预期值为 `range` 或 `hash`。 此选项要求 `--partitions` 设置为非零。 如果未指定，默认值为 `range`。
+
+- `--partitions=*NUM*`
+
+创建一个分区 `pgbench_accounts` 表，其中 *`NUM`* 分区的大小与按比例缩放的帐户数几乎相等。 默认为 `0`，表示没有分区。
+
+- `--tablespace=*tablespace*`
+
+在指定的表空间而不是默认表空间中创建表。
+
+- `--unlogged-tables`
+
+把所有的表创建为非日志记录表而不是永久表。
+
+==== 基准选项
+
+pgbench接受下列命令行基准参数：
+
+- `-b` *`scriptname[@weight]`* `--builtin`= *`scriptname[@weight]`*
+
+把指定的内建脚本加入到要被执行的脚本列表中。 可用的内建脚本有： `tpcb-like`、 `simple-update` 和 `select-only` 。 这里也接受内建名称无歧义的前缀缩写。 如果用上特殊的名字 `list`，将会显示内建脚本的列表并且立刻退出。可选的，在 `@` 后面写一个整数权重以调整选择这个脚本而不是其它的概率。 默认的权重为1。 详情如下。
+
+- `-c` *`clients`* `--client=` *`clients`*
+
+模拟的客户端数量，也就是并发数据库会话数量。默认为 1。
+
+- `-C` `--connect`
+
+为每一个事务建立一个新连接，而不是只为每个客户端会话建立一个连接。这对于度量连接开销有用。
+
+- `-d` `--debug`
+
+打印调试输出。
+
+- `-D` *`varname`* `=` *`value`* `--define=` *`varname`* `=` *`value`*
+
+定义一个由自定义脚本（见下文）使用的变量。允许多个 `-D` 选项。
+
+- `-f` *`filename[@weight]`* `--file=` *`filename[@weight]`*
+
+把一个从 *`filename`* 读到的事务脚本加入到被执行的脚本列表中。可选的，在 `@` 后写一个整数权重以调整选择这个脚本而非其他的概率。 默认权重为1. (要使用包含 `@` 字符的脚本文件名，附加权重在后面以避免歧义，例如 `filen@me@1` 。) 详情如下。
+
+- `-j` *`threads`* `--jobs=` *`threads`*
+
+pgbench中的工作者线程数量。在多 CPU 机器上使用多于一个线程会有用。客户端会尽可能均匀地分布到可用的线程上。默认为 1。
+
+- `-l` `--log`
+
+把与每一个事务相关的信息写到一个日志文件中。详见下文。
+
+- `-L` *`limit`* `--latency-limit=` *`limit`*
+
+对持续超过 *`limit`* 毫秒的事务进行独立的计数和报告， 这些事务被认为是 *迟到（late）* 了的事务。在使用限流措施时（ `--rate=...` ），滞后于计划超过 *`limit`* 毫秒并且因此没有希望满足延迟限制的事务根本 不会被发送给服务器。这些事务被认为是 *被跳过（skipped）* 的事务，它们会被单独计数并且报告。
+
+- `-M` *`querymode`* `--protocol=`*`querymode`*
+
+要用来提交查询到服务器的协议： `simple` ：使用简单查询协议。 `extended` 使用扩展查询协议。 `prepared` ：使用带预备语句的扩展查询语句。在 `prepared` 模式中，pgbench重用从第二次查询迭代开始的语法分析结果，因此pgbench运行速度比其他模式快。默认是简单查询协议。
+
+- `-n` `--no-vacuum`
+
+在运行测试前不进行清理。如果你在运行一个不包括标准的表 `pgbench_accounts` 、 `pgbench_branches` 、 `pgbench_history` 和  `pgbench_tellers` 的自定义测试场景时，这个选项是必需的。
+
+- `-N` `--skip-some-updates`
+
+运行内建的简单更新脚本。这是 `-b simple-update` 的简写。
+
+- `-P` *`sec`* `--progress=`*`sec`*
+
+每 *`sec`* 秒显示进度报告。该报告包括运行了多长时间、从上次报告以来的 tps 以及从上次报告以来事务延迟的平均值和标准偏差。如果低于限流值（ `-R` ），延迟会相对于事务预定的开始时间（而不是实际的事务开始时间）计算，因此其中也包括了平均调度延迟时间。
+
+- `-r` `--report-latencies`
+
+在基准结束后，报告平均的每个命令的每语句等待时间（从客户端的角度来说是执行时间）。详见下文。
+
+- `-R` *`rate`* `--rate=` *`rate`*
+
+按照指定的速率执行事务而不是尽可能快地执行（默认行为）。该速率 以 tps（每秒事务数）形式给定。如果目标速率高于最大可能速率，则 该速率限制不会影响结果。该速率的目标是按照一条泊松分布的调度时间线开始事务。期望的开始 时间表会基于客户端第一次开始的时间（而不是上一个事务结束的时 间）前移。这种方法意味着当事务超过它们的原定结束时间时，更迟的 那些有机会再次追赶上来。当限流措施被激活时，运行结束时报告的事务延迟是从预订的开始时间计 算而来的，因此它包括每一个事务不得不等待前一个事务结束所花的时 间。该等待时间被称作调度延迟时间，并且它的平均值和最大值也会被 单独报告。关于实际事务开始时间的事务延迟（即在数据库中执行事务 所花的时间）可以用报告的延迟减去调度延迟时间计算得到。如果把 `--latency-limit` 和 `--rate` 一起使用， 当一个事务在前一个事务结束时已经超过了延迟限制时，它可能会滞后 非常多，因为延迟是从计划的开始时间计算得来。这类事务不会被发送 给服务器，而是一起被跳过并且被单独计数。一个高的调度延迟时间表示系统无法用选定的客户端和线程数按照指定 的速率处理事务。当平均的事务执行时间超过每个事务之间的调度间隔时，每一个后续事务将会落后更多，并且随着测试运行时间越长，调度延迟时间将持续增加。发生这种情况时，你将不得不降低指定的事务速率。
+
+- `-s` *`scale_factor`* `--scale=` *`scale_factor`*
+
+在pgbench的输出中报告指定的比例因子。对于内建测试，这并非必需；正确的比例因子将通过对 `pgbench_branches` 表中的行计数来检测。不过，当只测试自定义基准（ `-f` 选项）时，比例因子将被报告为 1（除非使用了这个选项）。
+
+- `-S` `--select-only`
+
+执行内建的只有选择的脚本。是 `-b select-only` 简写形式。
+
+- `-t` *`transactions`* `--transactions=` *`transactions`*
+
+每个客户端运行的事务数量。默认为 10。
+
+- `-T` *`seconds`* `--time=` *`seconds`*
+
+运行测试这么多秒，而不是为每个客户端运行固定数量的事务。`-t` 和 `-T` 是互斥的。
+
+- `-v` `--vacuum-all`
+
+在运行测试前清理所有四个标准的表。在没有用 `-n` 以及 `-v` 时， pgbench将清理 `pgbench_tellers` 和 `pgbench_branches` 表，并且截断 `pgbench_history`。
+
+- `--aggregate-interval=*`seconds`*`
+
+聚集区间的长度（单位是秒）。仅可以与 `-l` 选项一起使用。通过这个选项，日志会包含针对每个区间的概要数据，如下文所述。
+
+- `--log-prefix=*prefix*`
+
+设置 `--log` 创建的日志文件的文件名前缀。默认是 `pgbench_log`。
+
+- `--progress-timestamp`
+
+当显示进度（选项 `-P` ）时，使用一个时间戳（Unix 时间）取代从运行开始的秒数。单位是秒，在小数点后是毫秒精度。这可以有助于比较多种工具生成的日志。
+
+- `--random-seed=` *`seed`*
+
+设置随机数生成器种子。为系统的随机数生成器提供种子，然后随机数生成器会产生一个初始生成器状态序列，每一个线程一个状态。*`seed`* 的值可以是： `time` （默认值，种子基于当前时间）、 `rand` （使用一种强随机源，如果没有可用的源则失败）或者一个无符号十进制整数值。一个pgbench脚本中会显式（ `random...` 函数）地或者隐式地（如 `--rate` 使用随机数生成器调度事务）调用随机数生成器。在被明确设置时，用作种子的值会显示在终端上。 还可以通过环境变量 `PGBENCH_RANDOM_SEED` 提供用于 *`seed`* 的值。为了确保所提供的种子影响所有可能的使用，把这个选项放在第一位或者使用环境变量。明确地设置种子允许准确地再生一个 `pgbench` 运行，对随机数而言。因为随机状态是针对每个线程管理，这意味着如果每一个线程有一个客户端并且没有外部或者数据依赖，则对于一个相同的调用就会有完全相同的 `pgbench` 运行。从一种统计的角度来看，再生运行不是什么好主意，因为它能隐藏性能可变性或者不正当地改进性能，即通过命中前一次运行的相同页面来改进性能。不过，它也可以对调试起到很大帮助作用，例如重新运行一种导致错误的棘手用例。请善用。
+
+- `--sampling-rate=*`rate`*`
+
+采样率，在写入数据到日志时被用来减少日志产生的数量。如果给出这个选项，只有指定比例的事务被记录。1.0 表示所有事务都将被记录，0.05 表示只有 5% 的事务会被记录。在处理日志文件时，记得要考虑这个采样率。例如，当计算TPS值时，你需要相应地乘以这个数字（例如，采样率是 0.01，你将只能得到实际TPS的 1/100）。
+
+- `--show-script=` *`scriptname`*
+
+在 stderr 上显示内置脚本 *`scriptname`* 的实际代码，并立即退出。
+
+==== 普通选项
+
+pgbench 还接受以下用于连接参数的常见命令行参数：
+
+- `-h` *`hostname`* `--host=` *`hostname`*
+
+数据库服务器的主机名
+
+- `-p` *`port`* `--port=`*`port`*
+
+数据库服务器的端口号
+
+- `-U` *`login`* `--username=` *`login`*
+
+要作为哪个用户连接
+
+- `-V` `--version`
+
+打印pgbench版本并退出。
+
+- `-?` `--help`
+
+显示有关pgbench命令行参数的信息，并且退出。
+
+==== 退出状态
+
+成功运行将以状态0退出。 退出状态为1表示静态问题，如无效的命令行选项。 运行过程中的错误，例如数据库错误或脚本中的问题将导致退出状态为2。 在后一种情况下，pgbench将打印部分结果。
+
+==== 环境
+
+- `PGDATABASE` `PGHOST` `PGPORT` `PGUSER`
+
+默认连接参数。
+
+此实用程序与大多数其他 IvorySQL 实用程序一样，使用 libpq 支持的环境变量。
+
+环境变量 `PG_COLOR` 指定是否在诊断消息中使用颜色。 可能的值是 `always`、 `auto` 和 `never`.
+
+=== pg_config
+
+pg_config — 获取已安装的IvorySQL的信息
+
+==== 大纲
+
+`pg_config` [*`option`*...]
+
+==== 选项
+
+要使用pg_config，提供一个或多个下列选项：
+
+- `--bindir`
+
+打印用户可执行文件的位置。例如使用这个选项来寻找 `psql` 程序。这通常也是 `pg_config` 程序所在的位置。
+
+- `--docdir`
+
+打印文档文件的位置。
+
+- `--htmldir`
+
+打印 HTML 文档文件的位置。
+
+- `--includedir`
+
+打印客户端接口的 C 头文件的位置。
+
+- `--pkgincludedir`
+
+打印其它 C 头文件的位置。
+
+- `--includedir-server`
+
+打印用于服务器编程的 C 头文件的位置。
+
+- `--libdir`
+
+打印对象代码库的位置。
+
+- `--pkglibdir`
+
+打印动态可载入模块的位置，或者服务器可能搜索它们的位置（其它架构独立数据文件可能也被安装在这个目录）。
+
+- `--localedir`
+
+打印区域支持文件的位置（如果在IvorySQL被编译时没有配置区域支持，这将是一个空字符串）。
+
+- `--mandir`
+
+打印手册页的位置。
+
+- `--sharedir`
+
+打印架构独立支持文件的位置。
+
+- `--sysconfdir`
+
+打印系统范围配置文件的位置。
+
+- `--pgxs`
+
+打印扩展 makefile 的位置。
+
+- `--configure`
+
+打印当IvorySQL被配置编译时给予 `configure` 脚本的选项。这可以被用来重新得到相同的配置，或者找出是哪个选项编译了一个二进制包（不过注意二进制包通常包含厂商相关的自定补丁）。参见下面的例子。
+
+- `--cc`
+
+打印用来编译IvorySQL的 `CC` 变量值。这显示被使用的 C 编译器。
+
+- `--cppflags`
+
+打印用来编译IvorySQL的 `CPPFLAGS` 变量值。这显示在预处理时需要的 C 编译器开关（典型的是 `-I` 开关）。
+
+- `--cflags`
+
+打印用来编译IvorySQL的 `CFLAGS` 变量值。这显示被使用的 C 编译器开关。
+
+- `--cflags_sl`
+
+打印用来编译IvorySQL的 `CFLAGS_SL` 变量值。这显示被用来编译共享库的额外 C 编译器开关。
+
+- `--ldflags`
+
+打印用来编译IvorySQL的 `LDFLAGS` 变量值。这显示链接器开关。
+
+- `--ldflags_ex`
+
+打印用来编译IvorySQL的 `LDFLAGS_EX` 变量值。这只显示被用来编译可执行程序的链接器开关。
+
+- `--ldflags_sl`
+
+打印用来编译IvorySQL的 `LDFLAGS_SL` 变量值。这只显示被用来编译共享库的链接器开关。
+
+- `--libs`
+
+打印用来编译IvorySQL的 `LIBS` 变量值。这通常包含用于链接到IvorySQL中的外部库的 `-l` 开关。
+
+- `--version`
+
+打印IvorySQL的版本。
+
+- `-?` `--help`
+
+显示有关pg_config命令行参数的帮助并退出。
+
+如果给定多于一个选项，将按照相同的顺序打印信息，每行一项。如果没有给定选项，将打印所有可用信息，并带有标签。
+
+==== 例子
+
+要重建当前 IvorySQL 安装的编译配置，可运行下列命令：
+
+```
+eval ./configure `pg_config --configure`
+```
+
+`pg_config --configure` 的输出包含 shell 引号，这样带空格的参数可以被正确地表示。因此，为了得到正确的结果需要使用 `eval`。
+
+=== pg_dump
+
+pg_dump — 把IvorySQL数据库抽取为一个脚本文件或其他归档文件
+
+==== 大纲
+
+`pg_dump` [*`connection-option`*...] [*`option`*...] [*`dbname`*]
+
+==== 选项
+
+下列命令选项控制输出的内容和格式。
+
+- *`dbname`*
+
+指定要被转储的数据库名。如果没有指定，将使用环境变量 `PGDATABASE`。如果环境变量也没有设置，则使用指定给该连接的用户名。
+
+- `-a` `--data-only`
+
+只转储数据，而不转储模式（数据定义）。表数据、大对象和序列值都会被转储。这个选项类似于指定 `--section=data`，但是由于历史原因又不完全相同。
+
+- `-b` `--blobs`
+
+在转储中包括大对象。这是当 `--schema`、 `--table` 或 `--schema-only` 被指定时的默认行为。因此，只有在请求转储一个特定方案或者表的情况中， `-b` 开关才对向转储中加入大对象有用。注意blobs是被考虑的数据，因此在使用 `--data-only` 时将被包括在内，但在使用 `--schema-only` 时则不会包括。
+
+- `-B` `--no-blobs`
+
+在转储中排除大对象。当同时给定 `-b` 和 `-B` 时，行为是在数据被转储时输出大对象，请参考 `-b` 文档。
+
+- `-c` `--clean`
+
+在输出创建数据库对象的命令之前输出清除（删除）它们的命令 （除非也指定了 `--if-exists`，如果任何对象不存在于 目的数据库中，恢复可能会产生一些伤害性的错误消息）。当发出归档(非文本)输出文件时，这个选项被忽略。对于归档格式，你可以在调用 `pg_restore` 时指定该选项。
+
+- `-C` `--create`
+
+使得在输出的开始是一个创建数据库本身并且重新连接到被创建的数据库的命令（通过这种形式的一个脚本，在运行脚本之前你连接的是目标安装中的哪个数据库都没有关系）。如果也指定了 `--clean`，脚本会在重新连接到目标数据库之前先删除它然后再重建。通过 `--create`，输出还会包括数据库的注释（如果有）以及与这个数据库相关的任何配置变量设置，也就是任何提到了这个数据库的 `ALTER DATABASE ... SET ...` 命令和 `ALTER ROLE ... IN DATABASE ... SET ...` 命令。该数据库本身的访问特权也会被转储，除非指定有 `--no-acl`。当发出归档(非文本)输出文件时，这个选项被忽略。对于归档格式，你可以在调用 `pg_restore` 时指定该选项。
+
+- `-e *pattern*` `-−extension=*pattern*`
+
+只转储匹配 *`pattern`* 的扩展。 如果未指定此选项，目标数据库中的所有非系统扩展都将被转储。 通过写入多个 `-e` 开关，可以选择多个扩展。 *`pattern`* 参数可以理解为与psql's `\d` 命令使用的规则相同的模式， 所以还可以通过在模式中写入通配符来选择多个扩展。 在使用通配符时，如果需要防止来自扩展通配符的shell，请小心的引用模式。任何由 `pg_extension_config_dump` 注册的配置关系被包括在转储中，如果他的扩展已经被 `-−extension` 指定了。注意当指定了 `-e` ，pg_dump不尝试转储任何所选扩展可能依赖的其他数据库对象。 也就是说，这里不保证指定扩展转储的结果能够由他们自己成功恢复到一个干净的数据库中。
+
+- `-E *encoding*` `--encoding=*encoding*`
+
+以指定的字符集编码创建转储。 在默认情况下，该转储会以该数据库的编码创建（另一种得到相同结果的方式是将 `PGCLIENTENCODING` 环境变量设置成想要的转储编码）。 
+
+- `-f *file*` `--file=*file*`
+
+将输出发送到指定文件。对于基于输出格式的文件这个参数可以被忽略，在那种情况下将使用标准输出。不过对于目录输出格式必须给定这个参数，在目录输出格式中指定的是一个目录而不是一个文件。在这种情况中，该目录会由 `pg_dump` 创建并且不需要以前就存在。
+
+- `-F *format*` `--format=*format*`
+
+选择输出的格式。*`format`* 可以是下列之一： `p` `plain` 输出一个纯文本形式的SQL脚本文件（默认值）。`c` `custom` 输出一个适合于作为pg_restore输入的自定义格式归档。和目录输出格式一起，这是最灵活的输出格式，它允许在恢复时手动选择和排序已归档的项。这种格式在默认情况还会被压缩。 `d` `directory` 输出一个适合作为pg_restore输入的目录格式归档。这将创建一个目录，其中每个被转储的表和大对象都有一个文件，外加一个所谓的目录文件，该文件以一种pg_restore能读取的机器可读格式描述被转储的对象。一个目录格式归档能用标准 Unix 工具操纵，例如一个未压缩归档中的文件可以使用gzip工具压缩。这种格式默认情况下是被压缩的并且也支持并行转储。`t` `tar` 输出一个适合于输入到pg_restore中的 `tar` -格式归档。tar 格式可以兼容目录格式，抽取一个 tar 格式的归档会产生一个合法的目录格式归档。不过，tar 格式不支持压缩。还有，在使用 tar 格式时，表数据项的相对顺序不能在恢复过程中被更改。
+
+- `-j *njobs*` `--jobs=*njobs*`
+
+通过同时归档 *`njobs`* 个表来运行并行转储。这个选项可能会减少执行转储所需的时间，但也会增加数据库服务器上的负载。你只能和目录输出格式一起使用这个选项，因为这是唯一一种让多个进程能在同一时间写其数据的输出格式。pg_dump将打开 *`njobs`* + 1 个到该数据库的连接，因此确保你的 http://www.postgres.cn/docs/14/runtime-config-connection.html#GUC-MAX-CONNECTIONS[max_connections] 设置足够高以容纳所有的连接。在运行一次并行转储时请求数据库对象上的排他锁可能导致转储失败。 其原因是，pg_dump领导者进程会在工作者进程将要稍后转储的对象上请求共享锁，以便确保在转储运行时不会有人删除它们并让它们出错。 如果另一个客户端接着请求一个表上的排他锁，那个锁将不会被授予但是会被排入队列等待领导者进程的共享锁被释放。 因此，任何其他对该表的访问将不会被授予或者将排在排他锁请求之后。 这包括尝试转储该表的工作者进程。如果没有任何防范措施，这可能会是一种经典的死锁情况。 要检测这种冲突，pg_dump工作者进程使用 `NOWAIT` 选项请求另一个共享锁。 如果该工作者进程没有被授予这个共享锁，其他某人必定已经在同时请求了一个排他锁并且没有办法继续转储，因此pg_dump除了中止转储之外别无选择。对于一个一致的备份，数据库服务器需要支持同步的快照，在IvorySQL的主服务器和10的后备服务器中引入了一种特性。 有了这种特性，即便数据库客户端使用不同的连接，也可以保证他们看到相同的数据集。 `pg_dump -j` 使用多个数据库连接，它用领导者进程连接到数据一次，并且为每一个工作者任务再一次连接数据库。 如果没有同步快照特征，在每一个连接中不同的工作者任务将不能被保证看到相同的数据，这可能导致一个不一致的备份。
+
+- `-n *pattern*` `--schema=*pattern*`
+
+只转储匹配 *`pattern`* 的模式，这会选择模式本身以及它所包含的所有对象。当没有指定这个选项时，目标数据库中所有非系统模式都将被转储。多个模式可以通过书写多个 `-n` 开关来选择。另外， *`pattern`* 参数可以被解释为一种根据psql's  `\d` 命令所用的相同规则（请参见下面的 http://www.postgres.cn/docs/14/app-psql.html#APP-PSQL-PATTERNS[Patterns]）编写的模式，这样多个模式也可以通过在该模式中书写通配字符来选择。在使用通配符时，如果需要阻止 shell 展开通配符需要小心引用该模式，注意当 `-n` 被指定时，pg_dump不会尝试转储所选模式可能依赖的任何其他数据库对象。因此，无法保证一次指定模式转储的结果能够仅凭其本身被成功地恢复到一个干净的数据库中。注意当 `-n` 被指定时，非模式对象（如二进制大对象）不会被转储。你可以使用 `--blobs` 开关将二进制大对象加回到该转储中。
+
+- `-N *pattern*` `--exclude-schema=*pattern*`
+
+不转储匹配 *`pattern`* 模式的任何模式。该模式被根据 `-n` 所用的相同规则被解释。`-N` 可以被给定多次来排除匹配几个模式中任意一个的模式。当 `-n` 和 `-N` 都被给定时，该行为是只转储匹配至少一个 `-n` 开关但是不匹配 `-N` 开关的模式。如果只有 `-N` 而没有 `-n`，那么匹配 `-N` 的模式会被从一个正常转储中排除。
+
+- `-O` `--no-owner`
+
+不输出设置对象拥有关系来匹配原始数据库的命令。默认情况下，pg_dump会发出`ALTER OWNER` 或 `SET SESSION AUTHORIZATION` 语句来设置被创建的数据库对象的拥有关系。除非该脚本被一个超级用户（或是拥有脚本中所有对象的同一个用户）启动，这些语句都将会失败。要使一个脚本能够被任意用户恢复，但把所有对象的拥有关系都给这个用户，可指定 `-O`。当发出归档(非文本)输出文件时，这个选项被忽略。对于归档格式，你可以在调用`pg_restore`时指定该选项。
+
+- `-R` `--no-reconnect`
+
+这个选项已经废弃，但是为了向后兼容仍然能被接受。
+
+- `-s` `--schema-only`
+
+只转储对象定义（模式），而非数据。这个选项是 `--data-only` 的逆选项。它和指定 `--section=pre-data --section=post-data` 相似，但是由于历史原因又不完全相同。（不要把这个选项和 `--schema` 选项混淆，后者在“schema”的使用上有不同的含义）。要为数据库中表的一个子集排除表数据，见 `--exclude-table-data`。
+
+- `-S *username*` `--superuser=*username*`
+
+指定要在禁用触发器时使用的超级用户的用户名。只有使用 `--disable-triggers` 时，这个选项才相关（通常，最好省去这个选项，而作为超级用户来启动结果脚本来取而代之）。
+
+- `-t *pattern*` `--table=*pattern*`
+
+只转储名字匹配 *`pattern`* 的表。通过写多个 `-t` 开关可以选择多个表。另外，*`pattern`* 参数可以被解释为一种根据psql's  `\d` 命令所用的相同规则编写的模式，这样多个表也可以通过在该模式中书写通配字符来选择。在使用通配符时，如果需要阻止 shell 展开通配符需要小心引用该模式，当 `-t` 被使用时，`-n` 和 `-N` 开关不会有效果，因为被 `-t` 选择的表将被转储而无视那些开关，并且非表对象将不会被转储。注意当 `-t` 被指定时，pg_dump不会尝试转储所选表可能依赖的任何其他数据库对象。因此，无法保证一次指定表转储的结果能够仅凭其本身被成功地恢复到一个干净的数据库中。
+
+- `-T *pattern*` `--exclude-table=*pattern*`
+
+不转储匹配 *`pattern`* 模式的任何表。该模式被根据 `-t` 所用的相同规则被解释。`-T` 可以被给定多次来排除匹配几个模式中任意一个的模式。当 `-t` 和 `-T` 都被给定时，该行为是只转储匹配至少一个 `-t` 开关但是不匹配 `-T` 开关的表。如果只有 `-T` 而没有 `-t`，那么匹配 `-T` 的表会被从一个正常转储中排除。
+
+- `-v` `--verbose`
+
+指定冗长模式。这将导致pg_dump向标准错误输出详细的对象注释以及转储文件的开始/停止时间，还有进度消息。 重复该选项会导致在标准错误上出现附加的调试级消息。
+
+- `-V` `--version`
+
+pg_dump版本并退出。
+
+- `-x` `--no-privileges` `--no-acl`
+
+防止转储访问特权（授予/收回命令）。
+
+- `-Z *0..9*` `--compress=*0..9*`
+
+指定要使用的压缩级别。零意味着不压缩。对于自定义和目录归档格式，这会指定个体表数据段的压缩，并且默认是进行中等级别的压缩。对于纯文本输出，设置一个非零压缩级别会导致整个输出文件被压缩，就好像它被gzip处理过一样，但是默认是不压缩。tar 归档格式当前完全不支持压缩。
+
+- `--binary-upgrade`
+
+这个选项用于就地升级功能。我们不推荐也不支持把它用于其他目的。这个选项在未来的发行中可能被改变而不做通知。
+
+- `--column-inserts` `--attribute-inserts`
+
+将数据转储为带有显式列名的 `INSERT` 命令（ `INSERT INTO *table* (*column*, ...) VALUES ...`）。这将使得恢复过程非常慢，这主要用于使转储能够被载入到非IvorySQL数据库中。重新加载期间的任何错误都将导致有问题的 `INSERT` 相关的行将丢失，而不是整个表内容。
+
+- `--disable-dollar-quoting`
+
+这个选项禁止在函数体中使用美元符号引用，并且强制它们使用 SQL 标准字符串语法被引用。
+
+- `--disable-triggers`
+
+只有在创建一个只转储数据的转储时，这个选项才相关。它指示pg_dump包括在数据被重新载入时能够临时禁用目标表上的触发器的命令。如果你在表上有引用完整性检查或其他触发器，并且你在数据重新载入期间不想调用它们，请使用这个选项。当前，为 `--disable-triggers` 发出的命令必须作为超级用户来执行。因此，你还应当使用 `-S` 指定一个超级用户名，或者宁可作为一个超级用户启动结果脚本。当发出归档(非文本)输出文件时，这个选项被忽略。对于归档格式，你可以在调用 `pg_restore` 时指定该选项。
+
+- `--enable-row-security`
+
+只有在转储具有行安全性的表的内容时，这个选项才相关。默认情况下， pg_dump将把 http://www.postgres.cn/docs/14/runtime-config-client.html#GUC-ROW-SECURITY[row_security] 设置为 off 来确保从该表中转储 出所有的数据。如果用户不具有足够能绕过行安全性的特权，那么会抛出 一个错误这个参数指示pg_dump将 http://www.postgres.cn/docs/14/runtime-config-client.html#GUC-ROW-SECURITY[row_security] 设置为 on，允许用户只转储该表中 它们能够访问到的部分内容。注意如果当前你使用了这个选项，你可能还想得到 `INSERT` 格式的转储，因为恢复期间的 `COPY FROM` 不支持行安全性。
+
+- `--exclude-table-data=*pattern*`
+
+不转储匹配 *`pattern`* 模式的任何表中的数据。该模式根据 `-t` 的相同规则被解释。`--exclude-table-data` 可以被给定多次来排除匹配多个模式的表。当你需要一个特定表的定义但不想要其中的数据时，这个选项就有用了。要排除数据库中所有表的数据，见 `--schema-only`。
+
+- `--extra-float-digits=*ndigits*`
+
+在转储浮点数据时使用规定的 `extra_float_digits` 值，而不是最大可用精度。以备份目的生成的常规转储不使用此选项。
+
+- `--if-exists`
+
+时间条件性命令（即增加一个 `IF EXISTS` 子句）来清除数据库和其他对象。 只有同时指定了 `--clean` 时，这个选项才可用。
+
+- `--include-foreign-data=*`foreignserver`*`
+
+使用与 *`foreignserver`* 模式匹配的外部服务器转储任何外部表的数据。可以通过编写 多个 `--include-foreign-data` 开关来选择多个外部服务器。 同样，根据psql's  `\d` 命令使用的相同规则， 将 *`foreignserver`* 参数解释为模式。 因此也可以通过在模式中写入通配符来选择多个外部服务器。使用通配符时， 如果需要，请小心引用该模式，以防止Shell扩展通配符。 唯一的例外是不允许使用空模式。注意指定 `--include-foreign-data` 时，pg_dump不会检查外部表是否可写。因此，不能保证可以成功还原外部表转储的结果。
+
+- `--inserts`
+
+将数据转储为 `INSERT` 命令（而不是 `COPY` ）。这将使得恢复非常慢，这主要用于使转储能够被载入到非IvorySQL数据库中。重新加载期间的任何错误都将导致有问题的 `INSERT` 相关的行将丢失，而不是整个表内容。注意如果你已经重新安排了列序，该恢复可能会一起失败。`--column-inserts` 选项对于列序改变是安全的，但是会更慢。
+
+- `--load-via-partition-root`
+
+在为一个分区表转储数据时，让 `COPY` 语句或者 `INSERT` 语句把包含它的分区层次的根而不是分区自身作为目标。这导致在数据被装载时，会为每一个行重新确定合适的分区。如果在一台服务器上重新装载数据时会出现行并不是总是落入到和原始服务器上相同的分区中的情况，这个选项就很有用。例如，如果分区列是文本类型并且两个系统中用于排序分区列的排序规则有着不同的定义，就会发生这种情况。在从用这个选项制作的归档恢复时，最好不要使用并行，因为pg_restore将不能准确地知道一个给定的归档数据项将把数据装载到哪个分区中。这会导致效率不高，因为在并行任务见会有锁冲突，或者甚至可能由于在所有的相关数据被装载前建立了外键约束而导致重新装载失败。
+
+- `--lock-wait-timeout=*`timeout`*`
+
+在转储的开始从不等待共享表锁的获得。而是在指定的 *`timeout`* 内不能锁定一个表时失败。超时时长可以用 `SET statement_timeout` 接受的任何格式指定。
+
+- `--no-comments`
+
+不转储注释。
+
+- `--no-publications`
+
+不转储publication。
+
+- `--no-security-labels`
+
+不转储安全标签。
+
+- `--no-subscriptions`
+
+不转储订阅。
+
+- `--no-sync`
+
+默认情况下，`pg_dump` 将等待所有文件被安全地写入磁盘。这个选项会让 `pg_dump` 不等待直接返回，这样会更快，但是也意味着后续的一次操作系统崩溃会让该转储损坏。通常这个选项对测试有用，但是不应该在从生产安装中转储数据时使用。
+
+- `--no-tablespaces`
+
+不要输出选择表空间的命令。通过这个选项，在恢复期间所有的对象都会被创建在任何作为默认的表空间中。当发出归档(非文本)输出文件时，这个选项被忽略。对于归档格式，你可以在调用 `pg_restore` 时指定该选项。
+
+- `--no-toast-compression`
+
+不要输出命令以设置 TOAST 压缩方法。 采用这个选项，所有列将按默认压缩设置进行恢复。
+
+- `--no-unlogged-table-data`
+
+不转储非日志记录表的内容。这个选项对于表定义（模式）是否被转储没有影响，它只会限制转储表数据。当从一个后备服务器转储时，在非日志记录表中的数据总是会被排除。
+
+- `--on-conflict-do-nothing`
+
+增加 `ON CONFLICT DO NOTHING` 到 `INSERT` commands。 除非规定了  `--inserts`, `--column-inserts` 或 `--rows-per-insert` ，否则此选项是无效的.
+
+- `--quote-all-identifiers`
+
+强制引用所有标识符。当从IvorySQL主版本与pg_dump不同的服务器上转储一个数据库时或者当输出准备载入到一个具有不同主版本的服务器时，推荐使用这个选项。默认情况下，pg_dump只对在其主版本中是被保留词的标识符加上引号。在转储其他版本服务器时，这种默认行为有时会导致兼容性问题，因为那些版本可能具有些许不同的被保留词集合。使用 `--quote-all-identifiers` 能阻止这种问题，但代价是转储脚本更难阅读。
+
+- `--rows-per-insert=*nrows*`
+
+数据转储为 `INSERT` 命令（而不是 `COPY` ）。 控制每个 `INSERT` 命令的最大行数。 指定的值必须大于零。重新加载期间的任何错误都将导致有问题的`INSERT` 相关的行将丢失，而不是整个表内容。
+
+- `--section=*sectionname*`
+
+只转储命名节。节的名称可以是 `pre-data`、 `data` 或 `post-data`。这个选项可以被指定多次来选择多个节。默认是转储所有节。数据节包含真正的表数据、大对象内容和序列值。数据后项包括索引、触发器、规则和除了已验证检查约束之外的约束的定义。数据前项包括所有其他数据定义项。
+
+- `--serializable-deferrable`
+
+为转储使用一个 `可序列化` 事务，以保证所使用的快照与后来的数据库状态是一致的。但是这样做是在事务流中等待一个点，在该点上不能存在异常，这样就不会有转储失败或者导致其他事务带着 `serialization_failure` 回滚的风险。对于一个只为灾难恢复存在的转储，这个选项没什么益处。如果一个转储被用来在原始数据库持续被更新期间载入一份用于报表或其他只读负载的数据库拷贝时，这个选项就有所帮助。如果没有这个选项，转储可能会反映一个与最终提交事务的任何执行序列都不一致的状态。例如，如果使用了批处理技术，一个批处理在转储中可以显示为关闭，而其中的所有项都不出现。如果 pg_dump 被启动时没有读写事务在活动，则这个选项没有什么不同。如果有读写事务在活动，该转储的启动可能会被延迟一段不确定的时间。一旦开始运行，有没有这个开关的表现是相同的。
+
+- `--snapshot=*snapshotname*`
+
+在做一个数据库的转储时指定一个同步的快照。在需要把转储和一个逻辑复制槽 或者一个并发会话同步时可以用上这个选项。在并行转储的情况下，将使用这个选项指定的快照名而不是取一个新快照。
+
+- `--strict-names`
+
+要求每一个扩展( `-e` / `--extension` )，模式（ `-n` / `--schema` ）和表（ `-t` / `--table` ）限定符匹配要转储的数据库中至少一个扩展/模式/表。 注意，如果没有找到有这样的扩展/模式/表限定符匹配，即便没有 `--strict-names` ，pg_dump也将生成一个错误。这个选项对 `-N` / `--exclude-schema`、`-T` / `--exclude-table` 或者 `--exclude-table-data` 没有效果。无法匹配任何对象的排除模式不会被当作错误。
+
+- `--use-set-session-authorization`
+
+输出 SQL-标准的 `SET SESSION AUTHORIZATION` 命令取代 `ALTER OWNER` 命令来确定对象的所有关系。这让该转储更加兼容标准，但是取决于该转储中对象的历史，该转储可能无法正常恢复。而且，一个使用 `SET SESSION AUTHORIZATION` 的转储将一定会要求超级用户特权来正确地恢复，而 `ALTER OWNER` 要求更少的特权。
+
+- `-?` `--help`
+
+显示有关pg_dump命令行参数的帮助并退出。
+
+
+
+下列命令行选项控制数据库连接参数。
+
+- `-d *dbname*` `--dbname=*dbname*`
+
+指定要连接的数据库的名称。 这等效于在命令行上将 *`dbname`* 指定为第一个非选项参数。*`dbname`* 可以是 http://www.postgres.cn/docs/14/libpq-connect.html#LIBPQ-CONNSTRING[连接字符串]。 如果是这样，连接字符串参数将覆盖所有冲突的命令行选项。
+
+- `-h *host*` `--host=*host*`
+
+指定服务器正在运行的机器的主机名。如果该值开始于一个斜线，它被用作一个 Unix 域套接字的目录。默认是从 `PGHOST` 环境变量中取得（如果被设置），否则将尝试一次 Unix 域套接字连接。
+
+- `-p *port*` `--port=*port*`
+
+指定服务器正在监听连接的 TCP 端口或本地 Unix 域套接字文件扩展名。默认是放在`PGPORT`环境变量中（如果被设置），否则使用编译在程序中的默认值。
+
+- `-U *username*` `--username=*username*`
+
+要作为哪个用户连接。
+
+- `-w` `--no-password`
+
+从不发出一个口令提示。如果服务器要求口令认证并且没有其他方式提供口令（例如一个 `.pgpass` 文件），那么连接尝试将失败。这个选项对于批处理任务和脚本有用，因为在其中没有一个用户来输入口令。
+
+- `-W` `--password`
+
+强制pg_dump在连接到一个数据库之前提示要求一个口令。这个选项从来不是必须的，因为如果服务器要求口令认证，pg_dump将自动提示要求一个口令。但是，pg_dump将浪费一次连接尝试来发现服务器想要一个口令。在某些情况下，值得键入`-W`来避免额外的连接尝试。
+
+- `--role=*rolename*`
+
+指定一个用来创建该转储的角色名。这个选项导致pg_dump在连接到数据库后发出一个 `SET ROLE` *`rolename`* 命令。当已认证用户（由 `-U` 指定）缺少pg_dump所需的特权但是能够切换到一个具有所需权利的角色时，这个选项很有用。一些安装有针对直接作为超级用户登录的策略，使用这个选项可以让转储在不违反该策略的前提下完成。
+
+==== 环境
+
+- `PGDATABASE` `PGHOST` `PGOPTIONS` `PGPORT` `PGUSER`
+
+默认连接参数
+
+- `PG_COLOR`
+
+规定在诊断消息中是否使用颜色。可能的值为 `always`、 `auto`、 `never`。.
+
+和大部分其他IvorySQL工具相似，这个工具也使用libpq支持的环境变量。
+
+==== 诊断
+
+pg_dump在内部执行 `SELECT` 语句。如果你运行pg_dump时出现问题，确定你能够从正在使用的数据库中选择信息，例如 http://www.postgres.cn/docs/14/app-psql.html[psql]。此外，libpq前端-后端库所使用的任何默认连接设置和环境变量都将适用。
+
+pg_dump的数据库活动会被统计收集器正常地收集。如果不想这样，你可以通过 `PGOPTIONS` 或 `ALTER USER` 命令设置参数 `track_counts` 为假。
+
+#### 注解
+
+如果你的数据库集簇对于 `template1` 数据库有任何本地添加，要注意将pg_dump的输出恢复到一个真正的空数据库。否则你很可能由于以增加对象的重复定义而得到错误。要创建一个不带任何本地添加的空数据库，从 `template0` 而不是 `template1` 复制它，例如：
+
+```
+CREATE DATABASE foo WITH TEMPLATE template0;
+```
+
+
+
+当一个只含数据的转储被选中并且使用了选项 `--disable-triggers` 时，pg_dump在开始插入数据之前会发出命令禁用用户表上的触发器，并且接着在数据被插入之后发出命令重新启用它们。如果恢复中途被停止，系统目录可能会停留在一种错误状态。
+
+pg_dump产生的转储文件不包含优化器用来做出查询计划决定的统计信息。因此，在从一个转储文件恢复后运行 `ANALYZE` 来确保最优性能是明智的。
+
+在转储逻辑复制订阅时，pg_dump将生成使用 `connect = false` 选项的 `CREATE SUBSCRIPTION` 命令，这样恢复订阅时不会建立远程连接来创建复制槽或者进行初始的表拷贝。通过这种方式，可以无需到远程服务器的网络访问就能恢复该转储。然后就需要用户以一种合适的方式重新激活订阅。如果涉及到的主机已经改变，连接信息可能也必须被改变。在开启一次新的全表拷贝之前，截断目标表也可能是合适的。
+
+#### 实例
+
+要把一个数据库 `mydb` 转储到一个 SQL 脚本文件：
+
+```
+$ pg_dump mydb > db.sql
+```
+
+
+
+要把这样一个脚本重新载入到一个（新创建的）名为 `newdb` 的数据库中：
+
+```
+$ psql -d newdb -f db.sql
+```
+
+
+
+要转储一个数据库到一个自定义格式归档文件：
+
+```
+$ pg_dump -Fc mydb > db.dump
+```
+
+
+
+要转储一个数据库到一个目录格式的归档：
+
+```
+$ pg_dump -Fd mydb -f dumpdir
+```
+
+
+
+要用 5 个并行的工作者任务转储一个数据库到一个目录格式的归档：
+
+```
+$ pg_dump -Fd mydb -j 5 -f dumpdir
+```
+
+
+
+要把一个归档文件重新载入到一个（新创建的）名为 `newdb` 的数据库：
+
+```
+$ pg_restore -d newdb db.dump
+```
+
+
+
+把一个归档文件重新装载到同一个数据库（该归档正是从这个数据库中转储得来）中，丢掉那个数据库中的当前内容：
+
+```
+$ pg_restore -d postgres --clean --create db.dump
+```
+
+
+
+要转储一个名为 `mytab` 的表：
+
+```
+$ pg_dump -t mytab mydb > db.sql
+```
+
+
+
+要转储 `detroit` 模式中名称以 `emp` 开始的所有表，排除名为 `employee_log` 的表：
+
+```
+$ pg_dump -t 'detroit.emp*' -T detroit.employee_log mydb > db.sql
+```
+
+
+
+要转储名称以 `east` 或者 `west` 开始并且以 `gsm` 结束的所有模式，排除名称包含词`test`的任何模式：
+
+```
+$ pg_dump -n 'east*gsm' -n 'west*gsm' -N '*test*' mydb > db.sql
+```
+
+
+
+同样，用正则表达式记号法来合并开关：
+
+```
+$ pg_dump -n '(east|west)*gsm' -N '*test*' mydb > db.sql
+```
+
+
+
+要转储除了名称以 `ts_` 开头的表之外的所有数据库对象：
+
+```
+$ pg_dump -T 'ts_*' mydb > db.sql
+```
+
+
+
+要在 `-t` 和相关开关中指定一个大写形式或混合大小写形式的名称，你需要双引用该名称，否则它会被折叠到小写形式 。但是双引号对于 shell 是特殊的，所以反过来它们必须被引用。因此， 要转储一个有混合大小写名称的表，你需要类似这样的东西：
+
+```
+$ pg_dump -t "\"MixedCaseName\"" mydb > mytab.sql
+```
+
+=== pg_dumpall
+
+pg_dumpall — 将一个IvorySQL数据库集簇抽取到一个脚本文件中
+
+#### 大纲
+
+`pg_dumpall` [*`connection-option`*...] [*`option`*...]
+
+#### 描述
+
+pg_dumpall工具可以一个集簇中所有的IvorySQL数据库写出到（“转储”）一个脚本文件。该脚本文件包含可以用作 http://www.postgres.cn/docs/14/app-psql.html[psql] 的输入SQL命令来恢复数据库。它会对集簇中的每个数据库调用 http://www.postgres.cn/docs/14/app-pgdump.html[pg_dump] 来完成该工作。pg_dumpall还转储对所有数据库公用的全局对象（ http://www.postgres.cn/docs/14/app-pgdump.html[pg_dump] 不保存这些对象），也就是说数据库角色和表空间都会被转储。 目前这包括适数据库用户和组、表空间以及适合所有数据库的访问权限等属性。
+
+因为pg_dumpall从所有数据库中读取表，所以你很可能需要以一个数据库超级用户的身份连接以便生成完整的转储。同样，你也需要超级用户特权执行保存下来的脚本，这样才能增加角色和组以及创建数据库。
+
+SQL 脚本将被写出到标准输出。使用 `-f` / `--file` 选项或者 shell 操作符可以把它重定向到一个文件。
+
+pg_dumpall需要多次连接到IvorySQL服务器（每个数据库一次）。如果你使用口令认证，可能每次都会要求口令。这种情况下使用一个 `~/.pgpass` 会比较方便。
+
+#### 选项
+
+下列命令行选项用于控制输出的内容和格式。
+
+- `-a` `--data-only`
+
+只转储数据，不转储模式（数据定义）。
+
+- `-c` `--clean`
+
+包括在重建数据库之前清除（移除）它们的 SQL 命令。角色和表空间的 `DROP` 命令也会被加入进来。
+
+- `-E *encoding*` `--encoding=*encoding*`
+
+用指定的字符集编码创建转储。默认情况下，转储使用数据库的编码创建（另一种得到相同结果的方法是设置 `PGCLIENTENCODING` 环境变量为想要的转储编码）。
+
+- `-f *filename*` `--file=*filename*`
+
+将输出发送到指定的文件中。如果省略，将使用标准输出。
+
+- `-g` `--globals-only`
+
+只转储全局对象（角色和表空间），而不转储数据库。
+
+- `-O` `--no-owner`
+
+不输出用于设置对象所有权以符合原始数据库的命令。默认情况下，pg_dumpall发出 `ALTER OWNER` 或 `SET SESSION AUTHORIZATION` 语句来设置被创建的模式元素的所有权。除非脚本是由一个超级用户（或者是拥有脚本中所有对象的同一个用户）所运行，这些语句在脚本运行时会失败。要使得一个脚本能被任意用户恢复，但又不想给予该用户所有对象的所有权，可以指定 `-O`。
+
+- `-r` `--roles-only`
+
+只转储角色，不转储数据库和表空间。
+
+- `-s` `--schema-only`
+
+只转储对象定义（模式），不转储数据。
+
+- `-S *username*` `--superuser=*username*`
+
+指定要在禁用触发器时使用的超级用户的用户名。只有使用 `--disable-triggers` 时，这个选项才相关（通常，最好省去这个选项，而作为超级用户来启动结果脚本来取而代之）。
+
+- `-t` `--tablespaces-only`
+
+只转储表空间，不转储数据库和角色。
+
+- `-v` `--verbose`
+
+指定细节模式。这将导致pg_dumpall向标准错误输出详细的对象注释以及转储文件的开始/停止时间，还有进度消息。 重复该选项会导致在标准错误上出现附加的调试级信息。 这个选项还会被传递到pg_dump。
+
+- `-V` `--version`
+
+打印pg_dumpall版本并退出。
+
+- `-x` `--no-privileges` `--no-acl`
+
+防止转储访问特权（授予/收回命令）。
+
+- `--binary-upgrade`
+
+这个选项用于就地升级功能。我们不推荐也不支持把它用于其他目的。这个选项在未来的发行中可能被改变而不做通知。
+
+- `--column-inserts` `--attribute-inserts`
+
+将数据转储为带有显式列名的 `INSERT` 命令（`INSERT INTO *table*(*column*, ...) VALUES ...`）。这将使得恢复过程非常慢，这主要用于使转储能够被载入到非IvorySQL数据库中。
+
+- `--disable-dollar-quoting`
+
+这个选项禁止在函数体中使用美元符号引用，并且强制它们使用 SQL 标准字符串语法被引用。
+
+- `--disable-triggers`
+
+只有在创建一个只转储数据的转储时，这个选项才相关。它指示pg_dumpall包括在数据被重新载入时能够临时禁用目标表上的触发器的命令。如果你在表上有引用完整性检查或其他触发器，并且你在数据重新载入期间不想调用它们，请使用这个选项。当前，为 `--disable-triggers` 发出的命令必须作为超级用户来执行。因此，你还应当使用 `-S` 指定一个超级用户名，或者宁可作为一个超级用户启动结果脚本。
+
+- `--exclude-database=*`pattern`*`
+
+不要转储名字与 *`pattern`* 匹配的数据库。可以通过编写多个 `--exclude-database` 开关来排除多个模式。 *`pattern`* 参数被解释为模式，根据psql的 `\d` 命令使用的相同规则 ，因此，通过在模式中编写通配符也可以排除多个数据库。 使用通配符时，请谨慎的引用模式，如果需要防止shell通配符扩展。
+
+- `--extra-float-digits=*ndigits*`
+
+在转储浮点数据时使用extra_float_digits规定的值，而不是最大可用精度。备份目的进行的常规转储不使用此选项。
+
+- `--if-exists`
+
+时间条件性命令（即增加一个 `IF EXISTS` 子句）来清除数据库和其他对象。 只有同时指定了 `--clean` 时，这个选项才可用。
+
+- `--inserts`
+
+将数据转储为 `INSERT` 命令（而不是 `COPY` ）。这将使得恢复非常慢，这主要用于使转储能够被载入到非IvorySQL数据库中。注意如果你已经重新安排了列序，该恢复可能会一起失败。`--column-inserts` 选项对于列序改变是安全的，但是会更慢。
+
+- `--load-via-partition-root`
+
+在为一个分区表转储数据时，让 `COPY` 语句或者 `INSERT` 语句把包含它的分区层次的根而不是分区自身作为目标。这导致在数据被装载时，会为每一个行重新确定合适的分区。如果在一台服务器上重新装载数据时会出现行并不是总是落入到和原始服务器上相同的分区中的情况，这个选项就很有用。例如，如果分区列是文本类型并且两个系统中用于排序分区列的排序规则有着不同的定义，就会发生这种情况。
+
+- `--lock-wait-timeout=*timeout*`
+
+在转储的开始从不等待共享表锁的获得。 而是在指定的 *`timeout`* 内不能锁定一个表时失败。 超时时长可以用 `SET statement_timeout` 接受的任何格式指定。
+
+- `--no-comments`
+
+不转储注释。
+
+- `--no-publications`
+
+不转储publication。
+
+- `--no-role-passwords`
+
+不为角色转储口令。在恢复完后，角色的口令将是空口令，并且在设置口令之前口令认证都不会成功。由于指定这个选项时并不需要口令值，角色信息将从目录视图 `pg_roles` 而不是 `pg_authid` 中读出。因此，如果对 `pg_authid` 的访问被某条安全性策略所限制，那么这个选项也会有所帮助。
+
+- `--no-security-labels`
+
+不转储安全标签。
+
+- `--no-subscriptions`
+
+不转储subscription。
+
+- `--no-sync`
+
+默认情况下，`pg_dumpall` 将等待所有文件被安全地写入到磁盘。这个选项会让 `pg_dumpall` 不做这种等待而返回，这样会更快，但是意味着后续的操作系统崩溃可能留下被损坏的转储。通常来说，这个选项对测试有用，但不应该在从生产安装中转储数据时使用。
+
+- `--no-tablespaces`
+
+不要输出选择表空间的命令。通过这个选项，在恢复期间所有的对象都会被创建在任何作为默认的表空间中。
+
+- `-−no-toast-compression`
+
+不要输出命令以设置 TOAST 压缩方法。 采用这个选项，所有列将会以默认压缩设置来恢复。
+
+- `--no-unlogged-table-data`
+
+不转储非日志记录表的内容。这个选项对于表定义（模式）是否被转储没有影响，它只会限制转储表数据。
+
+- `--on-conflict-do-nothing`
+
+添加 `ON CONFLICT DO NOTHING` 到 `INSERT` 命令。 除非 `--inserts` 或 `--column-inserts` 也被规定，否则此选项不生效。
+
+- `--quote-all-identifiers`
+
+强制引用所有标识符。在从一个与pg_dumpall主版本不同的IvorySQL服务器转储数据库时或者要将输出载入到一个不同主版本的服务器时，推荐使用这个选项。默认情况下，pg_dumpall只会对为其主版本中保留词的标识符加上引号。在与其他版本的具有不同保留词集合的服务器交互时，这有时会导致兼容性问题。使用 `--quote-all-identifiers` 可以阻止这类问题，但是代价是转储脚本会更加难读。
+
+- `--rows-per-insert=*nrows*`
+
+将数据转储为 `INSERT` 命令（而不是 `COPY` ）。控制每个 `INSERT` 命令的最大行数。 指定的值必须是大于零的数。重新加载期间的任何错误都将导致仅丢失有问题的 `INSERT` 的行，而不是整个表内容。
+
+- `--use-set-session-authorization`
+
+输出 SQL-标准的 `SET SESSION AUTHORIZATION` 命令取代 `ALTER OWNER` 命令来确定对象的所有关系。这让该转储更加兼容标准，但是取决于该转储中对象的历史，该转储可能无法正常恢复。
+
+- `-?` `--help`
+
+显示有关pg_dumpall命令行参数的帮助并退出。
+
+
+
+下列命令行选项控制数据库连接参数。
+
+- `-d *connstr*` `--dbname=*connstr*`
+
+指定用于连接到服务器的参数，比如 http://www.postgres.cn/docs/14/libpq-connect.html#LIBPQ-CONNSTRING[连接字符串]；这些将覆盖所有冲突的命令行选项。这个选项被称为 `--dbname` 是为了和其他客户端应用一致，但是因为pg_dumpall需要连接多个数据库，连接字符串中的数据库名将被忽略。使用 `-l` 选项指定一个数据库，该数据库被用于初始连接，这将转储全局对象并且发现需要转储哪些其他数据库。
+
+- `-h *host*` `--host=*host*`
+
+指定服务器正在运行的机器的主机名。如果该值开始于一个斜线，它被用作一个 Unix 域套接字的目录。默认是从 `PGHOST` 环境变量中取得（如果被设置），否则将尝试一次 Unix 域套接字连接。
+
+- `-l *dbname*` `--database=*dbname*`
+
+指定要连接到哪个数据库转储全局对象以及发现要转储哪些其他数据库。如果没有指定，将会使用 `postgres` 数据库，如果 `postgres` 不存在，就使用  `template1`。
+
+- `-p *port*` `--port=*port*`
+
+指定服务器正在监听连接的 TCP 端口或本地 Unix 域套接字文件扩展名。默认是放在 `PGPORT` 环境变量中（如果被设置），否则使用编译在程序中的默认值。
+
+- `-U *username*` `--username=*username*`
+
+要作为哪个用户连接。
+
+- `-w` `--no-password`
+
+从不发出一个口令提示。如果服务器要求口令认证并且没有其他方式提供口令（例如一个 `.pgpass` 文件），那儿连接尝试将失败。这个选项对于批处理任务和脚本有用，因为在其中没有一个用户来输入口令。
+
+- `-W` `--password`
+
+强制pg_dumpall在连接到一个数据库之前提示要求一个口令。这个选项从来不是必须的，因为如果服务器要求口令认证，pg_dumpall将自动提示要求一个口令。但是，pg_dumpall将浪费一次连接尝试来发现服务器想要一个口令。在某些情况下，值得键入 `-W` 来避免额外的连接尝试。注意对每个要被转储的数据库，口令提示都会再次出现。通常，最好设置一个 `~/.pgpass` 文件来减少手工口令输入。
+
+- `--role=*`rolename`*`
+
+指定一个用来创建该转储的角色名。这个选项导致pg_dump在连接到数据库后发出一个 `SET ROLE` *`rolename`* 命令。当已认证用户（由 `-U` 指定）缺少pg_dump所需的特权但是能够切换到一个具有所需权利的角色时，这个选项很有用。一些安装有针对直接作为超级用户登录的策略，使用这个选项可以让转储在不违反该策略的前提下完成。
+
+
+
+#### 环境
+
+- `PGHOST` `PGOPTIONS` `PGPORT` `PGUSER`
+
+默认连接参数
+
+- `PG_COLOR`
+
+规定在诊断消息中是否使用颜色。可能的值为 `always`、 `auto`、 `never`。
+
+和大部分其他IvorySQL工具相似，这个工具也使用libpq支持的环境变量。
+
+#### 注解
+
+因为pg_dumpall在内部调用pg_dump，所以， 一些诊断消息可以参考pg_dump。
+
+即使当用户的目的是把转储脚本恢复到一个空的集簇中，`--clean` 选项也有用武之地。`--clean` 的使用让该脚本删除并且重建内建的 `postgres` 和 `template1` 数据库，确保这两个数据库保持与源集簇中相同的属性（例如locale和编码）。如果不用这个选项，这两个数据库将保持它们现有的数据库级属性以及任何已有的内容。
+
+一旦恢复，建议在每个数据库上运行 `ANALYZE`，这样优化器就可以得到有用的统计信息。你也可以运行 `vacuumdb -a -z` 来分析所有数据库。
+
+不应该预期转储脚本运行到结束都不出错。特别是由于脚本将为源集簇中已有的每一个角色发出 `CREATE ROLE` 语句，对于bootstrap超级用户当然会得到一个“role already exists”错误，除非目标集簇用一个不同的bootstrap超级用户名完成的初始化。这种错误是无害的并且应该被忽略。`--clean` 选项的使用很可能会产生额外的有关于不存在对象的无害错误消息，不过可以通过加上 `--if-exists` 减少这类错误消息。
+
+pg_dumpall要求所有需要的表空间目录在进行恢复之前就必须存在；否则，数据库创建就会由于在非默认位置创建数据库而失败。
+
+#### 例子
+
+要转储所有数据库：
+
+```
+$ pg_dumpall > db.out
+```
+
+
+
+要从这个文件重新载入数据库，你可以使用：
+
+```
+$ psql -f db.out postgres
+```
+
+这里你连接哪一个数据库并不重要，因为由pg_dumpall创建的脚本将包含合适的命令来创建和连接到被保存的数据库。一个例外是，如果指定了 `--clean`，则开始时必须连接到 `postgres` 数据库，该脚本将立即尝试删除其他数据库，并且这种动作对于已连接上的这个数据库将会失败。
+
+=== pg_isready
+
+pg_isready — 检查一个IvorySQL服务器的连接状态
+
+#### 大纲
+
+`pg_isready` [*`connection-option`*...] [*`option`*...]
+
+#### 选项
+
+- `-d *dbname*` `--dbname=*dbname*`
+
+指定要连接的数据库名。*`dbname`* 可以是连接字符串。如果是这样，连接字符串参数将覆盖任何冲突的命令行选项。
+
+- `-h *hostname*` `--host=*hostname*`
+
+指定运行服务器的机器的主机名。如果该值以一个斜线开始，它被用作 Unix 域套接字的目录。
+
+- `-p *port*` `--port=*port*`
+
+指定服务器正在监听连接的 TCP 端口或本地 Unix 域套接字文件扩展。默认值取自 `PGPORT` 环境变量。如果环境变量没有设置，则默认值使用编译时指定的端口（通常是 5432）。
+
+- `-q` `--quiet`
+
+不显示状态消息。当脚本编程时有用。
+
+- `-t *seconds*` `--timeout=*seconds*`
+
+尝试连接时，在返回服务器不响应之前等待的最大秒数。设置为 0 则禁用。默认值是 3 秒。
+
+- `-U *username*` `--username=*username*`
+
+作为用户 *`username`* 连接数据库，而不是用默认用户。
+
+- `-V` `--version`
+
+打印pg_isready版本并退出。
+
+- `-?` `--help`
+
+显示有关pg_isready命令行参数的帮助并退出。
+
+#### 退出状态
+
+如果服务器正常接受连接，pg_isready返回 `0` 给 shell；如果服务器拒绝连接（例如处于启动阶段）则返回 `1`；如果连接尝试没有被相应则返回 `2`；如果没有尝试（例如由于非法参数）则返回 `3`。
+
+#### 环境
+
+和大部分其他IvorySQL工具相似，`pg_isready` 也使用libpq支持的环境变量。
+
+环境变量 `PG_COLOR` 规定在诊断消息中是否使用颜色。可能的值为 `always`、 `auto`、 `never`。
+
+#### 注解
+
+要获得服务器状态，不一定需要提供正确的用户名、口令或数据库名。 不过，如果提供了不正确的值，服务器将会记录一次失败的连接尝试。
+
+#### 例子
+
+标准用法：
+
+```
+$ pg_isready
+/tmp:5432 - accepting connections
+$ echo $?
+0
+```
+
+
+
+使用连接参数运行连接到处于启动中的IvorySQL集簇：
+
+```
+$ pg_isready -h localhost -p 5433
+localhost:5433 - rejecting connections
+$ echo $?
+1
+```
+
+使用连接参数运行连接到无响应的IvorySQL集簇：
+
+```
+$ pg_isready -h someremotehost
+someremotehost:5432 - no response
+$ echo $?
+2
+```
+
+=== pg_receivewal
+
+pg_receivewal — 以流的方式从一个IvorySQL服务器得到预写式日志
+
+==== 大纲
+
+`pg_receivewal` [*`option`*...]
+
+#### 选项
+
+- `-D *directory*` `--directory=*directory*`
+
+要把输出写到哪个目录。这个参数是必需的。
+
+- `-E *lsn*` `--endpos=*lsn*`
+
+当接收到达指定的LSN时，自动停止复制并且以正常退出状态0退出。如果有一个记录的LSN正好等于 *`lsn`*，则该记录将会被处理。
+
+- `--if-not-exists`
+
+当指定 `--create-slot` 并且具有指定名称的槽已经存在时不要抛出错误。
+
+- `-n` `--no-loop`
+
+不要在连接错误上循环。相反，碰到一个错误时立刻退出。
+
+- `--no-sync`
+
+这个选项导致 `pg_receivewal` 不强制WAL数据被刷回磁盘。这样会更快，但是也意味着接下来的操作系统崩溃会让WAL段损坏。通常，这个选项对于测试有用，但不应该在对生产部署进行WAL归档时使用。这个选项与 `--synchronous` 不兼容。
+
+- `-s *interval*` `--status-interval=*interval*`
+
+指定发送回服务器的状态包之间的秒数。这允许我们更容易地监控服务器的进度。 一个零值完全禁用这种周期性的状态更新，不过当服务器需要时还是会有一个更新 会被发送来避免超时导致的断开连接。默认值是 10 秒。
+
+- `-S *slotname*` `--slot=*slotname*`
+
+要求pg_receivewal使用一个已有的复制槽。在使用这个选项时， pg_receivewal将会报告给服务器一个刷写位置，指示每一个 段是何时被同步到磁盘的，这样服务器可以在不需要该段时移除它。当pg_receivewal的复制客户端在服务器 上被配置为一个同步后备时，那么使用一个复制槽将会向服务器报告刷写 位置，但只在一个 WAL 文件被关闭时报告。因此，该配置将导致主服务 器上的事务等待很长的时间并且无法令人满意地工作。要让这种配置工作 正确，还必须制定选项 `--synchronous` （见下文）。
+
+- `--synchronous`
+
+在 WAL 数据被收到后立即刷入到磁盘。还要在刷写后立即向服务器回送 一个状态包（不考虑 `--status-interval` ）。如果pg_receivewal的复制客户端在服务器 上被配置为一个同步后备，应该指定这个选项来确保向服务器发送及时的反馈。
+
+- `-v` `--verbose`
+
+启用冗长模式。
+
+- `-Z *level*` `--compress=*level*`
+
+启用预写式日志上的gzip压缩，并且指定压缩级别（0到9，0是不压缩而9是最大压缩）。所有的文件名后都将被追加后缀 `.gz`。
+
+下列命令行选项控制数据库连接参数。
+
+- `-d *connstr*` `--dbname=*connstr*`
+
+指定用于连接到服务器的参数，作为 http://www.postgres.cn/docs/14/libpq-connect.html#LIBPQ-CONNSTRING[连接字符串]；这些将覆盖所有冲突的命令行选项。为了和其他客户端应用一致，该选项被称为 `--dbname`。但是因为pg_receivewal并不连接到集簇中的任何特定数据库，连接字符串中的数据库名将被忽略。
+
+- `-h *host*` `--host=*host*`
+
+指定运行服务器的机器的主机名。如果该值以一个斜线开始，它被用作 Unix 域套接字的目录。默认值取自 `PGHOST` 环境变量（如果设置），否则会尝试一个 Unix 域套接字连接。
+
+- `-p *port*` `--port=*port*`
+
+指定服务器正在监听连接的 TCP 端口或本地 Unix 域套接字文件扩展。默认用 `PGPORT` 环境变量中的值（如果设置），或者一个编译在程序中的默认值。
+
+- `-U *username*` `--username=*username*`
+
+要作为哪个用户连接。
+
+- `-w` `--no-password`
+
+从不发出一个口令提示。如果服务器要求口令认证并且没有其他方式提供口令（例如一个 `.pgpass` 文件），那儿连接尝试将失败。这个选项对于批处理任务和脚本有用，因为在其中没有一个用户来输入口令。
+
+- `-W` `--password`
+
+强制pg_receivewal在连接到一个数据库之前提示要求一个口令。这个选项不是必不可少的，因为如果服务器要求口令认证，pg_receivewal将自动提示要求一个口令。但是，pg_receivewal将浪费一次连接尝试来发现服务器想要一个口令。在某些情况下值得用 `-W` 来避免额外的连接尝试。
+
+
+
+为了控制物理复制槽，pg_receivewal 可以执行下列两种动作之一：
+
+- `--create-slot`
+
+用 `--slot` 中指定的名称创建一个新的物理复制槽， 然后退出。
+
+- `--drop-slot`
+
+删除 `--slot` 中指定的复制槽，然后退出。
+
+
+
+其他选项也可用：
+
+- `-V` `--version`
+
+打印pg_receivewal版本并退出。
+
+- `-?` `--help`
+
+显示有关pg_receivewal命令行参数的帮助并退出。
+
+
+
+#### 退出状态
+
+在被SIGINT信号终止（没有正常的方式结束它。因此这不是一种错误）时，pg_receivewal将以状态0退出。 对于致命错误或者其他信号，退出状态将不是零。
+
+#### 环境
+
+和大部分其他IvorySQL工具相似，这个工具也使用libpq支持的环境变量。
+
+环境变量 `PG_COLOR` 规定在诊断消息中是否使用颜色。可能的值为 `always`、 `auto`、 `never`。
+ 
+#### 注解
+
+在使用pg_receivewal替代 http://www.postgres.cn/docs/14/runtime-config-wal.html#GUC-ARCHIVE-COMMAND[archive_command] 作为主要的 WAL 备份方法时， 强烈建议使用复制槽。否则，服务器可能会在预写式日志文件被备份好之前重用 或者移除它们，因为没有任何信息（不管是来自 http://www.postgres.cn/docs/14/runtime-config-wal.html#GUC-ARCHIVE-COMMAND[archive_command] 或是复制槽）能够指示 WAL 流已 经被归档到什么程度。不过要注意，如果接收者没有持续地取走 WAL 数据， 一个复制槽将会填满服务器的磁盘空间。
+
+如果在源集簇上启用了组权限，pg_receivewal将保留接收到的WAL文件上的组权限。
+
+#### 例子
+
+要从位于 `mydbserver` 的服务器流式传送预写式日志并且将它存储在本地目录`/usr/local/pgsql/archive`：
+
+```
+$ pg_receivewal -h mydbserver -D /usr/local/pgsql/archive
+```
+
+=== pg_recvlogical
+
+pg_recvlogical — 控制 IvorySQL 逻辑解码流
+
+#### 大纲
+
+`pg_recvlogical` [*`option`*...]
+
+#### 选项
+
+必须至少要指定下列选项之一来选择一个动作：
+
+- `--create-slot`
+
+为 `--dbname` 指定的数据库用 `--slot` 指定的名称创建一个新的逻辑复制槽，使用 `--plugin` 指定的输出插件。
+
+- `--drop-slot`
+
+删除名称由 `--slot` 指定的复制槽，然后退出。
+
+- `--start`
+
+从 `--slot` 指定的逻辑复制槽开始进行流式传送更改，一直继续 到被一个信号终止。如果服务器端关机或者断开连接导致更改流结束，会进入一个 循环一直重试，通过指定 `--no-loop` 可以防止这种情况下进入循环重试。流格式由槽创建时指定的输出插件决定。连接必须是连接到用于创建该槽的同一个数据库上。
+
+
+
+`--create-slot` 和 `--start` 可以被一起指定。 `--drop-slot` 不能和另一个动作组合在一起。
+
+下面的命令行选项控制输出的位置和格式以及其他复制行为：
+
+- `-E *`lsn`*` `--endpos=*`lsn`*`
+
+在 `--start` 模式中，当接收过程到达指定的LSN时会自动地停止复制并且以正常的退出状态0退出。如果不处于 `--start` 模式时指定这个选项，则会发生错误。如果有一个记录的LSN正好等于 *`lsn`*，则该记录将被输出。`--endpos` 不会察觉到事务边界并且可能会在一个事务中间截断输出。任何部分输出的事务都将不会被消费，并且在下一次从该槽中读取时将会重放该事务。单个的消息不会被截断。
+
+- `-f *filename*` `--file=*filename*`
+
+把接收到并且解码好的事务数据写入到一个文件。使用 `-` 可以写到stdout。
+
+- `-F *interval_seconds*` `--fsync-interval=*interval_seconds*`
+
+指定pg_recvlogical发出 `fsync()` 调用确保输出文件被安全地刷到磁盘的频度。服务器将会偶尔要求客户端执行一次刷写并且把刷写位置报告给服务器。 这个设置可以在此之外更加频繁地执行刷写。指定间隔为 `0` 会完全禁止发出 `fsync()` 调用，但是仍会报告进度给服务器。在这种情况下，发生崩溃会导致数据丢失。
+
+- `-I *lsn*` `--startpos=*lsn*`
+
+在 `--start` 模式中，从给定的 LSN 开始复制。
+
+- `--if-not-exists`
+
+当指定 `--create-slot` 并且具有指定名称的槽已经存在时不要抛出错误。
+
+- `-n` `--no-loop`
+
+当服务器连接丢失时，不要在循环中重试，直接退出。
+
+- `-o *name* [=*value*]` `--option=*name*[=*value*]`
+
+如果指定了输出插件，把选项值 *`value`* 传递给选项 *`name`*。存在哪些选项以及它们的效果 取决于使用的输出插件。
+
+- `-P *plugin*` `--plugin=*plugi*`
+
+在创建一个槽时使用指定的逻辑解码输出插件。如果该槽已经存在，这个选项没有效果。
+
+- `-s *interval_seconds*` `--status-interval=*interval_seconds*`
+
+这个选项和 http://www.postgres.cn/docs/14/app-pgreceivewal.html[pg_receivewal] 中的同名选项具有相同的效果。请参考那里的描述。
+
+- `-S *slot_name*` `--slot=*slot_name*`
+
+在 `--start` 模式中，使用名为 *`slot_name`* 的已有逻辑复制槽。在 `--create-slot` 模式中，使用这个名称 创建该槽。在 `--drop-slot` 模式中，删除这个名称指定的槽。
+
+- `-v` `--verbose`
+
+开启详细输出模式。
+
+
+
+下列命令行选项控制数据库连接参数。
+
+- `-d *database*` `--dbname=*database*`
+
+要连接的数据库。这个选项的详细含义请见动作的描述。*`dbname`* 可以是 http://www.postgres.cn/docs/14/libpq-connect.html#LIBPQ-CONNSTRING[连接字符串]。 如果是这样，连接字符串参数将覆盖任何冲突的命令行选项。默认为用户名。
+
+- `-h *hostname-or-ip*` `--host=*hostname-or-ip*`
+
+指定服务器正在运行的机器的主机名。如果该值开始于一个斜线， 它被用作一个 Unix 域套接字的目录。默认是从 `PGHOST`环境变量中取得（如果被设置）， 否则将尝试一次 Unix 域套接字连接。
+
+- `-p *port*` `--port=*port*`
+
+指定服务器正在监听连接的 TCP 端口或本地 Unix 域套接字文件扩展名。 默认是放在 `PGPORT` 环境变量中（如果被设置）， 否则使用编译在程序中的默认值。
+
+- `-U *user*` `--username=*user*`
+
+要作为哪个用户连接。默认是用当前操作系统用户名。
+
+- `-w` `--no-password`
+
+从不发出一个口令提示。如果服务器要求口令认证并且没有 其他方式提供口令（例如一个 `.pgpass` 文件）， 那么连接尝试将失败。这个选项对于批处理任务和脚本有用， 因为在其中没有一个用户来输入口令。
+
+- `-W` `--password`
+
+强制pg_dump在连接到一个数据库之前提示要求一个口令。这个选项不是必须的，因为如果服务器要求口令认证， pg_dump将自动提示要求一个口令。 但是，pg_dump将浪费一次连接尝试 来发现服务器想要一个口令。在某些情况下，值得键入 `-W` 来避免额外的连接尝试。
+
+
+
+还有下列附加选项可用：
+
+- `-V` `--version`
+
+打印pg_recvlogical的版本并且退出。
+
+- `-?` `--help`
+
+显示关于pg_recvlogical命令行参数的帮助，并且退出。
+
+
+
+#### 环境
+
+和大部分其他IvorySQL工具相似，这个工具也使用libpq支持的环境变量。
+
+环境变量`PG_COLOR`规定在诊断消息中是否使用颜色。可能的值为 `always`、 `auto`、 `never`。
+
+#### 注解
+
+如果在源服务器上启用了组权限，pg_recvlogical将会在接收到的WAL文件上保留组权限。
+
+=== pg_restore
+
+pg_restore — 从一个由pg_dump创建的归档文件恢复一个IvorySQL数据库
+
+#### 大纲
+
+`pg_restore` [*`connection-option`*...] [*`option`*...] [*`filename`*]
+
+#### 选项
+
+pg_restore接受下列命令行参数。
+
+- *`filename`*
+
+指定要被恢复的归档文件（对于一个目录格式的归档则是目录）的位置。如果没有指定，则使用标准输入。
+
+- `-a` `--data-only`
+
+只恢复数据，不恢复模式（数据定义）。如果在归档中存在，表数据、大对象和序列值会被恢复。这个选项类似于指定 `--section=data`，但是由于历史原因两者不完全相同。
+
+- `-c` `--clean`
+
+在重新创建数据库对象之前清除（丢弃）它们（除非使用了 `--if-exists`，如果有对象在目标数据库中不存在，这可能会生成一些无害的错误消息）。
+
+- `-C` `--create`
+
+在恢复一个数据库之前县创建它。如果还指定了 `--clean`，在连接到目标数据库之前丢弃并且重建它。如果使用 `--create`，pg_restore还会恢复数据库的注释（如果有）以及与其相关的配置变量设置，也就是任何提到过这个数据库的 `ALTER DATABASE ... SET ...` 和 `ALTER ROLE ... IN DATABASE ... SET ...` 命令。不管是否指定 `--no-acl`，数据库本身的访问特权都会被恢复。在使用这个选项时，`-d` 提到的数据库只被用于发出初始的 `DROP DATABASE` 和 `CREATE DATABASE` 命令。所有要恢复到该数据库名中的数据都出现在归档中。
+
+- `-d *dbname*` `--dbname=*dbname*`
+
+连接到数据库 *`dbname`* 并且直接恢复到该数据库中。*`dbname`* 可以是 http://www.postgres.cn/docs/14/libpq-connect.html#LIBPQ-CONNSTRING[连接字符串]。 如果是这样，连接字符串参数将覆盖任何冲突的命令行选项。
+
+- `-e` `--exit-on-error`
+
+在发送 SQL 命令到该数据库期间如果碰到一个错误就退出。默认行为是继续并且在恢复结束时显示一个错误计数。
+
+- `-f *filename*` `--file=*filename*`
+
+为生成的脚本指定输出文件，或在与 `-l` 选项一起使用时为列表指定输出文件。为 stdout用 `-`。
+
+- `-F *format*` `--format=*format*`
+
+指定归档的格式。并不一定要指定该格式，因为pg_restore将会自动决定格式。如果指定，可以是下列之一：`c` `custom` 归档是pg_dump的自定义格式。`d`  `directory` 归档是一个目录归档。`t` `tar` 归档是一个 `tar` 归档。
+
+- `-I *index*` `--index=*index*`
+
+只恢复提及的索引的定义。可以通过写多个 `-I` 开关指定多个索引。
+
+- `-j *number-of-jobs*` `--jobs=*number-of-jobs*`
+
+使用并发任务运行pg_restore中最耗时的步骤 — 载入数据、创建索引或者创建约束； 同时，最多使用 *`number-of-jobs`* 个并发会话。对于一个运行在多处理器机器上的服务器， 这个选项能够大幅度减少恢复一个大型数据库的时间。当发出脚本而不是直接连接到数据库服务器时，将忽略此选项。每一个任务是一个进程或者一个线程，这取决于操作系统，它们都使用一个独立的服务器连接。这个选项的最佳值取决于服务器、客户端以及网络的硬件设置。因素包括 CPU 的核心数和磁盘设置。一个好的建议是服务器上 CPU 的核心数，但是更大的值在很多情况下也能导致更快的恢复时间。当然，过高的值会由于超负荷反而导致性能降低。这个选项只支持自定义和目录归档格式。输入必须是一个常规文件或目录（例如，不能是一个管道或者标准输出）。还有，多任务不能和选项 `--single-transaction` 一起用。
+
+- `-l` `--list`
+
+列出归档的内容的表格。这个操作的输出能被用作 `-L` 选项的输入。注意如果把 `-n` 或 `-t` 这样的过滤开关与 `-l` 一起使用，它们将会限制列出的项。
+
+- `-L *list-file*` `--use-list=*list-file*`
+
+只恢复在 *`list-file`* 中列出的归档元素，并且按照它们出现在该文件中的顺序进行恢复。注意如果把 `-n` 或 `-t` 这样的过滤开关与 `-L` 一起使用，它们将会进一步限制要恢复的项。*`list-file`* 通常是编辑一个 `-l` 操作的输出来创建。行可以被移动或者移除，并且也可以通过在行首放一个（ `;` ）将其注释掉。例子见下文。
+
+- `-n *schema*` `--schema=*schema*`
+
+只恢复在被提及的模式中的对象。可以用多个 `-n` 开关来指定多个模式。这可以与`-t`选项组合在一起只恢复一个指定的表。
+
+- `-N *schema*` `--exclude-schema=*schema*`
+
+不恢复所提及方案中的对象。可以用多个 `-N` 开关指定多个要被排除的方案。如果对同一个方案名称同时给出了 `-n` 和 `-N`，则 `-N` 会胜出并且该方案会被排除。
+
+- `-O` `--no-owner`
+
+不要输出将对象的所有权设置为与原始数据库匹配的命令。默认情况下，pg_restore会发出 `ALTER OWNER` 或者 `SET SESSION AUTHORIZATION` 语句来设置已创建的模式对象的所有权。除非到该数据库的初始连接是一个超级用户（或者拥有脚本中所有对象的同一个用户）建立的，这些语句将会失败。通过 `-O`，任何用户名都可以被用于初始连接，并且这个用户将会拥有所有被创建的对象。
+
+- `-P *function-name(argtype [, ...])*` `--function=*function-name(argtype [, ...])*`
+
+只恢复被提及的函数。要小心地拼写函数的名称和参数使它们正好就是出现在转储文件的内容表中的名称和参数。可以使用多个 `-P` 开关指定多个函数。
+
+- `-R` `--no-reconnect`
+
+这个选项已被废弃，但是出于向后兼容性的目的，系统仍然还接受它。
+
+- `-s` `--schema-only`
+
+只恢复归档中的模式（数据定义）不恢复数据。这个选项是 `--data-only` 的逆选项。它与指定 `--section=pre-data --section=post-data` 相似，但是由于历史原因并不完全相同。（不要把这个选项和 `--schema` 选项弄混，后者把词“schema”用于一种不同的含义）。
+
+- `-S *username*` `--superuser=*username*`
+
+指定在禁用触发器时要用的超级用户名。只有使用 `--disable-triggers` 时这个选项才相关。
+
+- `-t *table*` `--table=*table*`
+
+只恢复所提及的表的定义和数据。出于这个目的，“table”包括视图、物化视图、序列和外部表。可以写上多个 `-t` 开关可以选择多个表。这个选项可以和 `-n` 选项结合在一起指定一个特定模式中的表。注意在指定 `-t` 时，pg_restore不会尝试恢复所选表可能依赖的任何其他数据库对象。因此，无法确保能成功地把一个特定表恢复到一个干净的数据库中。注意这个标志的行为和pg_dump的 `-t` 标志不一样。在pg_restore中当前没有任何通配符匹配的规定，也不能在其 `-t` 选项中包括模式的名称。而且，虽然pg_dump的 `-t` 标志也会转储选中表的附属对象（例如索引），但是pg_restore的 `-t` 标志不包括这些附属对象。
+
+- `-T *trigger*` `--trigger=*trigger*`
+
+只恢复所提及的触发器。可以用多个 `-T` 开关指定多个触发器。
+
+- `-v` `--verbose`
+
+指定冗长模式。 这将导致pg_restore输出详细的对象注释和启动/停止时间到输出文件，并将推送消息输出到标准错误。 重复该选项会造成附加的调试级消息出现在标准报错上。
+
+- `-V` `--version`
+
+打印该pg_restore的版本并退出。
+
+- `-x` `--no-privileges` `--no-acl`
+
+阻止恢复访问特权（授予/收回命令）。
+
+- `-1` `--single-transaction`
+
+将恢复作为单一事务执行（即把发出的命令包裹在 `BEGIN` / `COMMIT` 中）。这可以确保要么所有命令完全成功，要么任何改变都不被应用。这个选项隐含了 `--exit-on-error`。
+
+- `--disable-triggers`
+
+只有在执行一个只恢复数据的恢复时，这个选项才相关。它指示pg_restore在装载数据时执行命令临时禁用目标表上的触发器。如果你在表上有参照完整性检查或者其他触发器并且你不希望在数据载入期间调用它们时，请使用这个选项。目前，为 `--disable-triggers` 发出的命令必须以超级用户身份完成。因此你还应该用`-S`指定一个超级用户名，或者更好的方法是以一个IvorySQL超级用户运行pg_restore。
+
+- `--enable-row-security`
+
+只有在恢复具有行安全性的表的内容时，这个选项才相关。默认情况下，pg_restore将把 http://www.postgres.cn/docs/14/runtime-config-client.html#GUC-ROW-SECURITY[row_security] 设置为 off 来确保所有数据都被恢复到表中。如果用户不拥有足够绕过行安全性的特权，那么会抛出一个错误。这个参数指示pg_restore把 http://www.postgres.cn/docs/14/runtime-config-client.html#GUC-ROW-SECURITY[row_security] 设置为on允许用户尝试恢复启用了行安全性的表的内容。如果用户没有从转储向表中插入行的权限，这仍将失败。注意当前这个选项还要求转储处于 `INSERT` 格式，因为 `COPY FROM` 不支持行安全性。
+
+- `--if-exists`
+
+使用条件命令（即增加一个 `IF EXISTS` 子句）删除数据库对象。只有指定了 `--clean` 时，这个选项才有效。
+
+- `--no-comments`
+
+即便归档中包含注释也不输出恢复注释的命令。
+
+- `--no-data-for-failed-tables`
+
+默认情况下，即便表的创建命令失败（例如因为表已经存在），表数据也会被恢复。通过这个选项，对这类表的数据会被跳过。如果目标数据库已经包含了想要的表内容，这种行为又很有有用。例如，IvorySQL扩展（如PostGIS）的辅助表可能已经被载入到目标数据库中，指定这个选项就能阻止把重复的或者废弃的数据载入到这些表中。只有当直接恢复到一个数据库中时这个选项才有效，在产生 SQL脚本输出时这个选项不会产生效果。
+
+- `--no-publications`
+
+即便归档中包含publication也不输出恢复publication的命令。
+
+- `--no-security-labels`
+
+不要输出恢复安全标签的命令，即使归档中包含安全标签。
+
+- `--no-subscriptions`
+
+即便归档中包含subscription也不输出恢复subscription的命令。
+
+- `--no-tablespaces`
+
+不输出命令选择表空间。通过这个选项，所有的对象都会被创建在恢复时的默认表空间中。
+
+- `--section=*`sectionname`*`
+
+只恢复提及的小节。小节的名称可以是 `pre-data`、`data` 或者 `post-data`。可以把这个选项指定多次来选择多个小节。默认值是恢复所有小节。数据小节包含实际的表数据以及大对象定义。Post-data 项由索引定义、触发器、规则和除已验证的检查约束之外的约束构成。Pre-data 项由所有其他数据定义项构成。
+
+- `--strict-names`
+
+要求每一个模式（ `-n` / `--schema`）以及表（ `-t` / `--table`）限定词匹配备份文件中至少一个模式/表。
+
+- `--use-set-session-authorization`
+
+输出 SQL 标准的 `SET SESSION AUTHORIZATION` 命令取代 `ALTER OWNER` 命令来决定对象拥有权。这会让转储更加兼容标准，但是依赖于转储中对象的历史，可能无法正确恢复。
+
+- `-?` `--help`
+
+显示有关pg_restore命令行参数的帮助，并且退出。
+
+
+
+pg_restore也接受下列用于连接参数的命令行参数：
+
+- `-h *host*` `--host=*host*`
+
+指定服务器正在运行的机器的主机名。如果该值开始于一个斜线，它被用作一个 Unix 域套接字的目录。默认是从 `PGHOST` 环境变量中取得（如果被设置），否则将尝试一次 Unix 域套接字连接。
+
+- `-p *port*` `--port=*port*`
+
+指定服务器正在监听连接的 TCP 端口或本地 Unix 域套接字文件扩展名。默认是放在 `PGPORT` 环境变量中（如果被设置），否则使用编译在程序中的默认值。
+
+- `-U *username*` `--username=*username*`
+
+要作为哪个用户连接。
+
+- `-w` `--no-password`
+
+不发出一个口令提示。如果服务器要求口令认证并且没有其他方式提供口令（例如一个 `.pgpass` 文件），那么连接尝试将失败。这个选项对于批处理任务和脚本有用，因为在其中没有一个用户来输入口令。
+
+- `-W` `--password`
+
+强制pg_restore在连接到一个数据库之前提示要求一个口令。这个选项不是必须的，因为如果服务器要求口令认证，pg_restore将自动提示要求一个口令。但是，pg_restore将浪费一次连接尝试来发现服务器想要一个口令。在某些情况下，值得键入 `-W` 来避免额外的连接尝试。
+
+- `--role=*`rolename`*`
+
+指定一个用来创建该转储的角色名。这个选项导致pg_restore在连接到数据库后发出一个 `SET ROLE` *`rolename`* 命令。当已认证用户（由 `-U` 指定）缺少pg_restore所需的特权但是能够切换到一个具有所需权利的角色时，这个选项很有用。一些安装有针对直接作为超级用户登录的策略，使用这个选项可以让转储在不违反该策略的前提下完成。
+
+
+
+#### 环境
+
+- `PGHOST` `PGOPTIONS` `PGPORT` `PGUSER`
+
+默认连接参数
+
+- `PG_COLOR`
+
+规定在诊断消息中是否使用颜色。可能的值为 `always`、 `auto`、 `never`。 
+
+和大部分其他IvorySQL工具相似，这个工具也使用libpq支持的环境变量。
+
+#### 诊断
+
+当使用 `-d` 选项指定一个直接数据库连接时，pg_restore在内部执行 `SELECT` 语句。如果你运行pg_restore时出现问题，确定你能够从正在使用的数据库中选择信息，例如 http://www.postgres.cn/docs/14/app-psql.html[psql]。此外，libpq前端-后端库所使用的任何默认连接设置和环境变量都将适用。
+
+#### 注解
+
+如果你的数据库集簇对于 `template1` 数据库有任何本地添加，要注意将pg_restore的输出载入到一个真正的空数据库。否则你很可能由于以增加对象的重复定义而得到错误。要创建一个不带任何本地添加的空数据库，从 `template0` 而不是 `template1` 复制它，例如：
+
+```
+CREATE DATABASE foo WITH TEMPLATE template0;
+```
+
+
+
+下面将详细介绍pg_restore的局限性。
+
+- 在恢复数据到一个已经存在的表中并且使用了选项 `--disable-triggers` 时，pg_restore会在插入数据之前发出命令禁用用户表上的触发器，然后在完成数据插入后重新启用它们。如果恢复在中途停止，可能会让系统目录处于错误的状态。
+- pg_restore不能有选择地恢复大对象，例如只恢复特定表的大对象。如果一个归档包含大对象，那么所有的大对象都会被恢复，如果通过 `-L`、 `-t` 或者其他选项进行了排除，它们一个也不会被恢复。
+
+
+
+一旦完成恢复，应该在每一个被恢复的表上运行 `ANALYZE`，这样优化器能得到有用的统计信息。
+
+#### 示例
+
+假设我们已经以自定义格式转储了一个叫做 `mydb` 的数据库：
+
+```
+$ pg_dump -Fc mydb > db.dump
+```
+
+要删除该数据库并且从转储中重新创建它：
+
+```
+$ dropdb mydb
+$ pg_restore -C -d postgres db.dump
+```
+
+`-d` 开关中提到的数据库可以是任何已经存在于集簇中的数据库，pg_restore只会用它来为 `mydb` 发出 `CREATE DATABASE` 命令。通过 `-C`，数据总是会被恢复到出现在归档文件的数据库名中。
+
+要把转储重新载入到一个名为 `newdb` 的新数据库中：
+
+```
+$ createdb -T template0 newdb
+$ pg_restore -d newdb db.dump
+```
+
+注意我们不使用 `-C`，而是直接连接到要恢复到其中的数据库。还要注意我们是从 `template0` 而不是 `template1` 创建了该数据库，以保证它最初是空的。
+
+要对数据库项重排序，首先需要转储归档的表内容：
+
+```
+$ pg_restore -l db.dump > db.list
+```
+
+列表文件由一个头部和一些行组成，这些行每一个都用于一个项，例如：
+
+```
+;
+; Archive created at Mon Sep 14 13:55:39 2009
+;     dbname: DBDEMOS
+;     TOC Entries: 81
+;     Compression: 9
+;     Dump Version: 1.10-0
+;     Format: CUSTOM
+;     Integer: 4 bytes
+;     Offset: 8 bytes
+;     Dumped from database version: 8.3.5
+;     Dumped by pg_dump version: 8.3.8
+;
+;
+; Selected TOC Entries:
+;
+3; 2615 2200 SCHEMA - public pasha
+1861; 0 0 COMMENT - SCHEMA public pasha
+1862; 0 0 ACL - public pasha
+317; 1247 17715 TYPE public composite pasha
+319; 1247 25899 DOMAIN public domain0 pasha
+```
+
+分号表示开始一段注释，行首的数字表明了分配给每个项的内部归档 ID。
+
+文件中的行可以被注释掉、删除以及重排序。例如：
+
+```
+10; 145433 TABLE map_resolutions postgres
+;2; 145344 TABLE species postgres
+;4; 145359 TABLE nt_header postgres
+6; 145402 TABLE species_records postgres
+;8; 145416 TABLE ss_old postgres
+```
+
+把这样一个文件作为pg_restore的输入将会只恢复项 10 和 6，并且先恢复 10 再恢复 6。
+
+```
+$ pg_restore -L db.list db.dump
+```
+
+=== pg_verifybackup
+
+pg_verifybackup — 验证IvorySQL集群的基础备份的完整性
+
+#### 大纲
+
+`pg_verifybackup` [*`option`*...]
+
+#### 选项
+
+pg_verifybackup 接受以下命令行参数：
+
+- `-e` `--exit-on-error`
+
+检测到备份问题后立即退出。 如果没有指定这个选项，`pg_verifybackup` 将在检测到问题后继续检查备份，并将检测到的所有问题报告为错误。
+
+- `-i *path*` `--ignore=*path*`
+
+在将备份中实际存在的数据文件列表与 `backup_manifest` 文件中列出的数据文件列表进行比较时，忽略指定的文件或目录，该文件或目录应表示为相对路径名。如果指定了目录，则此选项会影响以该位置为根的整个子树。 如果相对路径名与指定的路径名匹配，有关额外文件、丢失文件、文件大小差异或校验和不匹配的投诉将被抑制。 可以多次指定此选项。
+
+- `-m *path*` `--manifest-path=*path*`
+
+使用指定路径的清单文件，而不是位于备份目录根目录中的清单文件。
+
+- `-n` `--no-parse-wal`
+
+不要试图解析从该备份恢复所需的预写式日志数据。
+
+- `-q` `--quiet`
+
+成功验证备份后不要打印任何内容。
+
+- `-s` `--skip-checksums`
+
+不要验证数据文件校验和。但仍检查是否存在文件以及这些文件的大小。这样将会快得多，因为文件本身不需要读取。
+
+- `-w *path*` `--wal-directory=*path*`
+
+尝试解析存储在指定目录中的 WAL 文件，而不是 `pg_wal`。 如果备份存储在与WAL存档不同的位置，则这可能很有用。
+
+
+
+其他选项也可用：
+
+- `-V` `--version`
+
+打印 pg_verifybackup 版本并退出。
+
+- `-?` `--help`
+
+显示有关pg_verifybackup命令行参数的帮助，然后退出。
+
+
+
+#### 示例
+
+要在 `mydbserver` 上创建服务器的基本备份并验证备份的完整性：
+
+```
+$ pg_basebackup -h mydbserver -D /usr/local/pgsql/data
+$ pg_verifybackup /usr/local/pgsql/data
+```
+
+
+
+要在 `mydbserver` 上创建服务器的基本备份，请将清单移动到备份目录之外的某个位置，并验证备份：
+
+```
+$ pg_basebackup -h mydbserver -D /usr/local/pgsql/backup1234
+$ mv /usr/local/pgsql/backup1234/backup_manifest /my/secure/location/backup_manifest.1234
+$ pg_verifybackup -m /my/secure/location/backup_manifest.1234 /usr/local/pgsql/backup1234
+```
+
+要在忽略手动添加到备份目录的文件的同时验证备份，并跳过校验和验证：
+
+```
+$ pg_basebackup -h mydbserver -D /usr/local/pgsql/data
+$ edit /usr/local/pgsql/data/note.to.self
+$ pg_verifybackup --ignore=note.to.self --skip-checksums /usr/local/pgsql/data
+```
+
+=== psql
+
+psql — IvorySQL的交互式终端
+
+#### 大纲
+
+`psql` [*`option`*...] [*`dbname`* [*`username`*]]
+
+#### 选项
+
+- `-a` `--echo-all`
+
+把所有非空输入行按照它们被读入的形式打印到标准输出（不适用于交互式行读取）。这等效于把变量 `ECHO` 设置为 `all`。
+
+- `-A` `--no-align`
+
+切换到非对齐输出模式（默认输出模式是 `对齐` 的）。这等效于 `\pset format unaligned`。
+
+- `-b` `--echo-errors`
+
+把失败的 SQL 命令打印到标准错误输出。这等效于把变量 `ECHO` 设置为 `errors`。
+
+- `-c *command*` `--command=*command*`
+
+指定psql执行一个给定的命令字符串 *`command`*。这个选项可以重复多次并且以任何顺序与 `-f` 选项组合在一起。当 `-c` 或者 `-f` 被指定时，psql不会从标准输入读取命令，直到它处理完序列中所有的 `-c` 和 `-f` 选项之后终止。*`command`* 必须是一个服务器完全可解析的命令字符串（即不包含psql相关的特性）或者单个反斜线命令。因此不能在一个 `-c` 选项中混合SQL和psql元命令。要那样做，可以使用多个 `-c` 选项或者把字符串用管道输送到psql中，例如： `psql -c '\x' -c 'SELECT * FROM foo;' ` 或者 `echo '\x \\ SELECT * FROM foo;' | psql ` （ `\\` 是分隔符元命令）。每一个被传递给 `-c` 的SQL命令字符串会被当做一个单独的请求发送给服务器。因此，即便该字符串包括多个SQL命令，服务器也会把它当做一个事务来执行，除非在该字符串中有显式的 `BEGIN` / `COMMIT` 命令把它划分成多个事务。此外，psql只会打印出该字符串中最后一个SQL命令的结果。这和从文件中读取同一字符串或者把同一字符串传给psql的标准输出时的行为不同，因为那两种情况下psql会独立地发送每一个SQL命令。由于这种行为，把多于一个SQL命令放在 `-c` 字符串中通常会得到意料之外的结果。最好使用多个 `-c` 命令或者把多个命令输送给psql的标准输入，按照上文所说的使用echo或者通过一个shell，例如： `psql <<EOF \x SELECT * FROM foo; EOF ` 
+
+- `--csv`
+
+切换到CSV（逗号分隔值）输出模式。 这相当于 `\pset format csv`。
+
+- `-d *dbname*` `--dbname=*dbname*`
+
+指定要连接的数据库的名称。这等效于指定 *`dbname`* 为命令行上的第一个非选项参数。*`dbname`* 可以是 http://www.postgres.cn/docs/14/libpq-connect.html#LIBPQ-CONNSTRING[连接字符串]。 如果是这样，连接字符串参数将覆盖任何冲突的命令行选项。
+
+- `-e` `--echo-queries`
+
+也把发送到服务器的所有 SQL 命令复制到标准输出。这等效于把变量 `ECHO` 设置为 `queries`。
+
+- `-E` `--echo-hidden`
+
+回显 `\d` 以及其他反斜线命令生成的实际查询。可以用它来学习psql的内部操作。这等效于把变量 `ECHO_HIDDEN` 设置为 `on`。
+
+- `-f *filename*` `--file=*filename*`
+
+从文件 *`filename`* 而不是标准输入中读取命令。这个选项可以被重复多次，也可以以任意顺序与 `-c` 选项组合。当 `-c` 或者 `-f` 被指定时，psql不会从标准输入读取命令，直到它处理完序列中所有的 `-c` 和 `-f` 选项之后终止。除此以外，这个选项很大程度上等价于元命令 `\i`。如果 *`filename`* 是 `-` （连字符），那么会读取标准输入直到遇见一个 EOF 指示或者 `\q` 元命令。这种方式可以用把自多个文件的输入组合成一种交互式输入。不过注意在这种情况下不会使用 Readline（很像指定了 `-n` 的情况）。使用这个选项与 `psql < *filename*` 有细微的不同。通常，两种形式都可以做到我们所期望的，但是使用 `-f` 启用了一些好的特性，例如带有行号的错误消息。使用这个选项还有一丝机会可以降低启动开销。在另一方面，使用shell输入重定向的变体（理论上）保证会得到与手工输入时相同的输出。
+
+- `-F *separator*` `--field-separator=*separator*`
+
+使用 *`separator`* 作为非对齐输出的域分隔符。这等效于 `\pset fieldsep` 或者 `\f`。
+
+- `-h *hostname*` `--host=*hostname*`
+
+指定运行服务器的机器的主机名。如果这个值由一个斜线开始，它会被用作 Unix 域套接字的目录。
+
+- `-H` `--html`
+
+切换到HTML输出模式。这等效于 `\pset format html` 或者 `\H` 命令。
+
+- `-l` `--list`
+
+列出所有可用的数据库，然后退出。其他非连接选项会被忽略。这与元命令 `\list` 类似。在使用这个选项时，psql将连接到数据库 `postgres`，除非在命令行上提及一个不同的数据（选项 `-d` 或非选项参数，可能是通过一个服务项，但不能通过一个环境变量）。
+
+- `-L *filename*` `--log-file=*filename*`
+
+除了把所有查询输出写到普通输出目标之外，还写到文件 *`filename`* 中。
+
+- `-n` `--no-readline`
+
+不使用Readline做行编辑并且不使用命令历史。在剪切和粘贴时，关掉 Tab 展开会有所帮助。
+
+- `-o *`filename`*` `--output=*`filename`*`
+
+把所有查询输出放到文件 *`filename`* 中。这等效于命令 `\o`。
+
+- `-p *port*` `--port=*port*`
+
+指定服务器用于监听连接的 TCP 端口或者本地 Unix 域套接字文件扩展。默认是 `PGPORT` 环境变量的值，如果没有设置，则默认为编译时指定的端口号（通常是5432）。
+
+- `-P *assignment*` `--pset=*assignment*`
+
+以 `\pset` 的形式指定打印选项。注意，这里你必须用一个等号而不是空格来分隔名称和值。例如，要设置输出格式为LaTeX，应该写成 `-P format=latex`。
+
+- `-q` `--quiet`
+
+指定psql应该安静地工作。默认情况下，它会打印出欢迎消息以及多种输出。如果使用了这个选项，以上那些就都不会输出。在使用 `-c` 选项时，配合这个选项很有用。这等效于设置变量 `QUIET` 为 `on`。
+
+- `-R *separator*` `--record-separator=*separator*`
+
+把 *`separator`* 用作非对齐输出的记录分隔符。这等效于 `\pset recordsep` 命令。
+
+- `-s` `--single-step`
+
+运行在单步模式中。这意味着在每个命令被发送给服务器之前都会提示用户一个可以取消执行的选项。使用这个选项可以调试脚本。
+
+- `-S` `--single-line`
+
+运行在单行模式中，其中新行会终止一个 SQL 命令，就像分号的作用一样。注意这种模式被提供给那些坚持使用它的用户，但是并不一定要使用它。特别地，如果在一行中混合了SQL和元命令，那对于没有经的用户来说，它们的执行顺序可能不总是那么清晰。
+
+- `-t` `--tuples-only`
+
+关闭打印列名和结果行计数页脚等。这等效于 `\t` 或者 `\pset tuples_only` 命令。
+
+- `-T *table_options*` `--table-attr=*table_options*`
+
+指定要替换HTML `table` 标签的选项。详见 `\pset tableattr`。
+
+- `-U *username*` `--username=*username*`
+
+作为用户 *`username`* 而不是默认用户连接到数据库（当然，你必须具有这样做的权限）。
+
+- `-v *assignment*` `--set=*assignment*` `--variable=*assignment*`
+
+执行一次变量赋值，和 `\set` 元命令相似。注意你必须在命令行上用等号分隔名字和值（如果有）。要重置一个变量，去掉等号就行。要把一个变量置为空值，使用等号但是去掉值。这些赋值在命令行处理期间被完成，因此反映连接状态的变量将在稍后被覆盖。
+
+- `-V` `--version`
+
+打印psql版本并且退出。
+
+- `-w` `--no-password`
+
+从不发出一个口令提示。如果服务器要求口令认证并且口令不能从其他来源（例如一个 `.pgpass` 文件）获得，那儿连接尝试将失败。这个选项对于批处理任务和脚本有用，因为在其中没有一个用户来输入口令。注意这个选项将对整个会话保持设置，并且因此它会影响元命令 `\connect` 的使用，就像初始的连接尝试那样。
+
+- `-W` `--password`
+
+强制psql在连接到一个数据库之前提示要求一个口令，即使口令不会被使用。如果服务器需要口令认证并且口令不能从其他来源获得，例如 `.pgpass` 文件，psql 在任何情况下都会提示输入口令。 然而，psql 将浪费一次连接尝试来发现服务器想要一个口令。在某些情况下值得用 `-W` 来避免额外的连接尝试。注意这个选项将对整个会话保持设置，并且因此它会影响元命令 `\connect` 的使用，就像初始的连接尝试那样。
+
+- `-x` `--expanded`
+
+打开扩展表格式模式。这等效于 `\x` 或者 `\pset expanded` 命令。
+
+- `-X,` `--no-psqlrc`
+
+不读取启动文件（要么是系统范围的 `psqlrc` 文件，要么是用户的 `~/.psqlrc` 文件）。
+
+- `-z` `--field-separator-zero`
+
+设置非对齐输出的域分隔符为零字节。这等效于 `\pset fieldsep_zero`。
+
+- `-0` `--record-separator-zero`
+
+设置非对齐输出的记录分隔符为零字节。例如，这对与 `xargs -0` 配合有关。这等效于 `\pset recordsep_zero`。
+
+- `-1` `--single-transaction`
+
+这个选项只能被用于与一个或者多个 `-c` 以及/或者 `-f` 选项组合。它会让psql在第一个上述选项之前发出一条 `BEGIN` 命令并且在最后一个上述选项之后发出一条 `COMMIT` 命令，这样就把所有的命令都包裹在一个事务中。这个选项可以保证要么所有的命令都成功地完成，要么不应用任何更改。如果命令本身包含 `BEGIN` 、 `COMMIT` 或者 `ROLLBACK`，这个选项将不会得到想要的效果。还有，如果当个命令不能在一个事务块中执行，指定这个选项将导致整个事务失败。
+
+- `-?` `--help[=*`topic`*]`
+
+显示有关psql的帮助并且退出。可选的 *`topic`* 参数（默认为 `options` ）选择要解释哪一部分的psql： `commands` 描述psql的反斜线命令； `options` 描述可以被传递给psql的命令行选项；而 `variables` 则显示有关psql配置变量的帮助。
+
+#### 退出状态
+
+如果psql正常完成，它会向 shell 返回 0。如果它自身发生一个致命错误（例如内存用完、找不到文件），它会返回 1。如果到服务器的连接出问题并且事务不是交互式的，它会返回 2。如果在脚本中发生错误，它会返回 3 并且变量 `ON_ERROR_STOP` 会被设置。
+
+#### 环境
+
+- `COLUMNS`
+
+如果 `\pset columns` 为零，这个环境变量控制用于 `wrapped` 格式的宽度以及用来确定是否输出需要用到分页器或者切换到扩展自动模式中的垂直格式的宽度。
+
+- `PGDATABASE` `PGHOST` `PGPORT` `PGUSER`
+
+默认连接参数。
+
+- `PG_COLOR`
+
+规定在诊断消息中是否使用颜色。可能的值为 `always`、 `auto`、 `never`。
+
+- `PSQL_EDITOR` `EDITOR` `VISUAL`
+
+`\e`、 `\ef` 以及 `\ev` 命令所使用的编辑器。会按照列出的顺序检查这些变量，第一个被设置的将被使用。如果都没有被设置，默认是使用Unix系统上的 `vi` 或者Windows系统上的 `notepad.exe`。
+
+- `PSQL_EDITOR_LINENUMBER_ARG`
+
+当 `\e`、 `\ef` 或者 `\ev` 带有一个行号参数时，这个变量指定用于传递起始行号给用户编辑器的命令行参数。对于Emacs或者vi之类的编辑器，这个变量是一个加号。如果需要在选项名称和行号之间有空格，可以在该变量的值中包括一个结尾的空格。例如： `PSQL_EDITOR_LINENUMBER_ARG='+' PSQL_EDITOR_LINENUMBER_ARG='--line ' ` 在 Unix 系统上默认是 `+` （对应于默认编辑器 `vi` ，且对很多其他常见编辑器可用）。在 Windows 系统上没有默认值。
+
+- `PSQL_HISTORY`
+
+命令历史文件的替代位置。波浪线（ `~` ）扩展会被执行。
+
+- `PSQL_PAGER` `PAGER`
+
+如果一个查询的结果在屏幕上放不下，它们会通过这个命令分页显示。典型的值是 `more` 或 `less`。通过把 `PSQL_PAGER` 或 `PAGER` 设置为空字符串可以禁用分页器的使用，调整 `\pset` 命令与分页器相关的选项也能达到同样的效果。会按照列出的顺序检查这些变量，第一个被设置的将被使用。如果都没有被设置，则大部分平台上默认使用 `more`，但在Cygwin上使用 `less`。
+
+- `PSQLRC`
+
+用户的 `.psqlrc` 文件的替代位置。波浪线（ `~` ）扩展会被执行。
+
+- `SHELL`
+
+被 `\!` 命令执行的命令。
+
+- `TMPDIR`
+
+存储临时文件的目录。默认是 `/tmp` 。
+
+和大部分其他IvorySQL工具一样，这个工具也使用libpq所支持的环境变量。
+
+#### 文件
+
+- `psqlrc` and `~/.psqlrc`
+
+如果没有 `-X` 选项，在连接到数据库后但在接收正常的命令之前，psql会尝试依次从系统级的启动文件（ `psqlrc` ）和用户的个人启动文件（ `~/.psqlrc` ）中读取并且执行命令。这些文件可以被用来设置客户端或者服务器，通常是一些 `\set` 和 `SET` 命令。系统级的启动文件是 `psqlrc`，它应该在安装好的IvorySQL的“系统配置”目录中，最可靠的定位方法是运行 `pg_config --sysconfdir` 。默认情况下，这个目录将是 `../etc/` （相对于包含IvorySQL可执行文件的目录）。可以通过 `PGSYSCONFDIR` 环境变量显式地设置这个目录的名称。用户个人的启动文件是 `.psqlrc`，它应该在调用用户的主目录中。在 Windows 上，由于没有用户主目录的概念，个人的启动文件是 `%APPDATA%\postgresql\psqlrc.conf` 。用户启动文件的位置可以通过 `PSQLRC` 环境变量设置。系统级和用户个人的启动文件都可以弄成是针对特定psql版本的，方法是在文件名后面加上一个横线以及IvorySQL的主、次版本号，版本最为匹配的文件会优先于不那么匹配的文件读入。
+
+- `.psql_history`
+
+命令行历史被存储在文件 `~/.psql_history` 中，或者是 Windows 的文件 `%APPDATA%\postgresql\psql_history` 中。历史文件的位置可以通过 `HISTFILE` psql变量或者 `PSQL_HISTORY` 环境变量明确的设置。
+
+#### 注解
+
+- psql和具有相同主版本或者更老的主版本服务器最为匹配。如果服务器的版本比psql本身要高，则反斜线命令尤其容易失败。运行 SQL 命令并且显示查询结果的一般功能应该也能和具有更新主版本的服务器一起使用，但是并非在所有的情况下都能保证如此。
+
+如果你想用psql连接到多个具有不同主版本的服务器，推荐使用最新版本的psql。或者，你可以为每一个主版本保留一份psql拷贝，并且针对相应的服务器使用匹配的版本。但实际上，这种额外的麻烦是不必要的。
+
+
+#### 示例
+
+第一个例子展示了如何如何跨越多行输入一个命令。注意提示符的改变：
+
+```
+testdb=> CREATE TABLE my_table (
+testdb(>  first integer not null default 0,
+testdb(>  second text)
+testdb-> ;
+CREATE TABLE
+```
+
+现在再看看表定义：
+
+```
+testdb=> \d my_table
+              Table "public.my_table"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ first  | integer |           | not null | 0
+ second | text    |           |          | 
+```
+
+现在我们把提示符改一改：
+
+```
+testdb=> \set PROMPT1 '%n@%m %~%R%# '
+peter@localhost testdb=>
+```
+
+假定已经用数据填充了这个表并且想看看其中的数据：
+
+```
+peter@localhost testdb=> SELECT * FROM my_table;
+ first | second
+-------+--------
+     1 | one
+     2 | two
+     3 | three
+     4 | four
+(4 rows)
+```
+
+你可以用 `\pset` 命令以不同的方式显示表：
+
+```
+peter@localhost testdb=> \pset border 2
+Border style is 2.
+peter@localhost testdb=> SELECT * FROM my_table;
++-------+--------+
+| first | second |
++-------+--------+
+|     1 | one    |
+|     2 | two    |
+|     3 | three  |
+|     4 | four   |
++-------+--------+
+(4 rows)
+
+peter@localhost testdb=> \pset border 0
+Border style is 0.
+peter@localhost testdb=> SELECT * FROM my_table;
+first second
+----- ------
+    1 one
+    2 two
+    3 three
+    4 four
+(4 rows)
+
+peter@localhost testdb=> \pset border 1
+Border style is 1.
+peter@localhost testdb=> \pset format csv
+Output format is csv.
+peter@localhost testdb=> \pset tuples_only
+Tuples only is on.
+peter@localhost testdb=> SELECT second, first FROM my_table;
+one,1
+two,2
+three,3
+four,4
+peter@localhost testdb=> \pset format unaligned
+Output format is unaligned.
+peter@localhost testdb=> \pset fieldsep '\t'
+Field separator is "    ".
+peter@localhost testdb=> SELECT second, first FROM my_table;
+one     1
+two     2
+three   3
+four    4
+```
+
+或者使用短命令：
+
+```
+peter@localhost testdb=> \a \t \x
+Output format is aligned.
+Tuples only is off.
+Expanded display is on.
+peter@localhost testdb=> SELECT * FROM my_table;
+-[ RECORD 1 ]-
+first  | 1
+second | one
+-[ RECORD 2 ]-
+first  | 2
+second | two
+-[ RECORD 3 ]-
+first  | 3
+second | three
+-[ RECORD 4 ]-
+first  | 4
+second | four
+```
+
+此外，可以使用 `\g` 为一个查询设置这些输出格式选项：
+
+```
+peter@localhost testdb=> SELECT * FROM my_table
+peter@localhost testdb-> \g (format=aligned tuples_only=off expanded=on)
+-[ RECORD 1 ]-
+first  | 1
+second | one
+-[ RECORD 2 ]-
+first  | 2
+second | two
+-[ RECORD 3 ]-
+first  | 3
+second | three
+-[ RECORD 4 ]-
+first  | 4
+second | four
+```
+
+
+
+这是一个示例，用 `\df` 命令以发现名称匹配 `int*pl` 并且第二参数是 `bigint` 类型的函数:
+
+```
+testdb=> \df int*pl * bigint
+                          List of functions
+   Schema   |  Name   | Result data type | Argument data types | Type
+------------+---------+------------------+---------------------+------
+ pg_catalog | int28pl | bigint           | smallint, bigint    | func
+ pg_catalog | int48pl | bigint           | integer, bigint     | func
+ pg_catalog | int8pl  | bigint           | bigint, bigint      | func
+(3 rows)
+```
+
+
+
+如果需要，可以用 `\crosstabview` 命令以交叉表的形式显示查询结果：
+
+```
+testdb=> SELECT first, second, first > 2 AS gt2 FROM my_table;
+ first | second | gt2 
+-------+--------+-----
+     1 | one    | f
+     2 | two    | f
+     3 | three  | t
+     4 | four   | t
+(4 rows)
+
+testdb=> \crosstabview first second
+ first | one | two | three | four 
+-------+-----+-----+-------+------
+     1 | f   |     |       | 
+     2 |     | f   |       | 
+     3 |     |     | t     | 
+     4 |     |     |       | t
+(4 rows)
+```
+
+这第二个例子展示了表的“乘法”（连接），行按照序号降序排序且列按照独立的、升序的方式排序。
+
+```
+testdb=> SELECT t1.first as "A", t2.first+100 AS "B", t1.first*(t2.first+100) as "AxB",
+testdb(> row_number() over(order by t2.first) AS ord
+testdb(> FROM my_table t1 CROSS JOIN my_table t2 ORDER BY 1 DESC
+testdb(> \crosstabview "A" "B" "AxB" ord
+ A | 101 | 102 | 103 | 104 
+---+-----+-----+-----+-----
+ 4 | 404 | 408 | 412 | 416
+ 3 | 303 | 306 | 309 | 312
+ 2 | 202 | 204 | 206 | 208
+ 1 | 101 | 102 | 103 | 104
+(4 rows)
+```
+
+=== reindexdb
+
+reindexdb — 重索引一个IvorySQL数据库
+
+#### 大纲
+
+`reindexdb` [*`connection-option`*...] [*`option`*...] [ `-S` | `--schema` *`schema`* ] ... [ `-t` | `--table` *`table`* ] ... [ `-i` | `--index` *`index`* ] ... [*`dbname`*]
+
+```
+reindexdb` [*`connection-option`*...] [*`option`*...] `-a` | `--all
+```
+
+`reindexdb` [*`connection-option`*...] [*`option`*...] `-s` | `--system` [*`dbname`*]
+
+#### 选项
+
+reindexdb接受下列命令行参数：
+
+- `-a` `--all`
+
+  重索引所有数据库。
+
+- `--concurrently`
+
+  使用 `CONCURRENTLY` 选项。 请参阅 http://www.postgres.cn/docs/14/sql-reindex.html[REINDEX]，其中详细解释了此选项的所有注意事项。
+
+- `[-d] *dbname*` `[--dbname=]*dbname*`
+
+当 `-a` / `--all` 未使用时，指定要重新索引的数据库的名称。 如果未指定，则从环境变量 `PGDATABASE` 中读取数据库名称。 如果未设置，则使用为连接指定的用户名。 *`dbname`* 可以是 http://www.postgres.cn/docs/14/libpq-connect.html#LIBPQ-CONNSTRING[连接字符串]。 如果是这样，连接字符串参数将覆盖任何冲突的命令行选项。
+
+- `-e` `--echo`
+
+回显reindexdb生成并发送到服务器的命令。
+
+- `-i *index*` `--index=*index*`
+
+  只是重建 *`index`*。可以通过写多个 `-i` 开关来重建多个索引。
+
+- `-j *njobs*` `--jobs=*njobs*`
+
+通过同时运行 *`njobs`* 命令并行执行 reindex 命令。 此选项可能会减少处理时间，但也会增加数据库服务器上的负载。reindexdb将打开到数据库的 *`njobs`* 连接，因此请确保 http://www.postgres.cn/docs/14/runtime-config-connection.html#GUC-MAX-CONNECTIONS[max_connections] 设置足够高，可以容纳所有连接。请注意，此选项与 `--index` 和 `--system` 选项不兼容。
+
+- `-q` `--quiet`
+
+不显示进度消息。
+
+- `-s` `--system`
+
+仅索引数据库的系统目录。
+
+- `-S *schema*` `--schema=*schema*`
+
+只对 *`schema`* 重建索引。 通过写多个 `-S` 开关可以指定多个要重建索引的模式。
+
+- `-t *table*` `--table=*table*`
+
+只索引 *`table`*。可以通过写多个 `-t` 开关来重索引多个表。
+
+- `--tablespace=*tablespace*`
+
+指定要重建索引的表空间。 （这个名字以双引号标识符来处理。）
+
+- `-v` `--verbose`
+
+在处理时打印详细信息。
+
+- `-V` `--version`
+
+打印reindexdb版本并退出。
+
+- `-?` `--help`
+
+显示有关reindexdb命令行参数的帮助并退出。
+
+
+
+reindexdb也接受下列命令行参数用于连接参数：
+
+- `-h *host*` `--host=*host*`
+
+指定运行服务器的机器的主机名。如果该值以一个斜线开始，它被用作 Unix 域套接字的目录。
+
+- `-p *port*` `--port=*port*`
+
+指定服务器正在监听连接的 TCP 端口或本地 Unix 域套接字文件扩展。
+
+- `-U *username*` `--username=*username*`
+
+要作为哪个用户连接。
+
+- `-w` `--no-password`
+
+从不发出一个口令提示。如果服务器要求口令认证并且没有其他方式提供口令（例如一个 `.pgpass` 文件），那儿连接尝试将失败。这个选项对于批处理任务和脚本有用，因为在其中没有一个用户来输入口令。
+
+- `-W` `--password`
+
+强制reindexdb在连接到一个数据库之前提示要求一个口令。这个选项不是必不可少的，因为如果服务器要求口令认证，reindexdb将自动提示要求一个口令。但是，reindexdb将浪费一次连接尝试来发现服务器想要一个口令。在某些情况下值得用 `-W` 来避免额外的连接尝试。
+
+- `--maintenance-db=*dbname*`
+
+当使用 `-a` / `--all` 时，指定要连接到的数据库名称以发现应重新索引哪些数据库。 如果未指定，将使用 `postgres` 数据库， 如果不存在，将使用  `template1` 。 这可以是 http://www.postgres.cn/docs/14/libpq-connect.html#LIBPQ-CONNSTRING[连接字符串]。 如果是这样，连接字符串参数将覆盖任何冲突的命令行选项。 此外，在连接到其他数据库时，将重新使用除数据库名称本身之外的连接字符串参数。
+
+
+
+#### 环境
+
+- `PGDATABASE` `PGHOST` `PGPORT` `PGUSER`
+
+默认连接参数
+
+- `PG_COLOR`
+
+规定在诊断消息中是否使用颜色。可能的值为 `always`、 `auto`、 `never`。
+
+和大部分其他IvorySQL工具相似，这个工具也使用libpq支持的环境变量。
+
+#### 诊断
+
+在有困难时，可以在 http://www.postgres.cn/docs/14/sql-reindex.html[REINDEX]和 http://www.postgres.cn/docs/14/app-psql.html[psql] 中找潜在问题和错误消息的讨论。数据库服务器必须运行在目标主机上。同样，任何libpq前端库使用的默认连接设置和环境变量都将适用于此。
+
+#### 注解
+
+reindexdb可能需要多次连接到IvorySQL服务器，每一次都会询问一个口令。在这种情况下使用一个 `~/.pgpass` 文件会更方便。
+
+#### 例子
+
+要重索引数据库 `test`：
+
+```
+$ reindexdb test
+```
+
+要重索引名为 `abcd` 的数据库中的表 `foo` 和索引 `bar`：
+
+```
+$ reindexdb --table foo --index bar abcd
+```
+
+===  vacuumdb
+
+vacuumdb — 对一个IvorySQL数据库进行垃圾收集和分析
+
+==== 大纲
+
+`vacuumdb` [*`connection-option`*...] [*`option`*...] [ `-t` | `--table` *`table`* [( *`column`* [,...] )] ] ... [*`dbname`*]
+
+```
+vacuumdb` [*`connection-option`*...] [*`option`*...] `-a` | `--all
+```
+
+#### 选项
+
+vacuumdb接受下列命令行参数：
+
+- `-a` `--all`
+
+清理所有数据库。
+
+- `[-d] *dbname*` `[--dbname=]*dbname*`
+
+指定要清理或分析的数据库的名称，当不使用 `-a` / `--all`时。 如果未指定，则从环境变量 `PGDATABASE` 中读取数据库名称。 如果环境变量也没有设置，指定给该连接的用户名将用作数据库名。 *`dbname`* 可以是 http://www.postgres.cn/docs/14/libpq-connect.html#LIBPQ-CONNSTRING[connection string]。 如果是这样，连接时的字符串参数将覆盖任何冲突的命令行选项。
+
+- `--disable-page-skipping`
+
+根据可见性地图的内容禁用跳过页面。
+
+- `-e` `--echo`
+
+回显vacuumdb生成并发送给服务器的命令。
+
+- `-f` `--full`
+
+执行“完全”清理。
+
+- `-F` `--freeze`
+
+强有力地“冻结”元组。
+
+- `--force-index-cleanup`
+
+总是移除指向死元组的索引条目。注意这个选项仅在服务器运行IvorySQL12或更晚版本时有效。
+
+- `-j *njobs*` `--jobs=*njobs*`
+
+通过同时运行 *`njobs`* 个命令来并行执行清理或者分析命令。这个选项可能会减少处理的时间， 但是它也会增加数据库服务器的负载。vacuumdb将开启 *`njobs`* 个到数据库的连接，因此请确认你的 http://www.postgres.cn/docs/14/runtime-config-connection.html#GUC-MAX-CONNECTIONS[max_connections] 设置足够高以容纳所有的连接。注意如果某些系统目录被并行处理，使用这种模式加上 `-f`（ `FULL` ）选项可能会导致 死锁失败。
+
+- `--min-mxid-age *mxid_age*`
+
+仅在multixact ID 年龄至少为 *`mxid_age`* 的表上执行清空或分析命令。 此设置对于确定要处理的表的优先级比较有用，以防止multixact ID 回绕。对于此选项的用途，关系的multixact ID年龄是主关系及其关联的TOAST表的年龄中最大的，如果存在的话。 由于vacuumdb发出的命令在需要时还将处理TOAST表的关系，它无需单独考虑。
+
+- `--min-xid-age *xid_age*`
+
+仅在事务ID 年龄至少为 *`xid_age`* 的表上执行清空或分析命令。 此设置对于确定要处理的表的优先级比较有用，以防止事务ID 回绕。对于此选项的用途，关系的事务ID年龄是主关系及其关联的TOAST表的年龄中最大的，如果存在的话。 由于vacuumdb发出的命令在需要时还将处理TOAST表的关系，它无需单独考虑。
+
+- `--no-index-cleanup`
+
+不移除指向死元组的索引条目。
+
+- `--no-process-toast`
+
+略过与要清理的表有关联的任何 TOAST 表。
+
+- `--no-truncate`
+
+不要在表的结尾截断空页面。
+
+- `-P *parallel_workers*` `--parallel=*parallel_workers*`
+
+指定 *parallel vacuum* 的并发数量。 这允许清理利用多个 CPU 来处理索引。 请参见 http://www.postgres.cn/docs/14/sql-vacuum.html[VACUUM]。
+
+- `-q` `--quiet`
+
+不显示进度消息。
+
+- `--skip-locked`
+
+跳过无法立即锁定以进行处理的关系。
+
+- `-t *`table`* [ (*`column`* [,...]) ]` `--table=*`table`* [ (*`column`* [,...]) ]`
+
+只清理或分析 *`table`*。列名只能和 `--analyze` 或 `--analyze-only` 选项一起被指定。通过写多个 `-t` 开关可以清理多个表。提示如果你指定列，你可能必须转义来自 shell 的括号（见下面的例子）。
+
+- `-v` `--verbose`
+
+在处理期间打印详细信息。
+
+- `-V` `--version`
+
+打印vacuumdb版本并退出。
+
+- `-z` `--analyze`
+
+也计算优化器使用的统计信息。
+
+- `-Z` `--analyze-only`
+
+只计算优化器使用的统计信息（不清理）。
+
+- `--analyze-in-stages`
+
+与 `--analyze-only` 相似，只计算优化器使用的统计信息（不做清理）。 使用不同的配置设置运行分析的几个（目前是 3个）阶段以更快地产生可用的统计信息。这个选项对分析一个刚从转储恢复或者通过 `pg_upgrade` 得到的数据库有用。这个选项将尝试尽可能快地创建一些统计信息来让该数据库可用，然后在后续的阶段中产生完整的统计信息。
+
+- `-?` `--help`
+
+显示有关vacuumdb命令行参数的帮助并退出。
+
+vacuumdb也接受下列命令行参数用于连接参数：
+
+- `-h *host*` `--host=*host*`
+
+指定运行服务器的机器的主机名。如果该值以一个斜线开始，它被用作 Unix 域套接字的目录。
+
+- `-p *port*` `--port=*port*`
+
+指定服务器正在监听连接的 TCP 端口或本地 Unix 域套接字文件扩展。
+
+- `-U *username*` `--username=*username*`
+
+要作为哪个用户连接。
+
+- `-w` `--no-password`
+
+从不发出一个口令提示。如果服务器要求口令认证并且没有其他方式提供口令（例如一个 `.pgpass` 文件），那儿连接尝试将失败。这个选项对于批处理任务和脚本有用，因为在其中没有一个用户来输入口令。
+
+- `-W` `--password`
+
+强制vacuumdb在连接到一个数据库之前提示要求一个口令。这个选项不是必不可少的，因为如果服务器要求口令认证，vacuumdb将自动提示要求一个口令。但是，vacuumdb将浪费一次连接尝试来发现服务器想要一个口令。在某些情况下值得用 `-W` 来避免额外的连接尝试。
+
+- `--maintenance-db=*dbname*`
+
+当使用 `-a` / `--all` 时，指定要连接到的数据库名称以发现应该清理的数据库。 如果未指定，将使用 `postgres` 数据库，如果不存在，将使用 `template1`。 这可以是 http://www.postgres.cn/docs/14/libpq-connect.html#LIBPQ-CONNSTRING[connection string]。 如果是这样，连接字符串参数将覆盖任何冲突的命令行选项。 此外，在连接到其他数据库时，将重新使用除数据库名称本身之外的连接字符串参数。
+
+
+
+#### 环境
+
+- `PGDATABASE` `PGHOST` `PGPORT` `PGUSER`
+
+默认连接参数
+
+- `PG_COLOR`
+
+规定在诊断消息中是否使用颜色。可能的值为 `always`、 `auto` 和 `never`。
+
+和大部分其他IvorySQL工具相似，这个工具也使用libpq支持的环境变量。
+
+#### 诊断
+
+在有困难时，可以在 http://www.postgres.cn/docs/14/sql-vacuum.html[VACUUM] 和 http://www.postgres.cn/docs/14/app-psql.html[psql] 中找潜在问题和错误消息的讨论。数据库服务器必须运行在目标主机上。同样，任何libpq前端库使用的默认连接设置和环境变量都将适用于此。
+
+#### 注解
+
+vacuumdb可能需要多次连接到IvorySQL服务器，每次都询问一个口令。在这种情况下有一个 `~/.pgpass` 文件会很方便。
+
+#### 例子
+
+要清理数据库 `test`：
+
+```
+$ vacuumdb test
+```
+
+要清理和为优化器分析一个名为 `bigdb` 的数据库：
+
+```
+$ vacuumdb --analyze bigdb
+```
+
+要清理在名为 `xyzzy` 的数据库中的一个表 `foo`，并且为优化器分析该表的 `bar` 列：
+
+```
+$ vacuumdb --analyze --verbose --table='foo(bar)' xyzzy
+```
+
+== 服务器应用
+
+=== initdb
+
+initdb — 创建一个新的IvorySQL数据库集簇
+
+#### 大纲
+
+`initdb` [*`option`*...] [ `--pgdata` | `-D` ]*` directory`*
+
+#### 选项
+
+- `-A *authmethod*` `--auth=*authmethod*`
+
+这个选项为本地用户指定在 `pg_hba.conf` 中使用的默认认证方法（ `host` 和`local` 行）。`initdb` 将使用指定的认证方法为非复制连接以及复制连接填充 `pg_hba.conf` 项。除非你信任你系统上的所有本地用户，不要使用 `trust`。为了安装方便，`trust` 是默认值。
+
+- `--auth-host=*authmethod*`
+
+这个选项为通过 TCP/IP 连接的本地用户指定在 `pg_hba.conf` 中使用的认证方法（ `host` 行）。
+
+- `--auth-local=*authmethod*`
+
+这个选项为通过 Unix 域套接字连接的本地用户指定在 `pg_hba.conf` 中使用的认证方法（ `local` 行）。
+
+- `-D *directory*` `--pgdata=*directory*`
+
+这个选项指定数据库集簇应该存放的目录。这是 `initdb` 要求的唯一信息，但是你可以通过设定 `PGDATA` 环境变量来避免书写它，这很方便因为之后数据库服务器（ `postgres` ）可以使用同一个变量来找到数据库目录。
+
+- `-E *encoding*` `--encoding=*encoding*`
+
+选择模板数据库的编码。这也将是后来创建的任何数据库的默认编码，除非你覆盖它。默认值来自于区域，或者如果该值不起作用则为 `SQL_ASCII`。
+
+- `-g` `--allow-group-access`
+
+允许与集簇拥有者同组的用户读取 `initdb` 创建的所有集簇文件。 Windows会忽略此选项，因为它不支持POSIX样式的组权限。
+
+- `-k` `--data-checksums`
+
+在数据页面上使用校验码来帮助检测 I/O 系统造成的损坏。 启用校验码将会引起显著的性能惩罚。 如果设置，则为所有对象计算校验和，在整个数据库中。 所有校验和失败都将报告在 http://www.postgres.cn/docs/14/monitoring-stats.html#MONITORING-PG-STAT-DATABASE-VIEW[ `pg_stat_database`] 视图。 
+
+- `--locale=*locale*`
+
+为数据库集簇设置默认区域。如果这个选项没有被指定，该区域将从 `initdb` 所运行的环境中继承。
+
+- `--lc-collate=*locale*` `--lc-ctype=*locale*` `--lc-messages=*locale*` `--lc-monetary=*locale*` `--lc-numeric=*locale*` `--lc-time=*locale*`
+
+和 `--locale` 相似，但是只在指定的分类中设置区域。
+
+- `--no-locale`
+
+等效于 `--locale=C`。
+
+- `-N` `--no-sync`
+
+默认情况下，`initdb` 将等待所有文件被安全地写到磁盘。这个选项会导致 `initdb` 不等待就返回，这当然更快，但是也意味着一次后续的操作系统崩溃可能让数据目录损坏。通常，这个选项对测试有用，但是不应该在创建生产安装时使用。
+
+- `-−no-instructions`
+
+默认情况下，`initdb` 将在输出的尾部写入如何启动集群的指令。 这个选项会导致那些指令被抛弃。 这主要由平台特定行为中封装 `initdb` 的工具来使用，那些指令有可能是错误的。
+
+- `--pwfile=*filename*`
+
+让 `initdb` 从一个文件读取数据库超级用户的口令。该文件的第一行被当作口令。
+
+- `-S` `--sync-only`
+
+安全地把所有数据库文件写入到磁盘并退出。这不会执行任何正常的initdb操作。
+
+- `-T *config*` `--text-search-config=*config*`
+
+设置默认的文本搜索配置。详见 http://www.postgres.cn/docs/14/runtime-config-client.html#GUC-DEFAULT-TEXT-SEARCH-CONFIG[default_text_search_config]。
+
+- `-U *username*` `--username=*username*`
+
+选择数据库超级用户的用户名。这个的默认值是实际运行 `initdb` 的用户的名称。超级用户的名字是什么真的不重要，但是你可以选择保留常用的名字postgres，即使操作系统的用户名不同。
+
+- `-W` `--pwprompt`
+
+让 `initdb` 提示要求为数据库超级用户给予一个口令。如果你没有计划使用口令认证，这就不重要。否则在你设置一个口令之前你就无法使用口令认证。
+
+- `-X *directory*` `--waldir=*directory*`
+
+这个选项指定预写式日志会被存储在哪个目录中。
+
+- `--wal-segsize=*`size`*`
+
+设置 *WAL段尺寸*，以兆字节为单位。这是WAL日志中每个文件的尺寸。默认的尺寸为16兆字节。该值必须位于2的1次幂和1024次幂（兆字节）之间。这个选项只能在初始化期间设置，并且之后不能更改。调整这个值来控制WAL日志传送或者归档可能会有用。此外，在有大量WAL的数据库中，每个目录中数量巨大的WAL文件可能会成为性能和管理问题。增加WAL文件尺寸将会降低WAL文件的数量。
+
+
+
+其他较少使用的选项：
+
+- `-d` `--debug`
+
+打印来自引导后端的调试输出以及普通大众不那么感兴趣的一些消息。引导后端被程序 `initdb` 用来创建目录表。这个选项会生成大量极端无聊的输出。
+
+- `-−discard-caches`
+
+使用 `debug_discard_caches=1` 选项运行引导程序后端。 这需要很长时间并且只适用于深度调试。
+
+- `-L *directory*`
+
+指定 `initdb` 应从哪里寻找它的输入文件来初始化数据库集簇。这通常没有必要。如果你需要显式指定它们的位置，你应该被告知。
+
+- `-n` `--no-clean`
+
+默认情况下，当 `initdb` 确定有一个错误阻止它完整地创建数据库集簇，它会移除在它发现无法完成任务之前创建的任何文件。这个选项会抑制这种整理并且对调试有用。
+
+
+
+其他选项：
+
+- `-V` `--version`
+
+打印initdb版本并退出。
+
+- `-?` `--help`
+
+显示有关initdb命令行参数的帮助并退出。
+
+
+
+#### 环境
+
+- `PGDATA`
+
+指定数据库集簇应该被存放的目录，可以使用 `-D` 选项覆盖。
+
+- `PG_COLOR`
+
+规定在诊断消息中是否使用颜色。可能的值为 `always`、 `auto`、 `never`。
+
+- `TZ`
+
+指定创建的数据集簇的默认时区。值应该是一个完整的时区名称
+
+和大部分其他IvorySQL工具相似，这个工具也使用libpq支持的环境变量。
+
+#### 注解
+
+`initdb` 可以通过 `pg_ctl initdb` 被调用。
+
+=== pg_archivecleanup
+
+pg_archivecleanup — 清理IvorySQL WAL 归档文件
+
+#### 大纲
+
+`pg_archivecleanup` [*`option`*...] *`archivelocation`* *`oldestkeptwalfile`*
+
+#### 选项
+
+pg_archivecleanup接受下列命令行参数：
+
+- `-d`
+
+在 `stderr` 上打印很多调试日志输出。
+
+- `-n`
+
+在 `stdout` 上打印将被移除的文件的名字（执行一次演习）。
+
+- `-V` `--version`
+
+打印pg_archivecleanup版本并退出。
+
+- `-x` *`extension`*
+
+提供一个扩展名，在决定所有的文件 是否应该被删除之前，将从文件名中剥离这个扩展名。这通常有助于清理已经 存储期间被压缩过并且被压缩程序增加了一个扩展名的归档。例如： `-x .gz`。
+
+- `-?` `--help`
+
+显示pg_archivecleanup命令行参数的帮助并退出。
+
+#### 环境
+
+环境变量 `PG_COLOR` 指定是否在诊断消息中使用颜色。 可能的值是  `always`, `auto` 和 `never`。
+
+#### 示例
+
+在 Linux 或者 Unix 系统上，你可能会用：
+
+```
+archive_cleanup_command = 'pg_archivecleanup -d /mnt/standby/archive %r 2>>cleanup.log'
+```
+
+其中归档目录位于后备服务器上，这样 `archive_command` 通过 NFS 来访问它，但是文件对于后备服务器来说是本地的。这将会
+
+- 在 `cleanup.log` 中产生调试输出
+- 从归档目录中移除不再需要的文件
+
+=== pg_checksums
+
+pg_checksums — 在IvorySQL数据库集簇中启用、禁用或检查数据校验和
+
+#### 大纲
+
+`pg_checksums` [*`option`*...] [[ `-D` | `--pgdata` ]*`datadir`*]
+
+#### 选项
+
+下列命令选项可用：
+
+- `-D *directory*` `--pgdata=*directory*`
+
+指定存储数据库集簇的目录。
+
+- `-c` `--check`
+
+检查校验和。如果未指定其它任何内容，这是缺省模式。
+
+- `-d` `--disable`
+
+禁用校验和。
+
+- `-e` `--enable`
+
+启用校验和。
+
+- `-f *filenode*` `--filenode=*filenode*`
+
+仅验证文件节点为 *`filenode`* 的关系中的校验和。
+
+- `-N` `--no-sync`
+
+缺省地，`pg_checksums` 会等待所有文件安全地写到磁盘上。该选项使得 `pg_checksums` 不等待就返回，这样更快，但意味着后续如果操作系统崩溃会让更新的数据目录损坏。一般地，该选项对测试有用，但不应用在生产安装上。当使用 `--check` 时，该选项无效。
+
+- `-P` `--progress`
+
+启用进度报告。在检查或启用校验和时，打开该选项，会提供进度报告。
+
+- `-v` `--verbose`
+
+启用详细输出。列出所有检查的文件 。
+
+- `-V` `--version`
+
+打印pg_checksums版本并退出。
+
+- `-?` `--help`
+
+显示关于pg_checksums命令行参数的帮助并退出。
+
+
+
+#### 环境
+
+- `PGDATA`
+
+指定数据库集簇存储的目录；可以用 `-D` 选项覆盖。
+
+- `PG_COLOR`
+
+指定是否在诊断消息中使用颜色。可能的值为 `always`, `auto`, `never`。
+
+#### 注意
+
+在大型集簇中启用校验和的时间可能很长。在此操作期间，写到数据目录的集簇或其它程序必须是未启动的，否则可能出现数据丢失。
+
+当复制设置与执行关系文件块的直接拷贝的工具（例如 http://www.postgres.cn/docs/14/app-pgrewind.html[pg_rewind]）一起使用时，启用和禁用校验和会导致以不正确校验和形式出现的页面损坏，如果未在所有节点上执行一致的操作的话。故在复制设置中启用或禁用校验和时，推荐一致地切换所有集簇之前停止所有集簇。此外销毁所有备用数据库，在主数据库上执行操作，最后从头开始重建备用服务器，也是安全的。
+
+如果在启用或禁用校验和时异常终止或杀掉pg_checksums，那么集簇的数据校验和配置保持不变，pg_checksums可以重新运行以执行相同操作。
+
+=== pg_controldata
+
+pg_controldata — 显示一个IvorySQL数据库集簇的控制信息
+
+#### 大纲
+
+`pg_controldata` [*`option`*] [[ `-D` | `--pgdata` ]*`datadir`*]
+
+#### 环境
+
+- `PGDATA`
+
+默认的数据目录位置。
+
+- `PG_COLOR`
+
+规定在诊断消息中是否使用颜色。可能的值为 `always`、 `auto`、 `never`。
+
+=== pg_ctl
+
+pg_ctl — 初始化、启动、停止或控制一个IvorySQL服务器
+
+#### 大纲
+
+`pg_ctl` `init[db]` [`-D` *`datadir`*] [`-s`] [`-o` *`initdb-options`*]
+
+`pg_ctl` `start` [`-D` *`datadir`*] [`-l` *`filename`*] [`-W`] [`-t` *`seconds`*] [`-s`] [`-o` *`options`*] [`-p` *`path`*] [`-c`]
+
+`pg_ctl` `stop` [`-D` *`datadir`*] [`-m` `s[mart]` | `f[ast]` | `i[mmediate]` ] [`-W`] [`-t` *`seconds`*] [`-s`]
+
+`pg_ctl` `restart` [`-D` *`datadir`*] [`-m` `s[mart]` | `f[ast]` | `i[mmediate]` ] [`-W`] [`-t` *`seconds`*] [`-s`] [`-o` *`options`*] [`-c`]
+
+`pg_ctl` `reload` [`-D` *`datadir`*] [`-s`]
+
+`pg_ctl` `status` [`-D` *`datadir`*]
+
+`pg_ctl` `promote` [`-D` *`datadir`*] [`-W`] [`-t` *`seconds`*] [`-s`]
+
+`pg_ctl` `logrotate` [`-D` *`datadir`*] [`-s`]
+
+`pg_ctl` `kill` *`signal_name`* *`process_id`*
+
+在Microsoft Windows上，还有：
+
+`pg_ctl` `register` [`-D` *`datadir`*] [`-N` *`servicename`*] [`-U` *`username`*] [`-P` *`password`*] [`-S` `a[uto]` | `d[emand]` ] [`-e` *`source`*] [`-W`] [`-t` *`seconds`*] [`-s`] [`-o` *`options`*]
+
+`pg_ctl` `unregister` [`-N` *`servicename`*]
+
+#### 选项
+
+- `-c` `--core-files`
+
+  在可行的平台上尝试允许服务器崩溃产生核心文件，方法是提升在核心文件上的任何软性资源限制。这通过允许从一个失败的服务器进程中获得一个栈跟踪而有助于调试或诊断问题。
+
+- `-D *`datadir`*` `--pgdata=*`datadir`*`
+
+  指定数据库配置文件的文件系统位置。如果这个选项被忽略，将使用环境变量`PGDATA`。
+
+- `-l *`filename`*` `--log=*`filename`*`
+
+  追加服务器日志输出到*`filename`*。如果该文件不存在，它会被创建。umask被设置成 077，这样默认情况下不允许其他用户访问该日志文件。
+
+- `-m *mode*` `--mode=*mode*`
+
+指定关闭模式。*`mode`* 可以是 `smart`、`fast` 或 `immediate`，或者这三者之一的第一个字母。如果这个选项被忽略，则 `fast` 是默认值。
+
+- `-o *options*` `--options=*options*`
+
+指定被直接传递给 `postgres` 命令的选项。`-o` 可以被指定多次，所有给定的选项都会被传过去。这些选项应该通常被单引号或双引号包围来确保它们被作为一个组传递。
+
+- `-o *initdb-options*` `--options=*initdb-options*`
+
+指定要直接传递给 `initdb` 命令的选项。`-o` 可以被指定多次，所有给定的选项都会被传过去。这些选项应该通常被单引号或双引号包围来确保它们被作为一个组传递。
+
+- `-p *path*`
+
+指定 `postgres` 可执行程序的位置。默认情况下，`postgres` 可执行程序可以从 `pg_ctl` 相同的目录得到，或者如果没有在那里找到，则在硬写的安装目录中获得。除非你正在做一些不同寻常的事并且得到错误说没有找到 `postgres` 可执行程序，这个选项不是必需的。在 `init` 模式中，这个选项类似于指定了 `initdb` 可执行程序的位置。
+
+- `-s` `--silent`
+
+只打印错误，不打印信息性的消息。
+
+- `-t *seconds*` `--timeout=*seconds*`
+
+指定等待一个操作完成时要等待的最大秒数（见选项 `-w` ）。默认为 `PGCTLTIMEOUT` 环境变量的值，如果该环境变量没有设置则默认为60秒。
+
+- `-V` `--version`
+
+打印pg_ctl版本并退出。
+
+- `-w` `--wait`
+
+等待操作完成。模式 `start`、 `stop`、 `restart`、 `promote` 以及 `register` 支持这个选项，并且对那些模式是默认的。在等待时，`pg_ctl` 会一遍又一遍地检查服务器的PID文件，在两次检查之间会休眠一小段时间。当PID文件指示该服务器已经做好准备接受连接时，启动操作被认为完成。当服务器移除PID文件时，关闭操作被认为完成。`pg_ctl` 会基于启动或关闭的成功与否返回一个退出代码。如果操作在超时时间（见选项 `-t` ）内未能完成，则 `pg_ctl` 会以一个非零退出状态退出。但是注意该操作可能会在后台继续进行并且最终取得成功。
+
+- `-W` `--no-wait`
+
+不等待操作完成。这是选项 `-w` 的对立面。如果禁用等待，所请求的动作会被触发，但是不会有关于其成功与否的反馈。在这种情况下，可能必须用服务器日志文件或外部监控系统来检查该操作的进度以及成功与否。在以前版本的IvorySQL中，这是除 `stop` 模式之外的模式的默认选项。
+
+- `-?` `--help`
+
+显示有关pg_ctl命令行参数的帮助并退出。
+
+如果一个指定的选项有效，但与选中的操作模式无关，则pg_ctl会忽略它。
+
+#### 用于 Windows 的选项
+
+- `-e *source*`
+
+作为一个 Windows 服务运行时，pg_ctl用来 在事件日志中记录日志的事件源的名称。默认是 `IvorySQL`。 注意这只控制由pg_ctl本身发送的消息，一旦开始， 服务器将使用 http://www.postgres.cn/docs/14/runtime-config-logging.html#GUC-EVENT-SOURCE[event_source] 参数中指定的事件源。如果服务器在启动时很早（在该参数被设置前）就失败，它可能也会使用默认的事件源名称  `IvorySQL` 来记录。
+
+- `-N *servicename*`
+
+要注册的系统服务的名称。这个名称将被用于服务名和显示名。默认是 `IvorySQL`。
+
+- `-P *password*`
+
+用于运行该服务的用户的口令。
+
+- `-S *start-type*`
+
+要注册的系统服务的启动类型。启动类型可以是 `auto`、 `demand` 或者两者之一的第一个字母。如果这个选项被忽略，则 `auto` 是默认值。
+
+- `-U *username*`
+
+用于运行该服务的用户的用户名。对于域用户，使用格式 `DOMAIN\username`。
+
+#### 环境
+
+- `PGCTLTIMEOUT`
+
+等待启动或者关闭完成时要等待的默认秒数限制。如果没有设置， 默认值是 60 秒。
+
+- `PGDATA`
+
+默认的数据目录位置。
+
+大部分的 `pg_ctl` 模式都要求知道数据目录的位置，因此 `-D` 选项是必需的，除非 `PGDATA` 被设置。
+
+和大部分其他IvorySQL工具相似，`pg_ctl` 也使用libpq支持的环境变量。
+
+更多影响服务器的变量请见 http://www.postgres.cn/docs/14/app-postgres.html[postgres]。
+
+#### 文件
+
+- `postmaster.pid`
+
+pg_ctl在数据目录中检查这个文件来判断服务器当前是否正在运行。
+
+- `postmaster.opts`
+
+如果这个文件存在于数据目录中，pg_ctl（处于 `restart` 模式中）将把该文件的内容作为选项传递给postgres，除非通过 `-o` 选项进行了覆盖。这个文件的内容也会被显示在 `status` 模式中。
+
+#### 例子
+
+##### 启动服务器
+
+要启动服务器并且等到服务器接受连接：
+
+```
+$ pg_ctl start
+```
+
+要使用端口 5433 启动服务器并且运行时不使用 `fsync`：
+
+```
+$ pg_ctl -o "-F -p 5433" start
+```
+
+##### 停止服务器
+
+要停止服务器，使用：
+
+```
+$ pg_ctl stop
+```
+
+`-m` 选项允许控制服务器如何关闭：
+
+```
+$ pg_ctl stop -m smart
+```
+
+##### 重启服务器
+
+重启服务器几乎等价于停止服务器并且再次启动它，不过 `pg_ctl` 默认会保存并重用被传递给之前的运行实例的命令行选项。要以和之前相同的选项重启服务器，使用：
+
+```
+$ pg_ctl restart
+```
+
+但是如果指定了 `-o`，则会替换任何之前的选项。要使用端口 5433 重启并在重启时禁用 `fsync`：
+
+```
+$ pg_ctl -o "-F -p 5433" restart
+```
+
+##### 显示服务器状态
+
+这里是pg_ctl状态输出的例子：
+
+```
+$ pg_ctl status
+
+pg_ctl: server is running (PID: 13718)
+/usr/local/pgsql/bin/postgres "-D" "/usr/local/pgsql/data" "-p" "5433" "-B" "128"
+```
+
+第二行是在重启模式可能被调用的命令行。
+
+=== pg_resetwal
+
+pg_resetwal — 重置一个IvorySQL数据库集簇的预写式日志以及其他控制信息
+
+#### 大纲
+
+`pg_resetwal` [ `-f` | `--force` ] [ `-n` | `--dry-run` ] [*`option`*...] [ `-D` | `--pgdata` ]*`datadir`*
+
+#### 选项
+
+- `-f` `--force`
+
+即使 `pg_resetwal` 无法从 `pg_control` 中确定有效的数据（如前面所解释的），也强迫 `pg_resetwal` 继续运行。
+
+- `-n` `--dry-run`
+
+`-n` / `--dry-run` 选项指示 `pg_resetwal` 打印从 `pg_control` 重构出来的值以及要被改变的值，然后不修改任何东西退出。这主要是一个调试工具，但是可以用来在允许 `pg_resetwal` 真正执行下去之前进行完整性检查。
+
+- `-V` `--version`
+
+显示版本信息然后退出。
+
+- `-?` `--help`
+
+显示帮助然后退出。
+
+只有当 `pg_resetwal` 无法通过读取 `pg_control` 确定合适的值时，才需要下列选项。安全值可以按下文所述来确定。对于接收数字参数的值，可以使用前缀 `0x` 指定 16 进制值。
+
+- `-c *xid*, *xid*` `--commit-timestamp-ids=*xid*, *xid*`
+
+手工设置提交时间可以检索到的最老的和最新的事务 ID。能检索到提交时间的最老事务 ID 的安全值（第一部分）可以通过在数据目录下 `pg_commit_ts` 目录中数字上最小的文件名来决定。反过来，能检索到提交时间的最新事务 ID 的安全值（第二部分）可以通过同一个目录中数字上最大的文件名来决定。文件名都是十六进制的。
+
+- `-e *xid_epoch*` `--epoch=*xid_epoch*`
+
+手工设置下一个事务 ID 的 epoch。事务 ID 的 epoch 实际上并没有存储在数据库中的任何地方，除了被 `pg_resetwal` 设置在这个域中，所以只要关心的是数据库本身，任何值都可以用。你可能需要调整这个值来确保诸如Slony-I和Skytools之类的复制系统正确地工作 — 如果确实需要调整，应该可以从下游的复制数据库的状态中获得一个合适的值。
+
+- `-l *`walfile`*` `--next-wal-file=*`walfile`*`
+
+通过指定下一个WAL段文件名称来手工设置WAL开始位置。下一个WAL段文件的名称应该比当前存在于数据目录下 `pg_wal` 目录中的任意 WAL 段文件名更大。这些名称也是十六进制的并且有三个部分。第一部分是“时间线 ID”并且通常应该被保持相同。例如，如果 `00000001000000320000004A` 是 `pg_wal` 中最大的项，则使用 `-l 00000001000000320000004B` 或更高的值。注意在使用非默认WAL段尺寸时，WAL文件名中的数字与系统函数和系统视图报告的LSN不同。这个选项要的是WAL文件名而不是LSN。注意 `pg_resetwal` 本身查看 `pg_wal` 中的文件并选择一个超出最新现存文件名的默认 `-l` 设置。因此，只有当你知道 WAL 段文件当前不在 `pg_wal` 中时，或者当 `pg_wal` 的内容完全丢失时，才需要对 `-l` 的手工调整，例如一个离线归档中的项。
+
+- `-m *mxid*,*mxid*` `--multixact-ids=*mxid*,*mxid*`
+
+手工设置下一个和最老的多事务 ID。确定下一个多事务 ID（第一部分）的安全值的方法：在数据目录下的 `pg_multixact/offsets` 目录中查找最大的数字文件名，然后在它的基础上加一并且乘以 65536 (0x10000)。反过来，确定最老的多事务 ID（ `-m` 的第二部分）的方法：在同一个目录中查找最小的数字文件名并且乘以 65536。文件名是十六进制的数字，因此实现上述方法最简单的方式是以十六进制指定选项值并且追加四个零。
+
+- `-o *oid*` `--next-oid=*oid*`
+
+手工设置下一个 OID。没有相对容易的方法来决定超过数据库中最大 OID 的下一个 OID。但幸运的是正确地得到下一个 OID 设置并不是决定性的。
+
+- `-O *mxoff*` `--multixact-offset=*mxoff*`
+
+手工设置下一个多事务偏移量。确定安全值的方法：查找数据目录下 `pg_multixact/members` 目录中最大的数字文件名，然后在它的基础上加一并且乘以 52352 (0xCC80)。文件名是十六进制数字。没有像其他选项那样追加零的简单方法。
+
+- `--wal-segsize=*wal_segment_size*`
+
+设置新的WAL段尺寸，以兆字节为单位。这个值必须被设为2的1次幂和1024次幂（兆字节）之间。更多信息请参考 http://www.postgres.cn/docs/14/app-initdb.html[initdb] 的相同选项。注意虽然 `pg_resetwal` 将把WAL起始地址设置成超过最新的现有WAL段文件，但一些段尺寸的改变可能导致之前的WAL文件名被重用。如果WAL文件名重叠会导致归档策略出现问题，推荐把 `-l` 和这个选项一起使用来手动设置WAL起始地址。
+
+- `-u *xid*` `--oldest-transaction-id=*xid*`
+
+手工设置最老的未冻结事务ID。一个安全值，可以通过在数据目录下的 `pg_xact` 目录中查找数字最小的文件名然后乘以1048576 (0x100000)的方式来确定。 注意该文件名是十六进制的。 以十六进制来指定选项值通常也是最简单的。 例如,如果 `0007` 是 `pg_xact` 中最小的记录，`-u 0x700000` 将有效(五个后补零提供适当的乘数)。
+
+- `-x *xid*` `--next-transaction-id=*xid*`
+
+手工设置下一个事务 ID。确定安全值的方法：在数据目录下的 `pg_xact` 目录中查找最大的数字文件名，然后在它的基础上加一并且乘以 1048576 (0x100000)。注意文件名是十六进制的数字。通常以十六进制的形式指定该选项值也是最容易的。例如，如果 `0011` 是 `pg_xact` 中的最大项，`-x 0x1200000` 就可以（五个尾部的零就表示了前面说的乘数）。
+
+#### 环境
+
+- `PG_COLOR`
+
+规定在诊断消息中是否使用颜色。可能的值为 `always`、 `auto`、 `never`。
+
+#### 注解
+
+这个命令不能在服务器正在运行时被使用。如果在数据目录中发现一个服务器锁文件，`pg_resetwal` 将拒绝启动。如果服务器崩溃那么一个锁文件可能会被留下，在那种情况下你能移除该锁文件来让 `pg_resetwal` 运行。但是在你那样做之前，再次确认没有服务器进程仍然存活。
+
+`pg_resetwal` 仅能在具有相同主版本的服务器上使用。
+
+=== pg_rewind
+
+pg_rewind — 把一个IvorySQL数据目录与另一个从该目录中复制出来的数据目录同步
+
+#### 大纲
+
+`pg_rewind` [*`option`*...] { `-D` | `--target-pgdata` }*` directory`* { `--source-pgdata=*`directory`*` | `--source-server=*`connstr`*` }
+
+#### 警告
+
+如果在处理时pg_rewind失败，则目标的数据目录很可能不在可恢复的状态。在这种情况下，推荐创建一个新的备份。
+
+由于 pg_rewind 完全从源复制配置文件，因此可能需要在重新启动目标服务器之前更正用于恢复的配置，特别是当目标服务器作为源的备用服务器重新引入时。 如果在倒带操作完成后重新启动服务器但未配置恢复，则目标可能会再次与主服务器分离。
+
+如果pg_rewind发现它无法直接写入的文件，它将立刻失败。例如当源服务器和目标服务器为只读的SSL密钥及证书使用相同的文件映射，就会发生这种情况。如果在目标服务器上存在这样的文件，推荐在运行pg_rewind之前移除它们。在做了rewind之后，一些那样的文件可能已经被从源服务器拷贝，这样就有必要移除已经拷贝的数据并且恢复到rewind之前使用的链接集合。
+
+#### 选项
+
+pg_rewind接受下列命令行参数：
+
+- `-D *directory*` `--target-pgdata=*directory*`
+
+这个选项指定要与源数据目录同步的目标数据目录。在运行pg_rewind之前目标服务器必须被干净地关闭。
+
+- `--source-pgdata=*directory*`
+
+指定要和目标服务器同步的源服务器的数据目录的文件系统路径。这个选项要求源服务器必须被干净地关闭。
+
+- `--source-server=*`connstr`*`
+
+指定一个 libpq 连接串用于连接要与目标服务器同步的源IvorySQL服务器。 连接必须是常规（非复制）连接，角色具有足够权限执行源服务器上pg_rewind使用的函数（详请参阅备注部分）或超级用户角色。 这个选项要求源服务器正在运行并且接受连接。
+
+- `-R` `--write-recovery-conf`
+
+创建 `standby.signal` 并将连接设置附加到输出目录中的 `postgresql.auto.conf` 中。`--source-server` 对于此选项是必需的。
+
+- `-n` `--dry-run`
+
+做除了实际修改目标目录之外的其他所有事情。
+
+- `-N` `--no-sync`
+
+默认情况下，`pg_rewind` 将等待所有文件安全地写入磁盘。 此选项会导致 `pg_rewind` 不等待即可返回，这更快，但意味着后续操作系统崩溃会使同步数据目录损坏。通常情况，此选项可用于测试，但不应使用于生产安装。
+
+- `-P` `--progress`
+
+启用进度报告。在从源集簇拷贝数据时，打开这个选项将会发送一个近似的进度报告。
+
+- `-c` `--restore-target-wal`
+
+如果在 `pg_wal` 目录中不再可用这些文件，请使用在目标群集配置中定义的 `restore_command` 从WAL存档中检索WAL文件。
+
+- `--debug`
+
+打印冗长的调试输出，这主要对于调试pg_rewind的开发者有用。
+
+- `--no-ensure-shutdown`
+
+pg_rewind 要求目标服务器在倒带之前彻底关闭。 默认情况下，如果目标服务器没有完全关闭，pg_rewind 会以单用户模式启动目标服务器，先完成崩溃恢复，然后将其停止。 通过传递这个选项，如果服务器没有完全关闭，pg_rewind 会跳过这个并立即出错。 在这种情况下，用户应该自己处理这种情况。
+
+- `-V` `--version`
+
+显示版本信息然后退出。
+
+- `-?` `--help`
+
+显示帮助然后退出。
+
+
+
+#### 环境
+
+在使用 `--source-server` 选项时，pg_rewind也使用libpq支持的环境变量。
+
+环境变量`PG_COLOR`规定在诊断消息中是否使用颜色。可能的值为 `always`、 `auto`、 `never`。
+
+#### 注解
+
+当使用在线群集作为源执行pg_rewind时，具有充足权限来执行pg_rewind在源群集上使用的函数的角色可以用来代替超级用户。 这里介绍如何创建这样的角色，在这里命名 `rewind_user`：
+
+```
+CREATE USER rewind_user LOGIN;
+GRANT EXECUTE ON function pg_catalog.pg_ls_dir(text, boolean, boolean) TO rewind_user;
+GRANT EXECUTE ON function pg_catalog.pg_stat_file(text, boolean) TO rewind_user;
+GRANT EXECUTE ON function pg_catalog.pg_read_binary_file(text) TO rewind_user;
+GRANT EXECUTE ON function pg_catalog.pg_read_binary_file(text, bigint, bigint, boolean) TO rewind_user;
+```
+
+
+
+当使用近期升级的在线群集作为源执行pg_rewind时，必须在升级后执行 `CHECKPOINT` 以便其控制文件反映最新的时间线信息， pg_rewind使用这些信息检查目标群集是否可以使用指定的源群集倒回。
+
+#### 如何工作
+
+其基本思想是从源集簇拷贝所有文件系统级别的改变到目标集簇：
+
+1.以源集簇的时间线历史从目标集簇分叉出来的点之前的最后一个检查点为起点，扫描目标集簇的 WAL 日志。对于每一个 WAL 记录，读取每一个被动过的数据块。这会得到在目标集簇中从源集簇被分支出去以后所有被更改过的数据块列表。如果某些 WAL 文件 不再可用，请尝试使用 `-c` 选项重新运行 pg_rewind 以在 WAL 存档中搜索丢失的文件。
+2.使用直接的文件系统访问（ `--source-pgdata` ）或者 SQL （ `--source-server` ），把所有那些更改过的块从源集簇拷贝到目标集簇。 关系文件现在的状态相当于源和目标的WAL时间线偏离点之前最后一个完成的检查点的时刻加上偏离点之后目标上更改的任何块的源上的当前状态。
+3.将所有其他文件，包括新的关系文件、WAL段、`pg_xact` 和配置文件，从源集群复制到目标集群。与基本备份类似，从源集群复制的数据中省略了目录 `pg_dynshmem/`、 `pg_notify/`、 `pg_replslot/`、 `pg_serial/`、 `pg_snapshots/`、 `pg_stat_tmp/` 以及 `pg_subtrans/` 的内容。文件 `backup_label`、 `tablespace_map`、 `pg_internal.init`、 `postmaster.opts` 以及 `postmaster.pid`，以及任何以 `pgsql_tmp` 开始的文件或目录都会被忽略。
+4.创建一个 `backup_label` 文件，在故障转移时创建的检查点处开始WAL重放，并将 `pg_control` 文件配置为最小一致性LSN，该LSN定义为从活动源回放时的 `pg_current_wal_insert_lsn()` 结果，或从停止的源回放时的最后一个检查点LSN。
+5.启动目标时，IvorySQL将重放所有必需的WAL，从而使数据目录处于一致状态。
+
+=== pg_test_fsync
+
+pg_test_fsync — 为IvorySQL判断最快的 `wal_sync_method`
+
+#### 大纲
+
+`pg_test_fsync` [*`option`*...]
+
+#### 选项
+
+pg_test_fsync接受下列命令行选项：
+
+- `-f` `--filename`
+
+指定要写入测试数据到其中的文件名。这个文件必须位于和 `pg_wal` 目录所在或者将被放置的同一个文件系统中（ `pg_wal` 包含WAL文件）。默认是当前 目录中的 `pg_test_fsync.out`。
+
+- `-s` `--secs-per-test`
+
+指定每次测试的秒数。每个测试的时间越长，测试的精度就越高，但是 它需要更多时间来运行。默认是 5 秒，这允许程序在 2 分钟以内完成。
+
+- `-V` `--version`
+
+打印pg_test_fsync版本并且退出。
+
+- `-?` `--help`
+
+显示有关pg_test_fsync命令行参数的帮助并且退出。
+
+#### 环境
+
+环境变量 `PG_COLOR` 指定是否在诊断消息中使用颜色。可能的值为 `always`、 `auto` 和 `never`.
+
+=== pg_test_timing
+
+pg_test_timing — 度量计时开销
+
+#### 大纲
+
+`pg_test_timing` [*`option`*...]
+
+#### 选项
+
+pg_test_timing接受下列命令行选项：
+
+- `-d *duration*` `--duration=*duration*`
+
+指定测试的持续时间，以秒计。更长的持续时间会给出更好一些的精确度，并且更可能发现系统时钟回退的问题。默认的测试持续时间是 3 秒。
+
+- `-V` `--version`
+
+打印pg_test_timing版本并退出。
+
+- `-?` `--help`
+
+显示有关pg_test_timing的命令行参数，然后退出。
+
+
+
+#### 用法
+
+#### 结果解读
+
+好的结果将显示大部分（>90%）的单个计时调用用时都小于 1 微秒。每次循环的平均开销将会更低，低于 100 纳秒。下面的例子来自于一台使用了一份 TSC 时钟源码的 Intel i7-860 系统，它展示了非常好的性能：
+
+```
+Testing timing overhead for 3 seconds.
+Per loop time including overhead: 35.96 ns
+Histogram of timing durations:
+  &lt; us   % of total      count
+     1     96.40465   80435604 
+     2      3.59518    2999652  
+     4      0.00015        126  
+     8      0.00002         13  
+    16      0.00000          2  
+```
+
+
+
+注意每次循环时间和柱状图用的单位是不同的。循环的解析度可以在几个纳秒（ns），而单个计时调用只能解析到一个微秒（us）。
+
+#### 度量执行器计时开销
+
+当查询执行器使用 `EXPLAIN ANALYZE` 运行一个语句时，单个操作会被计时，总结也会被显示。你的系统的负荷可以通过使用psql程序计数行来检查：
+
+```
+CREATE TABLE t AS SELECT * FROM generate_series(1,100000);
+\timing
+SELECT COUNT(*) FROM t;
+EXPLAIN ANALYZE SELECT COUNT(*) FROM t;
+```
+
+
+
+i7-860 系统测到运行该计数查询用了 9.8 ms 而 `EXPLAIN ANALYZE` 版本则需要 16.6 ms，每次处理都在 100,000 行上进行。6.8 ms 的差别意味着在每行上的计时负荷是 68 ns，大概是 pg_test_timing 估计的两倍。即使这样相对少量的负荷也造成了带有计时的计数语句耗时多出了 70%。在更大量的查询上，计时开销带来的问题不会有这么明显。
+
+#### 改变时间来源Changing time sources
+
+在一些较新的 Linux 系统上，可以在任何时候更改用来收集计时数据的时钟来源。第二个例子显示了在上述快速结果的相同系统上切换到较慢的 acpi_pm 时间源可能带来的降速：
+
+```
+# cat /sys/devices/system/clocksource/clocksource0/available_clocksource
+tsc hpet acpi_pm
+# echo acpi_pm > /sys/devices/system/clocksource/clocksource0/current_clocksource
+# pg_test_timing
+Per loop time including overhead: 722.92 ns
+Histogram of timing durations:
+  &lt; us   % of total      count
+     1     27.84870    1155682 
+     2     72.05956    2990371 
+     4      0.07810       3241  
+     8      0.01357        563  
+    16      0.00007          3  
+```
+
+
+
+在这种配置中，上面的例子 `EXPLAIN ANALYZE` 用了 115.9 ms。其中有 1061 ns 的计时开销，还是用这个工具直接度量结果的一个小倍数。这么多的计时开销意味着实际的查询本身只占了时间的一个很小的分数，大部分的时间都耗在了计时所需的管理开销上。在这种配置中，任何涉及到很多计时操作的`EXPLAIN ANALYZE`都会受到计时开销的显著影响。
+
+FreeBSD 也允许即时更改时间源，并且它会记录在启动期间有关计时器选择的信息：
+
+```
+# dmesg | grep "Timecounter"
+Timecounter "ACPI-fast" frequency 3579545 Hz quality 900
+Timecounter "i8254" frequency 1193182 Hz quality 0
+Timecounters tick every 10.000 msec
+Timecounter "TSC" frequency 2531787134 Hz quality 800
+# sysctl kern.timecounter.hardware=TSC
+kern.timecounter.hardware: ACPI-fast -> TSC
+```
+
+
+
+其他系统可能只允许在启动时设定时间源。在旧的 Linux 系统上，“clock”内核设置是做这类更改的唯一方法。并且即使在一些更近的系统上，对于一个时钟源你将只能看到唯一的选项 "jiffies"。Jiffies 是老的 Linux 软件时钟实现，当有足够快的计时硬件支持时，它能够具有很好的解析度，就像在这个例子中：
+
+```
+$ cat /sys/devices/system/clocksource/clocksource0/available_clocksource
+jiffies
+$ dmesg | grep time.c
+time.c: Using 3.579545 MHz WALL PM GTOD PIT/TSC timer.
+time.c: Detected 2400.153 MHz processor.
+$ pg_test_timing
+Testing timing overhead for 3 seconds.
+Per timing duration including loop overhead: 97.75 ns
+Histogram of timing durations:
+  &lt; us   % of total      count
+     1     90.23734   27694571 
+     2      9.75277    2993204  
+     4      0.00981       3010  
+     8      0.00007         22  
+    16      0.00000          1  
+    32      0.00000          1  
+```
+
+#### 时钟硬件和计时准确性
+
+收集准确的计时信息在计算机上通常是使用具有不同精度的时钟硬件完成的。使用一些硬件，操作系统能几乎直接把系统时钟时间传递给程序。一个系统时钟也可以得自于一块简单地提供计时中断、在某个已知时间区间内的周期性滴答的芯片。在两种情况中，操作系统内核提供一个隐藏这些细节的时钟源。但是时钟源的精确度以及能多快返回结果会根据底层硬件而变化。
+
+不精确的计时能够导致系统不稳定性。对任何时钟源的更改都要仔细地测试。操作系统默认是有时会更倾向于可靠性而不是最好的精确性。并且如果你在使用一个虚拟机器，应查看与之兼容的推荐时间源。在模拟计时器时虚拟硬件面临着额外的困难，并且提供商常常会建议每个操作系统的设置。
+
+时间戳计数器（TSC）时钟源是当前一代 CPU 上最精确的一种。当操作系统支持 TSC 并且 TSC 可靠时，它是跟踪系统时间更好的方式。有多种方式会使 TSC 无法提供准确的计时源，这会让它不可靠。旧的系统能有一种基于 CPU 温度变化的 TSC 时钟，这让它不能用于计时。尝试在一些就的多核 CPU 上使用 TSC 可能在多个核心之间给出不一致的时间报告。这可能导致时间倒退，这个程序会检查这种问题。并且即使最新的系统，在非常激进的节能配置下也可能无法提供准确的 TSC 计时。
+
+更新的操作系统可能检查已知的 TSC 问题并且当它们被发现时切换到一种更慢、更稳定的时钟源。如果你的系统支持 TSC 时间但是并不默认使用它，很可能是由于某种充分的理由才禁用它。某些操作系统可能无法正确地检测所有可能的问题，或者即便在知道 TSC 不精确的情况下也允许使用 TSC。
+
+如果系统上有高精度事件计时器（HPET）并且 TSC 不准确，该系统将会更喜欢 HPET 计时器。计时器芯片本身是可编程的，最高允许 100 纳米的解析度，但是在你的系统时钟中可能见不到那么高的准确度。
+
+高级配置和电源接口（ACPI）提供了一种电源管理（PM）计时器，Linux 把它称之为 acpi_pm。得自于 acpi_pm 的时钟最好时将能提供 300 纳秒的解析度。
+
+在旧的 PC 硬件上使用的计时器包括 8254 可编程区间计时器（PIT）、实时时钟（RTC）、高级可编程中断控制器（APIC）计时器以及 Cyclone 计时器。这些计时器是以毫秒解析度为目标的。
+
+=== pg_upgrade
+
+pg_upgrade — 升级IvorySQL服务器实例
+
+#### 大纲
+
+`pg_upgrade` `-b` *`oldbindir`* `-B` *`newbindir`* `-d` *`oldconfigdir`* `-D` *`newconfigdir`* [*`option`*...]
+
+#### 选项
+
+pg_upgrade接受下列命令行参数：
+
+- `-b` *`bindir`* `--old-bindir=`*`bindir`*
+
+旧的 IvorySQL 可执行文件目录； 环境变量 `PGBINOLD`
+
+- `-B` *bindir* `--new-bindir=`*`bindir`*
+
+新的 IvorySQL 可执行文件目录； 默认为pg_upgrade所在的目录； 环境变量 `PGBINNEW`
+
+- `-c` `--check`
+
+只检查集簇，不更改任何数据
+
+- `-d` *`configdir`* `--old-datadir=`*`configdir`*
+
+旧的集簇数据目录；环境变量 `PGDATAOLD`
+
+- `-D` *`configdir`* `--new-datadir=`*`configdir`*
+
+新的集簇数据目录；环境变量 `PGDATANEW`
+
+- `-j` `--jobs=*`njobs`*`
+
+要同时使用的进程或线程数
+
+- `-k` `--link`
+
+使用硬链接来代替将文件拷贝到新集簇
+
+- `-o` *`options`* `--old-options` *`options`*
+
+直接传送给旧 `postgres` 命令的选项，多个选项可以追加在后面
+
+- `-O` *`options`* `--new-options` *`options`*
+
+直接传送给新 `postgres` 命令的选项，多个选项可以追加在后面
+
+- `-p` *`port`* `--old-port=`*`port`*
+
+旧的集簇端口号；环境变量 `PGPORTOLD`
+
+- `-P` *`port`* `--new-port=`*`port`*
+
+新的集簇端口号；环境变量 `PGPORTNEW`
+
+- `-r` `--retain`
+
+即使在成功完成后也保留 SQL 和日志文件
+
+- `-s` *`dir`* `--socketdir=`*`dir`*
+
+用于升级期间postmaster套接字的目录;默认是当前目录; 环境变量  `PGSOCKETDIR`
+
+- `-U` *`username`* `--username=`*`username`*
+
+集簇的安装用户名；环境变量 `PGUSER`
+
+- `-v` `--verbose`
+
+启用详细的内部日志
+
+- `-V` `--version`
+
+显示版本信息，然后退出
+
+- `--clone`
+
+使用有效的文件克隆（在一些系统上也被称为“reflinks”），而不是将文件拷贝到新群集。 这可以导致数据文件接近瞬时的复制，从而获得 `-k` / `--link` 的速度优势，同时保留旧群集不受影响。文件克隆仅在某些操作系统和文件系统上得到支持。如果选中但不被支持，则 pg_upgrade运行将会出错。 目前，它支持在Linux（内核4.5或更高版本）上的Btrfs和XFS（在文件系统创建reflink支持），以及macOS上的APFS。
+
+- `-?` `--help`
+
+显示帮助，然后退出
+
+
+
+#### 使用
+
+下面是用pg_upgrade执行一次升级的步骤：
+
+1.**移动旧集簇（可选）**
+****
+如果你的安装目录不是版本相关的（例如 `/usr/local/pgsql` ）， 就有必要移动当前的 IvorySQL 安装目录，以免它干扰新的 IvorySQL安装。一旦当前的 IvorySQL服务器被关闭，就可以安全地重命名 IvorySQL 安装目录。假设旧目录是 `/usr/local/pgsql`，你可以这样：
+
+```
+mv /usr/local/pgsql /usr/local/pgsql.old
+```
+   
+来重命名该目录。
+****
+2.**对于源码安装，编译新版本**
+****
+用兼容旧集簇的 `configure` 标记编译新的 IvorySQL 源码。在开始升级之前，pg_upgrade 将检查 `pg_controldata` 来确保所有设置都是兼容的。
+****
+3.**安装新的 IvorySQL 二进制文件**
+****
+安装新服务器的二进制文件和支持文件。pg_upgrade 会被包含在默认的安装中。
+
+对于源码安装，如果你希望把新服务器安装在一个自定义的位置， 可以使用 `prefix` 变量：
+
+```
+make prefix=/usr/local/pgsql.new install
+```
+****
+4.**初始化新的 IvorySQL 集簇**
+****
+使用 `initdb` 初始化新集簇。这里也要使用与 旧集簇相兼容的 `initdb` 标志。许多预编译的 安装程序会自动做这个步骤。这里没有必要启动新集簇。
+****
+5.**安装扩展共享对象文件**
+****
+许多扩展和自定义模块，无论是来自 `contrib` 或其他源，使用共享对象文件(或DLLs)，例如， `pgcrypto.so`。 如果旧集群使用过这些，匹配新服务器二进制的共享对象文件，必须安装在新集群中。 通常是通过操作系统命令。 不要加载模式定义，例如 `CREATE EXTENSION pgcrypto`，因为这些将从旧集群复制。 如果扩展更新是可用的，pg_upgrade将报告这一点，并创建一个脚本，可以稍后运行来更新它们。
+****
+6.**拷贝定制的全文本检索文件**
+****
+从旧集群向新集群拷贝任何定制化全文本检索文件(词典、同义词、辞典、停用词)
+****
+7.**调整认证**
+****
+`pg_upgrade` 将会多次连接到旧服务器和新服务器，因此 你可能想要在 `pg_hba.conf` 中把认证设置成 `peer` 或者使用一个 `~/.pgpass` 文件。
+****
+8.**停止两个服务器**
+****
+确认两个数据库服务器都被停止使用，例如在 Unix 上可以：
+
+```
+pg_ctl -D /opt/IvorySQL/1.5 stop
+pg_ctl -D /opt/IvorySQL/2.1 stop
+```
+
+或者在 Windows 上使用正确的服务名：
+
+```
+NET STOP postgresql-1.5
+NET STOP postgresql-2.1
+```
+
+直到后面的步骤之前，流复制和日志传送后备服务器可以保持运行。
+****
+9.**为后备服务器升级做准备**
+****
+升级后备服务器时，请对旧的主集簇和后备集簇运行pg_controldata以验证旧的后备服务器已经完全追上。验证“Latest checkpoint location”值在所有集簇中都匹配（如果旧后备服务器在旧的主服务器之前被关闭或者如果旧的后备服务器仍在运行，则将会出现失配）。此外，请确保在新的主集簇上的 `postgresql.conf` 文件中，`wal_level` 未设置为 `minimal`。
+****
+10.**运行 pg_upgrade**
+****
+总是应该运行新服务器而不是旧服务器的pg_upgrade二进制文件。 pg_upgrade要求制定新旧集簇的数据和可执行文件（ `bin` ）目录。 你也可以指定用户和端口值，以及你是否想要用链接或克隆来取代默认的复制行为对数据文件进行处理。
+
+如果你使用链接模式，升级将会快很多（不需要文件拷贝）并且将使用 更少的磁盘空间，但是在升级后一旦启动新集簇，旧集簇就无法被访问。 链接模式也要求新旧集簇数据目录位于同一个文件系统中（表空间和 `pg_wal` 可以在不同的文件系统中）。 克隆模式提供了相同的速度以及磁盘空间优势，但不会导致新群集启动后旧群集不可用。 克隆模式还需要新旧数据目录位于同一文件系统中。 此模式仅在某些操作系统和文件系统上可用。
+
+`--jobs` 选项允许多个 CPU 核心被用来复制/链接文件以及并行地转储和重载数据库模式。这个选项一个比较好的值是 CPU 核心数 和表空间数的最大值。这个选项可以显著地减少升级运行在一台多处理 器机器上的多数据库服务器的时间。
+
+对于 Windows 用户，你必须以一个超级账号登录，并且以 `postgres`用户启动一个 shell 并且设置正确的路径：
+
+```
+RUNAS /USER:postgres "CMD.EXE"
+SET PATH=%PATH%;C:\Program Files\IvorySQL\14\bin;
+```
+
+并且用带引号的目录运行pg_upgrade，例如：
+
+```
+pg_upgrade.exe
+        --old-datadir "C:/Program Files/IvorySQL/1.5/data"
+        --new-datadir "C:/Program Files/IvorySQL/2.1/data"
+        --old-bindir "C:/Program Files/IvorySQL/1.5/bin"
+        --new-bindir "C:/Program Files/IvorySQL/2.1/bin"
+```
+
+一旦启动，`pg_upgrade` 将验证两个集簇是否兼容并且 执行升级。你可以使用 `pg_upgrade --check` 来只执行检查， 这种模式即使在旧服务器还在运行时也能使用。 `pg_upgrade --check` 也将列出任何在更新后需要做的手工调整。 如果你将要使用链接或克隆模式，你应该使用 `--link` 或 `--clone` 选项和 `--check` 一起来启用链接模式相关的检查。 `pg_upgrade` 要求在当前目录中的写权限。
+
+显然，没有人可以在升级期间访问这些集簇。pg_upgrade 默认会在端口 50432 上运行服务器来避免意外的客户端连接。在做升级时， 可以对两个集簇使用相同的端口号，因为新旧集簇不会在同时被运行。不过， 在检查一个旧的运行中服务器时，新旧端口号必须不同。
+
+如果在恢复数据库模式时发生错误，`pg_upgrade` 将会退出 并且你必须按照恢复旧集簇。要再次尝试 `pg_upgrade`，你将需要修改旧集簇，这样 pg_upgrade 模式会成功恢复。如果问题是一个 `contrib` 模块， 你可能需要从旧集簇中卸载该模块并且在升级后重新把它安装在新集簇中，不过 这样做的前提是该模块没有被用来存储用户数据。
+****
+11.**升级流复制和日志传送后备服务器**
+
+如果使用链接模式并且有流复制或者日志 传送后备服务器，你可以遵照下面的 步骤对它们进行快速的升级。你将不用在这些后备服务器上运行 pg_upgrade，而是在主服务器上运行rsync。 到这里还不要启动任何服务器。
+
+如果你没有使用链接模式、没有或不想使用rsync或者想用一种更容易的解决方案，请跳过这一节中的过程并且在pg_upgrade完成并且新的主集簇开始运行后重建后备服务器。
+
+    1. **在后备服务器上安装新的 IvorySQL 二进制文件**
+
+       确保新的二进制和支持文件被安装在所有后备服务器上。
+
+    2. **确保不存在新的后备机数据目录**
+
+       确保新的后备机数据目录不存在或者为空。如果 运行过initdb，请删除后备服务器的新数据目录。
+
+    3. **安装扩展共享对象文件**
+
+       在新的后备机上安装和新的主集簇中相同的扩展共享对象文件。
+
+    4. **停止后备服务器**
+
+       如果后备服务器仍在运行，现在使用上述的指令停止它们。
+
+    5. **保存配置文件**
+
+       从旧后备机的配置目录保存任何需要保留的配置文件，例如 `postgresql.conf`（以及它包含的任何文件）、 `postgresql.auto.conf`、`pg_hba.conf`， 因为这些文件在下一步中会被重写或者移除。
+
+    6. **运行rsync**
+
+       在使用链接模式时，后备服务器可以使用rsync快速升级。为了实现这一点，在主服务器上一个高于新旧数据库集簇目录的目录中为每个后备服务器运行这个命令：
+
+       ```
+       rsync --archive --delete --hard-links --size-only --no-inc-recursive old_cluster new_cluster remote_dir
+       ```
+
+       其中`old_cluster`和`new_cluster`是相对于主服务器上的当前目录的，而`remote_dir`是后备服务器上高于新旧集簇目录的一个目录。在主服务器和后备服务器上指定目录之下的目录结构必须匹配。指定远程目录的详细情况请参考rsync的手册，例如：
+
+       ```
+       rsync --archive --delete --hard-links --size-only --no-inc-recursive /opt/IvorySQL/1.5 \
+             /opt/IvorySQL/2.1 standby.example.com:/opt/IvorySQL
+       ```
+
+       可以使用rsync的`--dry-run`选项验证该命令将做的事情。虽然在主服务器上必须为至少一台后备运行rsync，可以在一台已经升级过的后备服务器上运行rsync来升级其他的后备服务器，只要已升级的后备服务器还没有被启动。
+
+       这个命令所做的事情是记录由pg_upgrade的链接模式创建的链接，它们连接主服务器上新旧集簇中的文件。该命令接下来在后备服务器的旧集簇中寻找匹配的文件并且为它们在该后备的新集簇中创建链接。主服务器上没有被链接的文件会被从主服务器拷贝到后备服务器（通常都很小）。这提供了快速的后备服务器升级。不幸地是，rsync会不必要地拷贝与临时表和不做日志表相关的文件，因为通常在后备服务器上不存在这些文件。
+
+       如果你已经把`pg_wal`放在数据目录外面，也必须在那些目录上运行rsync。
+
+    7. **配置流复制和日志传送后备服务器**
+    
+       为日志传送配置服务器（不需要运行`pg_start_backup()` 以及`pg_stop_backup()`或者做文件系统备份，因为从属机 仍在与主机同步）。
+    
+12.**恢复 `pg_hba.conf`**
+****
+如果你修改了 `pg_hba.conf`，则要将其恢复到原始的设置。 也可能需要调整新集簇中的其他配置文件来匹配旧集簇，例如 `postgresql.conf` （以及它包含的任何文件）和 `postgresql.auto.conf`。
+****
+13.**启动新服务器**
+
+现在可以安全地启动新的服务器，并且可以接着启动任何rsync过的后备服务器。
+
+14.**升级后处理**
+
+如果需要做任何升级后处理，pg_upgrade 将在完成后发出警告。它也将 生成必须由管理员运行的脚本文件。这些脚本文件将连接到每一个需要做 升级后处理的数据库。每一个脚本应该这样运行：
+
+  ```
+  psql --username=postgres --file=script.sql postgres
+  ```
+
+  这些脚本可以以任何顺序运行并且在运行之后立即删除。
+
+.小心
+****
+通常在重建脚本运行完成之前访问重建脚本中引用的表是不安全的，这样做 可能会得到不正确的结果或者很差的性能。没有在重建脚本中引用的表可以 随时被访问。
+****
+
+15.**统计信息**
+
+由于 `pg_upgrade` 并未传输优化器统计信息，在升级的尾声 你将被指示运行一个命令来生成这些信息。你可能需要设置连接参数来匹配你的新集簇。
+
+16.**删除旧集簇**
+
+一旦你对升级表示满意，你就可以通过运行 `pg_upgrade` 完成时提到的脚本来删除旧集簇的 数据目录（如果在旧数据目录中有用户定义的表空间就不可能实现自动删除）。 你也可以删除旧安装目录（例如 `bin`、 `share` ）。
+
+17.**恢复到旧集簇**
+
+在运行 `pg_upgrade` 之后，如果你希望恢复到 旧集簇，有几个选项：
+
+    - 如果使用了 `--check` 选项, 则旧集群没有被修改；它可以被重新启动。
+
+    - 如果 `--link` 选项没有被使用, 旧集群没有被修改；它可以被重新启动。
+
+    - 如果使用了 `--link` 选项, 数据文件可能在新旧群集之间共享:
+
+      * 如果 `pg_upgrade` 在链接启动之前中止，旧集群没有被修改，它可以重新启动。
+      * 如果你没有启动新集群，旧集群没有被修改，当链接启动时，一个 `.old` 后缀会附加到 `$PGDATA/global/pg_control`。 如果要重用旧集群，从 `$PGDATA/global/pg_control` 移除 `.old` 后缀；你就可以重启旧集群。
+      * 如果你已经启动新群集，它已经写入了共享文件，并且使用旧群集会不安全。这种情况下，需要从备份中还原旧群集。
+
+      
+
+    
+
+#### 注解
+
+pg_upgrade创建不同的工作文件，如模式转储，在当前工作目录中。为了安全，请确保该目录不可被任何其他用户读取或者写入。
+
+pg_upgrade在新旧数据目录中启动短期的postmasters。临时 Unix 套接字文件用于与这些postmasters通信，默认情况下，在当前工作目录中进行。 在某些情况下，当前目录的路径名称可能太长，无法成为有效的套接字名称。这种情况下你可以使用 `-s` 选项将套接字文件放在某些具有较短路径名称的目录中。 为了安全原因，请确保该目录不可被任何其他用户读取或者写入。（这在 Windows 上不受支持。）
+
+如果失败、重建和重索引会影响你的安装，pg_upgrade 将会报告这些情况。用来重建表和索引的升级后脚本将会自动被建立。 如果你正在尝试自动升级很多集簇，你应该发现具有相同数据库模式的集簇 对所有集簇升级都要求同样的升级后步骤，这是因为升级后步骤是基于数据 库模式而不是用户数据。
+
+对于部署测试，创建一个只有模式的旧集簇副本，在其中插入假数据并且升级。
+
+pg_upgrade不支持包含使用这些 `reg*` OID-引用 系统数据类型的表列的数据库的升级：
+[%autowidth]
+|====
+| `regcollation`  
+
+| `regconfig`     
+| `regdictionary` 
+| `regnamespace`  
+| `regoper`       
+| `regoperator`   
+| `regproc`       
+| `regprocedure`  
+|====
+(`regclass`, `regrole`, and `regtype` can be upgraded.)
+
+
+
+如果你想要使用链接模式并且你不想让你的旧集簇在新集簇启动时被修改，考虑使用克隆模式。 如果(克隆模式)不可用，可以复制一份旧集簇并且在副本上以链接模式进行升级。要创建旧集簇的一 份合法拷贝，可以在服务器运行时使用 `rsync` 创建旧集簇的 一份脏拷贝，然后关闭旧服务器并且再次运行 `rsync --checksum` 把更改更新到该拷贝以让其一致（ `--checksum` 是必要的，因为 `rsync` 在判断文件修改时间的更改时的精度只能到秒级）。你可能想要排除 一些文件，例如 `postmaster.pid`。如果你的文件系统支持文 件系统快照或者 copy-on-write 文件副本，你可以使用它们来创建旧集簇和 表空间的一个备份，不过快照和副本必须被同时创建或者在数据库服务器关闭 期间被创建。
+
+=== pg_waldump
+
+pg_waldump — 以人类可读的形式显示一个IvorySQL 数据库集簇的预写式日志
+
+#### 大纲
+
+`pg_waldump` [`option`...] [`startseg` [`endseg`]]
+
+#### 选项
+
+下列命令行选项控制输出的位置和格式：
+
+- *`startseg`*
+
+从指定的日志段文件开始读取。这也隐含地决定了要搜索文件的路径以及 要使用的时间线。
+
+- *`endseg`*
+
+在读取指定的日志段文件后停止。
+
+- `-b` `--bkp-details`
+
+输出有关备份块的细节。
+
+- `-e *end*` `--end=*end*`
+
+在指定的WAL位置停止读取，而不是一直读取到日志流的末尾。
+
+- `-f` `--follow`
+
+在到达可用 WAL 的末尾之后，保持每秒轮询一次是否有新的 WAL 出现。
+
+- `-n *limit*` `--limit=*limit*`
+
+显示指定数量的记录，然后停止。
+
+- `-p *path*` `--path=*path*`
+
+指定搜索日志段文件的目录或包含这些文件的包含 `pg_wal` 子目录的目录。 缺省值是在当前目录中搜索，当前目录的 `pg_wal` 子目录和 `PGDATA` 的 `pg_wal` 子目录。
+
+- `-q` `--quiet`
+
+除错误外，不要打印任何输出。当您想知道一系列WAL记录是否可以成功解析但不关心记录内容时，此选项非常有用。
+
+- `-r *rmgr*` `--rmgr=*rmgr*`
+
+只显示由指定资源管理器生成的记录。如果把 `list` 作为资源管理器名称 传递给这个选项，则打印出可用资源管理器名称的列表然后退出。
+
+- `-s *start*` `--start=*start*`
+
+要从哪个WAL位置开始读取。默认是从找到的最早的文件的第一个可用日志记录开始。
+
+- `-t *`timeline`*` `--timeline=*`timeline`*`
+
+要从哪个时间线读取日志记录。默认是使用 *`startseg`* （如果指定） 中的值，否则默认为 1。
+
+- `-V` `--version`
+
+打印pg_waldump版本并且退出。
+
+- `-x *xid*` `--xid=*xid*`
+
+只显示用给定事务 ID 标记的记录。
+
+- `-z` `--stats[=record]`
+
+显示概括统计信息（记录的数量和尺寸以及全页镜像）而不是显示 每个记录。可以选择针对每个记录生成统计信息，而不是针对每个资源管理器生成。
+
+- `-?` `--help`
+
+显示有关pg_waldump命令行参数的帮助并且退出。
+
+#### 环境
+
+- `PGDATA`
+
+数据目录；另请参阅 `-p` 选项。
+
+- `PG_COLOR`
+
+规定在诊断消息中是否使用颜色。可能的值为 `always`、 `auto`、 `never`。
+
+#### 注解
+
+当服务器正在运行时可能会给出错误的结果。
+
+只有指定的时间线 会被显示（如果没有指定，则显示默认时间线）。 其他时间线上的记录会被忽略。
+
+pg_waldump不能读取具有后缀 `.partial` 的 WAL 文件。如果需要读取那些文件，需要从文件名中移除 `.partial` 后缀。
+
+=== postgres
+
+postgres — IvorySQL数据库服务器
+
+#### 大纲
+
+`postgres` [*`选项`*...]
+
+#### 选项
+
+`postgres` 接受下列命令行参数。你也可以通过设置一个配置文件来减少键入大部分这些选项。有些（安全）选项还可以从连接的客户端以一种与应用相关只应用于会话的方法设置。例如，如果设置了 `PGOPTIONS` 环境变量，那么基于libpq的客户端将都把那个字符串传递给服务器，它将被服务器解释成 `postgres` 命令行选项。
+
+#### 通用选项
+
+- `-B *nbuffers*`
+
+设置被服务器进程使用的共享内存缓冲区数量。这个参数的默认值是initdb自动选择的。指定这个选项等效于设置 http://www.postgres.cn/docs/14/runtime-config-resource.html#GUC-SHARED-BUFFERS[shared_buffers] 配置参数。
+
+- `-c *name*=*value*`
+
+设置一个命名的运行时参数。大多数其它命令行选项实际上都是这种参数赋值的短形式。`-c` 可以出现多次用于设置多个参数。
+
+- `-C *name*`
+
+打印命名运行时参数的值，并且退出（详见上面的 `-c` 选项）。这可以被用在一个运行服务器上，并且从 `postgresql.conf` 中返回值，这些值可能被在这次调用中的任何参数修改过。它并不反映集簇启动时提供的参数。这个选项用于与一个服务器实例交互的其他程序来查询配置参数值，例如 http://www.postgres.cn/docs/14/app-pg-ctl.html[pg_ctl]。面向用户的应用应该使用 http://www.postgres.cn/docs/14/sql-show.html[`SHOW`] or the `pg_settings` 视图。
+
+- `-d *debug-level*`
+
+设置调试级别。数值设置得越高，写到服务器日志的调试输出就越多。取值范围是从 1 到 5。还可以针对某个特定会话使用 `-d 0` 来阻止父 `postgres` 进程的服务器日志级别被传播到这个会话。
+
+- `-D *datadir*`
+
+指定数据库配置文件的文件系统位置。
+
+- `-e`
+
+把默认日期风格设置为“European”，也就是输入日期域的顺序是 `DMY`。这也导致在一些日期输出格式中把日打印在月之前。
+
+- `-F`
+
+禁用 `fsync` 调用以提高性能，但是要冒系统崩溃时数据损坏的风险。指定这个选项等效于禁用 http://www.postgres.cn/docs/14/runtime-config-wal.html#GUC-FSYNC[fsync] 配置参数。
+
+- `-h *hostname*`
+
+指定 `postgres` 监听来自客户端应用 TCP/IP 连接的 IP 主机名或地址。该值也可以是一个用逗号分隔的地址列表，或者 `*` 表示监听所有可用的地址。一个空值表示不监听任何 IP 地址，在这种情况下可以使用 Unix 域套接字连接到服务器。缺省只监听localhost。声明这个选项等效于设置listen_addresses配置参数。默认只监听localhost。指定这个选项等效于设置 http://www.postgres.cn/docs/14/runtime-config-connection.html#GUC-LISTEN-ADDRESSES[listen_addresses] 配置参数。
+
+- `-i`
+
+允许远程客户端使用 TCP/IP （互联网域）连接。没有这个选项，将只接受本地连接。这个选项等效于在 `postgresql.conf` 中或者通过 `-h` 选项将 `listen_addresses` 设为 `*`。这个选项已经被废弃，因为它不允许访问 http://www.postgres.cn/docs/14/runtime-config-connection.html#GUC-LISTEN-ADDRESSES[listen_addresses] 的完整功能。所以最好直接设置 `listen_addresses`。
+
+- `-k *`directory`*`
+
+指定 `postgres` 用来监听来自客户端应用连接的 Unix 域套接字的目录。这个值也可以是一个逗号分隔的目录列表。一个空值指定不监听任何 Unix 域套接字，在这种情况下只能用 TCP/IP 套接字来连接到服务器。默认值通常是 `/tmp`，但是可以在编译的时候修改。指定这个选项等效于设置 http://www.postgres.cn/docs/14/runtime-config-connection.html#GUC-UNIX-SOCKET-DIRECTORIES[unix_socket_directories] 配置参数。
+
+- `-l`
+
+启用使用SSL的安全连接。要使这个选项可用，编译IvorySQL时必须打开SSL支持。有关使用SSL的更多信息。
+
+- `-N *max-connections*`
+
+设置该服务器将接受的最大客户端连接数。该参数的默认值由initdb自动选择。指定这个选项等效于设置 http://www.postgres.cn/docs/14/runtime-config-connection.html#GUC-MAX-CONNECTIONS[max_connections] 配置参数。
+
+- `-p *`port`*`
+
+指定 `postgres` 用于监听客户端应用连接的 TCP/IP 端口或本地 Unix 域套接字文件扩展。默认为 `PGPORT` 环境变量的值。如果 `PGPORT` 没有设置，那么默认值是编译期间设立的值（通常是 5432）。如果你指定了一个非默认端口，那么所有客户端应用都必须用命令行选项或者 `PGPORT` 指定同一个端口。
+
+- `-s`
+
+在每条命令结束时打印时间信息和其它统计信息。这个选项对测试基准和调节缓冲区数量有用处。
+
+- `-S` *`work-mem`*
+
+指定在使用临时磁盘文件之前排序和散列表使用的基本内存量。 
+
+- `-V` `--version`
+
+打印postgres版本并退出。
+
+- `--*name*=*value*`
+
+设置一个命名的运行时参数；其缩写形式是 `-c`。
+
+- `--describe-config`
+
+这个选项会用制表符分隔的 `COPY` 格式导出服务器的内部配置变量、描述以及默认值。设计它的目的是用于管理工具。
+
+- `-?` `--help`
+
+显示有关postgres的命令行参数，并且退出。
+
+#### 半内部选项
+
+这里描述的选项主要被用于调试目的，并且在某些情况下可以协助恢复严重受损的数据库。在生产数据库环境中应该不会去使用它们。在这里列举它们只是为了让IvorySQL系统开发者使用。此外，这些选项可能在将来的版本中更改或删除而不另行通知。
+
+- `-f` `{ s | i | o | b | t | n | m | h }`
+
+禁止某种扫描和连接方法的使用：`s` 和 `i` 分别禁用顺序和索引扫描， `o`、 `b` 和 `t` 分别禁用只用索引扫描、位图索引扫描以及 TID 扫描，而 `n`、 `m` 和 `h` 则分别禁用嵌套循环、归并和哈希连接。顺序扫描和嵌套循环连接都不可能完全被禁用。`-fs` 和 `-fn` 选项仅仅是在有其他选择时不鼓励优化器使用这些计划类型。
+
+- `-n`
+
+该选项主要用于调试导致服务器进程异常崩溃的问题。对付这种情况的一般策略是通知所有其它服务器进程，让它们终止并且接着重新初始化共享内存和信号量。这是因为一个错误的服务器进程可能在终止之前就已经对共享状态造成了破坏。该选项指定 `postgres` 将不会重新初始化共享数据结构。一个有经验的系统程序员这时就可以使用调试器检查共享内存和信号量状态。
+
+- `-O`
+
+允许修改系统表的结构。这个选项用于 `initdb`。
+
+- `-P`
+
+读取系统表时忽略系统索引（但在更改系统表时仍然更新索引）。这在从损坏的系统索引中恢复时有用。
+
+- `-t` `pa[rser] | pl[anner] | e[xecutor]`
+
+打印与每个主要系统模块相关的查询的时间统计。这个选项不能和 `-s` 选项一起使用。
+
+- `-T`
+
+该选项主要用于调试导致服务器进程异常崩溃的问题。对付这种情况的一般策略是通知所有其它服务器进程，让它们终止并且接着重新初始化共享内存和信号量。这是因为一个错误的服务器进程可能在终止之前就已经对共享状态造成了破坏。该选项指定 `postgres` 将通过发送 `SIGSTOP` 信号停止其他所有服务器进程，但是并不让它们终止。这样就允许系统程序员手动从所有服务器进程收集内核转储。
+
+- `-v` *`protocol`*
+
+声明这次会话使用的前/后服务器协议的版本数。该选项仅在内部使用。
+
+- `-W` *`seconds`*
+
+在一个新服务器进程被启动时，它实施认证过程之后会延迟这个选项所设置的秒数。这就留出了机会来用一个调试器附着在服务器进程上。
+
+#### 用于单用户模式的选项
+
+下面的选项仅适用于单用户模式（见 http://www.postgres.cn/docs/14/app-postgres.html#APP-POSTGRES-SINGLE-USER[Single-User Mode]）。
+
+- `--single`
+
+选择单用户模式。这必须是命令行中的第一个选项。
+
+- *`database`*
+
+指定要访问的数据库的名称。这必须是命令行中的最后一个参数。如果省略它，则默认为用户名。
+
+- `-E`
+
+在执行命令之前回显所有命令到标准输出。
+
+- `-j`
+
+使用跟着两个新行的分号而不是仅用新行作为命令终止符。
+
+- `-r` *`filename`*
+
+将所有服务器日志输出发送到 *`filename`* 中。 只有在作为一个命令行选项提供时，这个选项才会兑现。
+
+#### 环境
+
+- `PGCLIENTENCODING`
+
+客户端使用的默认字符编码（客户端可以独立地覆盖它）。这个值也可以在配置文件中设置。
+
+- `PGDATA`
+
+默认的数据目录位置。
+
+- `PGDATESTYLE`
+
+http://www.postgres.cn/docs/14/runtime-config-client.html#GUC-DATESTYLE[DateStyle] 运行时参数的默认值（这个环境变量的使用已被废弃）。
+
+- `PGPORT`
+
+默认端口号（在配置文件中设置更好）
+
+#### 诊断
+
+一个提到了 `semget` 或 `shmget` 的错误消息可能意味着你需要配置内核来提供足够的共享内存和信号量。你也可以通过降低 http://www.postgres.cn/docs/14/runtime-config-resource.html#GUC-SHARED-BUFFERS[shared_buffers] 值减少IvorySQL的共享内存消耗， 或者降低 http://www.postgres.cn/docs/14/runtime-config-connection.html#GUC-MAX-CONNECTIONS[max_connections] 值减少信号量消耗，这样可以推迟对内核的重新配置。
+
+如果一个消息说另外一个服务器已经在运行，应该仔细地检查，例如根据你的系统可以用命令
+
+```
+$ ps ax | grep postgres
+```
+
+或
+
+```
+$ ps -ef | grep postgres
+```
+
+如果你确信没有冲突的服务器正在运行，那么你可以删除消息中提到的锁文件然后再次尝试。
+
+如果一个失败消息指示它无法绑定到一个端口，可能意味着该端口已经被某些非IvorySQL进程所使用。如果你终止 `postgres` 并且立即使用相同的端口重启它，你也可能会得到这种错误。在这种情况系，你必须等待几秒直到操作系统关闭该端口，然后再重试。最后，如果你指定了一个操作系统认为需要保留的端口号，你可能也会得到这个错误。例如，很多版本的 Unix 认为低于 1024 的端口号是“可信的”并且只允许 Unix 超级用户访问它们。
+
+#### 注解
+
+实用命令 http://www.postgres.cn/docs/14/app-pg-ctl.html[pg_ctl] 可以用来安全方便地启动和关闭 `postgres` 服务器。
+
+只要有可能，就不要使用 `SIGKILL` 杀死主 `postgres` 服务器。这样会阻止 `postgres` 在终止前释放它持有的系统资源（例如共享内存和信号量）。这样可能会导致启动新的 `postgres` 进程时出现问题。
+
+要正常地终止 `postgres` 服务器，可以使用 `SIGTERM`、 `SIGINT` 或者 `SIGQUIT` 信号。第一个在退出前将等待所有客户端终止，第二个将强行断开所有客户端的连接，第三个会不做正确的关闭立即退出并且会导致重启时的恢复。
+
+`SIGHUP` 信号会重新加载服务器配置文件。也可以向一个单独的服务器进程发送 `SIGHUP` 信号，但是这样做通常没什么意义。
+
+要取消一个正在运行的查询，可以向运行该查询的进程发送 `SIGINT` 信号。要干净地终止一个后端进程，可向它发送`SIGTERM`。在 SQL 中可调用的与这两种动作等效的命令可参考 `pg_cancel_backend` 和 `pg_terminate_backend`。
+
+`postgres` 服务器使用 `SIGQUIT` 来告诉子服务器进程终止但不做正常的清理。该信号不应该被用户使用。向一个服务器进程发送 `SIGKILL` 也是不明智的 — 主 `postgres` 进程将把这解释为一次崩溃，并且作为其标准崩溃恢复过程的一部分，它将强制所有的后代进程退出。
+
+#### 缺陷
+
+`--` 选项在FreeBSD或OpenBSD上无法运行，应该使用 `-c`。这在受影响的系统里是个缺陷； 如果这个缺陷没有被修复，将来的IvorySQL版本将提供一种解决方案。
+
+#### 单用户模式
+
+要启动一个单用户模式的服务器，使用这样的命令
+
+```
+postgres --single -D /usr/local/pgsql/data other-options my_database
+```
+
+用 `-D` 给服务器提供正确的数据库目录的路径，或者确保环境变量 `PGDATA` 被设置。同时还要指定你想在其中工作的特定数据库的名字。
+
+通常，单用户模式的服务器会把换行符当做命令输入的终止符。它不明白分号的作用，因为那属于psql。要想把一个命令分成多行，必须在最后一个换行符以外的每个换行符前面敲一个反斜线。这个反斜线和旁边的新行都会被从输入命令中去掉。注意即使在字符串或者注释中也会这样做。
+
+但是如果使用了 `-j` 命令行选项，那么单个新行将不会终止命令输入。相反，分号-新行-新行的序列才会终止命令输入。也就是说，输入一个紧跟着空行的分号。在这种模式下，反斜线-新行不会被特殊对待。此外，在字符串或者注释内的这类序列也不会被特殊对待。
+
+不管在哪一种输入模式中，如果输入的一个分号不是正好在命令终止符之前或者不是命令终止符的一部分，它会被认为是一个命令分隔符。当真正输入一个命令终止符时，已经输入的多个语句将被作为一个单个事务执行。
+
+要退出会话，输入EOF（通常是 **Control** + **D** ）。如果从上一个命令终止符以来已经输入了任何文本，那么EOF将被当作命令终止符，并且如果要退出则需要另一个EOF。
+
+请注意单用户模式的服务器不会提供复杂的行编辑特性（例如没有命令历史）。但用户模式也不会做任何后台处理，例如自动检查点或者复制。
+
+#### 例子
+
+要用默认值在后台启动 `postgres`：
+
+```
+$ nohup postgres >logfile 2>&1 </dev/null &
+```
+
+要用指定端口启动 `postgres`，例如 1234：
+
+```
+$ postgres -p 1234
+```
+
+要使用psql连接到这个服务器，用 -p 选项指定这个端口：
+
+```
+$ psql -p 1234
+```
+
+或者设置环境变量 `PGPORT`：
+
+```
+$ export PGPORT=1234
+$ psql
+```
+
+命名运行时参数可以用这些形式之一设置：
+
+```
+$ postgres -c work_mem=1234
+$ postgres --work-mem=1234
+```
+
+两种形式都覆盖 `postgresql.conf` 中可能存在的 `work_mem` 设置。请注意在参数名中的下划线在命令行可以写成下划线或连字符。除了用于短期的实验外，更好的习惯是编辑 `postgresql.conf` 中的设置， 而不是倚赖命令行开关来设置参数。

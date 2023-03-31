@@ -1,0 +1,312 @@
+:toc:
+:toc: marco
+:toc: left
+:toc-title: Contents
+:sectnums:
+:sectnumlevels: 5
+:toclevels: 5
+:imagesdir: ./_images
+== Getting Started with IvorySQL
+
+=== getting started guide
+
+==== Beginners
+
+If you are new to IvorySQL, you can click https://deploy-preview-83--ivorysql.netlify.app/zh-CN/[here] to learn about features of IvorySQL in the beginning.Also, you can download our source code through [Github](https://github.com/IvorySQL/IvorySQL).By the way, don't forget to give our IvorySQL community a star.
+
+You can refer to the following contents to install IvorySQL quickly.
+
+OS version of the demo:
+[source,shell]
+----
+[highgo@ivorysql ~]$ cat /proc/version
+Linux version 3.10.0-1160.el7.x86_64 (mockbuild@kbuilder.bsys.centos.org) (gcc version 4.8.5 20150623 (Red Hat 4.8.5-44) (GCC) ) #1 SMP Mon Oct 19 16:18:59 UTC 2020
+----
+
+**Enter user directory**
+
+[source,]
+----
+[highgo@ivorysql /]$ cd /home/highgo
+----
+
+**Getting the source**
+[source,]
+----
+[highgo@ivorysql ~]$ ls
+IvorySQL
+[highgo@ivorysql ~]$ cd IvorySQL/
+----
+
+
+**Configuration**
+[source,]
+----
+[highgo@ivorysql IvorySQL]$ ./configure --prefix=/home/highgo
+----
+
+You can install IvorySQL where you want to install it. If you want to install IvorySQL by default, execute ./configure directly.Remember to refer to the http://postgres.cn/docs/14/installation.html[manual] for other parameter settings.
+
+To compile the IvorySQL from the source code, you have to ensure that prerequisite packages are available on your system. The following software packages are required for building IvorySQL:
+
+* make - GNU make version 3.80 or newer
+* gcc - ISO/ANSI C compiler (at least C99-compliant). Recent versions of GCC are recommended.
+* libreadline - The GNU Readline library is used by default.
+* zlib - zlib compression library is used by default.
+* Flex - (Flex 2.5.31 or later)
+* Bison - (Bison 1.875 or later)
+
+**Install**
+
+[source,]
+----
+[highgo@ivorysql IvorySQL]$ make
+[highgo@ivorysql IvorySQL]$ make install
+----
+
+**Installation completed**
+
+    [highgo@ivorysql ~]$ ls
+    bin  include  IvorySQL  lib  share
+
+**Modify environment variables**
+
+    [highgo@ivorysql ~]$ vi .bash_profile
+
+**Write and quit**
+
+    PATH=/home/highgo/bin:$PATH
+    export PATH
+    LD_LIBRARY_PATH=/usr/local/pgsql/lib
+    export LD_LIBRARY_PATH
+
+**Source .bash_prifile**
+
+    [highgo@ivorysql ~]$ source .bash_profile
+
+**Initialize database**
+
+    [highgo@ivorysql ~]$ initdb -D data // 'data' is the name of your database, you can set it by yourself.
+
+**Start server**
+
+    [highgo@ivorysql ~]$ pg_ctl -D data -l logfile start
+
+**Connection**
+----
+    [highgo@ivorysql ~]$ psql -d postgres
+    psql (16devel)
+    Type "help" for help.
+
+    postgres=#
+----
+
+Congratulation! You have installed IvorySQL successfully.Please enter SQL statements to experience.Have a nice day.
+
+
+
+==== Developer guide
+
+Developers are more concerned about how to download, install and access the database as quickly as possible. For download and installation, please refer to Part IV [Installation and Deployment]. The following describes how to access the database for clients
+
+The client tool for connecting to the IvorySQL database service is the same as that of PostgreSQL.
+
+===== Psql connection
+
+Operating system user ivorysql session connection：
+----
+undefined
+[root@localhost ~]# su - ivorysql 
+Last login: Wed Feb 24 10:47:32 CST 2023 on pts/0
+-bash-4.2$ psql
+psql (14.2)
+Type "help" for help.
+
+ivorysql=#
+----
+
+===== DBeaver connection
+
+DBeaver is a powerful open source tool. The connection configuration is as follows:
+
+image::p1.png[]
+
+===== HIGHGO developer connection
+
+HIGHGO developer is a tool independently developed by HIGHGO. In addition to supporting HIGHGO database, it also supports PostgreSQL and IvorySQL databases. The connection configuration is as follows:
+
+image::p2.png[]
+
+> If you want to use this tool, please follow the official account to join the WeChat group "IvorySQL China Technology Exchange Group" for consultation.
+
+
+= Quick experience
+
+== Stand-alone simulation deployment
+
+=== stand-alone installation
+
+environment：**CentOS 7.X**
+
+Installation package：rpm
+
+Download YUM source: Use wget to download on Centos7
+
+wget https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-1.0-2.noarch.rpm
+
+
+
+installation source
+
+    yum install ivorysql-release-1.0-2.noarch.rpm
+
+install library
+
+    yum install -y ivorysql2-server
+
+Initialize the database
+
+    cd /usr/local/ivorysql/ivorysql-2/bin
+    ./initdb -D ../data
+
+=== cluster installation
+
+environment：**CentOS 7.X**
+
+Installation package：rpm
+
+Download YUM source: Use wget to download on Centos7
+
+wget https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-1.0-2.noarch.rpm
+
+installation source
+
+    yum install ivorysql-release-1.0-2.noarch.rpm
+
+install library
+
+    yum install -y ivorysql2-server
+
+**master node**
+
+Initialize the database
+
+    cd /usr/local/ivorysql/ivorysql-2/bin
+    ./initdb ../data-primary -U postgres
+
+Start the service and create a user
+
+    ALTER USER postgres WITH PASSWORD '123456';
+    CREATE ROLE repl WITH PASSWORD '123456' REPLICATION LOGIN;
+
+
+configuration: pg_hba.conf
+
+----
+shell
+host    all             all             0.0.0.0/0            trust
+host    replication     all             0.0.0.0/0            trust
+----
+
+restart service
+
+**standby node**
+
+1、basic backup
+
+----
+shell
+cd /usr/local/ivorysql/ivorysql-2/bin
+./pg_basebackup -h 127.0.0.1 -p 5333 -U repl -W -Fp -Xs -Pv -R -D ../data-standby01
+----
+
+2、modify port
+----
+vi ../data-standby01/postgresql.conf
+
+    port = 5334
+----
+
+3、Start the standby database
+
+== deploy cluster
+
+**master node**
+
+environment：**CentOS 7.X**
+
+Installation package：rpm
+
+Download YUM source: Use wget to download on Centos7
+
+wget https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-1.0-2.noarch.rpm
+
+
+
+installation source
+----
+yum install ivorysql-release-1.0-2.noarch.rpm
+----
+
+install library
+
+    yum install -y ivorysql2-server
+
+Initialize the master node
+
+    cd /usr/local/ivorysql/ivorysql-2/bin
+    ./initdb ../data-primary -U postgres
+
+Start the service and create a user
+----
+./psql -U postgres -d postgres -p 5333
+ALTER USER postgres WITH PASSWORD '123456';
+CREATE ROLE repl WITH PASSWORD '123456' REPLICATION LOGIN;
+----
+
+Revise:postgres.conf
+----
+listen_addresses = '*'          
+
+port = 5333
+max_connections = 100
+unix_socket_directories = '/tmp' 
+----
+
+configuration: pg_hba.conf
+----
+shell
+host    all             all             0.0.0.0/0            trust
+host    replication     all             0.0.0.0/0            trust
+----
+
+restart service
+
+**standby node**
+
+environment：**CentOS 7.X**
+
+Installation package：rpm
+
+Download YUM source: Use wget to download on Centos7
+
+wget https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-1.0-2.noarch.rpm
+
+
+
+installation source
+
+    yum install ivorysql-release-1.0-2.noarch.rpm
+
+install library
+
+    yum install -y ivorysql2-server
+
+1、basic backup
+----
+shell
+cd /usr/local/ivorysql/ivorysql-2/bin
+./pg_basebackup -h 192.168.xx.xx -p 5333 -U repl -W -Fp -Xs -Pv -R -D ../data-standby01
+----
+
+2、Start the standby database
