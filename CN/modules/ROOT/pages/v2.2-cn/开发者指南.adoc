@@ -6,6 +6,7 @@
 :sectnumlevels: 5
 :toclevels: 5
 :imagesdir: ./_images
+
 = 开发者指南
 
 == 概览
@@ -106,7 +107,7 @@ $ dropdb mydb
 
 （对于这条命令而言，数据库名不是缺省的用户名，因此你就必须声明它） 。这个动作将在物理上把所有与该数据库相关的文件都删除并且不可取消， 因此做这中操作之前一定要考虑清楚。
 
-更多关于`createdb`和`dropdb`的信息可以分别在 http://www.postgres.cn/docs/14/app-createdb.html[createdb] 和 http://www.postgres.cn/docs/14/app-dropdb.html[dropdb] 中找到。
+更多关于 `createdb` 和 `dropdb` 的信息可以分别在 http://www.postgres.cn/docs/14/app-createdb.html[createdb] 和 http://www.postgres.cn/docs/14/app-dropdb.html[dropdb] 中找到。
 
 === 创建一个新表
 
@@ -122,13 +123,13 @@ CREATE TABLE weather (
 );
 ```
 
-你可以在`psql`输入这些命令以及换行符。`psql`可以识别该命令直到分号才结束。
+你可以在 `psql` 输入这些命令以及换行符。`psql` 可以识别该命令直到分号才结束。
 
 你可以在 SQL 命令中自由使用空白（即空格、制表符和换行符）。 这就意味着你可以用和上面不同的对齐方式键入命令，或者将命令全部放在一行中。两个划线（“`--`”）引入注释。 任何跟在它后面直到行尾的东西都会被忽略。SQL 是对关键字和标识符大小写不敏感的语言，只有在标识符用双引号包围时才能保留它们的大小写（上例没有这么做）。
 
-`varchar(80)`指定了一个可以存储最长 80 个字符的任意字符串的数据类型。`int`是普通的整数类型。`real`是一种用于存储单精度浮点数的类型。`date`类型应该可以自解释（没错，类型为`date`的列名字也是`date`。 这么做可能比较方便或者容易让人混淆 — 你自己选择）。
+`varchar(80)` 指定了一个可以存储最长 80 个字符的任意字符串的数据类型。 `int` 是普通的整数类型。 `real` 是一种用于存储单精度浮点数的类型。 `date` 类型应该可以自解释（没错，类型为`date`的列名字也是 `date`。 这么做可能比较方便或者容易让人混淆 — 你自己选择）。
 
-IvorySQL支持标准的SQL类型`int`、`smallint`、`real`、`double precision`、`char(*`N`*)`、`varchar(*`N`*)`、`date`、`time`、`timestamp`和`interval`，还支持其他的通用功能的类型和丰富的几何类型。IvorySQL中可以定制任意数量的用户定义数据类型。因而类型名并不是语法关键字，除了SQL标准要求支持的特例外。
+IvorySQL支持标准的SQL类型 `int`、`smallint`、`real`、`double precision`、`char(*N*)`、`varchar(*N*)`、`date`、`time`、`timestamp` 和 `interval`，还支持其他的通用功能的类型和丰富的几何类型。IvorySQL中可以定制任意数量的用户定义数据类型。因而类型名并不是语法关键字，除了SQL标准要求支持的特例外。
 
 第二个例子将保存城市和它们相关的地理位置：
 
@@ -139,7 +140,7 @@ CREATE TABLE cities (
 );
 ```
 
-类型`point`就是一种IvorySQL特有数据类型的例子。
+类型 `point` 就是一种IvorySQL特有数据类型的例子。
 
 最后，我们还要提到如果你不再需要某个表，或者你想以不同的形式重建它，那么你可以用下面的命令删除它：
 

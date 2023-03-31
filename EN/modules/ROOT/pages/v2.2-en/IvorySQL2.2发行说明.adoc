@@ -1,0 +1,47 @@
+:toc:
+:toc: marco
+:toc: left
+:toc-title: 目录
+:sectnums:
+:sectnumlevels: 5
+:toclevels: 5
+
+== Versions Inroduction
+
+[**Release Date: December 14, 2022**]
+
+IvorySQL 2.2 is based on PostgreSQL 15.2 and includes various fixes and new features from IvorySQL 2.1 onwards.
+
+This version is compatible with IvorySQL 2.1 and does not require a dump/restore for users running IvorySQL 1.X.
+
+IvorySQL 2.2 includes various fixes from PostgreSQL 15.2, including improved sorting performance and compression, logging and configuration enhancements, more fine-tuned logical replication options, and more. For more detailed updates and bug fixes in PostgreSQL 15.2, see the official https://www.postgresql.org/docs/release/15.2/[PostgreSQL 15.2 Release Notes] .
+
+== Known Issues
+
+* No issues have been found.
+
+== Enhancements
+
+- Support plisql multi-range in conditional control
+
+== Fixed issue
+
+- Fix: CONNECT_BY segment fault.
+- Fix: BC Dates giving wrong output.
+
+== Source Code
+
+IvorySQL contains 2 main code repositories, the database IvorySQL code bin, and the IvorySQL blog bin.
+
+* IvorySQL code bin: https://github.com/IvorySQL/IvorySQL[https://github.com/IvorySQL/IvorySQL]
+* IvorySQL blog bin: https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
+
+== Contributors
+
+The following individuals have contributed to this release as patch authors, committers, reviewers, testers, or issue reporters.
+
+- Cary Huang
+- David Zhang
+- Grant Zhou
+
+**https://github.com/IvorySQL/IvorySQL/commits/Ivory_REL_2_1[Full Update Log]**

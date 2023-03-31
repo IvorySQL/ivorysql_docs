@@ -1,15 +1,15 @@
-= Welcome to IvorySQL
+= 欢迎来到 IvorySQL
 :example-caption!:
 
-*IvorySQL* is the only Oracle compatible open source PostgreSQL.
+*IvorySQL* 是唯一一款基于postgreSQL研发的兼容Oracle的数据库。
 
-== Getting Started
-Get started by https://github.com/IvorySQL/IvorySQL[Downloading the code from Github].
+== 开始
+从 https://github.com/IvorySQL/IvorySQL[Github 下载源码]开始。
 
-== Releases
-Go to https://www.ivorysql.org/releases-page[IvorySQL Release Page].
+== 发布
+请前往 https://www.ivorysql.org/releases-page[IvorySQL 发布页面].
 
-== About IvorySQL
-IvorySQL project is an open source project proposed by Highgo Software to add the Oracle compatibility features into the popular PostgreSQL database.
+== 关于 IvorySQL
+IvorySQL项目是瀚高软件提出的一个开源项目，旨在将Oracle兼容性功能添加到流行的PostgreSQL数据库中。
 
-It is open source and free to use, any comments please contact contact@highgo.ca
+IvorySQL 开源并且可以免费使用，如果您有任何建议请联系 contact@highgo.ca

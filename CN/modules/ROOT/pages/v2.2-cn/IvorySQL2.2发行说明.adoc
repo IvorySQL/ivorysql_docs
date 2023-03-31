@@ -1,0 +1,51 @@
+:toc:
+:toc: marco
+:toc: left
+:toc-title: 目录
+:sectnums:
+:sectnumlevels: 5
+:toclevels: 5
+
+== 版本介绍
+
+[**发行日期: 2023年03月30日**]
+
+IvorySQL 2.2 基于 PostgreSQL 15.2 并包含 IvorySQL 2.1 之后的各种修复和新功能。
+
+此版本与 IvorySQL 2.1 兼容，并且不需要为运行 IvorySQL 1.X 的用户进行转储/恢复。
+
+IvorySQL 2.2 包含来自 PostgreSQL 15.2 的各种修复，包括改进的排序性能和压缩、日志记录和配置增强、更微调的逻辑复制选项等。有关 PostgreSQL 15.2  中更详细的更新和错误修复，请参阅官方 https://www.postgresql.org/docs/release/15.2/[PostgreSQL 15.2 发行说明] 。
+
+== 已知问题
+
+* 暂未发现问题。
+
+== 增强功能
+
+- 兼容Oracle-多范围查询。
+
+== 问题修复
+
+- 修复了层次查询段错误问题。
+- 公元前时间日期输出错误。
+
+== 源代码
+
+IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL博客仓：
+
+* IvorySQL代码仓： https://github.com/IvorySQL/IvorySQL[https://github.com/IvorySQL/IvorySQL]
+* IvorySQL博客仓： https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
+
+== 贡献人员
+
+以下个人作为补丁作者、提交者、审阅者、测试者或问题报告者为本版本做出了贡献。
+
+- Cary Huang
+- David Zhang
+- Grant Zhou
+- Yang Tan
+- Jie Wang
+- Shuainan Mu
+- Jingru Bai
+
+**https://github.com/IvorySQL/IvorySQL/commits/Ivory_REL_2_2[完整更新日志]**
