@@ -1,0 +1,52 @@
+:toc:
+:toc: marco
+:toc: left
+:toc-title: 目录
+:sectnums:
+:sectnumlevels: 5
+:toclevels: 5
+
+== Versions Inroduction
+
+[**Release Date: December 14, 2022**]
+
+IvorySQL 2.1 is based on PostgreSQL 15.1 and includes various fixes and new features from IvorySQL 1.5 onwards.
+
+This version is compatible with IvorySQL 1.5 and does not require a dump/restore for users running IvorySQL 1.X.
+
+IvorySQL 2.1 includes various fixes from PostgreSQL 15.0 and 15.1, including improved sorting performance and compression, logging and configuration enhancements, more fine-tuned logical replication options, and more. For more detailed updates and bug fixes in PostgreSQL 15 and 15.1, see the official https://www.postgresql.org/docs/release/15.0/[PostgreSQL 15.0 Release Notes] and https://www.postgresql.org/docs/release/15.1/[PostgreSQL 15.1 Release Notes].
+
+== Feature  Introduction
+
+- Added **globally unique indexes**
+
+  **Globally Unique Indexes** are unique indexes on partitioned tables that can use non-partitioned keys to ensure uniqueness across partitions. This feature can be used in IvorySQL's Postgres schema and Oracle compatible schema.
+
+  Globally unique indexes can be created using the "GLOBAL" and "UNIQUE" clauses in the "CREATE INDEX" statement run against a partitioned table.
+
+  For more information, please refer to IvorySQL user documentation.
+
+== Known Issues
+
+* No issues have been found.
+
+== Fixed issue
+
+- No issues found at this time.
+
+== Source Code
+
+IvorySQL contains 2 main code repositories, the database IvorySQL code bin, and the IvorySQL blog bin.
+
+* IvorySQL code bin: https://github.com/IvorySQL/IvorySQL[https://github.com/IvorySQL/IvorySQL]
+* IvorySQL blog bin: https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
+
+== Contributors
+
+The following individuals have contributed to this release as patch authors, committers, reviewers, testers, or issue reporters.
+
+- Cary Huang
+- David Zhang
+- Grant Zhou
+
+**https://github.com/IvorySQL/IvorySQL/commits/Ivory_REL_2_1[Full Update Log]**
