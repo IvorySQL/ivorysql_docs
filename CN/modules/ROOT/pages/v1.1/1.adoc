@@ -1,10 +1,7 @@
-:toc:
-:toc: marco
-:toc: left
-:toc-title: 目录
+
 :sectnums:
 :sectnumlevels: 5
-:toclevels: 5
+
 
 == 版本介绍
 
