@@ -43,5 +43,16 @@ The following individuals have contributed to this release as patch authors, com
 - Cary Huang
 - David Zhang
 - Grant Zhou
+- Yang Tan
+- Jie Wang
+- Shuainan Mu
+- Jingru Bai
+- Shoubo Wang
+- Jiao Ren
+- Zhekai Xiao
+- Huajian Jin
+- Lily Wang
+- Songjin Zhou
+- M.Imran Zaheer
 
 **https://github.com/IvorySQL/IvorySQL/commits/Ivory_REL_2_1[Full Update Log]**

@@ -1,10 +1,7 @@
-:toc:
-:toc: marco
-:toc: left
-:toc-title: 目录
+
 :sectnums:
 :sectnumlevels: 5
-:toclevels: 5
+
 
 == 版本介绍
 
@@ -43,9 +40,16 @@ IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL博�
 - Cary Huang
 - David Zhang
 - Grant Zhou
-- Yang Tan
-- Jie Wang
-- Shuainan Mu
-- Jingru Bai
+- 谭洋
+- 王杰
+- 穆帅楠
+- 白京茹
+- 王守波
+- 任娇
+- 肖哲凯
+- 金华建
+- 王丽
+- Songjin Zhou
+- M.Imran Zaheer
 
 **https://github.com/IvorySQL/IvorySQL/commits/Ivory_REL_2_2[完整更新日志]**

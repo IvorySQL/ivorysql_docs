@@ -1,10 +1,7 @@
-:toc:
-:toc: marco
-:toc: left
-:toc-title: Contents
+
 :sectnums:
 :sectnumlevels: 5
-:toclevels: 5
+
 :imagesdir: ./_images
 = **IvorySQL Community Contribution Guide**
 
