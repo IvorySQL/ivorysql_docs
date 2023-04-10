@@ -1,4 +1,4 @@
-* xref:welcome.adoc[Welcome]
+* xref:v2.2/welcome.adoc[Welcome]
 * xref:v2.2/1.adoc[Release]
 * xref:v2.2/2.adoc[About]
 * Getting Started with IvorySQL

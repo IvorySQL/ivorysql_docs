@@ -1,4 +1,4 @@
-* xref:welcome.adoc[欢迎]
+* xref:v2.2/welcome.adoc[欢迎]
 * xref:v2.2/1.adoc[发行说明]
 * xref:v2.2/2.adoc[关于IvorySQL]
 * IvorySQL入门
