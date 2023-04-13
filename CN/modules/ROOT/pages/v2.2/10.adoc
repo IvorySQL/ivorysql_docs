@@ -895,3 +895,117 @@ tags: [IvorySQL, Welcome, Database, Join Us]
 ​		[名称]（链接）
 
 ​		[Github page](https://github.com/IvorySQL/) 下载源代码或发布的软件包。
+
+
+== 网站贡献指南
+
+https://docs.ivorysql.org[IvorySQL的文档中心] 采用开源工具 https://antora.org/[`Antora`] 进行搭建，同样的，我们的文档中心也是开源的。文档中心由三部分组成，分别是 https://github.com/IvorySQL/ivorysql_docs[文档文件], https://github.com/IvorySQL/ivorysql_web[静态网页文件] 以及生成网页所用到的 https://github.com/IvorySQL/ivory-doc-builder[网页模板文件] 。
+
+我们的文档中心同样欢迎每一位愿意参与到开源工作中的小伙伴的加入，记得遵守我们的行为准则^_^。
+
+=== 如何贡献
+
+由于我们的文档中心全部托管于Github上，这使得任何用户都可以将我们的文档仓库 `fork` 到个人仓库中，然后对其进行修改，之后提交PR，由我们的开源团队的人员审核过后就可以将修改更新到我们的文档中心中。
+
+为了更加便捷地使您达到纠正文档错误的目的，首先需要您按照想要更新的大小来建立个人仓库，如下：
+
+* 如果您想修改原有的内容或者添加新的页面，仅需要 `fork` https://github.com/IvorySQL/ivorysql_docs[文档文件] 到个人仓库中。
+
+image::7.png[]
+
+* 如果您想更深度地参与到文档中心的建设工作中来，除了文档文件外，还需要 `fork` https://github.com/IvorySQL/ivorysql_web[静态网页文件] 和 https://github.com/IvorySQL/ivory-doc-builder[网页模板文件] 到个人仓库中。
+
+image::8.png[]
+image::9.png[]
+
+=== 修改内容
+
+本小节将会介绍发现网页内容不适宜之后，对网页内容进行修改的流程。
+
+* 在有错误内容的网页的右上角，有一个 `edit this page` 的按钮，点击按钮。如图：
+
+image::10.png[]
+
+* 点击之后，就会跳转到我们存放当前页面源 `.adoc` 文件的编辑页面，请按照 `Asciidoc` 格式对内容进行修改。如图：
+
+image::11.png[]
+
+* 编辑完成后，如图：
+
+image::12.png[]
+
+* 确认更新后，如图：
+
+image::13.png[]
+
+* 接下来会由开源团队的相关人员负责审核您提交的内容，审核完成后您所提交的更新就会出现在对应页面上。
+
+=== 添加页面
+
+本小节会介绍如何在网站上添加新的页面组件，添加新页面涉及的修改主要包括以下几种：
+
+* `CN/modules/ROOT/pages/vX.X` 目录下的 `.adoc` 文件添加
+* `CN/modules/ROOT/nav.adoc` 的修改，如果修改涉及到图片的修改或者添加，请修改 `images` 中的图片
+* `EN/modules/ROOT/pages/vX.X` 目录下的 `.adoc` 文件添加
+* `EN/modules/ROOT/nav.adoc` 的修改，如果修改涉及到图片的修改或者添加，请修改 `images` 中的图片
+
+1. 首先，您需要把您 `fork` 的仓库，clone到本地
+
+    git clone https://github.com/$username$/ivorysql_docs.git
+
+2. 然后，将要添加的 `.adoc` 文件放至正确目录下，切记中英文的都应该准备（*中英文文件应该同名*），并且各自放至正确目录下，同时，修改对应的 `nav.adoc` 文件（修改方式可以参照文件已有内容进行修改）。
+3. 上述修改完成后，先提交至个人仓库
+
+    git add .
+    git commit -m "$describe your change$"
+    git push
+
+4. 之后按照如下提交PR即可
+
+image::13.png[]
+
+=== 测试
+
+如果您不满足于简单的在网页端进行提交或者仅修改网页内容，又或者您想要修改网页ui，本小节内容将会帮助到您。
+
+在阅读本小节内容之前，您需要确认您的Github个人仓库是否已经 `fork` 了网页模板文件仓库和静态网页文件仓库，如果没有请参考<<#_如何贡献>>。
+
+==== 环境准备
+
+为了测试您所做的修改是否修改，您需要准备以下环境
+
+* `Node.js` 安装
+* `Antora` 安装
+
+环境安装请参考 https://docs.antora.org/antora/latest/[Antora docs]。
+
+安装成功后，在终端上显示如下即为成功安装。
+
+image::14.png[]
+
+==== 网页生成
+
+通过阅读之前内容，相信您已经有了充足的准备，包括 `fork` 我们文档中心相关的三个仓库到个人仓库中，`Antora` 工具的安装准备等环境的搭建。
+
+* 首先，您要知道网页对应的ui的位置，如下图：
+
+image::15.png[]
+
+中英文的网页ui模板基本一致，因此修改时应该尽量保证同时修改两个模板，将修改过后的ui再上传至个人Github上，完成了这些，就可以考虑在本地生成您修改过后的网页了。
+
+文档中心是由 `Antora` 进行搭建的，在运行 `Antora` 之前，记得修改对应 `playbook.yml` 文件
+
+image::16.png[]
+image::17.png[]
+
+完成上述流程之后，请在终端运行命令 `antora antora-playbook.yml --stacktrace`，然后耐心等待，当成功运行结束后，你就可以查看自己生成的网页了。
+
+在检查之后，你就可以开始着手上传至我们的 *ivorysql_web* 仓库中，提交PR的流程和之前的流程相同，感谢您对社区的贡献^_^，我们会在审核过后，考虑是否更新网站。
+
+=== 部署网页
+
+部署网页这部分工作，暂时还是由开源团队的人员负责，我们重视每一次提交和每一个issue，所以请不要担心自己对于社区的贡献被埋没^_^
+
+=== Tip
+
+本章节主要介绍了如何自己主动去更新我们的文档中心，但是我们明确地知道山高路远，时不我待。因此对于没有太多时间的小伙伴来说，可以发邮件到我们的 **ivorysql-docs@ivorysql.org**，我们会有专门的工作人员进行处理您的每一封来信，期待您的邮件。
