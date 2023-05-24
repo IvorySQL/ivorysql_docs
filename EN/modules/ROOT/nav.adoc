@@ -1,1 +1,1 @@
-* xref:v1.0/welcome.adoc[Welcome]
+* xref:Devs/welcome.adoc[Welcome]
