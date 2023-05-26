@@ -1,0 +1,27 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= IVORYSQL framework design
+== Objective
+
+- In order to minimize changes to the original Postgres, it is compatible with Oracle. We need to implement a framework for dual-parser, dual-port, modal PLPGSQL to implement PLiSQL. The implementation flowchart is as follows:
+
+image::p10.png[]
+
+== Design schemes
+
+=== Dual-port design
+
+- The ivorysql port 5432 is kept compatible with the original Postgres situation, so Ivorysql uses another separate port to log in, which defaults to 1521. Log in from this port, and the Oracle compatibility mode is used by default. If you need to log in from port 5432 and also enter compatibility mode, you need to set it through the compatible_mode parameters;
+
+=== Parser module design
+
+- In order to minimize the interference between Oracle syntax and Postgres syntax, a parser module has been added to handle oracle-related syntax.
+
+=== Added PL\iSQL procedural language
+
+-Similarly, in order to reduce the conflict between Oracle compatibility and Postgres syntax, a separate set of Oracle-specific test cases is designed. This set of test cases is a copy of Postgres' original test framework.
+
+
