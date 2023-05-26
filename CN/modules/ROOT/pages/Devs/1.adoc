@@ -1,0 +1,31 @@
+= 欢迎来到 IvorySQL
+- ivorysql双端口开发
+- ivorysql parser分离
+- ivorysql psql parser分离
+- ivorysql PL\iSQL模块开发
+- ivorysql兼容oracle的整套测试框架开发
+- ivorysql支持initdb -m初始化指定模式
+- ivorysql支持pg与oracle模式切换
+- ivorysql psql parser分离
+- ivorysql命令：unused_oids功能增加
+- ivorysql部分常用命令兼容oracle模式
+- ivorysql可灵活配置ip和端口功能
+- 双引号中字符大小写模式
+- ivorysql兼容oracle sequence
+- ivorysql支持oracle嵌套子程序
+- ivorysql Search Path默认修改
+- char
+- number
+- varchar
+- varchar2
+- number
+- binary_float
+- binary_double
+- date
+- timestamp
+- timestamp with time zone
+- timestamp with local time zone
+- interval year to mouth
+- interval day to second
+- raw
+- long
