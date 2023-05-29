@@ -1,4 +1,16 @@
-= 欢迎来到 IvorySQL
+
+:sectnums:
+:sectnumlevels: 5
+
+
+== 版本介绍
+
+== 已知问题
+
+* 暂未发现问题。
+
+== 增强功能
+
 - ivorysql双端口开发
 - ivorysql parser分离
 - ivorysql psql parser分离
@@ -29,3 +41,26 @@
 - interval day to second
 - raw
 - long
+
+== 问题修复
+
+- 修复了层次查询段错误问题。
+- 公元前时间日期输出错误。
+
+== 源代码
+
+IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL博客仓：
+
+* IvorySQL代码仓： https://github.com/IvorySQL/IvorySQL[https://github.com/IvorySQL/IvorySQL]
+* IvorySQL博客仓： https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
+
+== 贡献人员
+
+以下个人作为补丁作者、提交者、审阅者、测试者或问题报告者为本版本做出了贡献。
+
+- 谭洋
+- 王杰
+- 穆帅楠
+- 张洪源
+
+**https://github.com/IvorySQL/IvorySQL/commits/Ivory_REL_2_2[完整更新日志]**

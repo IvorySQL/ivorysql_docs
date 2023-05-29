@@ -1,0 +1,1283 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+
+= 管理员指南
+
+== 监控数据活动
+
+=== 标准Unix工具
+
+在大部分 Unix 平台上，IvorySQL会修改由`ps`报告的命令标题，这样个体服务器进程可以被标识。一个显示样例
+
+```
+$ ps auxww | grep ^postgres
+postgres  15551  0.0  0.1  57536  7132 pts/0    S    18:02   0:00 postgres -i
+postgres  15554  0.0  0.0  57536  1184 ?        Ss   18:02   0:00 postgres: background writer
+postgres  15555  0.0  0.0  57536   916 ?        Ss   18:02   0:00 postgres: checkpointer
+postgres  15556  0.0  0.0  57536   916 ?        Ss   18:02   0:00 postgres: walwriter
+postgres  15557  0.0  0.0  58504  2244 ?        Ss   18:02   0:00 postgres: autovacuum launcher
+postgres  15558  0.0  0.0  17512  1068 ?        Ss   18:02   0:00 postgres: stats collector
+postgres  15582  0.0  0.0  58772  3080 ?        Ss   18:04   0:00 postgres: joe runbug 127.0.0.1 idle
+postgres  15606  0.0  0.0  58772  3052 ?        Ss   18:07   0:00 postgres: tgl regression [local] SELECT waiting
+postgres  15610  0.0  0.0  58772  3056 ?        Ss   18:07   0:00 postgres: tgl regression [local] idle in transaction
+```
+
+（`ps`的调用方式随不同的平台而变，但是显示的细节都差不多。这个例子来自于一个最近的 Linux 系统）。列在这里的第一个进程是主服务器进程。为它显示的命令参数是当它被启动时使用的那些。接下来的五个进程是由主进程自动启动的后台工作者进程（如果你已经设置系统为不启动统计收集器，“统计收集器”进程将不会出现；同样“自动清理发动”进程也可以被禁用）。剩余的每一个进程都是一个处理一个客户端连接的服务器进程。每个这种进程都会把它的命令行显示设置为这种形式
+
+```
+postgres: user database host activity
+```
+
+在该客户端连接的生命期中，用户、数据库以及（客户端）主机项保持不变，但是活动指示器会改变。活动可以是`闲置`（即等待一个客户端命令）、`在事务中闲置`（在一个`BEGIN`块里等待客户端）或者一个命令类型名，例如`SELECT`。还有，如果服务器进程正在等待一个其它会话持有的锁， `等待中`会被追加到上述信息中。在上面的例子中，我们可以推断：进程 15606 正在等待进程 15610 完成其事务并且因此释放一些锁（进程 15610 必定是阻塞者，因为没有其他活动会话。在更复杂的情况中，可能需要查看pg_locks系统视图来决定谁阻塞了谁）。
+
+如果配置了cluster_name，则集簇的名字 也将会显示在`ps`的输出中：
+
+```
+$ psql -c 'SHOW cluster_name'
+ cluster_name
+--------------
+ server1
+(1 row)
+
+$ ps aux|grep server1
+postgres   27093  0.0  0.0  30096  2752 ?        Ss   11:34   0:00 postgres: server1: background writer
+...
+```
+
+如果你已经关闭了update_process_title，那么活动指示器将不会被更新，进程标题仅在新进程被启动的时候设置一次。 在某些平台上这样做可以为每个命令节省可观的开销，但在其它平台上却不明显。
+
+.提示
+****
+Solaris需要特别的处理。你必需使用`/usr/ucb/ps`而不是`/bin/ps`。 你还必需使用两个`w`标志，而不是一个。另外，你对`postgres`命令的最初调用必须用一个比服务器进程提供的短的`ps`状态显示。如果你没有满足全部三个要求，每个服务器进程的`ps`输出将是原始的`postgres`命令行。 command line。
+****
+
+=== 统计收集器
+
+IvorySQL的 _统计收集器_ 是一个支持收集和报告服务器活动信息的子系统。 目前，这个收集器可以对表和索引的访问计数，计数可以按磁盘块和个体行来进行。它还跟踪每个表中的总行数、每个表的清理和分析动作的信息。它也统计调用用户定义函数的次数以及在每次调用中花费的总时间。
+
+IvorySQL也支持报告有关系统正在干什么的 动态信息，例如当前正在被其他服务器进程执行的命令以及系统中存在哪些其他连接。 这个功能是独立于收集器进程存在的。
+
+==== 统计收集配置
+
+因为统计收集给查询执行增加了一些负荷，系统可以被配置为收集或不收集信息。这由配置参数控制，它们通常在`postgresql.conf`中设置。
+
+参数track_activities允许监控当前被任意服务器进程执行的命令。
+
+参数track_counts控制是否收集关于表和索引访问的统计信息。
+
+参数track_functions启用对用户定义函数使用的跟踪。
+
+参数track_io_timing启用对块读写次数的监控。
+
+通常这些参数被设置在`postgresql.conf`中，这样它们会应用于所有服务器进程，但是可以在单个会话中使用SET命令打开或关闭它们（为了阻止普通用户对管理员隐藏他们的活动，只有超级用户被允许使用`SET`来改变这些参数）。
+
+统计收集器通过临时文件将收集到的信息传送给其他IvorySQL进程。这些文件被存储在名字由stats_temp_directory参数指定的目录中，默认是`pg_stat_tmp`。为了得到更好的性能，`stats_temp_directory`可以被指向一个基于 RAM 的文件系统来降低物理 I/O 需求。当服务器被干净地关闭时，一份统计数据的永久拷贝被存储在`pg_stat`子目录中，这样在服务器重启后统计信息能被保持。当在服务器启动时执行恢复时（例如立即关闭、服务器崩溃以及时间点恢复之后），所有统计计数器会被重置。
+
+==== 查看统计信息
+
+表 1 中列出了一些预定义视图 可以用来显示系统的当前状态。 表 2 中列出了另一些视图可以 显示统计收集的结果。你也可以使用底层统计函数来建立自定义的视图。
+
+在使用统计信息监控收集到的数据时，你必须了解这些信息并非是实时更新的。每个独立的服务器进程只在进入闲置状态之前才向收集器传送新的统计计数；因此正在进行的查询或事务并不影响显示出来的总数。同样，收集器本身也最多每`PGSTAT_STAT_INTERVAL`毫秒（缺省为 500ms，除非在编译服务器的时候修改过）发送一 次新的报告。因此显示的信息总是落后于实际活动。但是由`track_activities`收集的当前查询信息总是最新的。
+
+另一个重点是当一个服务器进程被要求显示任何这些统计信息时，它首先取得收集器进程最近发出的报告并且接着为所有统计视图和函数使用这个快照，直到它的当前事务的结尾。因此只要你继续当前事务，统计数据将会一直显示静态信息。相似地，当任何关于所有会话的当前查询的信息在一个事务中第一次被请求时，这样的信息将被收集。并且在整个事务期间将显示相同的信息。这是一种特性而非缺陷，因为它允许你在该统计信息上执行多个查询并且关联结果而不用担心那些数字会在你不知情的情况下改变。但是如果你希望用每个查询都看到新结果，要确保在任何事务块之外做那些查询。或者，你可以调用`pg_stat_clear_snapshot`()，那将丢弃当前事务的统计快照（如果有）。下一次对统计性信息的使用将导致获取一个新的快照。
+
+一个事务也可以在视图`pg_stat_xact_all_tables`、`pg_stat_xact_sys_tables`、`pg_stat_xact_user_tables`和`pg_stat_xact_user_functions`中看到它自己的统计信息（还没有被传送给收集器）。这些数字并不像上面所述的那样行动，相反它们在事务期间持续被更新。
+
+表 1中显示的动态统计视图中的一些信息是有安全限制的。 普通用户只能看到关于他们自己的会话的所有信息（属于他们是成员的角色的会话）。 在关于其他会话的行中，许多列将为空。 但是，请注意，一个会话的存在和它的一般属性，例如会话用户和数据库，对所有用户都是可见的。 超级用户和内置角色`pg_read_all_stats`的成员可以看到所有会话的所有信息。
+
+**表1.动态统计视图**
+|====
+| 视图名称    | 描述
+| `pg_stat_activity`              | 每个服务器进程一行，显示与那个进程的当前活动相关的信息，例如状态和当前查询。 
+| `pg_stat_replication`           | 每一个 WAL 发送进程一行，显示有关到该发送进程连接的后备服务器的复制的统计信息。 
+| `pg_stat_wal_receiver`          | 只有一行，显示来自 WAL 接收器所连接服务器的有关该接收器的统计信息。 
+| `pg_stat_subscription`          | 每个订阅至少一行，显示有关该订阅的工作者的信息。             
+| `pg_stat_ssl`                   | 每个连接（常规的或者复制）一行，显示在这个连接上使用的SSL的信息。 
+| `pg_stat_gssapi`                | 每个连接（常规和复制）有一行，显示关于GSSAPI验证和加密的信息。 
+| `pg_stat_progress_analyze`      | 每个运行`ANALYZE`的后端(包括自动清理工作者进程)的行，显示当前进度。 
+| `pg_stat_progress_create_index` | 每个后台运行`CREATE INDEX`或`REINDEX`的后端都有一行，显示当前的进度。 
+| `pg_stat_progress_vacuum`       | 每个运行着`VACUUM`的后端（包括autovacuum工作者进程）一行，显示当前的进度。 
+| `pg_stat_progress_cluster`      | 每个运行着`CLUSTER`或`VACUUM FULL`的后端一行，显示当前进度。 
+| `pg_stat_progress_basebackup`   | 每一个WAL发送者进程的行显示一个基础备份，显示当前进度。
+|====
+
+**表2.已收集统计信息的视图**
+|====
+|视图名称                      | 描述
+| `pg_stat_archiver`            | 只有一行，显示有关 WAL 归档进程活动的统计信息。              
+| `pg_stat_bgwriter`            | 只有一行，显示有关后台写进程的活动的统计信息。               
+| `pg_stat_database`            | 每个数据库一行，显示数据库范围的统计信息。                   
+| `pg_stat_database_conflicts`  | 每个数据库一行，显示数据库范围的统计信息， 这些信息的内容是关于由于与后备服务器的恢复过程 发生冲突而被取消的查询。 
+| `pg_stat_all_tables`          | 当前数据库中每个表一行，显示有关访问指定表的统计信息。       
+| `pg_stat_sys_tables`          | 和`pg_stat_all_tables`一样，但只显示系统表。                 
+| `pg_stat_user_tables`         | 和`pg_stat_all_tables`一样，但只显示用户表。                 
+| `pg_stat_xact_all_tables`     | 和`pg_stat_all_tables`相似，但计数动作只在当前事务内发生，用于生存和死亡行数量的列以及清理和分析动作在此视图中不出现。 
+| `pg_stat_xact_sys_tables`     | 和`pg_stat_xact_all_tables`一样，但只显示系统表。            
+| `pg_stat_xact_user_tables`    | 和`pg_stat_xact_all_tables`一样，但只显示用户表。            
+| `pg_stat_all_indexes`         | 当前数据库中的每个索引一行，显示：表OID、索引OID、模式名、表名、索引名、 使用了该索引的索引扫描总数、索引扫描返回的索引记录数、使用该索引的简 单索引扫描抓取的活表(livetable)中数据行数。 当前数据库中的每个索引一行，显示与访问指定索引有关的统计信息。 
+| `pg_stat_sys_indexes`         | 和`pg_stat_all_indexes`一样，但只显示系统表上的索引。        
+| `pg_stat_user_indexes`        | 和`pg_stat_all_indexes`一样，但只显示用户表上的索引。        
+| `pg_statio_all_tables`        | 当前数据库中每个表一行(包括TOAST表)，显示：表OID、模式名、表名、 从该表中读取的磁盘块总数、缓冲区命中次数、该表上所有索引的磁盘块读取总数、 该表上所有索引的缓冲区命中总数、在该表的辅助TOAST表(如果存在)上的磁盘块读取总数、 在该表的辅助TOAST表(如果存在)上的缓冲区命中总数、TOAST表的索引的磁盘块读 取总数、TOAST表的索引的缓冲区命中总数。 当前数据库中的每个表一行，显示有关在指定表上 I/O 的统计信息。 
+| `pg_statio_sys_tables`        | 和`pg_statio_all_tables`一样，但只显示系统表。               
+| `pg_statio_user_tables`       | 和`pg_statio_all_tables`一样，但只显示用户表。               
+| `pg_statio_all_indexes`       | 当前数据库中每个索引一行，显示：表OID、索引OID、模式名、 表名、索引名、该索引的磁盘块读取总数、该索引的缓冲区命中总数。 当前数据库中的每个索引一行，显示与指定索引上的 I/O 有关的统计信息。 
+| `pg_statio_sys_indexes`       | 和`pg_statio_all_indexes`一样，但只显示系统表上的索引。      
+| `pg_statio_user_indexes`      | 和`pg_statio_all_indexes`一样，但只显示用户表上的索引。      
+| `pg_statio_all_sequences`     | 当前数据库中每个序列对象一行，显示：序列OID、模式名、序列名、序列的磁盘读取总数、序列的缓冲区命中总数。 当前数据库中的每个序列一行，显示与指定序列上的 I/O 有关的统计信息。 
+| `pg_statio_sys_sequences`     | 和`pg_statio_all_sequences`一样，但只显示系统序列（目前没有定义系统序列，因此这个视图总是为空）。 
+| `pg_statio_user_sequences`    | 和`pg_statio_all_sequences`一样，但只显示用户序列。          
+| `pg_stat_user_functions`      | 对于所有跟踪功能，函数的OID，模式，名称，数量 通话总时间，和自我的时间。自我时间是 在函数本身所花费的时间量，总时间包括 它调用函数所花费的时间。时间值以毫秒为单位。 每一个被跟踪的函数一行，显示与执行该函数有关的统计信息。 
+| `pg_stat_xact_user_functions` | 和`pg_stat_user_functions`相似，但是只统计在当前事务期间的调用 
+| `pg_stat_slru`                | 每个SLRU一行, 显示操作的统计信息。
+|====
+
+针对每个索引的统计信息对于判断哪个索引正被使用以及它们的效果特别有用。
+
+`pg_statio_`系列视图主要用于判断缓冲区的效果。当实际磁盘读取数远小于缓冲区命中时，这个缓冲能满足大部分读请求而无需进行内核调用。但是，这些统计信息并没有给出所有的事情：由于IvorySQL处理磁盘 I/O 的方式，不在IvorySQL缓冲区中的数据库仍然驻留在内核的 I/O 缓存中，并且因此可以被再次读取而不需要物理磁盘读取。我们建议希望了解IvorySQL I/O 行为更多细节的用户将IvorySQL统计收集器和操作系统中允许观察内核处理 I/O 的工具一起使用。
+
+=== `pg_stat_activity`
+
+`pg_stat_activity`视图每个服务器进程将有一行，显示与该进程当前活动相关的信息。
+
+**表3.`pg_stat_activity` 视图**
+|====
+|列类型描述
+|`datid` `oid`这个后端连接到的数据库的OID 
+|         `datname` `name`这个后端连接到的数据库的名称         
+|               `pid` `integer`这个后端的进程 ID               
+| `leader_pid` `integer`并行组组长的进程ID，如果该进程是并行查询工作者。如果该进程是一个并行组的组长或不参与并行查询，则为`NULL`。 
+|          `usesysid` `oid`登录到这个后端的用户的 OID          
+|          `usename` `name`登录到这个后端的用户的 OID          
+|     `application_name` `text`连接到这个后端的应用的名称      
+| `client_addr` `inet`连接到这个后端的客户端的 IP 地址。如果这个字段为空，它表示客户端通过服务器机器上的一个 Unix 套接字连接或者这是一个内部进程，如自动清理。 
+| `client_hostname` `text`已连接的客户端的主机名，由`client_addr`的反向 DNS 查找报告。 这个字段将只对 IP 连接非空，并且只有log_hostname被启用时才会非空。 
+| `client_port` `integer`客户端用于与此后端通信的TCP端口号，如果使用Unix套接字，则为`-1`。如果该字段为空，它表示这是一个内部服务器进程。 
+| `backend_start` `timestamp with time zone`这个进程被启动的时间。对客户端后端来说，这就是客户端连接到服务器的时间。 
+| `xact_start` `timestamp with time zone`这个进程的当前事务被启动的时间，如果没有活动事务则为空。 如果当前查询是它的第一个事务，这一列等于`query_start`列。 
+| `query_start` `timestamp with time zone`当前活动查询被开始的时间，如果`state`不是`active`，则为上一个查询开始的时间 
+| `state_change` `timestamp with time zone``state`上一次被改变的时间 
+| `wait_event_type` `text`后端等待的事件类型，如果有的话;否则NULL。 
+| `wait_event` `text`如果后端当前正在等待，则等待事件名称，否则为NULL。 
+| `state` `text`这个后端的当前总体状态。可能的值为：`active`: 后端正在执行一个查询。`idle`: 后端正在等待一个新的客户端命令。`idle in transaction`: 后端在一个事务中，但是当前没有正在执行一个查询。`idle in transaction (aborted)`: 这个状态与 `idle in transaction`相似，除了在该事务中的一个语句导致了一个错误。`fastpath function call`: 后端正在执行一个 fast-path 函数。`disabled`: 如果在这个后端中track_activities被禁用，则报告这个状态。 
+|   `backend_xid` `xid`这个后端的顶层事务标识符，如果存在。    
+|          `backend_xmin` `xid`当前后端的`xmin`范围。          
+| `query` `text`这个后端最近查询的文本。如果`state`为`active`，这个字段显示当前正在执行的查询。 在所有其他状态下，它显示上一个被执行的查询。默认情况下，查询文本会被截断至1024个字节，这个值可以通过参数track_activity_query_size更改。 
+| `backend_type` `text`当前后端的类型。可能的类型为 `autovacuum launcher`, `autovacuum worker`, `logical replication launcher`, `logical replication worker`, `parallel worker`, `background writer`, `client backend`, `checkpointer`, `startup`, `walreceiver`, `walsender` and `walwriter`. 除此以外，由扩展注册的后台Worker可能有额外的类型。
+|====
+
+`wait_event`和`state`列是独立的。如果一个后端处于`active`状态，它可能是也可能不是某个事件上的`waiting`。如果状态是`active`并且`wait_event`为非空，它意味着一个查询正在被执行，但是它被阻塞在系统中某处。
+
+**表4.等待事件类型**
+|====
+| 等待事件类型 | 描述
+| `Activity`   | 服务器进程空闲。此事件类型表示在其主处理循环中等待活动的进程。 `wait_event`将识别特定的等待点。 
+| `BufferPin`  | 服务器进程正在等待对数据缓冲的独占访问。 如果另一个进程持有一个打开的游标，该游标最后一次从相关缓冲区读取数据，则缓冲区销等待可能是漫长的。 
+| `Client`     | 服务器进程正在等待连接到用户应用程序的套接字上的活动。 因此，服务器预计发生一些独立于其内部进程的事情。`wait_event`将识别特定的等待点。 
+| `Extension`  | 服务器进程正在等待扩展模块定义的某个条件。                   
+| `IO`         | 服务器进程正在等待一个I/O操作完成。`wait_event`将识别特定的等待点。 
+| `IPC`        | 服务器进程正在等待与另一个服务器进程进行交互。`wait_event`将识别特定的等待点。 
+| `Lock`       | 服务器进程正在等待一个重量级锁。重量级锁，也称为锁管理器锁或简单锁，主要保护表等SQL可见对象。 然而，它们也用于确保某些内部操作的互斥，例如关系扩展。`wait_event`将识别等待的锁的类型。 
+| `LWLock`     | 服务器进程正在等待一个轻量级锁。大多数这样的锁保护共享内存中的特定数据结构。 `wait_event`将包含标识轻量级锁用途的名称。 (有些锁有特定的名称；其他锁是一组锁的一部分，每个锁具有类似的目的。) 
+| `Timeout`    | 服务器进程正在等待超时过期。`wait_event`将识别特定的等待点。
+|====
+
+**表5.`Activity`类型的等待事件**
+|====
+| `Activity` 等待事件   | 描述
+| `ArchiverMain`        | 在归档进程的主循环中等待。                
+| `AutoVacuumMain`      | 在自动清理启动过程的主循环中等待。        
+| `BgWriterHibernate`   | 在后台写进程中等待，休眠状态。            
+| `BgWriterMain`        | 在后台写进程主循环中等待。                
+| `CheckpointerMain`    | 在校验指针进程的主循环中等待。            
+| `LogicalApplyMain`    | 在逻辑复制应用进程的主循环中等待。        
+| `LogicalLauncherMain` | 在逻辑复制启动器进程的主循环中等待。      
+| `PgStatMain`          | 在统计收集器进程的主循环中等待。          
+| `RecoveryWalStream`   | 流恢复期间，在启动进程主循环等待WAL到达。 
+| `SysLoggerMain`       | 在syslogger进程的主循环中等待。           
+| `WalReceiverMain`     | 在WAL接收器进程的主循环中等待。           
+| `WalSenderMain`       | 在WAL发送者进程的主循环中等待。           
+| `WalWriterMain`       | 在WAL写入进程的主循环中等待。
+|====
+
+**表6.`BufferPin`类型的等待事件**
+|====
+| `BufferPin` 等待事件 | 描述
+| `BufferPin`         | 等待获得缓冲区上的独占销。
+|====
+
+**表7.`Client`类型的等待事件**
+|====
+| `Client` 等待事件         | 描述
+| `ClientRead`              | 等待从客户端读取数据。                                 
+| `ClientWrite`             | 等待写入数据到客户端。                                 
+| `GSSOpenServer`           | 在建立GSSAPI会话时等待从客户端读取数据。               
+| `LibPQWalReceiverConnect` | 在WAL接收器等待与远程服务器建立连接。                  
+| `LibPQWalReceiverReceive` | 在WAL接收器中等待从远程服务器接收数据。                
+| `SSLOpenServer`           | 在尝试连接时等待SSL。                                  
+| `WalReceiverWaitStart`    | 等待启动进程发送用于流复制的初始数据。                 
+| `WalSenderWaitForWAL`     | 在WAL发送器进程中等待WAL被刷新。                       
+| `WalSenderWriteData`      | 在WAL发送器进程中处理WAL接收器的回复时，等待任何活动。
+|====
+
+**表8.`Extension`类型的等待事件**
+|====
+| `Extension` 等待事件 | 描述
+| `Extension`          | 在扩展中等待。
+|====
+
+**表9.`IO`类型的等待事件**
+|====
+| `IO` 等待事件                  | 描述
+| `BufFileRead`                  | 等待从缓冲文件中读取。                                 
+| `BufFileWrite`                 | 等待对缓冲文件的写入。                                 
+| `ControlFileRead`              | 等待读取`pg_control`文件。                           
+| `ControlFileSync`              | 等待`pg_control`文件到达持久存储。                
+| `ControlFileSyncUpdate`        | 等待更新`pg_control`文件以达到持久存储。              
+| `ControlFileWrite`             | 等待写入`pg_control`文件。                           
+| `ControlFileWriteUpdate`       | 等待写入更新`pg_control`文件。                        
+| `CopyFileRead`                 | 在文件复制操作期间等待读取。                            
+| `CopyFileWrite`                | 在文件拷贝操作期间等待写入。                            
+| `DSMFillZeroWrite`             | 等待用零填充动态共享内存备份(backing)文件。             
+| `DataFileExtend`               | 等待关系数据文件被扩展。                                
+| `DataFileFlush`                | 等待关系数据文件达到持久存储。                          
+| `DataFileImmediateSync`        | 等待关系数据文件到持久存储的立即同步。                  
+| `DataFilePrefetch`             | 等待关系数据文件的异步预取。                            
+| `DataFileRead`                 | 等待对关系数据文件的读取。                              
+| `DataFileSync`                 | 等待对关系数据文件的更改达到持久存储。                  
+| `DataFileTruncate`             | 等待关系数据文件被截断。                                
+| `DataFileWrite`                | 等待对关系数据文件的写入。                              
+| `LockFileAddToDataDirRead`     | 在向数据目录锁文件中添加一行时等待读取。                
+| `LockFileAddToDataDirSync`     | 等待数据到达持久存储，同时向数据目录锁文件添加一行。     
+| `LockFileAddToDataDirWrite`    | 在向数据目录锁文件中添加一行时等待写操作。              
+| `LockFileCreateRead`           | 创建数据目录锁文件时等待读取。                          
+| `LockFileCreateSync`           | 在创建数据目录锁文件时等待数据到达持久存储。             
+| `LockFileCreateWrite`          | 在创建数据目录锁文件时等待写操作。                       
+| `LockFileReCheckDataDirRead`   | 在重新检查数据目录锁文件期间等待读取。                  
+| `LogicalRewriteCheckpointSync` | 等待逻辑重写映射到在检查点到达持久存储。                
+| `LogicalRewriteMappingSync`    | 在逻辑重写期间等待映射数据到达持久存储                  
+| `LogicalRewriteMappingWrite`   | 在逻辑重写期间等待映射数据的写入。                      
+| `LogicalRewriteSync`           | 等待逻辑重写映射到达持久存储。                          
+| `LogicalRewriteTruncate`       | 等待在逻辑重写期间截断映射数据。                        
+| `LogicalRewriteWrite`          | 等待逻辑重写映射的写入。                                
+| `RelationMapRead`              | 等待关系映射文件的读取。                                
+| `RelationMapSync`              | 等待关系映射文件到达持久存储。                          
+| `RelationMapWrite`             | 等待对关系映射文件的写入。                              
+| `ReorderBufferRead`            | 在重新排序缓冲区管理期间等待读取。                       
+| `ReorderBufferWrite`           | 在重新排序缓冲区管理期间等待写操作。                     
+| `ReorderLogicalMappingRead`    | 在重新排序缓冲区管理期间等待读取逻辑映射。               
+| `ReplicationSlotRead`          | 等待从复制槽位控制文件读取。                             
+| `ReplicationSlotRestoreSync`   | 等待复制槽控制文件到达持久存储，同时将其恢复到内存中。   
+| `ReplicationSlotSync`          | 等待复制槽控制文件到达持久存储。                         
+| `ReplicationSlotWrite`         | 等待对复制槽控制文件的写入。                             
+| `SLRUFlushSync`                | 在检查点或数据库关闭期间等待SLRU数据到达持久存储。       
+| `SLRURead`                     | 等待读取SLRU页面。                                       
+| `SLRUSync`                     | 在写页面后等待SLRU数据到达持久存储。                     
+| `SLRUWrite`                    | 等待SLRU页面的写入。                                     
+| `SnapbuildRead`                | 等待读取序列化的历史目录快照。                           
+| `SnapbuildSync`                | 等待序列化历史目录快照到达持久存储。                     
+| `SnapbuildWrite`               | 等待串行历史目录快照的写入。                             
+| `TimelineHistoryFileSync`      | 等待通过流复制接收的时间线历史文件到达持久存储。         
+| `TimelineHistoryFileWrite`     | 等待通过流复制接收的时间线历史文件的写入。               
+| `TimelineHistoryRead`          | 等待读取时间线历史文件。                                 
+| `TimelineHistorySync`          | 等待新创建的时间线历史文件到达持久存储。                 
+| `TimelineHistoryWrite`         | 等待写入新创建的时间线历史文件。                         
+| `TwophaseFileRead`             | 等待读取两阶段状态文件。                                 
+| `TwophaseFileSync`             | 等待两阶段状态文件到达持久存储。                         
+| `TwophaseFileWrite`            | 等待对两阶段状态文件的写入。                             
+| `WALBootstrapSync`             | 在引导过程中等待WAL达到持久存储。                        
+| `WALBootstrapWrite`            | 在引导过程中等待WAL页面的写入。                          
+| `WALCopyRead`                  | 通过复制一个已有WAL段来创建一个新的WAL段时等待读取。     
+| `WALCopySync`                  | 等待通过复制一个已有WAL段到持久存储来创建一个新的WAL段。 
+| `WALCopyWrite`                 | 通过复制一个已有WAL段来创建一个新的WAL段时等待写入。     
+| `WALInitSync`                  | 等待一个新初始化的WAL文件到持久存储。                    
+| `WALInitWrite`                 | 在初始化一个新的WAL文件时等待写入。                      
+| `WALRead`                      | 等待WAL文件的读取。                                      
+| `WALSenderTimelineHistoryRead` | 在walsender时间线命令期间等待从时间线历史文件读取。      
+| `WALSync`                      | 等待WAL文件到达持久存储。                                
+| `WALSyncMethodAssign`          | 等待数据到达持久存储，同时分配一个新的WAL同步方法。      
+| `WALWrite`                     | 等待写入WAL文件。
+|====
+
+**表10.`IPC`类型的等待事件**
+|====
+| `IPC` 等待事件               | 描述
+| `BackupWaitWalArchive`       | 等待备份所需的WAL文件成功存档。                          
+| `BgWorkerShutdown`           | 等待后台工作者关闭。                                    
+| `BgWorkerStartup`            | 等待后台工作者启动。                                  
+| `BtreePage`                  | 正等待继续并行B-树扫描所需的页号变得可用。                
+| `CheckpointDone`             | 等待检查点完成。                                         
+| `CheckpointStart`            | 等待检查点开始。                                         
+| `ExecuteGather`              | 在执行`Gather` 计划节点时，等待子进程的活动。       
+| `HashBatchAllocate`          | 等待一个选定的并行哈希参与者分配哈希表。                 
+| `HashBatchElect`             | 等待选择一个并行哈希参与者来分配哈希表。                 
+| `HashBatchLoad`              | 等待其他并行哈希参与者完成哈希表的加载。                 
+| `HashBuildAllocate`          | 等待一个选定的并行哈希参与者分配初始哈希表。             
+| `HashBuildElect`             | 等待选择一个并行哈希参与者来分配初始哈希表。              
+| `HashBuildHashInner`         | 等待其他并行哈希参与者完成内部关系的散列。               
+| `HashBuildHashOuter`         | 等待其他Parallel 哈希参与者完成对外部关系的分区。     
+| `HashGrowBatchesAllocate`    | 等待选定的并行哈希参与者分配更多批处理。                  
+| `HashGrowBatchesDecide`      | 等待选择一个并行哈希参与者来决定未来的批处理增长。        
+| `HashGrowBatchesElect`       | 等待选择一个Parallel 哈希参与者来分配更多批处理。        
+| `HashGrowBatchesFinish`      | 等待一个选定的并行哈希参与者决定未来的批量增长。 
+| `HashGrowBatchesRepartition` | 等待一个选定的并行哈希参与者决定未来的批处理增长。         
+| `HashGrowBucketsAllocate`    | 等待选定的并行哈希参与者完成更多bucket的分配。            
+| `HashGrowBucketsElect`       | 等待选择一个并行哈希参与者来分配更多的buckets。            
+| `HashGrowBucketsReinsert`    | 等待其他Parallel 哈希参与者完成将元组插入到新buckets中。
+| `LogicalSyncData`            | 等待逻辑复制远程服务器发送用于初始表同步的数据。           
+| `LogicalSyncStateChange`     | 等待逻辑复制远程服务器更改状态。                         
+| `MessageQueueInternal`       | 等待另一个进程附加到共享消息队列。                       
+| `MessageQueuePutMessage`     | 等待将协议消息写入共享消息队列。                         
+| `MessageQueueReceive`        | 等待从共享消息队列接收字节。                             
+| `MessageQueueSend`           | 等待将字节发送到共享消息队列。                           
+| `ParallelBitmapScan`         | 等待并行位图扫描被初始化。                               
+| `ParallelCreateIndexScan`    | 等待并行`CREATE INDEX` 工作者完成堆扫描。             
+| `ParallelFinish`             | 等待并行工作人员完成计算。                               
+| `ProcArrayGroupUpdate`       | 等待组领导在并行操作结束时清除事务ID。                    
+| `ProcSignalBarrier`          | 等待屏障事件被所有后端处理。                             
+| `Promote`                    | 等待备用系统提升。                                     
+| `RecoveryConflictSnapshot`   | 等待vacuum清理的恢复冲突解决。                           
+| `RecoveryConflictTablespace` | 等待恢复冲突解决删除表空间。                             
+| `RecoveryPause`              | 等待恢复继续进行。                                      
+| `ReplicationOriginDrop`      | 等待复制源变为非活动状态，以便可以删除它。                
+| `ReplicationSlotDrop`        | 等待复制槽变为非活动状态，以便可以删除它。                
+| `SafeSnapshot`               | 等待获取`READ ONLY DEFERRABLE`事务的有效快照。        
+| `SyncRep`                    | 在同步复制期间等待远程服务器的确认。                       
+| `XactGroupUpdate`            | 等待分组组长在并行操作结束时更新事务状态。
+|====
+
+**表11.`Lock`类型的等待事件**
+|====
+| `Lock` 等待事件 | 描述
+| `advisory`      | 等待获得一个建议用户锁。  
+| `extend`        | 等待扩展一个关系。       
+| `frozenid`      | 等待升级 `pg_database`.`datfrozenxid` 和 `pg_database`.`datminmxid`. 
+| `object`        | 等待获取非关系数据库对象上的锁。 
+| `page`          | 等待获取一个关系页面上的锁。
+| `relation`      | 等待获得一个关系的锁。    
+| `spectoken`     | 等待获取推测的插入锁。    
+| `transactionid` | 等待事务完成。                                   
+| `tuple`         | 等待获取元组上的锁。      
+| `userlock`      | 等待获取用户锁。       
+| `virtualxid`    | 等待获取虚拟事务ID锁。
+|====
+
+**表12.`LWLock`类型的等待事件**
+|====
+| `LWLock` 等待事件            | 描述
+| `AddinShmemInit`             | 等待管理共享内存中的扩展空间分配。   
+| `AutoFile`                   | 等待更新`postgresql.auto.conf`文件。   
+| `Autovacuum`                 | 等待读取或更新自动清理工作者的当前状态。 
+| `AutovacuumSchedule`         | 等待确保选择为自动清理的表仍然需要清理。  
+| `BackgroundWorker`           | 等待读取或更新后台工作者状态。
+| `BtreeVacuum`                | 等待读取或更新b-树索引的清理相关信息。  
+| `BufferContent`              | 等待访问内存中的数据页。 
+| `BufferIO`                   | 等待数据页上的I/O。  
+| `BufferMapping`              | 等待将数据块与缓冲池中的缓冲区关联。 
+| `Checkpoint`                 | 等待开始一个检查点。   
+| `CheckpointerComm`           | 等待管理fsync请求。    
+| `CommitTs`                   | 等待读取或更新事务提交时间戳的最后一个值集。 
+| `CommitTsBuffer`             | 在提交时间戳SLRU缓冲区上等待I/O。 
+| `CommitTsSLRU`               | 等待访问提交时间戳SLRU缓存。
+| `ControlFile`                | 等待读取或更新`pg_control`文件或创建一个新的WAL文件。
+| `DynamicSharedMemoryControl` | 等待读取或更新动态共享内存分配信息。  
+| `LockFastPath`               | 等待读取或更新进程的快速路径锁信息。
+| `LockManager`                | 等待读取或更新关于“heavyweight”锁。 
+| `LogicalRepWorker`           | 等待读取或更新逻辑复制工作器的状态。 
+| `MultiXactGen`               | 等待读取或更新共享的multixact状态。
+| `MultiXactMemberBuffer`      | 在multixact成员SLRU缓冲区上等待I/O。
+| `MultiXactMemberSLRU`        | 等待访问multixact成员SLRU缓存。
+| `MultiXactOffsetBuffer`      | 在multixact 偏移 SLRU缓冲区上等待I/O。
+| `MultiXactOffsetSLRU`        | 等待访问multixact 偏移 SLRU缓存。
+| `MultiXactTruncation`        | 等待读取或截断multixact信息。
+| `NotifyBuffer`               | 在`NOTIFY` 消息 SLRU缓冲区上等待I/O。
+| `NotifyQueue`                | 等待读取或更新`NOTIFY` 消息。
+| `NotifyQueueTail`            | 等待`NOTIFY`消息存储上的更新限制。
+| `NotifySLRU`                 | 等待访问`NOTIFY`消息SLRU缓存。 
+| `OidGen`                     | 等待分配一个新的OID。         
+| `OldSnapshotTimeMap`         | 等待读取或更新旧的快照控制信息。
+| `ParallelAppend`             | 在并行附加计划执行期间等待选择下一个子计划。 
+| `ParallelHashJoin`           | 在并行哈希连接计划执行期间等待同步工作器。 
+| `ParallelQueryDSA`           | 等待并行查询动态共享内存分配。  
+| `PerSessionDSA`              | 等待并行查询动态共享内存分配。 
+| `PerSessionRecordType`       | 等待访问有关复合类型的并行查询信息。 
+| `PerSessionRecordTypmod`     | 等待访问有关标识匿名记录类型的类型修饰符的并行查询信息。 
+| `PerXactPredicateList`       | 在并行查询期间等待访问当前可序列化事务持有的谓词锁列表。   
+| `PredicateLockManager`       | 等待访问可序列化事务使用的谓词锁信息。
+| `ProcArray`                  | 等待访问每个进程共享的数据结构(通常情况，是获取快照或报告会话的事务ID)。 
+| `RelationMapping`   | 等待读取或更新`pg_filenode.map`文件(用于跟踪某些系统目录的文件节点分配)。 
+| `RelCacheInit`| 等待读取或更新`pg_internal.init`关系缓存初始化文件。
+| `ReplicationOrigin` | 等待创建、删除或使用复制源。 
+| `ReplicationOriginState`   | 等待读取或更新一个复制源的进度。
+| `ReplicationSlotAllocation`  | 等待分配或释放复制槽。 
+| `ReplicationSlotControl`  | 等待读取或更新复制槽状态。 
+| `ReplicationSlotIO`  | 在复制槽位上等待I/O。 
+| `SerialBuffer`   | 在可串行事务冲突的SLRU缓冲区上等待I/O。
+| `SerializableFinishedList`   | 等待访问已完成的可序列化事务列表。
+| `SerializablePredicateList`  | 等待访问可序列化事务持有的谓词锁列表。
+| `SerializableXactHash`   | 等待读取或更新关于可序列化事务的信息。
+| `SerialSLRU`  | 等待访问可序列化事务冲突SLRU缓存。
+| `SharedTidBitmap`| 在并行位图索引扫描期间等待访问共享的TID位图。 
+| `SharedTupleStore`  | 在并行查询期间等待访问共享元组存储。
+| `ShmemIndex`  | 等待在共享内存中找到或分配空间。
+| `SInvalRead`  | 等待从共享目录失效队列中检索消息。
+| `SInvalWrite` | 等待向共享编目失效队列添加消息。
+| `SubtransBuffer`| 在子事务SLRU缓冲区上等待I/O。
+| `SubtransSLRU`  | 等待访问子事务SLRU缓存。
+| `SyncRep`  | 等待读取或更新有关同步复制状态的信息。
+| `SyncScan`  | 等待选择同步表扫描的起始位置。
+| `TablespaceCreate`  | 等待创建或删除表空间。
+| `TwoPhaseState`  | 等待读取或更新已准备事务的状态。 
+| `WALBufMapping`  | 等待在WAL缓冲区中替换一个页面。
+| `WALInsert`   | 等待将WAL数据插入内存缓冲区。 
+| `WALWrite`   | 等待WAL缓冲区写入磁盘。
+| `WrapLimitsVacuum`   | 等待更新事务id和multixact消费的限制。
+| `XactBuffer`    | 在事务状态的SLRU缓冲区上等待I/O。 
+| `XactSLRU` | 等待访问事务状态的SLRU缓存。  
+| `XactTruncation` | 等待执行`pg_xact_status`或更新它可用的最早的事务ID。   
+| `XidGen`       | 等待分配新的事务ID。
+|====
+
+**表13.`Timeout`类型的等待事件**
+|====
+| `Timeout` 等待事件              | 描述
+| `BaseBackupThrottle`            | 当有限流活动时在基础备份期间等待。 
+| `PgSleep`                       | 由于调用`pg_sleep`或同类函数而等待。
+| `RecoveryApplyDelay`            | 由于延迟设置，在恢复期间等待应用WAL。
+| `RecoveryRetrieveRetryInterval` | 当WAL数据无法从任何来源(`pg_wal`，存档或流)获得时，在恢复期间等待。
+| `VacuumDelay`                   | 在一个基于代价的清理延迟点。
+|====
+
+下面的例子展示了如何查看等待事件：
+
+```
+SELECT pid, wait_event_type, wait_event FROM pg_stat_activity WHERE wait_event is NOT NULL;
+ pid  | wait_event_type | wait_event 
+------+-----------------+------------
+ 2540 | Lock            | relation
+ 6644 | LWLock          | ProcArray
+(2 rows)
+```
+
+==== `pg_stat_replication`
+
+`pg_stat_replication`视图将在每个WAL发送方进程中包含一行，显示关于复制到发送方连接的备用服务器的统计信息。 只有直接连接的备用设备被列出;没有关于下游备用服务器的信息。
+
+**表14.`pg_stat_replication` 视图**
+|====
+| 列类型描述
+|`pid` `integer`一个 WAL 发送进程的进程 ID           
+|     `usesysid` `oid`登录到这个 WAL 发送进程的用户的 OID      
+|     `usename` `name`登录到这个 WAL 发送进程的用户的名称      
+| `application_name` `text`连接到这个 WAL 发送进程的应用的名称 
+| `client_addr` `inet`连接到这个 WAL 发送进程的客户端的 IP 地址。 如果这个域为空，它表示该客户端通过服务器机器上的一个Unix 套接字连接。 
+| `client_hostname` `text`连接上的客户端的主机名，由一次对`client_addr`的逆向 DNS 查找报告。 这个域将只对 IP 连接非空，并且只有在 log_hostname被启用时非空。 
+| `client_port` `integer`客户端用来与这个 WAL 发送进程通讯的 TCP 端口号，如果使用 Unix 套接字则为`-1` 
+| `backend_start` `timestamp with time zone`这个进程开始的时间，即客户端是何时连接到这个WAL 发送进程的。 
+| `backend_xmin` `xid`由hot_standby_feedback报告的这个后备机的`xmin`水平线。 
+| `state` `text`当前的 WAL 发送进程状态。 可能的值是：`startup`: 这个WAL发送器正在启动。`catchup`: 这个WAL发送者连接的备用服务器正在赶上主服务器。`streaming`: 在其连接的备用服务器赶上主服务器之后，这个WAL发送方正在流化变化。`backup`: 这个WAL发送器正在发送一个备份。`stopping`: 这个WAL发送器正在停止。 
+| `sent_lsn` `pg_lsn`在这个连接上发送的最后一个预写式日志的位置 
+| `write_lsn` `pg_lsn`被这个后备服务器写入到磁盘的最后一个预写式日志的位置 
+| `flush_lsn` `pg_lsn`被这个后备服务器刷入到磁盘的最后一个预写式日志的位置 
+| `replay_lsn` `pg_lsn`被重放到这个后备服务器上的数据库中的最后一个预写式日志的位置 
+| `write_lag` `interval`从本地刷新近期的WAL与接收到此备用服务器已写入WAL的通知(但尚未刷新或应用它)之间的时间经过。 如果将此服务器配置为同步备用服务器，则可以使用此参数来衡量在提交时`synchronous_commit`级别`remote_write`所导致的延迟。
+| `flush_lag` `interval`在本地刷写近期的WAL与接收到后备服务器已经写入并且刷写它（但还没有应用）的通知之间流逝的时间。 如果这台服务器被配置为一个同步后备，这可以用来计量在提交时`synchronous_commit`的级别`on`所导致的延迟。
+| `replay_lag` `interval`在本地刷写近期的WAL与接收到后备服务器已经写入它、刷写它并且应用它的通知之间流逝的时间。 如果这台服务器被配置为一个同步后备，这可以用来计量在提交时`synchronous_commit`的级别`remote_apply`所导致的延迟。
+| `sync_priority` `integer`在基于优先的同步复制中，这台后备服务器被选为同步后备的优先级。在基于规定数量的同步复制中，这个值没有效果。
+| `sync_state` `text`这一台后备服务器的同步状态。 可能的值是：`async`: 这台后备服务器是异步的。`potential`: 这台后备服务器现在是异步的，但可能在当前的同步后备失效时变成同步的。`sync`: 这台后备服务器是同步的。`quorum`: 这台后备服务器被当做规定数量后备服务器的候选。
+| `reply_time` `带时区的时间戳`从备用服务器收到的最后一条回复信息的发送时间
+|====
+
+`pg_stat_replication`视图中报告的滞后时间近期的WAL被写入、刷写并且重放以及发送器知道这一切所花的时间的度量。如果远程服务器被配置为一台同步后备，这些时间表示由每一种同步提交级别所带来（或者是可能带来）的提交延迟。对于一台异步后备，`replay_lag`列是最近的事务变得对查询可见的延迟时间的近似值。如果后备服务器已经完全追上了发送服务器并且没有WAL活动，在短时间内将继续显示最近测到的滞后时间，再然后就会显示为NULL。
+
+对于物理复制会自动测量滞后时间。逻辑解码插件可能会选择性地发出跟踪消息，如果它们没有这样做，跟踪机制将把滞后显示为NULL。
+
+.注意
+****
+报告的滞后时间并非按照当前的重放速率该后备还有多久才能追上发送服务器的预测。在新的WAL被生成期间，这样一种系统将显示类似的时间，但是当发送器变为闲置时会显示不同的值。特别是当后备服务器完全追上时，`pg_stat_replication`显示的是写入、刷写及重放最近报告的WAL位置所花的时间而不是一些用户可能预期的零。这种做法与为近期的写事务测量同步提交和事务可见性延迟的目的一致。为了降低用户预期一种不同的滞后模型带来的混淆，在一个完全重放完的闲置系统上，lag列会在一段比较短的时间后回复成NULL。监控系统应该选择将这种情况表示为缺失数据、零或者继续显示最近的已知值。
+****
+
+==== `pg_stat_wal_receiver`
+
+`pg_stat_wal_receiver`事务只包含一行，它显示了从 WAL 接收器所连接的服务器得到的有关该接收器的统计信息。
+
+**表15.`pg_stat_wal_receiver` 视图**
+|====
+|列类型描述
+|`pid` `integer`WAL接收器进程的进程ID             
+|             `status` `text`WAL接收进程的活动状态             
+| `receive_start_lsn` `pg_lsn`WAL接收器启动时使用的第一个写前日志位置 
+| `receive_start_tli` `integer`WAL接收器启动时使用的第一个时间线数字 
+| `written_lsn` `pg_lsn`已经接收并写入磁盘的最后一个预写式日志位置，但没有刷入。这不能用于数据完整性检查。 
+| `flushed_lsn` `pg_lsn`已经接收并刷入到磁盘的最后一个预写式日志位置，该字段的初始值是启动WAL接收器时使用的第一个日志位置 
+| `received_tli` `integer`接收并刷入到磁盘的最后一个预写式日志位置的时间线数字，该字段的初始值为启动WAL接收器时使用的第一个日志位置的时间线数字 
+| `last_msg_send_time` `timestamp with time zone`从源头WAL发送器收到的最后一条信息的发送时间 
+| `last_msg_receipt_time` `timestamp with time zone`从源头WAL发送器收到的最后一条信息的接收时间 
+| `latest_end_lsn` `pg_lsn`向源头WAL发送器报告的最后的预写式日志位置 
+| `latest_end_time` `timestamp with time zone`向源头WAL发送方报告的最后一次写前日志位置的时间 
+|      `slot_name` `text`这个WAL接收器使用的复制槽的名称       
+| `sender_host` `text`这个WAL接收器连接到的IvorySQL实例的主机。 这可以是主机名、IP地址，或者目录路径，如果连接是通过Unix套接字进行的。(路径的情况可以区分，因为它总是以`/`开头的绝对路径。) 
+| `sender_port` `integer`这个WAL接收器连接的IvorySQL实例的端口号。 
+| `conninfo` `text`这个WAL接收器使用的连接字符串，对安全敏感的字段进行了模糊处理。
+|====
+
+==== `pg_stat_subscription`
+
+每一个订阅的主工作者都在`pg_stat_subscription`视图中有一行（如果工作者没有运行则PID为空），处理被订阅表的初始数据拷贝操作的工作者还会有额外的行。
+
+**表16.`pg_stat_subscription` 视图**
+|====
+|列类型描述
+|`subid` `oid`订阅的OID             
+| `subname` `name`订阅的名称                 
+| `pid` `integer`订阅工作者进程的进程ID      
+| `relid` `oid`工作器正在同步的关系的OID;Null用于主应用工作器  
+| `received_lsn` `pg_lsn`接收到的最后一个预写式日志位置，该字段的初始值为0 
+| `last_msg_send_time` `timestamp with time zone`从WAL发送器收到的最后一条信息的发送时间 
+| `last_msg_receipt_time` `timestamp with time zone`从WAL发送器收到的最后一条信息的接收时间 
+| `latest_end_lsn` `pg_lsn`向WAL发送器报告的最后预写式日志位置 
+| `latest_end_time` `timestamp with time zone`向WAL发送器报告的最后一次预写式日志位置的时间
+|====
+
+==== `pg_stat_ssl`
+
+`pg_stat_ssl`视图将为每一个后端或者 WAL 发送进程包含一行，用来显示这个连接上的 SSL 使用情况。 可以把它与`pg_stat_activity`或者`pg_stat_replication`通过`pid`列连接来得到更多有关该连接的细节。
+
+**表17.`pg_stat_ssl` 视图**
+|====
+| `pid` `integer`后端或WAL发送器进程ID                         
+| `ssl` `boolean`如果在此连接上使用SSL，则为真                 
+| `version` `text`使用SSL的版本，如果此连接上没有使用SSL则为NULL 
+| `cipher` `text`正在使用的SSL密码的名称，如果此连接上没有使用SSL则为NULL 
+| `bits` `integer`使用的加密算法中的位数，如果此连接上没有使用SSL则为NULL 
+| `compression` `boolean`如果使用SSL压缩则为真，否则为假，如果此连接未使用SSL则为NULL 
+| `client_dn` `text`区别名称(DN，Distinguished Name)字段与使用的客户端证书，如果没有提供客户端证书或在此连接上没有使用SSL，则为NULL。 如果DN字段长于`NAMEDATALEN`(标准构建中为64个字符)，则该字段将被截断。 
+| `client_serial` `numeric`客户端证书的序列号，如果没有提供客户端证书或在此连接上没有使用SSL，则为NULL。 证书序列号和证书颁发者的组合唯一标识一个证书(除非颁发者错误地重用序列号)。 
+| `issuer_dn` `text`客户端证书颁发者的区别名称(DN，Distinguished Name)，如果没有提供客户端证书或在此连接上没有使用SSL，则为NULL。该字段像`client_dn`一样被截断。
+|====
+
+==== `pg_stat_gssapi`
+
+`pg_stat_gssapi`视图将包含每一个后端一个行，显示该连接上的GSSAPI使用情况。 它可以加入到`pg_stat_activity`或`pg_stat_replication`上的`pid`列，获取更多关于连接的详细信息。
+
+**表18.`pg_stat_gssapi` 视图**
+|====
+| 列类型描述 
+| `pid` `integer`后端进程ID  
+| `gss_authenticated` `boolean`如果此连接使用了GSSAPI身份验证，则为True 
+| `principal` `text`用于验证此连接的主体，如果未使用GSSAPI对此连接进行身份验证，则为NULL。 如果主体长度超过`NAMEDATALEN`(标准构建中为64个字符)，则该字段被截断。 
+| `encrypted` `boolean`如果在此连接上使用了GSSAPI加密，则为真
+|====
+
+==== `pg_stat_archiver`
+
+`pg_stat_archiver`视图总是有一行，其中包含关于集群的存档进程的数据。
+
+**表19.`pg_stat_archiver` 视图**
+|====
+| 列类型描述
+| `archived_count` `bigint`已成功存档的WAL文件数         
+| `last_archived_wal` `text`最后一个成功存档的WAL文件的名称   
+| `last_archived_time` `timestamp with time zone`最后一次成功存档操作的时间 
+| `failed_count` `bigint`记录WAL文件归档失败次数               
+| `last_failed_wal` `text`最后一次失败的存档操作的WAL文件的名称 
+| `last_failed_time` `timestamp with time zone`上次存档操作失败的时间 
+| `stats_reset` `timestamp with time zone`这些统计数据最后一次重置的时间
+|====
+
+==== `pg_stat_bgwriter`
+
+`pg_stat_bgwriter`视图始终只有一行，其中包含集群的全局数据。
+
+**表20.`pg_stat_bgwriter` 视图**
+|====
+| 列类型描述
+| `checkpoints_timed` `bigint`已执行的预定检查点数  
+| `checkpoints_req` `bigint`请求已执行的检查点数 
+| `checkpoint_write_time` `double precision`检查点处理中将文件写入磁盘的部分所花费的总时间，以毫秒为单位 
+| `checkpoint_sync_time` `double precision`检查点处理中将文件同步到磁盘的部分所花费的总时间，以毫秒为单位 
+| `buffers_checkpoint` `bigint`检查点期间写入的缓冲区数 
+| `buffers_clean` `bigint`后台写入器写入的缓冲区数
+| `maxwritten_clean` `bigint`后台写入器因为写入太多缓冲区而停止清理扫描的次数 
+| `buffers_backend` `bigint`后端直接写入的缓冲区数 
+| `buffers_backend_fsync` `bigint`后端必须执行自己的`fsync`调用的次数(通常后台写入器处理这些，即使后端执行自己的写入) 
+| `buffers_alloc` `bigint`分配的缓冲区数  
+| `stats_reset` `timestamp with time zone`这些统计数据最后一次重置的时间
+|====
+
+==== `pg_stat_database`
+
+`pg_stat_database`视图将包含一行用于集群中的每个数据库，加一行用于共享对象，显示数据库范围的统计信息。
+
+**表21. `pg_stat_database` 视图**
+|====
+| 列类型描述
+|      `datid` `oid`该数据库的OID，属于共享关系的对象为0       
+|   `datname` `name`这个数据库的名称，或者共享对象为`NULL`。   
+| `numbackends` `integer`当前连接到此数据库的后端数，对于共享对象则为`NULL`。 这是该视图中唯一返回反映当前状态的值的列;所有其他列返回自上次重置以来累积的值。 
+|        `xact_commit` `bigint`此数据库中已提交的事务数        
+|       `xact_rollback` `bigint`该数据库中已回滚的事务数       
+|        `blks_read` `bigint`在该数据库中读取的磁盘块数        
+| `blks_hit` `bigint`在缓存中发现磁盘块的次数，因此读取不是必需的(这只包括在IvorySQL缓存中，而不是在操作系统的文件系统缓存中) 
+|      `tup_returned` `bigint`这个数据库中查询返回的行数       
+|       `tup_fetched` `bigint`这个数据库中查询获取的行数       
+|      `tup_inserted` `bigint`查询在该数据库中插入的行数       
+|       `tup_updated` `bigint`这个数据库中查询更新的行数       
+|      `tup_deleted` `bigint`这个数据库中被查询删除的行数      
+| `conflicts` `bigint`由于与此数据库中的恢复冲突而取消的查询数。(冲突只发生在备用服务器上) 
+| `temp_files` `bigint`这个数据库中查询创建的临时文件的数量。所有临时文件都将被计数，而不顾及临时文件为什么被创建(例如，排序或散列)，也不考虑log_temp_files设置。 
+| `temp_bytes` `bigint`这个数据库中的查询写入临时文件的数据总量。所有临时文件都将被计数，而不考虑临时文件为什么被创建，也不考虑log_temp_files设置。 
+|        `deadlocks` `bigint`在此数据库中检测到的死锁数        
+| `checksum_failures` `bigint`在此数据库(或共享对象)中检测到的数据页校验码失败数，如果没有启用数据校验码则为NULL。 
+| `checksum_last_failure` `timestamp with time zone`在此数据库(或共享对象)中检测到最后一个数据页校验码失败的时间，如果没有启用数据校验码则为NULL。 
+| `blk_read_time` `double precision`在这个数据库中通过后端读取数据文件块所花费的时间，以毫秒为单位(如果启用了track_io_timing，否则为零) 
+| `blk_write_time` `double precision`在这个数据库中通过后端写数据文件块所花费的时间，以毫秒为单位(如果启用了track_io_timing，否则为零) 
+| `stats_reset` `timestamp with time zone`这些统计数据最后一次重置的时间
+|====
+
+==== `pg_stat_database_conflicts`
+
+`pg_stat_database_conflicts`视图为每一个数据库包含一行， 用来显示数据库范围内由于与后备服务器上的恢复过程冲突而被取消的查询的统计信息。 这个视图将只包含后备服务器上的信息，因为冲突会不发生在主服务器上。
+
+**表22.`pg_stat_database_conflicts` 视图**
+|====
+|`datid` `oid`数据库的OID   
+| `datname` `name`数据库的名称  
+| `confl_tablespace` `bigint`这个数据库中由于删除表空间而取消的查询的数量 
+| `confl_lock` `bigint`此数据库中由于锁定超时而被取消的查询数  
+| `confl_snapshot` `bigint`此数据库中由于旧快照而取消的查询数  
+| `confl_bufferpin` `bigint`此数据库中由于固定缓冲区而被取消的查询数 
+| `confl_deadlock` `bigint`此数据库中由于死锁而被取消的查询数
+|====
+
+==== `pg_stat_all_tables`
+
+`pg_stat_all_tables`视图将为当前数据库中的每一个表（包括 TOAST 表）包含一行，该行显示与对该表的访问相关的统计信息。 `pg_stat_user_tables`和`pg_stat_sys_tables`视图包含相同的信息，但是被过滤得分别只显示用户和系统表。
+
+**表23.`pg_stat_all_tables` 视图**
+|====
+| 列类型描述
+| `relid` `oid`表的OID  
+| `schemaname` `name`该表所在的模式的名称 
+| `relname` `name`这个表的名称  
+| `seq_scan` `bigint`在此表上启动的顺序扫描数 
+| `seq_tup_read` `bigint`连续扫描获取的实时行数 
+| `idx_scan` `bigint`对这个表发起的索引扫描数 
+| `idx_tup_fetch` `bigint`索引扫描获取的实时行数 
+| `n_tup_ins` `bigint`插入的行数 
+| `n_tup_upd` `bigint`更新的行数(包括HOT更新的行) 
+| `n_tup_del` `bigint`删除的行数 
+| `n_tup_hot_upd` `bigint`HOT更新的行数(即，不需要单独的索引更新) 
+| `n_live_tup` `bigint`活的行的估计数量  
+| `n_dead_tup` `bigint`僵死行的估计数量  
+| `n_mod_since_analyze` `bigint`自上次分析此表以来修改的行的估计数量 
+| `n_ins_since_vacuum` `bigint`自上次清空此表以来插入的行的估计数量 
+| `last_vacuum` `timestamp with time zone`最后一次手动清理这个表(不包括`VACUUM FULL`) 
+| `last_autovacuum` `timestamp with time zone`这个表最后一次被自动清理守护进程清理的时间 
+| `last_analyze` `timestamp with time zone`上一次手动分析这个表 
+| `last_autoanalyze` `timestamp with time zone`自动清理守护进程最后一次分析这个表 
+| `vacuum_count` `bigint`这个表被手动清理的次数(`VACUUM FULL`不计数) 
+| `autovacuum_count` `bigint`这个表被autovacuum守护进程清理的次数 
+| `analyze_count` `bigint`手动分析这个表的次数      
+| `autoanalyze_count` `bigint`这个表被autovacuum守护进程分析的次数
+|====
+
+==== `pg_stat_all_indexes`
+
+`pg_stat_all_indexes`视图将为当前数据库中的每个索引包含一行，该行显示关于对该索引访问的统计信息。`pg_stat_user_indexes`和`pg_stat_sys_indexes`视图包含相同的信息，但是被过滤得只分别显示用户和系统索引。
+
+**表24.`pg_stat_all_indexes` 视图**
+|====
+| 列类型描述
+| `relid` `oid`对于此索引的表的OID                             
+| `indexrelid` `oid`这个索引的OID                              
+| `schemaname` `name`这个索引所在的模式名称                    
+| `relname` `name`这个索引的表的名称                           
+| `indexrelname` `name`这个索引的名称                          
+| `idx_scan` `bigint`在这个索引上开启的索引扫描的数量          
+| `idx_tup_read` `bigint`扫描此索引返回的索引项数       
+| `idx_tup_fetch` `bigint`使用此索引进行简单索引扫描获取的活动表行数
+|====
+
+索引可以被简单索引扫描、“位图”索引扫描以及优化器使用。在一次位图扫描中，多个索引的输出可以被通过 AND 或 OR 规则组合，因此当使用一次位图扫描时难以将取得的个体堆行与特定的索引关联起来。因此，一次位图扫描会增加它使用的索引的`pg_stat_all_indexes`.`idx_tup_read`计数，并且为每个表增加`pg_stat_all_tables`.`idx_tup_fetch`计数，但是它不影响`pg_stat_all_indexes`.`idx_tup_fetch`。如果所提供的常量值不在优化器统计信息记录的范围之内，优化器也会访问索引来检查，因为优化器统计信息可能已经“不新鲜”了。
+
+.注意
+****
+即使不用位图扫描，`idx_tup_read`和`idx_tup_fetch`计数也可能不同，因为`idx_tup_read`统计从该索引取得的索引项而`idx_tup_fetch`统计从表取得的活着的行。如果使用该索引取得了任何死亡行或还未提交的行，或者如果通过一次只用索引扫描的方式避免了任何堆获取，后者将较小。
+****
+
+==== `pg_statio_all_tables`
+
+`pg_statio_all_tables`视图将为当前数据库中的每个表（包括 TOAST 表）包含一行，该行显示指定表上有关 I/O 的统计信息。`pg_statio_user_tables`和`pg_statio_sys_tables`视图包含相同的信息，但是被过滤得分别只显示用户表和系统表。
+
+**表25.`pg_statio_all_tables` 视图**
+|====
+| 列类型描述
+| `relid` `oid`表的OID                       
+| `schemaname` `name`该表所在的模式名                          
+| `relname` `name`这个表的名称                                 
+| `heap_blks_read` `bigint`从该表中读取的磁盘块的数量          
+| `heap_blks_hit` `bigint`该表中的缓冲区命中数                 
+| `idx_blks_read` `bigint`从这个表上所有索引读取的磁盘块数     
+| `idx_blks_hit` `bigint`这个表上所有索引中的缓冲区命中数      
+| `toast_blks_read` `bigint`从这个表的TOAST表中读取的磁盘块的数量(如果有的话) 
+| `toast_blks_hit` `bigint`这个表的TOAST表中的缓冲区命中数(如果有的话) 
+| `tidx_blks_read` `bigint`从这个表的TOAST表索引中读取的磁盘块的数量(如果有的话) 
+| `tidx_blks_hit` `bigint`这个表的TOAST表索引中的缓冲区命中数(如果有的话)
+|====
+
+==== `pg_statio_all_indexes`
+
+`pg_statio_all_indexes`视图将为当前数据库中的每个索引包含一行，该行显示指定索引上有关 I/O 的统计信息。 `pg_statio_user_indexes`和`pg_statio_sys_indexes`视图包含相同的信息，但是被过滤得分别只显示用户索引和系统索引。
+
+**表26.`pg_statio_all_indexes` 视图**
+|====
+| 列类型描述
+| `relid` `oid`对这个索引的表的OID                     
+| `indexrelid` `oid`这个索引的OID                      
+| `schemaname` `name`索引所在的模式名称                
+| `relname` `name`此索引的表的名称                     
+| `indexrelname` `name`这个索引的名称                  
+| `idx_blks_read` `bigint`从此索引中读取的磁盘块的数量 
+| `idx_blks_hit` `bigint`此索引中的缓冲区命中数 
+|====
+
+==== `pg_statio_all_sequences`
+
+`pg_statio_all_sequences`视图将为当前数据库中的每个序列包含一行，该行显示在指定序列上有关 I/O 的统计信息。
+
+**表27.`pg_statio_all_sequences` 视图**
+|====
+| 列类型描述
+| `relid` `oid`序列的OID                           
+| `schemaname` `name`此序列所在的模式的名称          
+| `relname` `name`此序列的名称                       
+| `blks_read` `bigint`从这个序列中读取的磁盘块的数量 
+| `blks_hit` `bigint`在此序列中的缓冲区命中数 
+|====
+
+==== `pg_stat_user_functions`
+
+`pg_stat_user_functions`视图将为每一个被追踪的函数包含一行，该行显示有关该函数执行的统计信息。 track_functions参数控制到底哪些函数被跟踪。
+
+**表28.`pg_stat_user_functions` 视图**
+|====
+| 列类型描述
+| `funcid` `oid`函数的OID                   
+| `schemaname` `name`这个函数所在的模式的名称         
+| `funcname` `name`这个函数的名称                   
+| `calls` `bigint`这个函数已经被调用的次数            
+| `total_time` `double precision`在这个函数以及它所调用的其他函数中花费的总时间，以毫秒计 
+| `self_time` `double precision`在这个函数本身花费的总时间，不包括被它调用的其他函数，以毫秒计
+|====
+
+==== `pg_stat_slru`
+
+IvorySQL通过*SLRU*(simple least-recently-used，简单的最近-最少-使用)缓存访问某些磁盘上的信息。 `pg_stat_slru`视图将为每个被跟踪的SLRU缓存包含一行，显示关于访问缓存页面的统计信息。
+
+**表29.`pg_stat_slru` 视图**
+|====
+| 列类型描述
+| `name` `text`SLRU的名称      
+| `blks_zeroed` `bigint`初始化期间被置零的块数    
+| `blks_hit` `bigint`已经在SLRU中的磁盘块被发现的次数，因此不需要读取(这只包括SLRU中的命中，而不是操作系统的文件系统缓存) 
+| `blks_read` `bigint`为这个SLRU读取的磁盘块数         
+| `blks_written` `bigint`为这个SLRU写入的磁盘块数       
+| `blks_exists` `bigint`为这个SLRU检查是否存在的块数   
+| `flushes` `bigint`此SLRU的脏数据刷新数           
+| `truncates` `bigint`这个SLRU的截断数              
+| `stats_reset` `timestamp with time zone`这些统计数据最后一次重置的时间
+|====
+
+==== Statistics Functions
+
+其他查看统计信息的方法是直接使用查询，这些查询使用上述标准视图用到的底层统计信息访问函数。 如要了解如函数名等细节，可参考标准视图的定义（例如，在psql中你可以发出`\d+ pg_stat_activity`）。 针对每一个数据库统计信息的访问函数把一个数据库 OID 作为参数来标识要报告哪个数据库。而针对每个表和每个索引的函数要求表或索引 OID。 针对每个函数统计信息的函数用一个函数 OID。注意只有在当前数据库中的表、索引和函数才能被这些函数看到。
+
+更多统计集合的函数列在 表  30 中。
+
+**表30.Additional Statistics Functions**
+|====
+| 函数描述
+| `pg_backend_pid` () → `integer`返回附加到当前会话的服务器进程的进程ID。 
+| `pg_stat_get_activity` ( `integer` ) → `setof record`使用指定的进程ID返回有关后端信息的记录，如果指定了`NULL`，则返回系统中每个活动后端的一条记录。 返回的字段是`pg_stat_activity`视图中字段的子集。 
+| `pg_stat_get_snapshot_timestamp` () → `timestamp with time zone`返回当前统计快照的时间戳。 
+| `pg_stat_clear_snapshot` () → `void`丢弃当前的统计快照。    
+| `pg_stat_reset` () → `void`将当前数据库的所有统计计数器重置为零。默认情况下该函数仅限于超级用户，但是其他用户可以被授予EXECUTE来运行此函数。 
+| `pg_stat_reset_shared` ( `text` ) → `void`根据参数的不同，将一些集群范围的统计计数器重置为零。 参数可以是`bgwriter`来重置`pg_stat_bgwriter`视图中显示的所有计数器， 或者`archiver`来重置`pg_stat_archiver`视图中显示的所有计数器。默认情况下该函数仅限于超级用户，但是其他用户可以被授予EXECUTE来运行此函数。 
+| `pg_stat_reset_single_table_counters` ( `oid` ) → `void`将当前数据库中单个表或索引的统计信息重置为零。默认情况下该函数仅限于超级用户，但是其他用户可以被授予EXECUTE来运行此函数。 
+| `pg_stat_reset_single_function_counters` ( `oid` ) → `void`将当前数据库中单个函数的统计信息重置为零。默认情况下该函数仅限于超级用户，但是其他用户可以被授予EXECUTE来运行此函数。 
+| `pg_stat_reset_slru` ( `text` ) → `void`将单个SLRU缓存或集群中所有SLRU的统计信息重置为零。 如果该参数为NULL，则所有SLRU缓存的`pg_stat_slru`视图中显示的计数器将被重置。 参数可以是`CommitTs`、`MultiXactMember`、`MultiXactOffset`、`Notify`、 `Serial`、`Subtrans`、 或`Xact`中的一个，以便只重置该条目的计数器。 如果参数是`other`(或实际上，任何无法识别的名称)，那么所有其他SLRU缓存的计数器，如扩展定义的缓存，将被重置。默认情况下该函数仅限于超级用户，但是其他用户可以被授予EXECUTE来运行此函数。
+|====
+
+`pg_stat_get_activity`是`pg_stat_activity`视图的底层函数， 它返回一个行集合，其中包含有关每个后端进程所有可用的信息。有时只获得该信息的一个子集可能会更方便。 在那些情况中，可以使用一组更老的针对每个后端的统计访问函数，这些显示在 表 31中。 这些访问函数使用一个后端 ID 号，范围从 1 到当前活动后端数目。 函数`pg_stat_get_backend_idset`提供了一种方便的方法为每个活动后端产生一行来调用这些函数。 例如，要显示PID以及所有后端当前的查询：
+
+```
+SELECT pg_stat_get_backend_pid(s.backendid) AS pid,
+       pg_stat_get_backend_activity(s.backendid) AS query
+    FROM (SELECT pg_stat_get_backend_idset() AS backendid) AS s;
+```
+
+**表31.Per-Backend Statistics Functions**
+|====
+| 函数描述
+| `pg_stat_get_backend_idset` () → `setof integer`返回当前活动后端ID号的集合(从1到活动后端数)。 
+| `pg_stat_get_backend_activity` ( `integer` ) → `text`返回此后端最近查询的文本。 
+| `pg_stat_get_backend_activity_start` ( `integer` ) → `timestamp with time zone`返回后端最近一次查询开始的时间。 
+| `pg_stat_get_backend_client_addr` ( `integer` ) → `inet`返回连接到此后端的客户端的IP地址。 
+| `pg_stat_get_backend_client_port` ( `integer` ) → `integer`返回客户端用于通信的TCP端口号。 
+| `pg_stat_get_backend_dbid` ( `integer` ) → `oid`返回此后端连接的数据库的OID。 
+| `pg_stat_get_backend_pid` ( `integer` ) → `integer`返回此后端进程ID。 
+| `pg_stat_get_backend_start` ( `integer` ) → `timestamp with time zone`返回该进程开始的时间。 
+| `pg_stat_get_backend_userid` ( `integer` ) → `oid`返回登录到此后端的用户的OID。 
+| `pg_stat_get_backend_wait_event_type` ( `integer` ) → `text`如果后端当前正在等待，返回等待事件类型名称，否则返回NULL。 
+| `pg_stat_get_backend_wait_event` ( `integer` ) → `text`如果后端当前正在等待，则返回等待事件名称，否则为NULL。 
+| `pg_stat_get_backend_xact_start` ( `integer` ) → `timestamp with time zone`返回后端当前事务开始的时间。
+|====
+
+== 查看锁
+
+监控数据库活动的另外一个有用的工具是`pg_locks`系统表。这样就允许数据库管理员查看在锁管理器里面未解决的锁的信息。例如，这个功能可以被用于：
+
+- 查看当前所有未解决的锁、在一个特定数据库中的关系上所有的锁、在一个特定关系上所有的锁，或者由一个特定IvorySQL会话持有的所有的锁。
+- 判断当前数据库中带有最多未授予锁的关系（它很可能是数据库客户端的竞争源）。
+- 判断锁竞争给数据库总体性能带来的影响，以及锁竞争随着整个数据库流量的变化范围。
+
+== Progress Reporting
+
+IvorySQL具有在命令执行过程中报告某些命令进度的能力。 目前，支持进度报告的命令只有`ANALYZE`,`CLUSTER`,`CREATE INDEX`, `VACUUM`, 和 BASE_BACKUP例如 pg_basebackup发出的进行基础备份的复制命令。未来可能还会扩展。
+
+=== ANALYZE Progress Reporting
+
+每当`ANALYZE`运行时，`pg_stat_progress_analyze`视图将包含当前运行该命令的每个后端的一行。 下面的表描述了将要报告的信息，并提供了关于如何解释它们的信息。
+
+**表32.`pg_stat_progress_analyze` 视图**
+|====
+| 列类型描述
+|                `pid` `integer`后端的进程ID。                 
+|            `datid` `oid`后端连接到的数据库的OID。            
+|          `datname` `name`后端连接到的数据库的名称。          
+|                `relid` `oid`被分析的表的OID。                
+| `phase` `text`当前处理阶段。参见 http://www.postgres.cn/docs/14/progress-reporting.html#ANALYZE-PHASES[表  33]。 
+|      `sample_blks_total` `bigint`将被采样的堆块的总数。      
+|        `sample_blks_scanned` `bigint`扫描的堆块数量。        
+|        `ext_stats_total` `bigint`扩展统计信息的数量。        
+| `ext_stats_computed` `bigint`已经计算的扩展统计的数量. 此计数器仅在 `computing extended statistics`阶段增进。 
+|          `child_tables_total` `bigint`子表的数量。           
+| `child_tables_done` `bigint`扫描的子表数。此计数器只有在`acquiring inherited sample rows`阶段才会增进。 
+| `current_child_table_relid` `oid`当前正在扫描的子表的OID。此字段仅在`acquiring inherited sample rows`时有效。
+|====
+
+**表33.ANALYZE phases**
+|====
+| 阶段                              | 描述
+| `initializing`                    | 命令正在准备开始扫描堆。这个阶段预计会非常短暂。           
+| `acquiring sample rows`           | 该命令当前正在扫描`relid`给出的表以获得示例行。         
+| `acquiring inherited sample rows` | 该命令当前正在扫描子表以获得示例行。列`child_tables_total`,`child_tables_done`, 和`current_child_table_relid`包含此阶段的进度信息。 
+| `computing statistics`            | 该命令从表扫描期间获得的样例行计算统计信息。               
+| `computing extended statistics`   | 该命令从表扫描期间获得的样例行计算扩展统计信息。            
+| `finalizing analyze`              | 该命令在更新`pg_class`。当此阶段完成时，`ANALYZE` 将结束。
+|====
+
+.注意
+****
+当在分区表上运行`ANALYZE`时，它的所有分区也会被递归分析，如在ANALYZE中曾提到过。 在这种情况下，首先报告父表的`ANALYZE`进度，收集它的继承统计信息，然后是每个分区的(继承统计信息)。
+****
+
+=== CREATE INDEX Progress Reporting
+
+每当运行`CREATE INDEX`或`REINDEX`时，`pg_stat_progress_create_index`视图将包含当前正在创建索引的每个后端的一行。 下面的表描述了将要报告的信息，并提供了关于如何解释它的信息。
+
+**表34.`pg_stat_progress_create_index` 视图**
+|====
+| 列类型描述
+|                `pid` `integer`后端的进程ID。                 
+|            `datid` `oid`后端连接到的数据库的OID。            
+|          `datname` `name`后端连接到的数据库的名称。          
+|             `relid` `oid`正在创建索引的表的OID。             
+| `index_relid` `oid`正在创建或重建索引的OID。在非并发 `CREATE INDEX`的时候，此为 0。 
+| `command` `text`在运行的命令: `CREATE INDEX`,`CREATE INDEX CONCURRENTLY`, `REINDEX`, 或 `REINDEX CONCURRENTLY`. 
+| `phase` `text`索引创建的当前处理阶段。 参见 http://www.postgres.cn/docs/14/progress-reporting.html#CREATE-INDEX-PHASES[表  35]。 
+| `lockers_total` `bigint`在适用的情况下，需要等待的储物柜总数 
+|        `lockers_done` `bigint`已经等待的储物柜数量。         
+| `current_locker_pid` `bigint`目前正在等待的储物柜的进程ID。  
+|       `blocks_total` `bigint`本阶段要处理的区块总数。        
+|      `blocks_done` `bigint`当前阶段已经处理的区块数量。      
+|      `tuples_total` `bigint`当前阶段要处理的元组总数。       
+|     `tuples_done` `bigint`在当前阶段已经处理的元组数量。     
+| `partitions_total` `bigint`在分区表上创建索引时，该列被设置为要在其上创建索引的分区总数。 
+| `partitions_done` `bigint`当在分区表上创建索引时，该列被设置为在其上完成索引的分区数。
+|====
+
+**表35.CREATE INDEX 的阶段**
+|====
+| 阶段 | 描述
+| `初始化`                     | `CREATE INDEX`或`REINDEX`正在准备创建索引。 这个阶段预计会非常短暂。 
+| `构建前等待读写器`           | `CREATE INDEX CONCURRENTLY`或`REINDEX CONCURRENTLY`正在等待有可能看到表的写锁的事务完成。 当不在并发模式时，这个阶段会被跳过。`lockers_total`、 `lockers_done` 和 `current_locker_pid` 列包含了这个阶段的进度信息。 
+| `新建索引`                   | 索引是由访问方法专用代码建立的。 在这一阶段，支持进度报告的访问方法填写自己的进度数据，子阶段在这一栏中表示。 通常情况下，`blocks_total`和`blocks_done`将包含进度数据，也可能包含`tuples_total`和`tuples_done`。 
+| `在验证前等待读写器`         | `CREATE INDEX CONCURRENTLY`或`REINDEX CONCURRENTLY`正在等待有可能写入表的事务完成写锁的事务。当不在并发模式时，这个阶段会被跳过。`lockers_total`、 `lockers_done` 和 `current_locker_pid` 列包含了这个阶段的进度信息。 
+| `索引验证：扫描索引`         | `CREATE INDEX CONCURRENTLY`正在扫描索引，搜索需要验证的图元组。如果不是在并发模式下，这个阶段会被跳过。列 `blocks_total`（设置为索引的总大小）和 `blocks_done`包含了这个阶段的进度信息。 
+| `指数验证：排序元组`         | `CREATE INDEX CONCURRENTLY`正在对索引扫描阶段的输出进行排序。 
+| `索引验证：扫描表`           | `CREATE INDEX CONCURRENTLY`正在扫描表，以验证前两个阶段收集的索引图元。当不在并发模式时，这个阶段被跳过。`blocks_total`列（设置为表的总大小）和`blocks_done`列包含这个阶段的进度信息。 
+| `等待旧照`                   | `CREATE INDEX CONCURRENTLY`或`REINDEX CONCURRENTLY`正在等待可能看到表的事务释放快照。 当不处于并发模式时，这个阶段会被跳过。 `lockers_total`、`lockers_done` 和 `current_locker_pid` 列包含了这个阶段的进度信息。 
+| `标记 dead之前等待readers`   | `REINDEX CONCURRENTLY`等待表上有读锁的事务完成后，再将旧索引标记为死索引。当不在并发模式时，这个阶段被跳过。`lockers_total`、`lockers_done` 和 `current_locker_pid` 列包含了这个阶段的进度信息。 
+| `在 dropping之前等待readers` | `REINDEX CONCURRENTLY`等待表上有读锁的事务完成后，再丢弃旧索引。当不在并发模式时，这个阶段被跳过。列 `lockers_total`、`lockers_done` 和 `current_locker_pid`包含了这个阶段的进度信息。
+|====
+
+=== VACUUM进度报告
+
+只要`VACUUM`正在运行，每一个当前正在清理的后端（包括autovacuum工作者进程）在`pg_stat_progress_vacuum`视图中都会有一行。下面的表描述了将被报告的信息并且提供了如何解释它们的信息。`VACUUM FULL`命令的进度是通过`pg_stat_progress_cluster`报告的，因为`VACUUM FULL`和`CLUSTER`都是重写表，而普通的`VACUUM`只是原地修改表。
+
+**表36.`pg_stat_progress_vacuum` 视图**
+|====
+| 列类型描述
+|                `pid` `integer`后端的进程ID。                 
+|           `datid` `oid`这个后端连接的数据库的OID。           
+|         `datname` `name`这个后端连接的数据库的名称。         
+|               `relid` `oid`被vacuum的表的OID。               
+|             `phase` `text`vacuum的当前处理阶段。             
+| `heap_blks_total` `bigint`该表中堆块的总数。这个数字在扫描开始时报告，之后增加的块将不会（并且不需要）被这个`VACUUM`访问。 
+| `heap_blks_scanned` `bigint`被扫描的堆块数量。由于visibility map被用来优化扫描，一些块将被跳过而不做检查， 被跳过的块会被包括在这个总数中，因此当清理完成时这个数字最终将会等于`heap_blks_total`。 仅当处于`扫描堆`阶段时这个计数器才会前进。 
+| `heap_blks_vacuumed` `bigint`被清理的堆块数量。除非表没有索引，这个计数器仅在处于`清理堆`阶段时才会前进。 不包含死亡元组的块会被跳过，因此这个计数器可能有时会向前跳跃一个比较大的增量。 
+|    `index_vacuum_count` `bigint`已完成的索引清理周期数。     
+| `max_dead_tuples` `bigint`在需要执行一个索引清理周期之前我们可以存储的死亡元组数，取决于maintenance_work_mem。 
+| `num_dead_tuples` `bigint`从上一个索引清理周期以来收集的死亡元组数。
+|====
+
+**表37.VACUUM的阶段**
+|====
+| 阶段             | 描述
+| `初始化`         | `VACUUM`正在准备开始扫描堆。这个阶段应该很简短。             
+| `扫描堆`         | `VACUUM`正在扫描堆。如果需要，它将会对每个页面进行修建以及碎片整理，并且可能会执行冻结动作。`heap_blks_scanned`列可以用来监控扫描的进度。 
+| `清理索引`       | `VACUUM`当前正在清理索引。如果一个表拥有索引，那么每次清理时这个阶段会在堆扫描完成后至少发生一次。如果maintenance_work_mem不足以存放找到的死亡元组，则每次清理时会多次清理索引。 
+| `清理堆`         | `VACUUM`当前正在清理堆。清理堆与扫描堆不是同一个概念，清理堆发生在每一次清理索引的实例之后。如果`heap_blks_scanned`小于`heap_blks_total`，系统将在这个阶段完成之后回去扫描堆；否则，系统将在这个阶段完成后开始清理索引。 
+| `清除索引`       | `VACUUM`当前正在清除索引。这个阶段发生在堆被完全扫描并且对堆和索引的所有清理都已经完成以后。 
+| `截断堆`         | `VACUUM`正在截断堆，以便把关系尾部的空页面返还给操作系统。这个阶段发生在清除完索引之后。 
+| `执行最后的清除` | `VACUUM`在执行最终的清除。在这个阶段中，`VACUUM`将清理空闲空间映射、更新`pg_class`中的统计信息并且将统计信息报告给统计收集器。当这个阶段完成时，`VACUUM`也就结束了。
+|====
+
+
+=== CLUSTER进度报告
+
+每当`CLUSTER`或`VACUUM FULL`运行时，`pg_stat_progress_cluster`视图将包含当前正在运行的每一个后台的记录。下面的表格描述了将被报告的信息，并提供了关于如何解释这些信息的信息。
+
+**表38.`pg_stat_progress_cluster` 视图**
+|====
+| 列类型描述
+|                `pid` `integer`后台的进程ID。                 
+|            `datid` `oid`该后端连接的数据库的OID。            
+|         `datname` `name`与此后端连接的数据库的名称。         
+|                `relid` `oid`被集群的表的OID。                
+|  `command` `text`正在运行的命令。`CLUSTER`或`VACUUM FULL`。  
+|                 `phase` `text`当前处理阶段。                 
+| `cluster_index_relid` `oid`如果正在使用索引对表进行扫描，这就是正在使用的索引的OID；否则为0。 
+| `heap_tuples_scanned` `bigint`扫描的堆元组数。 这个计数器只有在阶段为`seq scanning heap`,`index scanning heap` 或 `writing new heap`时才会增进。 
+| `heap_tuples_written` `bigint`写入的堆元组的数量。这个计数器只有在阶段为`seq scanning heap`,`index scanning heap` 或 `writing new heap`时才会前进。 
+| `heap_blks_total` `bigint`表中的堆块总数。 这个数字是在`seq scanning heap`的开始时报告的。 
+| `heap_blks_scanned` `bigint`扫描的堆块数量。 这个计数器只有在阶段为`seq scanning heap`时才会增进。 
+| `index_rebuild_count` `bigint`重建的索引数。 该计数器仅在`重建索引`阶段时才会增进。
+|====
+
+**表39.CLUSTER 和 VACUUM FULL 阶段**
+|====
+| 阶段           | 描述
+| `初始化`       | 该命令准备开始扫描堆栈。 这个阶段预计会非常短暂。            
+| `seq扫描堆`    | 该命令目前采用顺序扫描的方式对表进行扫描。                   
+| `索引扫描堆`   | `CLUSTER`目前正在使用索引扫描表。                            
+| `元组排序`     | `CLUSTER`目前正在对元组进行排序。                            
+| `新写入堆`     | `CLUSTER`目前正在编写新的堆。                                
+| `交换关系文件` | 目前，该命令正在将新建立的文件调换到位。                     
+| `重建索引`     | 该命令目前正在重建一个索引。                                 
+| `清理`         | 该命令正在执行最后的清理工作。 当此阶段完成后，`CLUSTER`或`VACUUM FULL`将结束。
+|====
+
+=== 基础备份进度报告
+
+每当像pg_basebackup这样的应用程序进行基本备份时， `pg_stat_progress_basebackup`视图将包含当前运行`BASE_BACKUP`复制命令和流备份的每个WAL发送进程的一行。 下面的表描述了将要报告的信息，并提供了关于如何解释它的信息。
+
+**表40.`pg_stat_progress_basebackup` 视图**
+|====
+| 列类型描述
+| `pid` `integer`WAL发送方进程ID。               
+|                `phase` `text`目前的处理阶段。                
+| `backup_total` `bigint`将被流输送的数据总量。这是在`streaming database files`阶段开始时的估计和报告。 注意，这只是一个近似值，因为在`streaming database files`阶段，数据库可能会改变，而WAL日志可能会在稍后的备份中包含。 一旦流数据量超过了估计的总大小，该值始终与`backup_streamed`相同。 如果在pg_basebackup中禁用估算(也就是说，指定了`--no-estimate-size`选项)，这为`NULL`。 
+| `backup_streamed` `bigint`数据流的总量。这个计数器只在`streaming database files`阶段或`transferring wal files`时增进。 
+|      `tablespaces_total` `bigint`要流输送的表空间总数。      
+| `tablespaces_streamed` `bigint`流输送的表空间数。此计数器仅在`streaming database files`阶段增进。
+|====
+
+**表41.基础备份阶段**
+|====
+| 阶段                                  | 描述
+| `initializing`                        | WAL发送器进程正在准备开始备份。这个阶段预计会非常短暂。      
+| `waiting for checkpoint to finish`    | WAL发送器进程目前正在执行`pg_start_backup`以准备进行基础备份，并等待启动备份检查点完成。 
+| `estimating backup size`              | WAL发送程序目前正在估计将作为基础备份流传输的数据库文件的总量。 
+| `streaming database files`            | WAL发送器当前正在流数据库文件作为基础备份。                  
+| `waiting for wal archiving to finish` | WAL发送方进程目前正在执行`pg_stop_backup`以完成备份，并等待基础备份所需的所有WAL文件成功存档。 如果在pg_basebackup中指定了`--wal-method=none`或`--wal-method=stream`，则备份将在此阶段完成后结束。 
+| `transferring wal files`              | WAL发送器进程正在传输备份过程中产生的所有WAL日志。 如果pg_basebackup中指定了`--wal-method=fetch`， 则该阶段发生在`waiting for wal archiving to finish`阶段之后。当此阶段完成时备份将结束。
+|====
+
+== 动态追踪
+
+IvorySQL提供了功能来支持数据库服务器的动态追踪。这样就允许在代码中的特 定点上调用外部工具来追踪执行过程。
+
+一些探针或追踪点已经被插入在源代码中。这些探针的目的是被数据库开发者和管理员使用。默认情况下，探针不被编译到IvorySQL中；用户需要显式地告诉配置脚本使得探针可用。
+
+目前，DTrace已被支持，它在 Solaris、macOS、FreeBSD、NetBSD 和 Oracle Linux 上可用。 Linux 的SystemTap项目提供了一种可用的 DTrace 等价物。支持其他动态追踪工具在理论上可以通过改变`src/include/utils/probes.h`中的宏定义实现。
+
+=== 动态追踪的编译
+
+默认情况下，探针是不可用的，因此你将需要显式地告诉配置脚本让探针在IvorySQL中可用。要包括 DTrace 支持，在配置时指定`--enable-dtrace`。
+
+=== 内建探针
+
+如表  42所示，源代码中提供了一些标准探针。表  43显式了在探针中使用的类型。当然，可以增加更多探针来增强IvorySQL的可观测性。
+
+**表42.内建 DTrace 探针**
+|====
+| 名称  | 参数   | 描述
+| `transaction-start`            | `(LocalTransactionId)`                                       | 在一个新事务开始时触发的探针。arg0 是事务 ID。               
+| `transaction-commit`           | `(LocalTransactionId)`                                       | 在一个事务成功完成时触发的探针。arg0 是事务 ID。             
+| `transaction-abort`            | `(LocalTransactionId)`                                       | 当一个事务失败完成时触发的探针。arg0 是事务 ID。             
+| `query-start`                  | `(const char *)`                                             | 当一个查询的处理被开始时触发的探针。arg0 是查询字符串。      
+| `query-done`                   | `(const char *)`                                             | 当一个查询的处理完成时触发的探针。arg0 是查询字符串。        
+| `query-parse-start`            | `(const char *)`                                             | 当一个查询的解析被开始时触发的探针。arg0 是查询字符串。      
+| `query-parse-done`             | `(const char *)`                                             | 当一个查询的解析完成时触发的探针。arg0 是查询字符串。        
+| `query-rewrite-start`          | `(const char *)`                                             | 当一个查询的重写被开始时触发的探针。arg0 是查询字符串。      
+| `query-rewrite-done`           | `(const char *)`                                             | 当一个查询的重写完成时触发的探针。arg0 是查询字符串。        
+| `query-plan-start`             | `()`                                                         | 当一个查询的规划被开始时触发的探针。                         
+| `query-plan-done`              | `()`                                                         | 当一个查询的规划完成时触发的探针。                           
+| `query-execute-start`          | `()`                                                         | 当一个查询的执行被开始时触发的探针。                         
+| `query-execute-done`           | `()`                                                         | 当一个查询的执行完成时触发的探针。                           
+| `statement-status`             | `(const char *)`                                             | 任何时候当服务器进程更新它的`pg_stat_activity`.`status`时触发的探针。arg0 是新的状态字符串。 
+| `checkpoint-start`             | `(int)`                                                      | 当一个检查点被开始时触发的探针。arg0 传递位标志来区分不同的检查点类型，例如关闭（shutdown）、立即（immediate）或强制（force）。 
+| `checkpoint-done`              | `(int, int, int, int, int)`                                  | 当一个检查点完成时触发的探针（检查点处理过程中序列中列出的下一个触发的探针）。arg0 是要写的缓冲区数量。arg1 是缓冲区的总数。arg2、arg3 和 arg4 分别包含了增加、删除和循环回收的 WAL 文件的数量。 
+| `clog-checkpoint-start`        | `(bool)`                                                     | 当一个检查点的 CLOG 部分被开始时触发的探针。arg0 为真表示正常检查点，为假表示关闭检查点。 
+| `clog-checkpoint-done`         | `(bool)`                                                     | 当一个检查点的 CLOG 部分完成时触发的探针。arg0 的含义与`clog-checkpoint-start`中相同。 
+| `subtrans-checkpoint-start`    | `(bool)`                                                     | 当一个检查点的 SUBTRANS 部分被开始时触发的探针。arg0 为真表示正常检查点，为假表示关闭检查点。 
+| `subtrans-checkpoint-done`     | `(bool)`                                                     | 当一个检查点的 SUBTRANS 部分完成时触发的探针。arg0 的含义与`subtrans-checkpoint-start`中相同。 
+| `multixact-checkpoint-start`   | `(bool)`                                                     | 当一个检查点的 MultiXact 部分被开始时触发的探针。arg0 为真表示正常检查点，为假表示关闭检查点。 
+| `multixact-checkpoint-done`    | `(bool)`                                                     | 当一个检查点的 MultiXact 部分完成时触发的探针。arg0 的含义与`multixact-checkpoint-start`中相同。 
+| `buffer-checkpoint-start`      | `(int)`                                                      | 当一个检查点的写缓冲区部分被开始时触发的探针。arg0 传递位标志来区分不同的检查点类型，例如关闭（shutdown）、立即（immediate）或强制（force）。 
+| `buffer-sync-start`            | `(int, int)`                                                 | 当我们在检查点期间开始写脏缓冲区时（在标识哪些缓冲区必须被写之后）触发的探针。arg0 是缓冲区总数，arg1 是当前为脏并且需要被写的缓冲区数量。 
+| `buffer-sync-written`          | `(int)`                                                      | 在检查点期间当每个缓冲区被写完之后触发的探针。arg0 是缓冲区的 ID。 
+| `buffer-sync-done`             | `(int, int, int)`                                            | 当所有脏缓冲区被写之后触发的探针。arg0 是缓冲区总数。arg1 是检查点进程实际写的缓冲区数量。arg2 是期望写的数目（`buffer-sync-start`的 arg1）；arg1 和 arg2 的任何的不同反映在该检查点期间有其他进程刷写了缓冲区。 
+| `buffer-checkpoint-sync-start` | `()`                                                         | 在脏缓冲区被写入到内核之后并且在开始发出 fsync 请求之前触发的探针。 
+| `buffer-checkpoint-done`       | `()`                                                         | 当同步缓冲区到磁盘完成时触发的探针。                         
+| `twophase-checkpoint-start`    | `()`                                                         | 当一个检查点的两阶段部分被开始时触发的探针。                 
+| `twophase-checkpoint-done`     | `()`                                                         | 当一个检查点的两阶段部分完成时触发的探针。                   
+| `buffer-read-start`            | `(ForkNumber, BlockNumber, Oid, Oid, Oid, int, bool)`        | 当一次缓冲区读被开始时触发的探针。arg0 和 arg1 包含该页的分叉号和块号（如果这是一次关系扩展请求，arg1 为 -1）。arg2、arg3 和 arg4 包含表空间、数据库和关系 OID 用以识别该关系。对一个本地缓冲区，arg5 是创建临时关系的后端的 ID；对于一个共享缓冲区，arg5 是 `InvalidBackendId`（-1）。arg6 为真表示一次关系扩展请求，为假表示正常读。 
+| `buffer-read-done`             | `(ForkNumber, BlockNumber, Oid, Oid, Oid, int, bool, bool)`  | 当一次缓冲区读完成时触发的探针。arg0 和 arg1 包含该页的分叉号和块号（如果这是一次关系扩展请求，arg1 现在包含新增加块的块号）。arg2、arg3 和 arg4 包含表空间、数据库和关系 OID 用以识别该关系。对一个本地缓冲区，arg5 是创建临时关系的后端的 ID；对于一个共享缓冲区，arg5 是 `InvalidBackendId`（-1）。arg6 为真表示一次关系扩展请求，为假表示正常读。arg7 为真表示在池中找到该缓冲区，为假表示没有找到。 
+| `buffer-flush-start`           | `(ForkNumber, BlockNumber, Oid, Oid, Oid)`                   | 在发出对一个共享缓冲区的任意写请求之前触发的探针。arg0 和 arg1 包含该页的分叉号和块号。arg2、arg3 和 arg4 包含表空间、数据库和关系 OID 用以识别该关系。 
+| `buffer-flush-done`            | `(ForkNumber, BlockNumber, Oid, Oid, Oid)`                   | 当一个写请求完成时触发的探针（注意这只反映传递数据给内核的时间，它通常并没有实际地被写入到磁盘）。参数和`buffer-flush-start`的相同。 
+| `buffer-write-dirty-start`     | `(ForkNumber, BlockNumber, Oid, Oid, Oid)`                   | 当一个服务器进程开始写一个脏缓冲区时触发的探针（如果这经常发生，表示shared_buffers太小，或需要调整后台写入器的控制参数）。arg0 和 arg1 包含该页的分叉号和块号。arg2、arg3 和 arg4 包含表空间、数据库和关系 OID 用以识别该关系。 
+| `buffer-write-dirty-done`      | `(ForkNumber, BlockNumber, Oid, Oid, Oid)`                   | 当一次脏缓冲区写完成时触发的探针。参数与`buffer-write-dirty-start`相同。 
+| `wal-buffer-write-dirty-start` | `()`                                                         | 当一个服务器进程因为没有可用 WAL 缓冲区空间开始写一个脏 WAL 缓冲区时触发的探针（如果这经常发生，表示wal_buffers太小）。 
+| `wal-buffer-write-dirty-done`  | `()`                                                         | 当一次脏 WAL 缓冲区完成时触发的探针。                        
+| `wal-insert`                   | `(unsigned char, unsigned char)`                             | 当一个 WAL 记录被插入时触发的探针。arg0 是该记录的资源管理者（rmid）。arg1 包含 info 标志。 
+| `wal-switch`                   | `()`                                                         | 当请求一次 WAL 段切换时触发的探针。                          
+| `smgr-md-read-start`           | `(ForkNumber, BlockNumber, Oid, Oid, Oid, int)`              | 当开始从一个关系读取一块时触发的探针。arg0 和 arg1 包含该页的分叉号和块号。arg2、arg3 和 arg4 包含表空间、数据库和关系 OID 用以识别该关系。对一个本地缓冲区，arg5 是创建临时关系的后端的 ID；对于一个共享缓冲区，arg5 是`InvalidBackendId`（-1）。 
+| `smgr-md-read-done`            | `(ForkNumber, BlockNumber, Oid, Oid, Oid, int, int, int)`    | 当一次块读取完成时触发的探针。arg0 和 arg1 包含该页的分叉号和块号。arg2、arg3 和 arg4 包含表空间、数据库和关系 OID 用以识别该关系。对一个本地缓冲区，arg5 是创建临时关系的后端的 ID；对于一个共享缓冲区，arg5 是`InvalidBackendId`（-1）。arg6 是实际读取的字节数，而 arg7 是请求读取的字节数（如果两者不同就意味着麻烦）。 
+| `smgr-md-write-start`          | `(ForkNumber, BlockNumber, Oid, Oid, Oid, int)`              | 当开始向一个关系中写入一个块时触发的探针。arg0 和 arg1 包含该页的分叉号和块号。arg2、arg3 和 arg4 包含表空间、数据库和关系 OID 用以识别该关系。对一个本地缓冲区，arg5 是创建临时关系的后端的 ID；对于一个共享缓冲区，arg5 是`InvalidBackendId`（-1）。 
+| `smgr-md-write-done`           | `(ForkNumber, BlockNumber, Oid, Oid, Oid, int, int, int)`    | 当一个块写操作完成时触发的探针。arg0 和 arg1 包含该页的分叉号和块号。arg2、arg3和arg4 包含表空间、数据库和关系 OID来标识该关系。对于一个本地缓冲区，arg5 是创建临时关系的后端 ID；对于一个共享缓冲区，arg5 是`InvalidBackendId`（-1）。arg6 是实际写的字节数，而 arg7 是要求写的字节数（如果这两者不同，则意味着麻烦）。 
+| `sort-start`                   | `(int, bool, int, int, bool, int)`                           | 当一次排序操作开始时触发的探针。arg0 指示是堆排序、索引排序或数据排序。arg1 为真表示唯一值强制。arg2 是键列的数目。arg3 是允许使用的工作内存数（以千字节计）。如果要求随机访问排序结果，那么 arg4 为真。arg5为`0`时表示串行，为`1`时表示并行工作者，为`2`时表示并行领袖。 
+| `sort-done`                    | `(bool, long)`                                               | 当一次排序完成时触发的探针。arg0 为真表示外排序，为假表示内排序。arg1 是用于一次外排序的磁盘块的数目，或用于一次内排序的以千字节计的内存。 
+| `lwlock-acquire`               | `(char *, LWLockMode)`                                       | 当成功获得一个 LWLock 时触发的探针。 arg0 是该 LWLock 所在的切片（Tranche）。 arg1 所请求的锁模式，是排他或共享。 
+| `lwlock-release`               | `(char *)`                                                   | 当一个 LWLock 被释放时（但是注意还没有唤醒任何一个被释放的等待者）触发的探针。 arg0 是该 LWLock 所在的切片（Tranche）。 
+| `lwlock-wait-start`            | `(char *, LWLockMode)`                                       | 当一个 LWLock不是当即可用并且一个服务器进程因此开始等待该锁变为可用时触发的探针。 arg0 是该 LWLock 所在的切片（Tranche）。 arg1 请求的锁模式，是排他或共享。
+| `lwlock-wait-done`             | `(char *, LWLockMode)`                                       | 当一个进程从对一个 LWLock 的等待中被释放时（它实际还没有得到该锁）时触发的探针。arg0 是该 LWLock 所在的切片（Tranche）。 arg1 所请求的锁模式，是排他或共享。 
+| `lwlock-condacquire`           | `(char *, LWLockMode)`                                       | 当调用者指定无需等待而成功获得一个 LWLock 时触发的探针。arg0 是该 LWLock 所在的切片（Tranche）。 arg1 所请求的锁模式，是排他或共享。 
+| `lwlock-condacquire-fail`      | `(char *, LWLockMode)`                                       | 当调用者指定无需等待而没有成功获得一个 LWLock 时触发的探针。arg0 是该 LWLock 所在的切片（Tranche）。 arg1 所请求的锁模式，是排他或共享。 
+| `lock-wait-start`              | `(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, LOCKMODE)` | 当一个重量级锁（lmgr锁）的请求由于锁不可用开始等待时触发的探针。arg0 到 arg3 是标识被锁定对象的标签域。arg4 指示被锁对象的类型。arg5 表示被请求的锁类型。 
+| `lock-wait-done`               | `(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, LOCKMODE)` | 当一个重量级锁（lmgr 锁）的请求结束等待时（即已经得到锁）触发的探针。参数与`lock-wait-start`一样。 
+| `deadlock-found`               | `()`                                                         | 当死锁检测器发现死锁时触发的探针。
+|====
+
+**表43.定义用在探针参数中的类型**
+|====
+| 类型                 | 定义
+| `LocalTransactionId` | `unsigned int`  
+| `LWLockMode`         | `int`           
+| `LOCKMODE`           | `int`           
+| `BlockNumber`        | `unsigned int`  
+| `Oid`                | `unsigned int`  
+| `ForkNumber`         | `int`           
+| `bool`               | `unsigned char`
+|====
+
+=== 使用探针
+
+下面的例子展示了一个分析系统中事务计数的 DTrace 脚本，可以用来代替一次性能测试之前和之后的`pg_stat_database`快照：
+
+```
+#!/usr/sbin/dtrace -qs
+
+postgresql$1:::transaction-start
+{
+      @start["Start"] = count();
+      self->ts  = timestamp;
+}
+
+postgresql$1:::transaction-abort
+{
+      @abort["Abort"] = count();
+}
+
+postgresql$1:::transaction-commit
+/self->ts/
+{
+      @commit["Commit"] = count();
+      @time["Total time (ns)"] = sum(timestamp - self->ts);
+      self->ts=0;
+}
+```
+
+当被执行时，该例子 D 脚本给出这样的输出：
+
+```
+# ./txn_count.d `pgrep -n postgres` or ./txn_count.d <PID>
+^C
+
+Start                                          71
+Commit                                         70
+Total time (ns)                        2312105013
+```
+
+.注意
+****
+SystemTap 为追踪脚本使用一个不同于 DTrace 的标记，但是底层的探针是兼容的。值得注意的是，在这样写的时候，SystemTap 脚本必须使用双下划线代替连字符来引用探针名。在未来的 SystemTap 发行中这很可能会被修复。你应该记住，DTrace 脚本需要细心地编写和调试，否则被收集的追踪信息可能会毫无意义。在大部分发现问题的情况中，它就是发生问题的部件，而不是底层系统。当讨论使用动态追踪发现的信息时，一定要附上使用的脚本以便其也被检查和讨论。
+****
+
+=== 定义新探针
+
+开发者可以在代码中任意位置定义新的探针，当然这要重新编译之后才能生效。下面是插入新探针的步骤：
+
+1. 决定探针名称以及探针可用的数据
+2. 把该探针定义加入到`src/backend/utils/probes.d`
+3. 如果`pg_trace.h`还不存在于包含该探针点的模块中，包括它，并且在源代码中期望的位置插入`TRACE_POSTGRESQL`探针宏
+4. 重新编译并验证新探针是可用的
+
+**例子：.** 这里是一个如何增加一个探针来用事务 ID 追踪所有新事务的例子。
+
+1. 决定探针将被命名为`transaction-start`并且需要一个`LocalTransactionId`类型的参数
+
+2. 将该探针定义加入到`src/backend/utils/probes.d`：
+
+   ```
+   probe transaction__start(LocalTransactionId);
+   ```
+
+   注意探针名字中双下划线的使用。在一个使用探针的 DTrace 脚本中，双下划线需要被替换为一个连字符，因此 ，对用户而言`transaction-start`是文档名。
+
+3. 在编译时，`transaction__start`被转换成一个宏调用`TRACE_POSTGRESQL_TRANSACTION_START`（注意这里是单下划线），可以通过包括头文件`pg_trace.h`获得。将宏调用加入到源代码中的合适位置。在这种情况下，看起来类似：
+
+   ```
+   TRACE_POSTGRESQL_TRANSACTION_START(vxid.localTransactionId);
+   ```
+
+4. 在重新编译和运行新的二进制文件之后，通过运行下面的 DTrace 命令来检查新增的探针是否可用。你应该看到类似下面的输出：
+
+   ```
+   # dtrace -ln transaction-start
+      ID    PROVIDER          MODULE           FUNCTION NAME
+   18705 postgresql49878     postgres     StartTransactionCommand transaction-start
+   18755 postgresql49877     postgres     StartTransactionCommand transaction-start
+   18805 postgresql49876     postgres     StartTransactionCommand transaction-start
+   18855 postgresql49875     postgres     StartTransactionCommand transaction-start
+   18986 postgresql49873     postgres     StartTransactionCommand transaction-start
+   ```
+
+向C代码中添加追踪宏时，有一些事情需要注意：
+
+- 需要小心的是，为探针参数指定的数据类型要匹配宏中使用的变量的数据类型，否则会发生编译错误。
+
+- 在大多数平台上，如果用`--enable-dtrace`编译了IvorySQL，无论何时当控制经过一个追踪宏时，都会评估该宏的参数，即使没有进行追踪也会这样做。通常不需要担心你是否只在报告一些局部变量的值。但是要注意不要将开销大的函数调用放入参数中。如果你需要这样做，考虑通过检查追踪是否真的被启用来保护该宏：
+
+  ```
+  if (TRACE_POSTGRESQL_TRANSACTION_START_ENABLED())
+      TRACE_POSTGRESQL_TRANSACTION_START(some_function(...));
+  ```
+
+每个追踪宏有一个对应的`ENABLED`宏。
+
+== 监控磁盘的使用
+
+=== 判断磁盘用量
+
+每个表都有一个主要的堆磁盘文件，大多数数据都存储在其中。如果一个表有着可能会很宽（尺寸大）的列， 则另外还有一个TOAST文件与这个表相关联， 它用于存储因为太宽而不能存储在主表里面的值。如果有这个附属文件，那么TOAST表上会有一个可用的索引。 当然，同时还可能有索引和基表关联。每个表和索引都存放在单独的磁盘文件里 — 如果文件超过 1G 字节，甚至可能多于一个文件。
+
+你可以以三种方式监视磁盘空间：使用oid2name模块或者人工观察系统目录。SQL函数是最容易使用的方法，同时也是我们通常推荐的方法。本节剩余的部分将展示如何通过观察系统目录来监视磁盘空间。
+
+在一个最近清理过或者分析过的数据库上使用psql，你可以发出查询来查看任意表的磁盘用量：
+
+```
+SELECT pg_relation_filepath(oid), relpages FROM pg_class WHERE relname = 'customer';
+
+ pg_relation_filepath | relpages
+----------------------+----------
+ base/16384/16806     |       60
+(1 row)
+```
+
+每个页通常都是 8K 字节（记住，`relpages`只会由`VACUUM`、`ANALYZE`和少数几个 DDL 命令如`CREATE INDEX`所更新）。如果你想直接检查表的磁盘文件，那么文件路径名应该有用。
+
+要显示TOAST表使用的空间，我们可以使用一个类似下面这样的查询：
+
+```
+SELECT relname, relpages
+FROM pg_class,
+     (SELECT reltoastrelid
+      FROM pg_class
+      WHERE relname = 'customer') AS ss
+WHERE oid = ss.reltoastrelid OR
+      oid = (SELECT indexrelid
+             FROM pg_index
+             WHERE indrelid = ss.reltoastrelid)
+ORDER BY relname;
+
+       relname        | relpages
+----------------------+----------
+ pg_toast_16806       |        0
+ pg_toast_16806_index |        1
+```
+
+你也可以很容易地显示索引的尺寸：
+
+```
+SELECT c2.relname, c2.relpages
+FROM pg_class c, pg_class c2, pg_index i
+WHERE c.relname = 'customer' AND
+      c.oid = i.indrelid AND
+      c2.oid = i.indexrelid
+ORDER BY c2.relname;
+
+      relname      | relpages
+-------------------+----------
+ customer_id_index |       26
+```
+
+我们很容易用下面的信息找出最大的表和索引：
+
+```
+SELECT relname, relpages
+FROM pg_class
+ORDER BY relpages DESC;
+
+       relname        | relpages
+----------------------+----------
+ bigtable             |     3290
+ customer             |     3144
+```
+
+=== 磁盘满失败
+
+一个数据库管理员最重要的磁盘监控任务就是确保磁盘不会写满。一个写满了的数据磁盘可能不会导致数据的崩溃，但它肯定会让系统变得不可用。如果保存 WAL 文件的磁盘变满，会发生数据库服务器致命错误并且可能发生关闭。
+
+如果你不能通过删除一些其他的东西来释放一些磁盘空间，那么你可以通过使用表空间把一些数据库文件移动到其他文件系统上去。
+
+.提示
+****
+有些文件系统在快满的时候性能会急剧恶化，因此不要等到磁盘完全满的时候才采取行动。
+****
+
+如果你的系统支持每用户的磁盘份额，那么数据库将自然地受制于用户所处的服务器给他的份额限制。超过份额的负面影响和完全用光磁盘是完全一样的。
