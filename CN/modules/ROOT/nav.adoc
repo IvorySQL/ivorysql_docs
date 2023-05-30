@@ -6,9 +6,4 @@
 *** xref:Devs/3.adoc[大小写转换]
 *** xref:Devs/4.adoc[新增IYHOST_and_IYPORT]
 *** xref:Devs/5.adoc[指定初始化模式]
-** 已有功能
-*** v2.1
-**** xref:Devs/6.adoc[功能描述]
-*** v1.5
-**** xref:Devs/7.adoc[功能描述]
 
