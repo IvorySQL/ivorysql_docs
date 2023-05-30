@@ -1,7 +1,7 @@
 :sectnums:
 :sectnumlevels: 5
 
-
+:imagesdir: ./_images
 
 = psql-双parser
 
@@ -11,18 +11,12 @@
 
 == 设计方案
 
-- 设计方案为拷贝一份psql的parser，根据需要修改为ora_parser。框架流程图如下：
+- 设计方案为拷贝一份psql的parser，根据需要修改为ora_parser。框架流程图如下
 
- 
-
- <img src="file:///C:\Users\dell\AppData\Local\Temp\ksohtml73364\wps1.jpg" alt="img" style="zoom:67%;" /> 
-
- 
-
-
+  image::p5.png[]
 
 - 详细设计流程图如下：
 
- ![img](file:///C:\Users\dell\AppData\Local\Temp\ksohtml73364\wps2.jpg) 
+  image::p6.png[]
 
  注：1、红色部分为双parser设计架构；2、还未正式引入oracle兼容语法；

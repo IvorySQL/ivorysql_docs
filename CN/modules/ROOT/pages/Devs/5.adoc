@@ -1,6 +1,7 @@
-
 :sectnums:
 :sectnumlevels: 5
+
+:imagesdir: ./_images
 
 = 双模式设计
 
@@ -12,10 +13,13 @@
 
 - 兼容oracle模式一共分为两步：
 
- 1、生成oracle模式的相关文件：![img](file:///C:\Users\dell\AppData\Local\Temp\ksohtml69204\wps1.jpg)
+ 1、生成oracle模式的相关文件如图所示：
 
- 2、Initdb -m 初始化，需要判断不同的模式，其中oracle模式下，需要执行postgres_oracle.bki的SQL语句。
- 默认为oracle兼容模式，其流程如下：![img](file:///C:\Users\dell\AppData\Local\Temp\ksohtml69204\wps2.jpg)
+ image::p8.png[]
+
+ 2、Initdb -m 初始化，需要判断不同的模式，其中oracle模式下，需要执行postgres_oracle.bki的SQL语句。 默认为oracle兼容模式，其流程如下：
+
+ image::p9.png[]
 
  3、启动：启动时会根据初始化模式，判断是否为oracle兼容模式。
 
