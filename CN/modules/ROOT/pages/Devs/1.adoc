@@ -12,23 +12,25 @@
 === 双端口设计
 
 - 框架：ivorySQL3.0 采用双端口设计，5432端口保持PG原有功能不变。而新增1521端口用于oracle模式使用。其设计框架如下图：
+
 image::p1.png[]
 
-
 - 详细流程图如图所示：
-image::p2.png[]
 
+image::p2.png[]
 
 === 双parser设计
 
 - 为了最大可能保持pg原有parser不变，因此增加一个oracle专用parser。其设计结构如下：
+
 image::p3.png[]
   注：红色部分为双parser设计架构
 
 === 新增PLISQL过程语言
 
 - 同样为了完全保留pg语法的前提下，尽可能的兼容oracle 语法，新增PLISQL过程语言。流程图如下：
- image::p4.png[]
+
+image::p4.png[]
 
 
 
