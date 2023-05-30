@@ -1,9 +1,32 @@
-
 :sectnums:
 :sectnumlevels: 5
 
-= 主要、基本功能
 
-IvorySQL是一个功能强大的开源对象关系数据库管理系统(ORDBMS)。 用于安全地存储数据; 支持最佳做法，并允许在处理请求时检索它们。除此之外，还兼容了Oracle的语法，适用于使用Oracle的场景。
 
-IvorySQL已经兼容了Oracle的大部分语法，而且我们开发了 全局唯一索引功能。
+= psql-双parser
+
+== 目的
+
+- 为了在前端，psql命令中兼容oracle语法，同时也为了最小的改动psql原有的parser，现采用双parser的设计单独实现一个兼容oracle语法的parser（简称ora_parser）。
+
+== 设计方案
+
+- 设计方案为拷贝一份psql的parser，根据需要修改为ora_parser。框架流程图如下：
+
+ 
+
+<img src="file:///C:\Users\dell\AppData\Local\Temp\ksohtml73364\wps1.jpg" alt="img" style="zoom:67%;" /> 
+
+ 
+
+
+
+- 详细设计流程图如下：
+
+![img](file:///C:\Users\dell\AppData\Local\Temp\ksohtml73364\wps2.jpg) 
+
+ 注：
+
+1、红色部分为双parser设计架构；
+
+2、还未正式引入oracle兼容语法；

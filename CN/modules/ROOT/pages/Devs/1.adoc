@@ -2,37 +2,39 @@
 :sectnums:
 :sectnumlevels: 5
 
-= 新功能
+= ivorysql框架设计
+== 目的
+- 为了对原有的postgres改动最小的前提下，实现对oracle兼容。我们需要实现双parser、双端口、模式PLPGSQL实现PLiSQL的框架。
 
-- ivorysql双端口开发
-- ivorysql parser分离
-- ivorysql psql parser分离
-- ivorysql PL\iSQL模块开发
-- ivorysql兼容oracle的整套测试框架开发
-- ivorysql支持initdb -m初始化指定模式
-- ivorysql支持pg与oracle模式切换
-- ivorysql psql parser分离
-- ivorysql命令：unused_oids功能增加
-- ivorysql部分常用命令兼容oracle模式
-- ivorysql可灵活配置ip和端口功能
-- 双引号中字符大小写模式
-- ivorysql兼容oracle sequence
-- ivorysql支持oracle嵌套子程序
-- ivorysql Search Path默认修改
-- char
-- number
-- varchar
-- varchar2
-- number
-- binary_float
-- binary_double
-- date
-- timestamp
-- timestamp with time zone
-- timestamp with local time zone
-- interval year to mouth
-- interval day to second
-- raw
-- long
+== 设计方案
+
+=== 双端口设计
+
+- 框架：ivorySQL3.0 采用双端口设计，5432端口保持PG原有功能不变。而新增1521端口用于oracle模式使用。其设计框架如下图：
+
+  
+
+![image-20230530110208309](C:\Users\dell\AppData\Roaming\Typora\typora-user-images\image-20230530110208309.png)
+
+
+
+- 详细流程图如图所示：
+
+  ![img](file:///C:\Users\dell\AppData\Local\Temp\ksohtml26292\wps1.jpg)
+
+  
+
+===双parser设计
+
+- 为了最大可能保持pg原有parser不变，因此增加一个oracle专用parser。其设计结构如下：
+
+  ![img](file:///C:\Users\dell\AppData\Local\Temp\ksohtml26292\wps2.jpg) 注：红色部分为双parser设计架构
+
+=== 新增PLISQL过程语言
+
+- 同样为了完全保留pg语法的前提下，尽可能的兼容oracle 语法，新增PLISQL过程语言。流程图如下：
+
+  ![img](file:///C:\Users\dell\AppData\Local\Temp\ksohtml26292\wps3.jpg)
+
 
 

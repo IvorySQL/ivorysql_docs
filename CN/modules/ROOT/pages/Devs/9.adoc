@@ -1,9 +1,0 @@
-
-:sectnums:
-:sectnumlevels: 5
-
-= 主要、基本功能
-
-IvorySQL是一个功能强大的开源对象关系数据库管理系统(ORDBMS)。 用于安全地存储数据; 支持最佳做法，并允许在处理请求时检索它们。除此之外，还兼容了Oracle的语法，适用于使用Oracle的场景。
-
-IvorySQL已经兼容了Oracle的大部分语法，而且我们开发了 全局唯一索引功能。
