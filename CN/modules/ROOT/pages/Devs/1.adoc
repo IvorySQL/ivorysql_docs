@@ -14,7 +14,7 @@
 
   
 
-![image-20230530110208309](C:\Users\dell\AppData\Roaming\Typora\typora-user-images\image-20230530110208309.png)
+  ![image-20230530110208309](C:\Users\dell\AppData\Roaming\Typora\typora-user-images\image-20230530110208309.png)
 
 
 
@@ -24,7 +24,7 @@
 
   
 
-===双parser设计
+=== 双parser设计
 
 - 为了最大可能保持pg原有parser不变，因此增加一个oracle专用parser。其设计结构如下：
 

@@ -15,15 +15,18 @@
 
   
 
-![img](file:///C:\Users\dell\AppData\Local\Temp\ksohtml59924\wps1.jpg)
+ ![img](file:///C:\Users\dell\AppData\Local\Temp\ksohtml59924\wps1.jpg)
 
 - 测试方法：
 
   ```
-  ./configure --with-oraport=5555
-  ./initdb ....
-  ./pg_ctl -D ../data start
+   ./configure --with-oraport=5555
+   ./initdb ....
+   ./pg_ctl -D ../data start
+    
+   ./pg_ctl -o “-p 5433 -o 1522” -D ../data
   ```
-  ```
-  ./pg_ctl -o “-p 5433 -o 1522” -D ../data
-  ```
+  
+  
+
+​      
