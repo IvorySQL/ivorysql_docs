@@ -14,9 +14,11 @@
 - 兼容oracle模式一共分为三步：
 
  1、生成oracle模式的相关文件如图所示：
+ 
 image::p8.png[]
 
  2、Initdb -m 初始化，需要判断不同的模式，其中oracle模式下，需要执行postgres_oracle.bki的SQL语句。 默认为oracle兼容模式，其流程如下：
+ 
 image::p9.png[]
 
  3、启动：启动时会根据初始化模式，判断是否为oracle兼容模式。
