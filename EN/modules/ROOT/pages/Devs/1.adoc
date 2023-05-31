@@ -5,6 +5,7 @@
 
 = New version updates
 == Objective
+
 - In order to minimize changes to the original Postgres, it is compatible with Oracle. We need to implement a framework for dual-parser, dual-port, modal PLPGSQL to implement PLiSQL. The implementation flowchart is as follows:
 
 image::p10.png[]
