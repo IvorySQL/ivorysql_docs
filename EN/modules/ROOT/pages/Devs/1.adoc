@@ -1,0 +1,36 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= Ivorysql framework design
+== Objective
+- In order to minimize changes to the original Postgres, it is compatible with Oracle. We need to implement a framework for implementing dual parser, dual port, mode PLPGSQL to implement PLiSQL.
+
+== Design schemes
+
+=== Dual-port design
+
+- Framework: ivorySQL3.0 adopts dual-port design, and port 5432 keeps the original function of PG unchanged. Port 1521 is added for Oracle mode. Its design framework is as follows:
+
+image::p1.png[]
+
+- The detailed flowchart is shown in the figure:
+
+image::p2.png[]
+
+=== Dual parser design
+
+- In order to keep the original parser of PG as unchanged as possible, an oracle-specific parser is added. Its design structure is as follows:
+
+image::p3.png[]
+  Note: The red part is the dual parser design architecture
+
+=== Added PLISQL procedural language
+
+- Also in order to fully retain the pg syntax, as far as possible compatible with Oracle syntax, PLISQL procedural language is added. The flowchart is as follows:
+
+image::p4.png[]
+
+
+
