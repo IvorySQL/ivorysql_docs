@@ -1,6 +1,5 @@
 :sectnums:
 :sectnumlevels: 5
-
 :imagesdir: ./_images
 
 = ivorysql框架设计
