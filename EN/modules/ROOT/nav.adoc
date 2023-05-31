@@ -1,8 +1,4 @@
 * xref:Devs/welcome.adoc[Welcome.adoc]
 * List of features
 ** New additions
-*** xref:Devs/1.adoc[ivorysql frame design]
-*** xref:Devs/2.adoc[Psql - dual parser]
-*** xref:Devs/3.adoc[Case conversion]
-*** xref:Devs/4.adoc[New IYHOST_and_IYPORT]
-*** xref:Devs/5.adoc[Specifies the initialization mode]
+*** xref:Devs/1.adoc[Ivorysql frame design]

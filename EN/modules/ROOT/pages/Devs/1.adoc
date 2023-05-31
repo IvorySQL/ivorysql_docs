@@ -3,34 +3,24 @@
 
 :imagesdir: ./_images
 
-= Ivorysql framework design
+= New version updates
 == Objective
-- In order to minimize changes to the original Postgres, it is compatible with Oracle. We need to implement a framework for implementing dual parser, dual port, mode PLPGSQL to implement PLiSQL.
+- In order to minimize changes to the original Postgres, it is compatible with Oracle. We need to implement a framework for dual-parser, dual-port, modal PLPGSQL to implement PLiSQL. The implementation flowchart is as follows:
+
+image::p10.png[]
 
 == Design schemes
 
 === Dual-port design
 
-- Framework: ivorySQL3.0 adopts dual-port design, and port 5432 keeps the original function of PG unchanged. Port 1521 is added for Oracle mode. Its design framework is as follows:
+- The ivorysql port 5432 is kept compatible with the original Postgres situation, so Ivorysql uses another separate port to log in, which defaults to 1521. Log in from this port, and the Oracle compatibility mode is used by default. If you need to log in from port 5432 and also enter compatibility mode, you need to set it through the compatible_mode parameters;
 
-image::p1.png[]
+=== Parser module design
 
-- The detailed flowchart is shown in the figure:
+- In order to minimize the interference between Oracle syntax and Postgres syntax, a parser module has been added to handle oracle-related syntax.
 
-image::p2.png[]
+=== Added PL\iSQL procedural language
 
-=== Dual parser design
-
-- In order to keep the original parser of PG as unchanged as possible, an oracle-specific parser is added. Its design structure is as follows:
-
-image::p3.png[]
-  Note: The red part is the dual parser design architecture
-
-=== Added PLISQL procedural language
-
-- Also in order to fully retain the pg syntax, as far as possible compatible with Oracle syntax, PLISQL procedural language is added. The flowchart is as follows:
-
-image::p4.png[]
-
+-Similarly, in order to reduce the conflict between Oracle compatibility and Postgres syntax, a separate set of Oracle-specific test cases is designed. This set of test cases is a copy of Postgres' original test framework.
 
 
