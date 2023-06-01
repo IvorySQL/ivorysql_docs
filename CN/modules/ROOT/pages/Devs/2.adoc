@@ -14,11 +14,11 @@
 
 - 如果 guc参数“identifier_case_switch”值为“interchange”：
 
-   	1). 如果双引号所引用的标识符中的字母全部为大写，则将大写转换为小写。
+   1). 如果双引号所引用的标识符中的字母全部为大写，则将大写转换为小写。
 
-      	2). 如果双引号所引用的标识符中的字母全部为小写，则将小写转换为大写。
+   2). 如果双引号所引用的标识符中的字母全部为小写，则将小写转换为大写。
 
-      	3). 如果用双引号引起来的标识符中的字母是大小写混合的，则保持标识符不变。
+   3). 如果用双引号引起来的标识符中的字母是大小写混合的，则保持标识符不变。
 
 === 初始化数据库集簇时
 
@@ -31,3 +31,35 @@
   "lowercase"  ------ "2"同义
 
   在初始化数据库集簇的过程中，将大小写转换模式保存到data目录的global/pg_control文件中。
+  
+=== 测试用例
+
+```
+SET enable_case_switch = true;
+SET identifier_case_switch = interchange;
+CREATE TABLE "ABC"(c1 int, c2 int);
+SELECT relname FROM pg_class WHERE relname = 'ABC';
+SELECT relname FROM pg_class WHERE relname = 'abc';
+SELECT * FROM "ABC";
+SELECT * FROM ABC;
+SELECT * FROM abc;
+SELECT * FROM Abc;
+SELECT * FROM "Abc"; -- ERROR
+DROP TABLE abc;
+
+CREATE TABLE "Abc"(c1 int, c2 int);
+SELECT relname FROM pg_class WHERE relname = 'ABC';
+SELECT relname FROM pg_class WHERE relname = 'abc';
+SELECT relname FROM pg_class WHERE relname = 'Abc';
+SELECT * FROM "ABC"; -- ERROR
+SELECT * FROM ABC; -- ERROR
+SELECT * FROM abc; -- ERROR
+SELECT * FROM Abc; -- ERROR
+SELECT * FROM "Abc";
+DROP TABLE "Abc";
+
+```
+
+
+
+

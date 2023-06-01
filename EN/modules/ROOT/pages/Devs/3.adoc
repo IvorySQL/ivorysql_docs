@@ -17,14 +17,15 @@
 
 image::p7.png[]
 
-- Test method:
+== Test method:
 
+ ```
    ./configure --with-oraport=5555
    ./initdb ....
    ./pg_ctl -D ../data start
     
    ./pg_ctl -o “-p 5433 -o 1522” -D ../data
-  
-  
+ ```
+ 
 
 ​      
