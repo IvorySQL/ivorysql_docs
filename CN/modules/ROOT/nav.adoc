@@ -2,4 +2,6 @@
 * 功能列表
 ** 新增功能
 *** xref:Devs/1.adoc[ivorysql框架设计]
+*** xref:Devs/2.adoc[大小写转换]
+
 
