@@ -5,3 +5,4 @@
 *** xref:Devs/2.adoc[Case conversion]
 *** xref:Devs/3.adoc[Added Oracle compatibility mode ports and IP]
 *** xref:Devs/4.adoc[Dual-mode design]
+*** xref:Devs/5.adoc[Compatible oracle-sequence]
