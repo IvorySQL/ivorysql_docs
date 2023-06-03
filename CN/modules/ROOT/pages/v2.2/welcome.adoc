@@ -13,3 +13,5 @@
 IvorySQL项目是瀚高软件提出的一个开源项目，旨在将Oracle兼容性功能添加到流行的PostgreSQL数据库中。
 
 IvorySQL 开源并且可以免费使用，如果您有任何建议请联系 contact@highgo.ca
+
+
