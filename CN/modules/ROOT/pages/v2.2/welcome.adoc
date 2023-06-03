@@ -1,7 +1,7 @@
 = 欢迎来到 IvorySQL
 :example-caption!:
 
-*IvorySQL* 是唯一一款基于postgreSQL研发的兼容Oracle的数据库。
+*IvorySQL* 是一款基于postgreSQL研发的兼容Oracle的数据库。
 
 == 开始
 从 https://github.com/IvorySQL/IvorySQL[Github 下载源码]开始。
