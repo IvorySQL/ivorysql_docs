@@ -10,7 +10,7 @@
 
 image::p10.png[]
 
-== Design schemes
+== Function
 
 === Dual-port design
 
@@ -18,10 +18,10 @@ image::p10.png[]
 
 === Parser module design
 
-- In order to minimize the interference between Oracle syntax and Postgres syntax, a parser module has been added to handle oracle-related syntax.
+- In order to minimize the interference between Oracle syntax and Postgres syntax, a parser module has been added to handle oracle-related syntax;
 
 === Added PL\iSQL procedural language
 
--Similarly, in order to reduce the conflict between Oracle compatibility and Postgres syntax, a separate set of Oracle-specific test cases is designed. This set of test cases is a copy of Postgres' original test framework.
+-Similarly, in order to reduce the conflict between Oracle compatibility and Postgres syntax, a separate set of Oracle-specific test cases is designed,This set of test cases is a copy of Postgres' original test framework;
 
 
