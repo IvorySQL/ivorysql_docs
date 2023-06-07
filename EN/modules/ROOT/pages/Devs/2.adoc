@@ -6,7 +6,7 @@
 
 == Objective
 
-- In order to meet the case compatibility of PG and Oracle's reference identifiers, ivorysql has designed three case conversion modes for reference identifiers. Select the conversion mode via the GUC parameter "identifier_case_switch".
+- In order to meet the case compatibility of PG and Oracle's reference identifiers, ivorysql has designed three case conversion modes for reference identifiers. Select the conversion mode via the GUC parameter "identifier_case_switch";
 
 == Function
 
@@ -30,7 +30,7 @@
 
   "lowercase"  ------ "2"synonymy
 
-During initialization of the database cluster, the case conversion pattern is saved to the global/pg_control file in the data directory.
+During initialization of the database cluster, the case conversion pattern is saved to the global/pg_control file in the data directory;
 
 
 === Test cases

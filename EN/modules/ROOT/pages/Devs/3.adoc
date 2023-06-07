@@ -7,15 +7,13 @@
 
 == Objective
 
-- In order to distinguish the Oracle port, IP and PG port IP. THERE IS NOW A NEED TO INCREASE THE PROCESSING OF ORAPORT AND ORAHOST.
+- In order to distinguish the Oracle port, IP and PG port IP. THERE IS NOW A NEED TO INCREASE THE PROCESSING OF ORAPORT AND ORAHOST;
 
-== Scheme
+== Function
 
-- Add ivoryhost: You need to add the parameter ivoryhost when connecting, and its function is similar to host
+- Add ivoryhost: You need to add the parameter ivoryhost when connecting, and its function is similar to host;
 
-- New ivoryport: Compared to host, the function of port is relatively complex. It involves specifying ports in the configure phase and connection phase, as follows:
-
-image::p7.png[]
+- New ivoryport: Compared to host, the function of port is relatively complex. It involves specifying ports in the configure phase and connection phase;
 
 == Test method:
 
