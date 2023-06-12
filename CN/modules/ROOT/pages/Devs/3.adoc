@@ -16,14 +16,13 @@
 - 新增ivoryport：相较于host，port的功能相对复杂一些。其中涉及到可以在configure阶段配置，连接阶段指定端口;
 
 == 测试用例：
-
- ```
+```
    ./configure --with-oraport=5555
    ./initdb ....
    ./pg_ctl -D ../data start
     
    ./pg_ctl -o “-p 5433 -o 1522” -D ../data
- ```
+```
   
 
 ​      
