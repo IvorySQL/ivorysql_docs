@@ -16,14 +16,13 @@
 - New ivoryport: Compared to host, the function of port is relatively complex. It involves specifying ports in the configure phase and connection phase;
 
 == Test method:
-
- ```
+```
    ./configure --with-oraport=5555
    ./initdb ....
    ./pg_ctl -D ../data start
     
    ./pg_ctl -o “-p 5433 -o 1522” -D ../data
- ```
+```
  
 
 ​      
