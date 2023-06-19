@@ -7,11 +7,11 @@
 
 [**发行日期: 2023年03月30日**]
 
-IvorySQL 2.2 基于 PostgreSQL 15.2 并包含 IvorySQL 2.1 之后的各种修复和新功能。
+IvorySQL 2.3 基于 PostgreSQL 15.3 并包含 IvorySQL 2.2 之后的各种修复和新功能。
 
-此版本与 IvorySQL 2.1 兼容，并且不需要为运行 IvorySQL 1.X 的用户进行转储/恢复。
+此版本与 IvorySQL 2.X 兼容，并且不需要为运行 IvorySQL 1.X 的用户进行转储/恢复。
 
-IvorySQL 2.2 包含来自 PostgreSQL 15.2 的各种修复，包括改进的排序性能和压缩、日志记录和配置增强、更微调的逻辑复制选项等。有关 PostgreSQL 15.2  中更详细的更新和错误修复，请参阅官方 https://www.postgresql.org/docs/release/15.2/[PostgreSQL 15.2 发行说明] 。
+IvorySQL 2.3 包含来自 PostgreSQL 15.3 的各种修复，包括改进的排序性能和压缩、日志记录和配置增强、更微调的逻辑复制选项等。有关 PostgreSQL 15.3  中更详细的更新和错误修复，请参阅官方 https://www.postgresql.org/docs/release/15.3/[PostgreSQL 15.3 发行说明] 。
 
 == 已知问题
 
@@ -19,12 +19,11 @@ IvorySQL 2.2 包含来自 PostgreSQL 15.2 的各种修复，包括改进的排�
 
 == 增强功能
 
-- 兼容Oracle-多范围查询。
+* 未做功能增强。
 
 == 问题修复
 
-- 修复了层次查询段错误问题。
-- 公元前时间日期输出错误。
+* 暂未发现问题。
 
 == 源代码
 
@@ -43,7 +42,6 @@ IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL博�
 - 谭洋
 - 王杰
 - 穆帅楠
-- 白京茹
 - 王守波
 - 任娇
 - 肖哲凯
@@ -52,4 +50,4 @@ IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL博�
 - Songjin Zhou
 - M.Imran Zaheer
 
-**https://github.com/IvorySQL/IvorySQL/commits/Ivory_REL_2_2[完整更新日志]**
+**https://github.com/IvorySQL/IvorySQL/commits/Ivory_REL_2_3[完整更新日志]**

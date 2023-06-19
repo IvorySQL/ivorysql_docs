@@ -7,11 +7,11 @@
 
 [**Release Date: December 14, 2022**]
 
-IvorySQL 2.2 is based on PostgreSQL 15.2 and includes various fixes and new features from IvorySQL 2.1 onwards.
+IvorySQL 2.3 is based on PostgreSQL 15.3 and includes various fixes and new features from IvorySQL 2.2 onwards.
 
-This version is compatible with IvorySQL 2.1 and does not require a dump/restore for users running IvorySQL 1.X.
+This version is compatible with IvorySQL 2.X and does not require a dump/restore for users running IvorySQL 1.X.
 
-IvorySQL 2.2 includes various fixes from PostgreSQL 15.2, including improved sorting performance and compression, logging and configuration enhancements, more fine-tuned logical replication options, and more. For more detailed updates and bug fixes in PostgreSQL 15.2, see the official https://www.postgresql.org/docs/release/15.2/[PostgreSQL 15.2 Release Notes] .
+IvorySQL 2.3 includes various fixes from PostgreSQL 15.3, including improved sorting performance and compression, logging and configuration enhancements, more fine-tuned logical replication options, and more. For more detailed updates and bug fixes in PostgreSQL 15.3, see the official https://www.postgresql.org/docs/release/15.3/[PostgreSQL 15.3 Release Notes] .
 
 == Known Issues
 
@@ -19,12 +19,11 @@ IvorySQL 2.2 includes various fixes from PostgreSQL 15.2, including improved sor
 
 == Enhancements
 
-- Support plisql multi-range in conditional control
+* No feature enhancements.
 
 == Fixed issue
 
-- Fix: CONNECT_BY segment fault.
-- Fix: BC Dates giving wrong output.
+* No issues fixed.
 
 == Source Code
 
@@ -43,7 +42,6 @@ The following individuals have contributed to this release as patch authors, com
 - Yang Tan
 - Jie Wang
 - Shuainan Mu
-- Jingru Bai
 - Shoubo Wang
 - Jiao Ren
 - Zhekai Xiao
@@ -52,4 +50,4 @@ The following individuals have contributed to this release as patch authors, com
 - Songjin Zhou
 - M.Imran Zaheer
 
-**https://github.com/IvorySQL/IvorySQL/commits/Ivory_REL_2_1[Full Update Log]**
+**https://github.com/IvorySQL/IvorySQL/commits/Ivory_REL_2_3[Full Update Log]**
