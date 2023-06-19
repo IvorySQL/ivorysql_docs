@@ -5,7 +5,7 @@
 
 == Versions Inroduction
 
-[**Release Date: December 14, 2022**]
+[**Release Date: June 30, 2023**]
 
 IvorySQL 2.3 is based on PostgreSQL 15.3 and includes various fixes and new features from IvorySQL 2.2 onwards.
 
