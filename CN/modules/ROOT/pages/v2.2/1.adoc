@@ -49,7 +49,7 @@ IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL博�
 - 肖哲凯
 - 金华建
 - 王丽
-- Songjin Zhou
+- 宋金周
 - M.Imran Zaheer
 
 **https://github.com/IvorySQL/IvorySQL/commits/Ivory_REL_2_2[完整更新日志]**

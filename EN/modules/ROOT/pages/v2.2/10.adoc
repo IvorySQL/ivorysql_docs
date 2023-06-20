@@ -886,3 +886,115 @@ The body uses the default font size.
 [name](link)
 
 https://github.com/IvorySQL/[Github page] Download source code and published packages.
+
+
+== Website Contribution Guide
+
+https://docs.ivorysql.org[IvorySQL Document Site] uses https://antora.org/[`Antora`] to build. Also, IvorySQL Document Site is open source. It consists of three parts, such as https://github.com/IvorySQL/ivorysql_docs[`ivorysql_docs`], https://github.com/IvorySQL/ivorysql_web[`ivorysql_web`] and https://github.com/IvorySQL/ivory-doc-builder[`ivory-doc-builder`].
+
+Welcome everyone who is willing to participate in open source work to join us, and remember to follow our code of conduct ^_^.
+
+=== How to Contribute
+
+Due to the fact that IvorySQL Document Site is all hosted on Github, this allows any users to `fork` our document repository into their personal repository, make modifications to it, and then submit a PR. After being reviewed by our open source team, the modifications can be updated to our Document Site.
+
+In order to achieve the goat of correcting document errors more conveniently, you first need to establish a personal warehouse according to the size you want to update. As follows:
+
+* If you want to modify the existing content or add a new page, you only need to `fork` https://github.com/IvorySQL/ivorysql_docs[ivorysql_docs] to your personal repository.
+
+image::7.png[]
+
+* If you want to participate more deeply in the construction of IvorySQL Document Site, in addition to the `ivorysql_docs`, you also need to `fork` https://github.com/IvorySQL/ivorysql_web[ivorysql_web] and https://github.com/IvorySQL/ivory-doc-builder[ivory-doc-builder] to your personal repository.
+
+image::8.png[]
+image::9.png[]
+
+=== Modify Content
+
+This section will introduce the process of modifying webpage content after discovering that it is inappropriate.
+
+* In the upper right corner of a webpage with incorrect content, there is a button called `edit this page`, click on the button. As shown in the figure:
+
+image::10.png[]
+
+* After clicking, it will redirect to the editing page where we store the current page source `.adoc` file. Please modify the content in the `Asciidoc` format. As shown in the figure:
+
+image::11.png[]
+
+* After editing is completed. As shown in the figure:
+
+image::12.png[]
+
+* After confirming the update. As shown in the figure:
+
+image::13.png[]
+
+* Next, the relevant person of the open source team will be responsible for reviewing the content you submitted. After the review is completed, the updates you submitted will appear on the corresponding page.
+
+=== Add Page
+
+This section will introduce how to add new page components to a website, and the modifications involved in adding new pages mainly include the following:
+
+* Add the `.adoc` file in the `CN/modules/ROOT/pages/vX.X`.
+* Modify the `CN/modules/ROOT/nav.adoc`. If the modification involves modifying or adding images, please modify the images in `images`.
+* Add the `.adoc` file in the `EN/modules/ROOT/pages/vX.X`.
+* Modify the `EN/modules/ROOT/nav.adoc`. If the modification involves modifying or adding images, please modify the images in `images`.
+
+1. Firstly, you need to download the warehouse that you `fork` from `IvorySQL` to your personal computer.
+
+    git clone https://github.com/$username$/ivorysql_docs.git
+
+2. Then, place the `.adoc` file to be added in the correct directory, remembering that both Chinese and English files should be prepared (*Chinese and English files should have the same name*), and each file should be placed in the correct directory. At the same time, modify the corresponding `nav.adoc` file (the modification method can refer to the existing content of the file).
+3. After the above modifications are completed, submit them to the personal warehouse first.
+
+    git add .
+    git commit -m "$describe your change$"
+    git push
+
+4. Afterwards, submit the PR as follows
+
+image::13.png[]
+
+=== Test
+
+If you are not satisfied with simply submitting on the webpage or only modifying the webpage content, or if you want to modify the webpage UI, this section will help you.
+
+Before reading this section, you need to confirm whether your Github personal repository has `forked` https://github.com/IvorySQL/ivorysql_docs[ivorysql_docs], https://github.com/IvorySQL/ivorysql_web[ivorysql_web] and https://github.com/IvorySQL/ivory-doc-builder[ivory-doc-builder].
+
+==== Environmental preparation
+
+In order to test your modifications, you need to prepare the following environment. 
+
+* `Node.js` install
+* `Antora` install
+
+Please refer to https://docs.antora.org/antora/latest/[Antora docs]。
+
+After installation, the following display on the terminal indicates successful installation.
+
+image::14.png[]
+
+==== Generate web pages
+
+* Firstly, you need to know the location of the corresponding UI for the webpage, as shown in the following figure:
+
+image::15.png[]
+
+The UI templates for both Chinese and English web pages are basically the same, so when making modifications, it is best to ensure that both templates are modified at the same time. After uploading the modified UI to your personal Github, you can consider generating your modified web page locally.
+
+IvorySQL Document Site is built by `Antora`. Before running `Antora`, remember to modify the corresponding `playbook.yml` file.
+
+image::16.png[]
+image::17.png[]
+
+After completing the above process, please run the command `antora antora-playbook.yml --stacktrace` on the terminal, and then patiently wait. After the successful operation is completed, you can view the webpage you have generated.
+
+You can start uploading to our *ivorysql_web*, the process of submitting PR is the same as before. Thank you for your contribution to the community ^_^. We will consider whether to update the website after the review.
+
+=== Deploy web pages
+
+The deployment of web pages is currently the responsibility of the open-source team. We value every submission and issue, so please do not worry about your contribution to the community being buried.
+
+=== Tip
+
+If you don't have much time, you can send an email to **ivorysql-docs@ivorysql.org**. We will have dedicated staff to handle every your letter, and we looking forward to hearing from you.
