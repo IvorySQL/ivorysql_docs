@@ -5,7 +5,7 @@
 
 == Versions Inroduction
 
-[**Release Date: June 30, 2023**]
+[**Release Date: June 28, 2023**]
 
 IvorySQL 2.3 is based on PostgreSQL 15.3 and includes various fixes and new features from IvorySQL 2.2 onwards.
 
@@ -37,11 +37,11 @@ IvorySQL contains 2 main code repositories, the database IvorySQL code bin, and 
 The following individuals have contributed to this release as patch authors, committers, reviewers, testers, or issue reporters.
 
 - Cary Huang
-- David Zhang
 - Grant Zhou
 - Yang Tan
 - Jie Wang
 - Shuainan Mu
+- Hongyuan Zhang
 - Shoubo Wang
 - Jiao Ren
 - Zhekai Xiao
