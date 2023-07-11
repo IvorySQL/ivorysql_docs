@@ -5,3 +5,4 @@
 *** xref:Devs/2.adoc[大小写转换]
 *** xref:Devs/3.adoc[新增oracle兼容模式的端口与ip]
 *** xref:Devs/4.adoc[双模式设计]
+*** xref:Devs/5.adoc[内置数据类型与内置函数]
