@@ -33,10 +33,10 @@ IvorySQL 2.1 包含来自 PostgreSQL 15.0 和 15.1 的各种修复，包括改�
 
 == 源代码
 
-IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL博客仓：
+IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL网站仓：
 
-* 修复QL代码仓： https://github.com/IvorySQL/IvorySQL[https://github.com/IvorySQL/IvorySQL]
-* IvorySQL博客仓： https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
+* 数据库IvorySQL代码仓： https://github.com/IvorySQL/IvorySQL[https://github.com/IvorySQL/IvorySQL]
+* IvorySQL网站仓： https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
 
 == 贡献人员
 
