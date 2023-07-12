@@ -31,10 +31,10 @@ IvorySQL 1.4 基于 PostgreSQL 14.4 并包含 IvorySQL 1.3 的各种修复和新
 
 == 源代码
 
-IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL博客仓：
+IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL网站仓：
 
-* 修复QL代码仓： https://github.com/IvorySQL/IvorySQL[https://github.com/IvorySQL/IvorySQL]
-* IvorySQL博客仓： https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
+* 数据库IvorySQL代码仓： https://github.com/IvorySQL/IvorySQL[https://github.com/IvorySQL/IvorySQL]
+* IvorySQL网站仓： https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
 
 == 贡献人员
 
