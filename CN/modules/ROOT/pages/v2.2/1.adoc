@@ -31,7 +31,7 @@ IvorySQL 2.2 包含来自 PostgreSQL 15.2 的各种修复，包括改进的排�
 IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL博客仓：
 
 * IvorySQL代码仓： https://github.com/IvorySQL/IvorySQL[https://github.com/IvorySQL/IvorySQL]
-* IvorySQL博客仓： https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
+* IvorySQL网站仓： https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
 
 == 贡献人员
 
