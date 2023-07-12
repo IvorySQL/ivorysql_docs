@@ -70,11 +70,11 @@ IvorySQL 1.0 基于 PostgreSQL 14，主要在 PostgreSQL 之上增加了 Oracle 
 
 == 源代码
 
-IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL博客仓：
+IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL网站仓：
 
 * 数据库IvorySQL代码仓： https://github.com/IvorySQL/IvorySQL[https://github.com/IvorySQL/IvorySQL]
 
-* IvorySQL博客仓： https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
+* IvorySQL网站仓： https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
 
 == 贡献人员
 
