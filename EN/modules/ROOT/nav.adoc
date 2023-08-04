@@ -8,3 +8,4 @@
 *** xref:Devs/5.adoc[Built-in data types and built-in functions]
 *** xref:Devs/6.adoc[Compatible with oracle like]
 *** xref:Devs/7.adoc[Compatible with oracle anonymous block]
+*** xref:Devs/8.adoc[Compatible with Oracle functions and stored procedures]
