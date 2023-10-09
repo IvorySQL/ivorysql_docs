@@ -2,64 +2,79 @@
 :sectnums:
 :sectnumlevels: 5
 
-= 引用标识符的大小写转换设计
 
-== 目的
+== IvorySQL简介
 
-- 为了满足pg和oracle的引用标识符大小写兼容，ivorysql设计了三种引用标识符的大小写转换模式。通过guc参数“identifier_case_switch”选择转换模式;
+=== 概述
 
-== 功能
+IvorySQL是一款以PostgreSQL为基础进行开发，并且兼容Oracle的开源数据库。
 
-=== 大小写转换的三种模式（默认为interchange）
+IvorySQL社区始终承诺与PostgreSQL数据库保持100%兼容，并且可以直接替换最新版本的PostgreSQL。
 
-- 如果 guc参数“identifier_case_switch”值为“interchange”：
+IvorySQL增加了一个名为 `ivorysql.compatible_mode` 的GUC参数用以控制IvorySQL的兼容模式，该参数有 `oracle` 和 `pg` 两种值。在初始化数据目录的时候，通过指定 `-m` 参数来指定数据目录的兼容模式，`-m pg` 则数据目录为PostgreSQL模式，该模式下 `ivorysql.compatible_mode` 参数将会失效，`-m oracle` 或者不指定 `-m` 参数则数据目录为兼容Oracle模式，该模式下 `ivorysql.compatible_mode` 参数初始值为 `oracle` 并且不支持部分PostgreSQL的语法，通过 `set ivorysql.compatible_mode to pg` 就可以使得数据库100%支持PostgreSQL的语法及功能。
 
-   1). 如果双引号所引用的标识符中的字母全部为大写，则将大写转换为小写。
+IvorySQL的亮点之一是PL/iSQL过程语言，它支持Oracle的PL/SQL语法。同时，IvorySQL通过增加与内核绑定的插件 *ivorysql_ora* 来实现兼容Oracle的功能，目前实现的功能包括内置函数、数据类型、系统视图、merge以及GUC参数的增加，未来将会继续以绑定内核的插件的形式来实现新的兼容功能。
 
-   2). 如果双引号所引用的标识符中的字母全部为小写，则将小写转换为大写。
+IvorySQL项目是在Apache 2.0许可证下发布的，社区鼓励且欢迎所有类型的贡献和参与。
 
-   3). 如果用双引号引起来的标识符中的字母是大小写混合的，则保持标识符不变。
+=== 产品目标和范围
 
-=== 初始化数据库集簇时
+我们致力于遵守 https://opensource.com/open-source-way[开源方式]的原则，我们坚信建立一个健康和包容的社区。我们坚持认为，好的想法可以来自任何地方。虽然IvorySQL目前的版本主要关注Oracle兼容性功能，但未来的路线图和功能集将由社区以开源方式确定。
 
-- 在initdb程序中加入 -C选项设置大小写转换模式，-C对应的值为：
+=== 核心特性
 
-  "normal"   ------ "0"同义
+IvorySQL基于PostgreSQL数据库开发，与Oracle数据库兼容，具有强大的兼容性。适用于PostgreSQL数据库和Oracle数据库场景。
 
-  "interchange" ------ "1"同义
+=== 竞争优势
 
-  "lowercase"  ------ "2"同义
+* **核心开源**：IvorySQL的核心代码包括兼容功能全部在开源协议下公开，没有厂商的限制。并应用于瀚高股份数据库公司实例，且拥有一个活跃的开发者社区。
+* **兼容Oracle**：可以将Oracle数据库迁移到IvorySQL。
+* **可定制化**：只需下载代码，并按照你的想法自定义。
 
-  在初始化数据库集簇的过程中，将大小写转换模式保存到data目录的global/pg_control文件中。
-  
-=== 测试用例
+* **简单易用**：对系统管理员来说，IvorySQL 大幅降低了管理和维护的代价。对开发者来说，IvorySQL提供了简单的接口、极简的解决方案和与第三方工具的无缝集成。对数据分析专家来说，IvorySQL 提供了便捷的数据访问能力。
 
-```
-SET enable_case_switch = true;
-SET identifier_case_switch = interchange;
-CREATE TABLE "ABC"(c1 int, c2 int);
-SELECT relname FROM pg_class WHERE relname = 'ABC';
-SELECT relname FROM pg_class WHERE relname = 'abc';
-SELECT * FROM "ABC";
-SELECT * FROM ABC;
-SELECT * FROM abc;
-SELECT * FROM Abc;
-SELECT * FROM "Abc"; -- ERROR
-DROP TABLE abc;
+* **瀚高支持**：由领先的PostgreSQL数据库提供商瀚高股份提供支持。
 
-CREATE TABLE "Abc"(c1 int, c2 int);
-SELECT relname FROM pg_class WHERE relname = 'ABC';
-SELECT relname FROM pg_class WHERE relname = 'abc';
-SELECT relname FROM pg_class WHERE relname = 'Abc';
-SELECT * FROM "ABC"; -- ERROR
-SELECT * FROM ABC; -- ERROR
-SELECT * FROM abc; -- ERROR
-SELECT * FROM Abc; -- ERROR
-SELECT * FROM "Abc";
-DROP TABLE "Abc";
+=== 技术生态
 
-```
+IvorySQL基于PostgreSQL，具有完整的SQL、坚如磐石的可靠性和庞大的生态系统。
 
+=== 核心应用场景
 
+Ivory数据库的主要应用场景：
 
+* 企业数据库
 
+  如 ERP、交易系统、财务系统涉及资金、客户等信息，数据不能丢失且业务逻辑复杂，选择 IvorySQL 作为数据底层存储，一是可以帮助您在数据一致性前提下提供高可用性，二是可以用简单的编程实现复杂的业务逻辑。
+
+* 含 LBS 的应用
+
+  大型游戏、O2O 等应用需要支持世界地图、附近的商家，两个点的距离等能力，PostGIS 增加了对地理对象的支持，允许您以 SQL 运行位置查询，而不需要复杂的编码，帮助您更轻松理顺逻辑，更便捷的实现 LBS，提高用户粘性。
+
+* 数据仓库和大数据
+
+  IvorySQL 更多数据类型和强大的计算能力，能够帮助您更简单搭建数据库仓库或大数据分析平台，为企业运营加分。
+
+* 建站或 App
+
+  IvorySQL 良好的性能和强大的功能，可以有效的提高网站性能，降低开发难度。
+
+* 数据库迁移
+
+  如果需要将Oracle数据库迁移到PostgreSQL数据库，可以直接使用IvorySQL数据库进行迁移。
+
+== 主要、基本功能
+
+IvorySQL是一个功能强大的开源对象关系数据库管理系统(ORDBMS)。 用于安全地存储数据，支持最佳做法，并允许在处理请求时检索它们。除此之外，还兼容了Oracle的语法，适用于使用Oracle的场景。
+
+== 与Oracle的兼容性
+
+* https://docs.ivorysql.org/cn/ivorysql-doc/devs/devs/14[ivorysql框架设计]
+* https://docs.ivorysql.org/cn/ivorysql-doc/devs/devs/15[GUC框架]
+* https://docs.ivorysql.org/cn/ivorysql-doc/devs/devs/16[大小写转换]
+* https://docs.ivorysql.org/cn/ivorysql-doc/devs/devs/17[双模式设计]
+* https://docs.ivorysql.org/cn/ivorysql-doc/devs/devs/18[兼容oracle like]
+* https://docs.ivorysql.org/cn/ivorysql-doc/devs/devs/19[兼容oracle匿名块]
+* https://docs.ivorysql.org/cn/ivorysql-doc/devs/devs/20[兼容oracle函数与存储过程]
+* https://docs.ivorysql.org/cn/ivorysql-doc/devs/devs/21[内置数据类型与内置函数]
+* https://docs.ivorysql.org/cn/ivorysql-doc/devs/devs/22[新增oracle兼容模式的端口与ip]

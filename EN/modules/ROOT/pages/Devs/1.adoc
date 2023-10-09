@@ -1,27 +1,91 @@
+
 :sectnums:
 :sectnumlevels: 5
 
-:imagesdir: ./_images
 
-= IVORYSQL framework design
-== Objective
+== Versions Inroduction
 
-- In order to minimize changes to the original Postgres, it is compatible with Oracle. We need to implement a framework for dual-parser, dual-port, modal PLPGSQL to implement PLiSQL. The implementation flowchart is as follows:
+[**Release Date: June 28, 2023**]
 
-image::p10.png[]
+IvorySQL 3.0 is based on PostgreSQL 16.0 and includes various fixes and new features from IvorySQL 2.3 onwards.
 
-== Function
+This version is compatible with IvorySQL 2.X and does not require a dump/restore for users running IvorySQL 1.X.
 
-=== Dual-port design
+IvorySQL 3.0 includes various fixes from PostgreSQL 16.0, including improved sorting performance and compression, logging and configuration enhancements, more fine-tuned logical replication options, and more. For more detailed updates and bug fixes in PostgreSQL 16.0, see the official https://www.postgresql.org/docs/release/16/[PostgreSQL 16.0 Release Notes] .
 
-- The ivorysql port 5432 is kept compatible with the original Postgres situation, so Ivorysql uses another separate port to log in, which defaults to 1521. Log in from this port, and the Oracle compatibility mode is used by default. If you need to log in from port 5432 and also enter compatibility mode, you need to set it through the compatible_mode parameters;
+== Known Issues
 
-=== Parser module design
+* make oracle-installcheck fail https://github.com/IvorySQL/IvorySQL/issues/348[Problem details]
 
-- In order to minimize the interference between Oracle syntax and Postgres syntax, a parser module has been added to handle oracle-related syntax;
+== Enhancements
 
-=== Added PL\iSQL procedural language
+* Add meson compilation to action  https://github.com/IvorySQL/IvorySQL/pull/515[Problem details]
+* Support for meson compilation  https://github.com/IvorySQL/IvorySQL/pull/510[Problem details]
+* Addresses an issue with PL/SQL creation functions/stored procedures  https://github.com/IvorySQL/IvorySQL/pull/492[Problem details]
+* Add compatible test cases https://github.com/IvorySQL/IvorySQL/pull/481[Problem details]
+* PL/iSQL does not support %rowtype https://github.com/IvorySQL/IvorySQL/pull/476[Problem details]
+* Modify the usage of decode in the function https://github.com/IvorySQL/IvorySQL/pull/457[Problem details]
+* Returns the number of times the pattern appears in the source string  https://github.com/IvorySQL/IvorySQL/pull/454[Problem details]
+* Add contrib regression  https://github.com/IvorySQL/IvorySQL/pull/453[Problem details]
+* GIN indexes are supported  https://github.com/IvorySQL/IvorySQL/pull/445[Problem details]
+* Compatible with btree_gist indexes https://github.com/IvorySQL/IvorySQL/pull/443[Problem details]
+* Compatible with btree_gin indexes  https://github.com/IvorySQL/IvorySQL/pull/438[Problem details]
+* Add Oracle data type GIN indexing operations https://github.com/IvorySQL/IvorySQL/pull/437[Problem details]
+* Add the Oracle data type Gist Index Operation   https://github.com/IvorySQL/IvorySQL/pull/432[Problem details]
+* Support ORA_ISOLATION https://github.com/IvorySQL/IvorySQL/pull/428[Problem details]
+* Support extensions  https://github.com/IvorySQL/IvorySQL/pull/346[Problem details]
+* Creating a function or procedure in SQL parser supports nested subprocedures  https://github.com/IvorySQL/IvorySQL/pull/313[Problem details]
+* When parsing, nested child processes retype are obtained from rettype https://github.com/IvorySQL/IvorySQL/pull/311[Problem details]
+* Add LOOP_P keywords in nested child processes and functions  https://github.com/IvorySQL/IvorySQL/pull/308[Problem details]
+*  Nested child processes and functions IS/As do not need to be declared  https://github.com/IvorySQL/IvorySQL/pull/306[Problem details]
+* Compatible with Oracle anonymous blocks https://github.com/IvorySQL/IvorySQL/pull/305[Problem details]
+* Compatible with Oracle Q escaping  https://github.com/IvorySQL/IvorySQL/pull/296[Problem details]
+* Compatible with Oracle Like https://github.com/IvorySQL/IvorySQL/pull/292[Problem details]
+* Compatible with Oracle Merge Command  https://github.com/IvorySQL/IvorySQL/pull/263[Problem details]
+* Compatible with oracle inner function https://github.com/IvorySQL/IvorySQL/pull/242[Problem details]
+* Compatible with Oracle built-in data types and built-in functions  https://github.com/IvorySQL/IvorySQL/pull/240[Problem details]
+* Add the plisql extension  https://github.com/IvorySQL/IvorySQL/pull/215[Problem details]
+* Add initdb -m to support postgres mode or oracle mode  https://github.com/IvorySQL/IvorySQL/pull/213[Problem details]
+* Add double Parser to support different database parsers https://github.com/IvorySQL/IvorySQL/pull/210[Problem details]
+* Added dual ports to support different database port numbers  https://github.com/IvorySQL/IvorySQL/pull/209[Problem details]
 
--Similarly, in order to reduce the conflict between Oracle compatibility and Postgres syntax, a separate set of Oracle-specific test cases is designed,This set of test cases is a copy of Postgres' original test framework;
+== Fixed issue
 
+* After compiling with meson, the initdb execution fails https://github.com/IvorySQL/IvorySQL/issues/520[Problem details]
+* The operator result for a character type null value is incorrect  https://github.com/IvorySQL/IvorySQL/issues/499[Problem details]
+* An error occurred while restoring the backup  https://github.com/IvorySQL/IvorySQL/issues/483[Problem details]
+* ivorysql_ora some test cases fail https://github.com/IvorySQL/IvorySQL/issues/461[Problem details]
+* The NLS parameter specifies that under the three relationships between the ff precision and the accuracy specified in the table, the data processing exceeding the length is inconsistent https://github.com/IvorySQL/IvorySQL/issues/436[Problem details]
+* The data processing after the data in the DD HH.MI, SS AM data in the date format is inconsistent with Oracle  https://github.com/IvorySQL/IvorySQL/issues/435[Problem details]
+* There are problems with the date format, the partial digit check for each part   https://github.com/IvorySQL/IvorySQL/issues/434[Problem details]
+* NLS related parameter verification issues  https://github.com/IvorySQL/IvorySQL/issues/433[Problem details]
+* Solve the problem that the NLS parameter is set to 12-hour clock, and the default rule for completing AM/PM keywords is inconsistent with Oracle  https://github.com/IvorySQL/IvorySQL/issues/405[Problem details]
+* The DEFAULTED field value in the function/stored procedure xx_arguments view created with default values is an issue of N https://github.com/IvorySQL/IvorySQL/issues/379[Problem details]
+* Functions/stored procedures without permissions can be viewed in all_procedures/all_arguments/all_source views https://github.com/IvorySQL/IvorySQL/issues/378[Problem details]
+* When the self-incrementing column type is numer type and the precision is specified, when a null value is inserted by default on null, it is not the inserted concrete sequence value, but the inserted null value  https://github.com/IvorySQL/IvorySQL/issues/386[Problem details]
+
+== Source Code
+
+IvorySQL contains 2 main code repositories, the database IvorySQL code bin, and the IvorySQL blog bin.
+
+* IvorySQL code bin: https://github.com/IvorySQL/IvorySQL[https://github.com/IvorySQL/IvorySQL]
+* IvorySQL blog bin: https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
+
+== Contributors
+
+The following individuals have contributed to this release as patch authors, committers, reviewers, testers, or issue reporters.
+
+- Cary Huang
+- Grant Zhou
+- Yang Tan
+- Jie Wang
+- Shuainan Mu
+- Hongyuan Zhang
+- Shoubo Wang
+- Jiao Ren
+- Zhekai Xiao
+- Huajian Jin
+- Lily Wang
+- Songjin Zhou
+- M.Imran Zaheer
 
