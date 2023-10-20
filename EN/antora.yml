@@ -1,7 +1,7 @@
 name: ivorysql-doc
 title: IvorySQL
-version: Devs
-start_page: Devs/welcome.adoc
+version: beta
+start_page: beta/welcome.adoc
 asciidoc:
   attributes:
     source-language: asciidoc@

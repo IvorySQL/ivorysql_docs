@@ -86,7 +86,7 @@ sudo yum groupinstall -y 'Development Tools'
 Configuration: Root users execute the following commands to configure:
 
 ```
-./configure --prefix=/usr/local/ivorysql/ivorysql-1.2
+./configure --prefix=/usr/local/ivorysql/ivorysql-3.0
 ```
 
 > Note: Because -- prefix is not provided, it is installed in/usr/local/pgsql by default, so you need to specify the path
@@ -115,15 +115,14 @@ make install
 ==== Install the IvorySql database using the RPM package
 
 1. Run the following command to download the IvorySQL installation package.
+----
+wget  https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql3-3.0-1.rhel7.x86_64.rpm
 
-```
-wget  https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql1-1.2-1.rhel7.x86_64.rpm
+wget  https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql3-contrib-3.0-1.rhel7.x86_64.rpm
 
-wget  https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql1-contrib-1.2-1.rhel7.x86_64.rpm
+wget  https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql3-libs-3.0-1.rhel7.x86_64.rpm
 
-wget  https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql1-libs-1.2-1.rhel7.x86_64.rpm
-
-wget  https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql1-server-1.2-1.rhel7.x86_64.rpm
+wget  https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql3-server-3.0-1.rhel7.x86_64.rpm
 ```
 
 > Note: The installation package in the example may not be the latest version. It is recommended that you download the latest installation package.
@@ -132,10 +131,10 @@ wget  https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql1
 
 ```
 yum install -y libicu libxslt python3                   --Install dependencies first
-rpm -ivh ivorysql1-libs-1.2-1.rhel7.x86_64.rpm
-rpm -ivh ivorysql1-1.2-1.rhel7.x86_64.rpm
-rpm -ivh ivorysql1-contrib-1.2-1.rhel7.x86_64.rpm --nodeps
-rpm -ivh ivorysql1-server-1.2-1.rhel7.x86_64.rpm
+rpm -ivh ivorysql3-libs-3.0-1.rhel7.x86_64.rpm
+rpm -ivh ivorysql3-3.0-1.rhel7.x86_64.rpm
+rpm -ivh ivorysql3-contrib-3.0-1.rhel7.x86_64.rpm --nodeps
+rpm -ivh ivorysql3-server-3.0-1.rhel7.x86_64.rpm
 ```
 
 
@@ -148,26 +147,25 @@ rpm -ivh ivorysql1-server-1.2-1.rhel7.x86_64.rpm
 
 ```
 /usr/sbin/groupadd ivorysql
-/usr/sbin/useradd -g ivorysql ivorysql -c "IvorySQL1.2 Server"
+/usr/sbin/useradd -g ivorysql ivorysql -c "IvorySQL3.0 Server"
 passwd ivorysql
 ```
 
 2.Create a data directory and modify permissions: Execute the following command in the root session:
 
 ```
-mkdir -p /ivorysql/1.2/data
-chown -R ivorysql.ivorysql /ivorysql/1.2/
+chown -R ivorysql.ivorysql /var/lib/ivorysql/ivorysql-3
 ```
 
-> Note: The data directory is not placed in "/var/lib/ivorysql/ivorysql-1/data" according to RPM installation.
+> Note: The data directory is not placed in "/var/lib/ivorysql/ivorysql-3/data" according to RPM installation.
 
 3.Environment variable: switch to user ivorysql, modify the file "/home/ivorysql/. bash_profile", and configure the environment variable：
 
 ```
 umask 022
-export LD_LIBRARY_PATH=/usr/local/pgsql/lib:$LD_LIBRARY_PATH
-export PATH=/usr/local/pgsql/bin:$PATH
-export PGDATA=/ivorysql/1.2/data
+export LD_LIBRARY_PATH=/usr/local/ivorysql/ivorysql-3/lib:$LD_LIBRARY_PATH
+export PATH=/usr/local/ivorysql/ivorysql-3/bin:$PATH
+export PGDATA=/var/lib/ivorysql/ivorysql-3/data
 ```
 
 Make the environment variable effective in the current ivorysql user session:
@@ -251,7 +249,7 @@ The editing contents are as follows:
 
 ```
 [Unit]
-Description=IvorySQL 1.2 database server
+Description=IvorySQL 3.0 database server
 Documentation=https://www.ivorysql.org
 Requires=network.target local-fs.target
 After=network.target local-fs.target
@@ -266,9 +264,10 @@ Environment=PGDATA=/ivorysql/1.2/data/
 
 OOMScoreAdjust=-1000
 
-ExecStart=/usr/local/pgsql/bin/pg_ctl start -D ${PGDATA}
-ExecStop=/usr/local/pgsql/bin/pg_ctl stop -D ${PGDATA}
-ExecReload=/usr/local/pgsql/bin/pg_ctl reload -D ${PGDATA}
+ExecStart=/usr/local/ivorysql/bin/pg_ctl start -D ${PGDATA}
+ExecStop=/usr/local/ivorysql/bin/pg_ctl stop -D ${PGDATA}
+ExecReload=/usr/local/ivorysql/bin/pg_ctl reload -D ${PGDATA}
+A}
 
 TimeoutSec=0
 
@@ -425,10 +424,10 @@ make clean
 ```
 systemctl disable ivorysql.servicemake                  --disable Service
 mv /usr/lib/systemd/system/ivorysql.service /tmp/       --the service file can be moved                                                             to/tmp or deleted
-rm -fr /usr/local/pgsql                                 --remove residual installation                                                             directory
+rm -fr /usr/local/ivorysql/ivorysql-3                                --remove residual installation                                                             directory
 ```
 
-> Note: There are also user ivorysql and corresponding environment variables, which can be cleaned according to the situation. The rest is the data directory "/ivorysql/1.2/data". Please make sure to make a backup before processing. There are also installed dependent packages, which can be uninstalled according to the situation.
+> Note: There are also user ivorysql and corresponding environment variables, which can be cleaned according to the situation. The rest is the data directory "/var/lib/ivorysql/ivorysql-3/data". Please make sure to make a backup before processing. There are also installed dependent packages, which can be uninstalled according to the situation.
 
 
 ==== YUM Uninstall
