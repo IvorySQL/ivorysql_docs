@@ -82,9 +82,9 @@ sudo yum groupinstall -y 'Development Tools'
 
 3.1 配置：Root用户执行以下命令进行配置：
 
-    ./configure --prefix=/usr/local/ivorysql/ivorysql-1.2
+    ./configure --prefix=/usr/local/ivorysql/ivorysql-3.0
 
-> 说明： 由于没有提供--prefix，默认安装在/usr/local/pgsql，故需要指定路径
+> 说明： 由于没有提供--prefix，默认安装在/usr/local/ivorysql，故需要指定路径
 >
 > 注意：我们要记住指定的目录，因为系统查不出已经编译安装的程序在哪。更多configure参数通过“./configure --help”查看。还可以查看PostgreSQL手册
 
@@ -108,13 +108,13 @@ make check-world
 
 1. 运行以下命令，下载 IvorySQL 安装包。
 ----
-wget  https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql1-1.2-1.rhel7.x86_64.rpm
+wget  https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql3-3.0-1.rhel7.x86_64.rpm
 
-wget  https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql1-contrib-1.2-1.rhel7.x86_64.rpm
+wget  https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql3-contrib-3.0-1.rhel7.x86_64.rpm
 
-wget  https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql1-libs-1.2-1.rhel7.x86_64.rpm
+wget  https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql3-libs-3.0-1.rhel7.x86_64.rpm
 
-wget  https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql1-server-1.2-1.rhel7.x86_64.rpm
+wget  https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql3-server-3.0-1.rhel7.x86_64.rpm
 ----
 
 > 注意：示例中的安装包可能不是最新版本，建议您下载最新的安装包。
@@ -122,10 +122,10 @@ wget  https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql1
 2.运行以下命令，安装 IvorySQL 。
 ----
 yum install -y libicu libxslt python3                   --先安装依赖
-rpm -ivh ivorysql1-libs-1.2-1.rhel7.x86_64.rpm
-rpm -ivh ivorysql1-1.2-1.rhel7.x86_64.rpm
-rpm -ivh ivorysql1-contrib-1.2-1.rhel7.x86_64.rpm --nodeps
-rpm -ivh ivorysql1-server-1.2-1.rhel7.x86_64.rpm
+rpm -ivh ivorysql3-libs-3.0-1.rhel7.x86_64.rpm
+rpm -ivh ivorysql3-3.0-1.rhel7.x86_64.rpm
+rpm -ivh ivorysql3-contrib-3.0-1.rhel7.x86_64.rpm --nodeps
+rpm -ivh ivorysql3-server-3.0-1.rhel7.x86_64.rpm
 ----
 
 === 初始化数据库服务
@@ -135,24 +135,23 @@ rpm -ivh ivorysql1-server-1.2-1.rhel7.x86_64.rpm
 1. 创建操作系统用户：用户root会话下，新建用户 ivorysql：
 ----
 /usr/sbin/groupadd ivorysql
-/usr/sbin/useradd -g ivorysql ivorysql -c "IvorySQL1.2 Server"
+/usr/sbin/useradd -g ivorysql ivorysql -c "IvorySQL3.0 Server"
 passwd ivorysql
 ----
 
-2.创建数据目录并修改权限：在root会话下执行以下命令：
+2.修改权限：在root会话下执行以下命令：
 ----
-mkdir -p /ivorysql/1.2/data
-chown -R ivorysql.ivorysql /ivorysql/1.2/
+chown -R ivorysql.ivorysql /var/lib/ivorysql/ivorysql-3
 ----
 
-> 注意：这里没按RPM安装将数据目录放置到“/var/lib/ivorysql/ivorysql-1/data”。
+> 注意：这里没按RPM安装将数据目录放置到“/var/lib/ivorysql/ivorysql-3/data”。
 
 3.环境变量：切换到用户ivorysql，修改文件“/home/ ivorysql /.bash_profile”，配置环境变量：
 ----
 umask 022
-export LD_LIBRARY_PATH=/usr/local/pgsql/lib:$LD_LIBRARY_PATH
-export PATH=/usr/local/pgsql/bin:$PATH
-export PGDATA=/ivorysql/1.2/data
+export LD_LIBRARY_PATH=/usr/local/ivorysql/ivorysql-3/lib:$LD_LIBRARY_PATH
+export PATH=/usr/local/ivorysql/ivorysql-3/bin:$PATH
+export PGDATA=/var/lib/ivorysql/ivorysql-3/data
 ----
 
 使环境变量在当前ivorysql用户会话中生效：
@@ -161,13 +160,13 @@ export PGDATA=/ivorysql/1.2/data
 
 也可以重新登录或开启一个新的用户ivorysql的会话。
 
-4.设置防火墙：如果开启了防火墙，还需要将端口5333开放：
+4.设置防火墙：如果开启了防火墙，还需要将端口1521或者5432开放：
 ----
-firewall-cmd --zone=public --add-port=5333/tcp --permanent
+firewall-cmd --zone=public --add-port=1521/tcp --permanent
 firewall-cmd --reload
 ----
 
-> 说明：默认端口是5333，如果不开放该端口，外部客户端通过ip连接会失败。
+> 说明：默认端口是1521，如果不开放该端口，外部客户端通过ip连接会失败。
 
 5.初始化：在用户ivorysql下，简单执行initdb就可以完成初始化：
 
@@ -218,7 +217,7 @@ firewall-cmd --reload
 编辑内容如下：
 ----
 [Unit]
-Description=IvorySQL 1.2 database server
+Description=IvorySQL 3.0 database server
 Documentation=https://www.ivorysql.org
 Requires=network.target local-fs.target
 After=network.target local-fs.target
@@ -229,13 +228,13 @@ Type=forking
 User=ivorysql
 Group=ivorysql
 
-Environment=PGDATA=/ivorysql/1.2/data/
+Environment=PGDATA=/var/lib/ivorysql/ivorysql-3/data
 
 OOMScoreAdjust=-1000
 
-ExecStart=/usr/local/pgsql/bin/pg_ctl start -D ${PGDATA}
-ExecStop=/usr/local/pgsql/bin/pg_ctl stop -D ${PGDATA}
-ExecReload=/usr/local/pgsql/bin/pg_ctl reload -D ${PGDATA}
+ExecStart=/usr/local/ivorysql/bin/pg_ctl start -D ${PGDATA}
+ExecStop=/usr/local/ivorysql/bin/pg_ctl stop -D ${PGDATA}
+ExecReload=/usr/local/ivorysql/bin/pg_ctl reload -D ${PGDATA}
 
 TimeoutSec=0
 
@@ -322,10 +321,10 @@ python3-pip.noarch 0:9.0.3-8.el7 python3-setuptools.noarch 0:39.2.0-10.el7
 .安装目录文件说明
 |====
 |**序号**|**文件路径**|**描述**
-|1| /usr/local/ivorysql/ivorysql-1 |软件安装目录
-|2| /var/lib/ivorysql/ivorysql-1/data| 数据目录（默认）
-|3| /usr/bin/ivorysql-1-setup | 帮助管理员进行基本的数据库集群管理
-|4| /usr/lib/systemd/system/ivorysql-1.service | 守护服务
+|1| /usr/local/ivorysql/ivorysql-3 |软件安装目录
+|2| /var/lib/ivorysql/ivorysql-3/data| 数据目录（默认）
+|3| /usr/bin/ivorysql-3-setup | 帮助管理员进行基本的数据库集群管理
+|4| /usr/lib/systemd/system/ivorysql-3.service | 守护服务
 |====
 
 ==== deb安装
@@ -366,10 +365,10 @@ dpkg -r ivorysql
 
 ==== 编译卸载
 
-1.备份数据：数据目录在“/ivorysql/1.2/data”下，所以我们将该目录保护好就可以，最好停止数据库服务后做备份。
+1.备份数据：数据目录在“/var/lib/ivorysql/ivorysql-3/data”下，所以我们将该目录保护好就可以，最好停止数据库服务后做备份。
 
 ```
-systemctl stop ivorysql-1.service
+systemctl stop ivorysql.service
 ```
 
 2.编译卸载：oot会话下切到源码目录下，分别执行以下命令：
@@ -384,17 +383,17 @@ make clean
 ```
 systemctl disable ivorysql.servicemake                  --禁用服务
 mv /usr/lib/systemd/system/ivorysql.service /tmp/       --服务文件移到/tmp，删除也可以
-rm -fr /usr/local/pgsql                                 --删除残留安装目录
+rm -fr /usr/local/ivorysql/ivorysql-3                                 --删除残留安装目录
 ```
 
-> 说明：还有用户ivorysql以及对应的环境变量，可以根据情况是否清理。剩下的就是数据目录“/ivorysql/1.2/data”了，请务必做好备份再做处理。还有安装的依赖包，可根据情况决定是否卸载。
+> 说明：还有用户ivorysql以及对应的环境变量，可以根据情况是否清理。剩下的就是数据目录“/var/lib/ivorysql/ivorysql-3/data”了，请务必做好备份再做处理。还有安装的依赖包，可根据情况决定是否卸载。
 
 ==== YUM卸载
 
 1.停止数据库服务：
 
 ```
-systemctl stop ivorysql-1.service
+systemctl stop ivorysql-3.service
 ```
 
 先使用“yum history list”确定yum安装的事务ID：

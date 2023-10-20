@@ -66,10 +66,10 @@ IvorySQL 3.0 includes various fixes from PostgreSQL 16.0, including improved sor
 
 == Source Code
 
-IvorySQL contains 2 main code repositories, the database IvorySQL code bin, and the IvorySQL blog bin.
+IvorySQL contains 2 main code repositories, the database IvorySQL code bin, and the IvorySQL web bin.
 
 * IvorySQL code bin: https://github.com/IvorySQL/IvorySQL[https://github.com/IvorySQL/IvorySQL]
-* IvorySQL blog bin: https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
+* IvorySQL web bin: https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
 
 == Contributors
 
