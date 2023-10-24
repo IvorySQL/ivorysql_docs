@@ -6,47 +6,49 @@
 
 [**发行日期: 2023年10月xx日**]
 
-IvorySQL3.0 基于 PostgreSQL16.0 并包含 IvorySQL 2.3 之后的各种修复和新功能。
-
-此版本与 IvorySQL 2.X 兼容，并且不需要为运行 IvorySQL 1.X 的用户进行转储/恢复。
+IvorySQL3.0 基于 PostgreSQL16.0 ，此版本与 IvorySQL 2.X 兼容，并且不需要为运行 IvorySQL 1.X 的用户进行转储/恢复。
 
 IvorySQL 3.0 包含来自 PostgreSQL 16.0 的各种修复，包括改进的排序性能和压缩、日志记录和配置增强、更微调的逻辑复制选项等。有关 PostgreSQL 16.0中更详细的更新和错误修复，请参阅官方 https://www.postgresql.org/docs/release/16.0/[PostgreSQL 16.0 发行说明] 。
 
 == 已知问题
 
-* make oracle-installcheck fail https://github.com/IvorySQL/IvorySQL/issues/348[问题细节]
+* 暂无
 
 == 增强功能
 
+=== ivorysql框架
+
+* 添加双Parser支持不同的数据库parser https://github.com/IvorySQL/IvorySQL/pull/210[问题细节]
+* 添加双端口支持不同的数据库端口号  https://github.com/IvorySQL/IvorySQL/pull/209[问题细节]
+* 添加 initdb -m，支持postgres模式或 oracle模式  https://github.com/IvorySQL/IvorySQL/pull/213[问题细节]
+
+=== SQL兼容
+
+* 兼容oracle merge command https://github.com/IvorySQL/IvorySQL/pull/263[问题细节]
+* 兼容oracle q转义 https://github.com/IvorySQL/IvorySQL/pull/296[问题细节]
+* 兼容oracle like https://github.com/IvorySQL/IvorySQL/pull/292[问题细节]
+
+=== PL/SQL兼容
+
+* 解决PL/SQL 创建函数/存储过程存在问题  https://github.com/IvorySQL/IvorySQL/pull/492[问题细节]
+* 兼容Oracle匿名块  https://github.com/IvorySQL/IvorySQL/pull/305[问题细节]
+* 在 SQL parser中创建函数或过程支持嵌套子过程  https://github.com/IvorySQL/IvorySQL/pull/313[问题细节]
+* 嵌套的子进程和函数 is/as 不需要声明  https://github.com/IvorySQL/IvorySQL/pull/306[问题细节]
+* 解析时嵌套的子进程 retype从 rettype获取  https://github.com/IvorySQL/IvorySQL/pull/311[问题细节]
+
+=== 其它
 * 在action中增加meson编译  https://github.com/IvorySQL/IvorySQL/pull/515[问题细节]
 * 支持meson编译 https://github.com/IvorySQL/IvorySQL/pull/510[问题细节]
-* 解决PL/SQL 创建函数/存储过程存在问题  https://github.com/IvorySQL/IvorySQL/pull/492[问题细节]
 * 添加兼容的测试用例 https://github.com/IvorySQL/IvorySQL/pull/481[问题细节]
-* PL/iSQL不支持%rowtype https://github.com/IvorySQL/IvorySQL/pull/476[问题细节]
-* 在函数中修改decode的用法 https://github.com/IvorySQL/IvorySQL/pull/457[问题细节]
-* 返回模式在源字符串中出现的次数  https://github.com/IvorySQL/IvorySQL/pull/454[问题细节]
 * 添加contrib回归  https://github.com/IvorySQL/IvorySQL/pull/453[问题细节]
 * 支持gin索引  https://github.com/IvorySQL/IvorySQL/pull/445[问题细节]
 * 兼容btree_gist索引 https://github.com/IvorySQL/IvorySQL/pull/443[问题细节]
 * 兼容btree_gin索引  https://github.com/IvorySQL/IvorySQL/pull/438[问题细节]
 * 添加Oracle数据类型 GIN索引操作  https://github.com/IvorySQL/IvorySQL/pull/437[问题细节]
 * 添加Oracle数据类型 Gist索引操作   https://github.com/IvorySQL/IvorySQL/pull/432[问题细节]
-* 支持ORA_ISOLATION https://github.com/IvorySQL/IvorySQL/pull/428[问题细节]
-* 支持扩展  https://github.com/IvorySQL/IvorySQL/pull/346[问题细节]
-* 在 SQL parser中创建函数或过程支持嵌套子过程  https://github.com/IvorySQL/IvorySQL/pull/313[问题细节]
-* 解析时嵌套的子进程 retype从 rettype获取  https://github.com/IvorySQL/IvorySQL/pull/311[问题细节]
-* 在嵌套子进程和函数中添加LOOP_P关键字  https://github.com/IvorySQL/IvorySQL/pull/308[问题细节]
-* 嵌套的子进程和函数 is/as 不需要声明  https://github.com/IvorySQL/IvorySQL/pull/306[问题细节]
-* 兼容Oracle匿名块  https://github.com/IvorySQL/IvorySQL/pull/305[问题细节]
-* 兼容oracle q转义 https://github.com/IvorySQL/IvorySQL/pull/296[问题细节]
-* 兼容oracle like https://github.com/IvorySQL/IvorySQL/pull/292[问题细节]
-* 兼容oracle merge command https://github.com/IvorySQL/IvorySQL/pull/263[问题细节]
-* 兼容oracle inner function https://github.com/IvorySQL/IvorySQL/pull/242[问题细节]
 * 兼容oracle内置数据类型与内置函数  https://github.com/IvorySQL/IvorySQL/pull/240[问题细节]
 * 添加plisql扩展  https://github.com/IvorySQL/IvorySQL/pull/215[问题细节]
-* 添加 initdb -m，支持postgres模式或 oracle模式  https://github.com/IvorySQL/IvorySQL/pull/213[问题细节]
-* 添加双Parser支持不同的数据库parser https://github.com/IvorySQL/IvorySQL/pull/210[问题细节]
-* 添加双端口支持不同的数据库端口号  https://github.com/IvorySQL/IvorySQL/pull/209[问题细节]
+
 
 == 问题修复
 
@@ -62,7 +64,7 @@ IvorySQL 3.0 包含来自 PostgreSQL 16.0 的各种修复，包括改进的排�
 * 带默认值创建的函数/存储过程xx_arguments视图中DEFAULTED字段值为N 问题  https://github.com/IvorySQL/IvorySQL/issues/379[问题细节]
 * 无权限的函数/存储过程 可以被all_procedures/all_arguments/all_source视图查看  https://github.com/IvorySQL/IvorySQL/issues/378[问题细节]
 * 当自增列类型为numer类型，且指定了精度时，by default on null插入null值时，不是插入的具体序列值，而是插入的null值  https://github.com/IvorySQL/IvorySQL/issues/386[问题细节]
-
+* 在函数中修改decode的用法 https://github.com/IvorySQL/IvorySQL/pull/457[问题细节]
 == 源代码
 
 IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL网站仓：
@@ -73,17 +75,3 @@ IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL网�
 == 贡献人员
 
 以下个人作为补丁作者、提交者、审阅者、测试者或问题报告者为本版本做出了贡献。
-
-- Cary Huang
-- Grant Zhou
-- 谭洋
-- 王杰
-- 穆帅楠
-- 张洪源
-- 王守波
-- 任娇
-- 肖哲凯
-- 金华建
-- 王丽
-- Songjin Zhou
-- M.Imran Zaheer

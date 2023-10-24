@@ -86,7 +86,7 @@ sudo yum groupinstall -y 'Development Tools'
 Configuration: Root users execute the following commands to configure:
 
 ```
-./configure --prefix=/usr/local/ivorysql/ivorysql-3.0
+./configure --prefix=/usr/local/ivorysql/ivorysql-3
 ```
 
 > Note: Because -- prefix is not provided, it is installed in/usr/local/pgsql by default, so you need to specify the path
@@ -103,7 +103,7 @@ Perform a regression test before installing the newly compiled service (the foll
 
 ```
 make check
-make check-world
+make all-check-world
 ```
 
 Installation:

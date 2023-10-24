@@ -82,7 +82,7 @@ sudo yum groupinstall -y 'Development Tools'
 
 3.1 配置：Root用户执行以下命令进行配置：
 
-    ./configure --prefix=/usr/local/ivorysql/ivorysql-3.0
+    ./configure --prefix=/usr/local/ivorysql/ivorysql-3
 
 > 说明： 由于没有提供--prefix，默认安装在/usr/local/ivorysql，故需要指定路径
 >
@@ -96,7 +96,7 @@ sudo yum groupinstall -y 'Development Tools'
 
 ----
 make check
-make check-world
+make all-check-world
 ----
 
 然后安装：

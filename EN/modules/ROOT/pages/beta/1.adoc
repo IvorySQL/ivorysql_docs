@@ -7,47 +7,48 @@
 
 [**Release Date: June 28, 2023**]
 
-IvorySQL 3.0 is based on PostgreSQL 16.0 and includes various fixes and new features from IvorySQL 2.3 onwards.
-
-This version is compatible with IvorySQL 2.X and does not require a dump/restore for users running IvorySQL 1.X.
+IvorySQL 3.0 is based on PostgreSQL 16.0 .This version is compatible with IvorySQL 2.X and does not require a dump/restore for users running IvorySQL 1.X.
 
 IvorySQL 3.0 includes various fixes from PostgreSQL 16.0, including improved sorting performance and compression, logging and configuration enhancements, more fine-tuned logical replication options, and more. For more detailed updates and bug fixes in PostgreSQL 16.0, see the official https://www.postgresql.org/docs/release/16/[PostgreSQL 16.0 Release Notes] .
 
 == Known Issues
 
-* make oracle-installcheck fail https://github.com/IvorySQL/IvorySQL/issues/348[Problem details]
+* None
 
 == Enhancements
 
-* Add meson compilation to action  https://github.com/IvorySQL/IvorySQL/pull/515[Problem details]
-* Support for meson compilation  https://github.com/IvorySQL/IvorySQL/pull/510[Problem details]
-* Addresses an issue with PL/SQL creation functions/stored procedures  https://github.com/IvorySQL/IvorySQL/pull/492[Problem details]
-* Add compatible test cases https://github.com/IvorySQL/IvorySQL/pull/481[Problem details]
-* PL/iSQL does not support %rowtype https://github.com/IvorySQL/IvorySQL/pull/476[Problem details]
-* Modify the usage of decode in the function https://github.com/IvorySQL/IvorySQL/pull/457[Problem details]
-* Returns the number of times the pattern appears in the source string  https://github.com/IvorySQL/IvorySQL/pull/454[Problem details]
-* Add contrib regression  https://github.com/IvorySQL/IvorySQL/pull/453[Problem details]
-* GIN indexes are supported  https://github.com/IvorySQL/IvorySQL/pull/445[Problem details]
-* Compatible with btree_gist indexes https://github.com/IvorySQL/IvorySQL/pull/443[Problem details]
-* Compatible with btree_gin indexes  https://github.com/IvorySQL/IvorySQL/pull/438[Problem details]
-* Add Oracle data type GIN indexing operations https://github.com/IvorySQL/IvorySQL/pull/437[Problem details]
-* Add the Oracle data type Gist Index Operation   https://github.com/IvorySQL/IvorySQL/pull/432[Problem details]
-* Support ORA_ISOLATION https://github.com/IvorySQL/IvorySQL/pull/428[Problem details]
-* Support extensions  https://github.com/IvorySQL/IvorySQL/pull/346[Problem details]
-* Creating a function or procedure in SQL parser supports nested subprocedures  https://github.com/IvorySQL/IvorySQL/pull/313[Problem details]
-* When parsing, nested child processes retype are obtained from rettype https://github.com/IvorySQL/IvorySQL/pull/311[Problem details]
-* Add LOOP_P keywords in nested child processes and functions  https://github.com/IvorySQL/IvorySQL/pull/308[Problem details]
-*  Nested child processes and functions IS/As do not need to be declared  https://github.com/IvorySQL/IvorySQL/pull/306[Problem details]
-* Compatible with Oracle anonymous blocks https://github.com/IvorySQL/IvorySQL/pull/305[Problem details]
-* Compatible with Oracle Q escaping  https://github.com/IvorySQL/IvorySQL/pull/296[Problem details]
-* Compatible with Oracle Like https://github.com/IvorySQL/IvorySQL/pull/292[Problem details]
-* Compatible with Oracle Merge Command  https://github.com/IvorySQL/IvorySQL/pull/263[Problem details]
-* Compatible with oracle inner function https://github.com/IvorySQL/IvorySQL/pull/242[Problem details]
-* Compatible with Oracle built-in data types and built-in functions  https://github.com/IvorySQL/IvorySQL/pull/240[Problem details]
-* Add the plisql extension  https://github.com/IvorySQL/IvorySQL/pull/215[Problem details]
-* Add initdb -m to support postgres mode or oracle mode  https://github.com/IvorySQL/IvorySQL/pull/213[Problem details]
-* Add double Parser to support different database parsers https://github.com/IvorySQL/IvorySQL/pull/210[Problem details]
-* Added dual ports to support different database port numbers  https://github.com/IvorySQL/IvorySQL/pull/209[Problem details]
+=== ivorysql frame
+
+* Add double Parser to support different database parsers https://github.com/IvorySQL/IvorySQL/pull/210[问题细节]
+* Added dual ports to support different database port numbers https://github.com/IvorySQL/IvorySQL/pull/209[问题细节]
+* Add initdb -m to support postgres mode or oracle mode https://github.com/IvorySQL/IvorySQL/pull/213[问题细节]
+
+=== Compatible with SQL
+
+* Compatible with Oracle Merge Commandhttps://github.com/IvorySQL/IvorySQL/pull/263[问题细节]
+* Compatible with Oracle Q escaping  https://github.com/IvorySQL/IvorySQL/pull/296[问题细节]
+* Compatible with oracle like https://github.com/IvorySQL/IvorySQL/pull/292[问题细节]
+
+=== Compatible with PL/SQL
+
+* Addresses an issue with PL/SQL creation functions/stored procedures https://github.com/IvorySQL/IvorySQL/pull/492[问题细节]
+* Compatible with Oracle anonymous blocks https://github.com/IvorySQL/IvorySQL/pull/305[问题细节]
+* Creating a function or procedure in SQL parser supports nested subprocedures https://github.com/IvorySQL/IvorySQL/pull/313[问题细节]
+* Nested child processes and functions IS/As do not need to be declared https://github.com/IvorySQL/IvorySQL/pull/306[问题细节]
+* When parsing, nested child processes retype are obtained from rettype  https://github.com/IvorySQL/IvorySQL/pull/311[问题细节]
+
+=== Other
+* Add meson compilation to action https://github.com/IvorySQL/IvorySQL/pull/515[问题细节]
+* Support for meson compilationhttps://github.com/IvorySQL/IvorySQL/pull/510[问题细节]
+* Add compatible test cases https://github.com/IvorySQL/IvorySQL/pull/481[问题细节]
+* Add contrib regression https://github.com/IvorySQL/IvorySQL/pull/453[问题细节]
+* GIN indexes are supported  https://github.com/IvorySQL/IvorySQL/pull/445[问题细节]
+* Compatible with btree_gist indexes  https://github.com/IvorySQL/IvorySQL/pull/443[问题细节]
+* Compatible with btree_gin indexes  https://github.com/IvorySQL/IvorySQL/pull/438[问题细节]
+* Add Oracle data type GIN indexing operations  https://github.com/IvorySQL/IvorySQL/pull/437[问题细节]
+* Add the Oracle data type Gist Index Operation   https://github.com/IvorySQL/IvorySQL/pull/432[问题细节]
+* Compatible with Oracle built-in data types and built-in functions https://github.com/IvorySQL/IvorySQL/pull/240[问题细节]
+* Add the plisql extension  https://github.com/IvorySQL/IvorySQL/pull/215[问题细节]
 
 == Fixed issue
 
@@ -74,18 +75,4 @@ IvorySQL contains 2 main code repositories, the database IvorySQL code bin, and 
 == Contributors
 
 The following individuals have contributed to this release as patch authors, committers, reviewers, testers, or issue reporters.
-
-- Cary Huang
-- Grant Zhou
-- Yang Tan
-- Jie Wang
-- Shuainan Mu
-- Hongyuan Zhang
-- Shoubo Wang
-- Jiao Ren
-- Zhekai Xiao
-- Huajian Jin
-- Lily Wang
-- Songjin Zhou
-- M.Imran Zaheer
 
