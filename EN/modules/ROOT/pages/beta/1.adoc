@@ -7,9 +7,7 @@
 
 [**Release Date: June 28, 2023**]
 
-IvorySQL 3.0 is based on PostgreSQL 16.0 .This version is compatible with IvorySQL 2.X and does not require a dump/restore for users running IvorySQL 1.X.
-
-IvorySQL 3.0 includes various fixes from PostgreSQL 16.0, including improved sorting performance and compression, logging and configuration enhancements, more fine-tuned logical replication options, and more. For more detailed updates and bug fixes in PostgreSQL 16.0, see the official https://www.postgresql.org/docs/release/16/[PostgreSQL 16.0 Release Notes] .
+IvorySQL 3.0 is based on PostgreSQL 16.0 includes various fixes from PostgreSQL 16.0, For more detailed updates and bug fixes in PostgreSQL 16.0, see the official https://www.postgresql.org/docs/release/16/[PostgreSQL 16.0 Release Notes] .
 
 == Known Issues
 
@@ -72,7 +70,4 @@ IvorySQL contains 2 main code repositories, the database IvorySQL code bin, and 
 * IvorySQL code bin: https://github.com/IvorySQL/IvorySQL[https://github.com/IvorySQL/IvorySQL]
 * IvorySQL web bin: https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
 
-== Contributors
-
-The following individuals have contributed to this release as patch authors, committers, reviewers, testers, or issue reporters.
 

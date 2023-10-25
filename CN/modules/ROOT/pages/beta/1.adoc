@@ -6,9 +6,7 @@
 
 [**发行日期: 2023年10月xx日**]
 
-IvorySQL3.0 基于 PostgreSQL16.0 ，此版本与 IvorySQL 2.X 兼容，并且不需要为运行 IvorySQL 1.X 的用户进行转储/恢复。
-
-IvorySQL 3.0 包含来自 PostgreSQL 16.0 的各种修复，包括改进的排序性能和压缩、日志记录和配置增强、更微调的逻辑复制选项等。有关 PostgreSQL 16.0中更详细的更新和错误修复，请参阅官方 https://www.postgresql.org/docs/release/16.0/[PostgreSQL 16.0 发行说明] 。
+IvorySQL3.0 基于 PostgreSQL16.0 ，包含来自 PostgreSQL 16.0 的各种修复。有关 PostgreSQL 16.0中更详细的更新和错误修复，请参阅官方 https://www.postgresql.org/docs/release/16.0/[PostgreSQL 16.0 发行说明] 。
 
 == 已知问题
 
@@ -65,6 +63,7 @@ IvorySQL 3.0 包含来自 PostgreSQL 16.0 的各种修复，包括改进的排�
 * 无权限的函数/存储过程 可以被all_procedures/all_arguments/all_source视图查看  https://github.com/IvorySQL/IvorySQL/issues/378[问题细节]
 * 当自增列类型为numer类型，且指定了精度时，by default on null插入null值时，不是插入的具体序列值，而是插入的null值  https://github.com/IvorySQL/IvorySQL/issues/386[问题细节]
 * 在函数中修改decode的用法 https://github.com/IvorySQL/IvorySQL/pull/457[问题细节]
+
 == 源代码
 
 IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL网站仓：
@@ -72,6 +71,3 @@ IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL网�
 * IvorySQL代码仓： https://github.com/IvorySQL/IvorySQL[https://github.com/IvorySQL/IvorySQL]
 * IvorySQL网站仓： https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
 
-== 贡献人员
-
-以下个人作为补丁作者、提交者、审阅者、测试者或问题报告者为本版本做出了贡献。
