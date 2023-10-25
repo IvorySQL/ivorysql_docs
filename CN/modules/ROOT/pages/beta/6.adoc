@@ -108,13 +108,13 @@ make all-check-world
 
 1. 运行以下命令，下载 IvorySQL 安装包。
 ----
-wget  https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql3-3.0-1.rhel7.x86_64.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/tag/Ivorysql_3.0_Beta/ivorysql3-3.0-1.rhel7.x86_64.rpm
 
-wget  https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql3-contrib-3.0-1.rhel7.x86_64.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/tag/Ivorysql_3.0_Beta/ivorysql3-contrib-3.0-1.rhel7.x86_64.rpm
 
-wget  https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql3-libs-3.0-1.rhel7.x86_64.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/tag/Ivorysql_3.0_Beta/ivorysql3-libs-3.0-1.rhel7.x86_64.rpm
 
-wget  https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql3-server-3.0-1.rhel7.x86_64.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/tag/Ivorysql_3.0_Beta/ivorysql3-server-3.0-1.rhel7.x86_64.rpm
 ----
 
 > 注意：示例中的安装包可能不是最新版本，建议您下载最新的安装包。
