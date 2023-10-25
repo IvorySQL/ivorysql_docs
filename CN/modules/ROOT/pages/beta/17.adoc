@@ -7,23 +7,23 @@
 
 == 目的
 
-- 为了满足pg模式和兼容oracle模式，ivorysql设计了pg和oracle两种模式。并且可以在initdb时指定模式;
+- 为了满足PG模式和兼容Oracle模式，Ivorysql设计了pg和oracle两种模式。并且可以在initdb时指定模式;
 
 == 功能
 
-- Initdb -m 初始化，需要判断不同的模式，其中oracle模式下，需要执行postgres_oracle.bki的SQL语句;
+- Initdb -m 初始化，需要判断不同的模式，其中Oracle模式下，需要执行postgres_oracle.bki的SQL语句;
 - 启动时会根据初始化模式，判断是否为oracle兼容模式。
 
 ```
 database_mode：用于表示初始化模式；
 database_mode=DB_PG，PG模式，且不可切换；
-database_mode=DB_ORACLE， oracle兼容模式；
+database_mode=DB_ORACLE，Oracle兼容模式；
 ```
 
 == 测试用例
 
 ```
-初始化pg模式：
+初始化PG模式：
 ./initdb -D ../data -m pg
 
 初始化oracle兼容模式：

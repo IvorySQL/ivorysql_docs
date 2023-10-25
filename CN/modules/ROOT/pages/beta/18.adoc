@@ -3,7 +3,7 @@
 
 :imagesdir: ./_images
 
-= 兼容oracle like
+= 兼容Oracle like
 
 == 目的
 

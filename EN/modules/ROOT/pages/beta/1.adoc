@@ -5,8 +5,6 @@
 
 == Versions Inroduction
 
-[**Release Date: June 28, 2023**]
-
 IvorySQL 3.0 is based on PostgreSQL 16.0 includes various fixes from PostgreSQL 16.0, For more detailed updates and bug fixes in PostgreSQL 16.0, see the official https://www.postgresql.org/docs/release/16/[PostgreSQL 16.0 Release Notes] .
 
 == Known Issues

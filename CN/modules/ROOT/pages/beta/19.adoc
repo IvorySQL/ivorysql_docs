@@ -3,7 +3,7 @@
 
 :imagesdir: ./_images
 
-= 兼容oracle匿名块
+= 兼容Oracle匿名块
 
 == 目的
 
