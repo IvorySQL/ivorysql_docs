@@ -3,7 +3,7 @@
 
 :imagesdir: ./_images
 
-= 兼容oracle函数与存储过程
+= 兼容Oracle函数与存储过程
 
 == 目的
 
