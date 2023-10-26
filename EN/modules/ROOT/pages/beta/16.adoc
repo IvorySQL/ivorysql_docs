@@ -36,8 +36,8 @@ During initialization of the database cluster, the case conversion pattern is sa
 === Test cases
 
 ```
-SET enable_case_switch = true;
-SET identifier_case_switch = interchange;
+SET ivorysql.enable_case_switch = true;
+SET ivorysql.identifier_case_switch = interchange;
 CREATE TABLE "ABC"(c1 int, c2 int);
 SELECT relname FROM pg_class WHERE relname = 'ABC';
 SELECT relname FROM pg_class WHERE relname = 'abc';
