@@ -84,9 +84,9 @@ sudo yum groupinstall -y 'Development Tools'
 
     ./configure --prefix=/usr/local/ivorysql/ivorysql-3
 
-> 说明： 由于没有提供--prefix，默认安装在/usr/local/ivorysql，故需要指定路径
+> 说明： 由于没有提供 `--prefix`，默认安装在 `/usr/local/ivorysql`，故需要指定路径。
 >
-> 注意：我们要记住指定的目录，因为系统查不出已经编译安装的程序在哪。更多configure参数通过“./configure --help”查看。还可以查看PostgreSQL手册
+> 注意：我们要记住指定的目录，因为系统查不出已经编译安装的程序在哪。更多 configure 参数通过 `./configure --help` 查看。还可以查看 PostgreSQL 手册。
 
 3.2 编译安装：配置完成后，执行make进行编译：
 
@@ -121,7 +121,8 @@ wget https://github.com/IvorySQL/IvorySQL/releases/tag/Ivorysql_3.0_Beta/ivorysq
 
 2.运行以下命令，安装 IvorySQL 。
 ----
-yum install -y libicu libxslt python3                   --先安装依赖
+-- 先安装依赖
+yum install -y libicu libxslt python3
 rpm -ivh ivorysql3-libs-3.0-1.rhel7.x86_64.rpm
 rpm -ivh ivorysql3-3.0-1.rhel7.x86_64.rpm
 rpm -ivh ivorysql3-contrib-3.0-1.rhel7.x86_64.rpm --nodeps
@@ -144,9 +145,9 @@ passwd ivorysql
 chown -R ivorysql.ivorysql /var/lib/ivorysql/ivorysql-3
 ----
 
-> 注意：这里没按RPM安装将数据目录放置到“/var/lib/ivorysql/ivorysql-3/data”。
+> 注意：这里没按RPM安装将数据目录放置到 `/var/lib/ivorysql/ivorysql-3/data`。
 
-3.环境变量：切换到用户ivorysql，修改文件“/home/ ivorysql /.bash_profile”，配置环境变量：
+3.环境变量：切换到用户ivorysql，修改文件 `/home/ivorysql/.bash_profile`，配置环境变量：
 ----
 umask 022
 export LD_LIBRARY_PATH=/usr/local/ivorysql/ivorysql-3/lib:$LD_LIBRARY_PATH
