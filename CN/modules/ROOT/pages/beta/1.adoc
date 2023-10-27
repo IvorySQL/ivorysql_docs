@@ -4,7 +4,7 @@
 
 == 版本介绍
 
-IvorySQL3.0 基于 PostgreSQL16.0 ，包含来自 PostgreSQL 16.0 的各种修复。有关 PostgreSQL 16.0中更详细的更新和错误修复，请参阅官方 https://www.postgresql.org/docs/release/16.0/[PostgreSQL 16.0 发行说明] 。
+IvorySQL 3.0 基于 PostgreSQL 16.0 ，包含来自 PostgreSQL 16.0 的各种修复。有关 PostgreSQL 16.0 中更详细的更新和错误修复，请参阅官方 https://www.postgresql.org/docs/release/16.0/[PostgreSQL 16.0 发行说明] 。
 
 == 已知问题
 
@@ -12,11 +12,11 @@ IvorySQL3.0 基于 PostgreSQL16.0 ，包含来自 PostgreSQL 16.0 的各种修�
 
 == 增强功能
 
-=== ivorysql框架
+=== IvorySQL 框架
 
 * 添加双Parser支持不同的数据库parser https://github.com/IvorySQL/IvorySQL/pull/210[问题细节]
 * 添加双端口支持不同的数据库端口号  https://github.com/IvorySQL/IvorySQL/pull/209[问题细节]
-* 添加 initdb -m，支持postgres模式或 Oracle模式  https://github.com/IvorySQL/IvorySQL/pull/213[问题细节]
+* 添加 `initdb -m`，支持postgres模式或 Oracle模式  https://github.com/IvorySQL/IvorySQL/pull/213[问题细节]
 
 === SQL兼容
 
