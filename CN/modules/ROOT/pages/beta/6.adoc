@@ -88,7 +88,7 @@ sudo yum groupinstall -y 'Development Tools'
 >
 > 注意：我们要记住指定的目录，因为系统查不出已经编译安装的程序在哪。更多 configure 参数通过 `./configure --help` 查看。还可以查看 PostgreSQL 手册。
 
-3.2 编译安装：配置完成后，执行make进行编译：
+3.2 编译安装：配置完成后，执行 make 进行编译：
 
     make
 
@@ -101,7 +101,7 @@ make all-check-world
 
 然后安装：
 
-    make install
+    sudo make install
 
 
 ==== 使用 RPM 包安装 IvorySql 数据库
