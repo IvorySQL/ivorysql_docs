@@ -143,28 +143,28 @@ IvorySQL也支持报告有关系统正在干什么的 动态信息，例如当�
 
 **表3.`pg_stat_activity` 视图**
 |====
-|列类型描述
-|`datid` `oid`这个后端连接到的数据库的OID 
-|         `datname` `name`这个后端连接到的数据库的名称         
-|               `pid` `integer`这个后端的进程 ID               
-| `leader_pid` `integer`并行组组长的进程ID，如果该进程是并行查询工作者。如果该进程是一个并行组的组长或不参与并行查询，则为`NULL`。 
-|          `usesysid` `oid`登录到这个后端的用户的 OID          
-|          `usename` `name`登录到这个后端的用户的 OID          
-|     `application_name` `text`连接到这个后端的应用的名称      
-| `client_addr` `inet`连接到这个后端的客户端的 IP 地址。如果这个字段为空，它表示客户端通过服务器机器上的一个 Unix 套接字连接或者这是一个内部进程，如自动清理。 
-| `client_hostname` `text`已连接的客户端的主机名，由`client_addr`的反向 DNS 查找报告。 这个字段将只对 IP 连接非空，并且只有log_hostname被启用时才会非空。 
-| `client_port` `integer`客户端用于与此后端通信的TCP端口号，如果使用Unix套接字，则为`-1`。如果该字段为空，它表示这是一个内部服务器进程。 
-| `backend_start` `timestamp with time zone`这个进程被启动的时间。对客户端后端来说，这就是客户端连接到服务器的时间。 
-| `xact_start` `timestamp with time zone`这个进程的当前事务被启动的时间，如果没有活动事务则为空。 如果当前查询是它的第一个事务，这一列等于`query_start`列。 
-| `query_start` `timestamp with time zone`当前活动查询被开始的时间，如果`state`不是`active`，则为上一个查询开始的时间 
-| `state_change` `timestamp with time zone``state`上一次被改变的时间 
-| `wait_event_type` `text`后端等待的事件类型，如果有的话;否则NULL。 
-| `wait_event` `text`如果后端当前正在等待，则等待事件名称，否则为NULL。 
-| `state` `text`这个后端的当前总体状态。可能的值为：`active`: 后端正在执行一个查询。`idle`: 后端正在等待一个新的客户端命令。`idle in transaction`: 后端在一个事务中，但是当前没有正在执行一个查询。`idle in transaction (aborted)`: 这个状态与 `idle in transaction`相似，除了在该事务中的一个语句导致了一个错误。`fastpath function call`: 后端正在执行一个 fast-path 函数。`disabled`: 如果在这个后端中track_activities被禁用，则报告这个状态。 
-|   `backend_xid` `xid`这个后端的顶层事务标识符，如果存在。    
-|          `backend_xmin` `xid`当前后端的`xmin`范围。          
-| `query` `text`这个后端最近查询的文本。如果`state`为`active`，这个字段显示当前正在执行的查询。 在所有其他状态下，它显示上一个被执行的查询。默认情况下，查询文本会被截断至1024个字节，这个值可以通过参数track_activity_query_size更改。 
-| `backend_type` `text`当前后端的类型。可能的类型为 `autovacuum launcher`, `autovacuum worker`, `logical replication launcher`, `logical replication worker`, `parallel worker`, `background writer`, `client backend`, `checkpointer`, `startup`, `walreceiver`, `walsender` and `walwriter`. 除此以外，由扩展注册的后台Worker可能有额外的类型。
+|列类型|描述
+| `datid` | `oid` | 这个后端连接到的数据库的OID 
+| `datname` | `name`| 这个后端连接到的数据库的名称         
+| `pid` | `integer` | 这个后端的进程 ID               
+| `leader_pid` | `integer` | 并行组组长的进程ID，如果该进程是并行查询工作者。如果该进程是一个并行组的组长或不参与并行查询，则为`NULL`。 
+| `usesysid` | `oid` | 登录到这个后端的用户的 OID          
+| `usename` | `name` | 登录到这个后端的用户的 OID          
+| `application_name` | `text` | 连接到这个后端的应用的名称      
+| `client_addr` | `inet` | 连接到这个后端的客户端的 IP 地址。如果这个字段为空，它表示客户端通过服务器机器上的一个 Unix 套接字连接或者这是一个内部进程，如自动清理。 
+| `client_hostname` | `text` | 已连接的客户端的主机名，由 `client_addr` 的反向 DNS 查找报告。 这个字段将只对 IP 连接非空，并且只有log_hostname被启用时才会非空。 
+| `client_port` | `integer` | 客户端用于与此后端通信的TCP端口号，如果使用Unix套接字，则为`-1`。如果该字段为空，它表示这是一个内部服务器进程。 
+| `backend_start` |  `timestamp with time zone` | 这个进程被启动的时间。对客户端后端来说，这就是客户端连接到服务器的时间。 
+| `xact_start` | `timestamp with time zone` | 这个进程的当前事务被启动的时间，如果没有活动事务则为空。 如果当前查询是它的第一个事务，这一列等于 `query_start` 列。 
+| `query_start` |  `timestamp with time zone` | 当前活动查询被开始的时间，如果 `state` 不是 `active`，则为上一个查询开始的时间 
+| `state_change` | `timestamp with time zone` | `state` 上一次被改变的时间 
+| `wait_event_type` | `text` | 后端等待的事件类型，如果有的话;否则NULL。 
+| `wait_event` | `text` | 如果后端当前正在等待，则等待事件名称，否则为NULL。 
+| `state` | `text` | 这个后端的当前总体状态。可能的值为：`active`: 后端正在执行一个查询。`idle`: 后端正在等待一个新的客户端命令。`idle in transaction`: 后端在一个事务中，但是当前没有正在执行一个查询。`idle in transaction (aborted)`: 这个状态与 `idle in transaction` 相似，除了在该事务中的一个语句导致了一个错误。`fastpath function call`: 后端正在执行一个 fast-path 函数。`disabled`: 如果在这个后端中track_activities被禁用，则报告这个状态。 
+| `backend_xid` | `xid` | 这个后端的顶层事务标识符，如果存在。    
+| `backend_xmin` | `xid` | 当前后端的 `xmin` 范围。          
+| `query` | `text` | 这个后端最近查询的文本。如果 `state` 为 `active`，这个字段显示当前正在执行的查询。 在所有其他状态下，它显示上一个被执行的查询。默认情况下，查询文本会被截断至1024个字节，这个值可以通过参数track_activity_query_size更改。 
+| `backend_type` | `text` | 当前后端的类型。可能的类型为 `autovacuum launcher`, `autovacuum worker`, `logical replication launcher`, `logical replication worker`, `parallel worker`, `background writer`, `client backend`, `checkpointer`, `startup`, `walreceiver`, `walsender` and `walwriter`. 除此以外，由扩展注册的后台Worker可能有额外的类型。
 |====
 
 `wait_event`和`state`列是独立的。如果一个后端处于`active`状态，它可能是也可能不是某个事件上的`waiting`。如果状态是`active`并且`wait_event`为非空，它意味着一个查询正在被执行，但是它被阻塞在系统中某处。
