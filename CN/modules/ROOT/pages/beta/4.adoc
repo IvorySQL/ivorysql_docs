@@ -143,7 +143,7 @@ IvorySQL也支持报告有关系统正在干什么的 动态信息，例如当�
 
 **表3.`pg_stat_activity` 视图**
 |====
-|列类型|描述
+|列|类型|描述
 | `datid` | `oid` | 这个后端连接到的数据库的OID 
 | `datname` | `name`| 这个后端连接到的数据库的名称         
 | `pid` | `integer` | 这个后端的进程 ID               
