@@ -16,7 +16,7 @@ IvorySQL提供的扩展功能将使用户能够建立高性能和可扩展的Pos
 
 ### 架构概述
 
-为了对原有的postgres改动最小的前提下，实现对Oracle兼容。我们需要实现双parser、双端口、模式PLPGSQL实现PL\iSQL的框架。实现流程图如下：
+为了对原有的 PostgreSQL 改动最小的前提下，实现对 Oracle 兼容。我们需要实现双 parser、双端口、模式 PL/pgSQL 实现 PL/iSQL 的框架。实现流程图如下：
 
 image::p4.png[]
 image::p5.png[]
