@@ -21,11 +21,11 @@
 
 == 迁移工具Ora2Pg
 
-Ora2Pg是一个免费的工具，用于将Oracle数据库迁移到 IvorySQL 兼容的模式。它连接您的Oracle数据库，自动扫描并提取它的结构或数据，然后生成可以装载到  IvorySQL 数据库的SQL脚本。Ora2Pg可以从逆向工程Oracle数据库到大型企业数据库迁移，或者简单地将一些Oracle数据复制到 IvorySQL数据库中。它非常容易使用，并且不需要任何Oracle数据库知识，而不需要提供连接到Oracle数据库所需的参数。
+Ora2Pg 是一个免费的工具，用于将 Oracle 数据库迁移到 IvorySQL 兼容的模式。它连接您的 Oracle 数据库，自动扫描并提取它的结构或数据，然后生成可以装载到 IvorySQL 数据库的 SQL 脚本。Ora2Pg 可以从逆向工程 Oracle 数据库到大型企业数据库迁移，或者简单地将一些 Oracle 数据复制到 IvorySQL 数据库中。它非常容易使用，并且不需要任何 Oracle 数据库知识，而不需要提供连接到Oracle数据库所需的参数。
 
-Ora2Pg 由一个 Perl 脚本（ora2pg）以及一个 Perl 模块（ https://link.zhihu.com/?target=http%3A//ora2pg.pm/[Ora2Pg.pm]）组成，唯一需要做的事情就是修改它的配置文件 ora2pg.conf，设置连接 Oracle 数据库的 DSN 和一个可选的SCHEMA名称。完成之后，只需要设置导出的类型：TABLE（包括约束和索引）、VIEW、MVIEW、TABLESPACE、SEQUENCE、INDEXES、TRIGGER、GRANT、FUNCTION、PROCEDURE、PACKAGE、PARTITION、TYPE、INSERT 或 COPY、FDW、QUERY、KETTLE 以及 SYNONYM。
+Ora2Pg 由一个 Perl 脚本（ora2pg）以及一个 Perl 模块（ https://github.com/darold/ora2pg/blob/master/lib/Ora2Pg.pm[Ora2Pg.pm]）组成，唯一需要做的事情就是修改它的配置文件 ora2pg.conf，设置连接 Oracle 数据库的 DSN 和一个可选的 SCHEMA 名称。完成之后，只需要设置导出的类型：TABLE（包括约束和索引）、VIEW、MVIEW、TABLESPACE、SEQUENCE、INDEXES、TRIGGER、GRANT、FUNCTION、PROCEDURE、PACKAGE、PARTITION、TYPE、INSERT 或 COPY、FDW、QUERY、KETTLE 以及 SYNONYM。
 
-默认情况下，Ora2Pg 导出一个SQL文件，可以通过 IvorySQL客户端工具psql执行导出的SQL文件。当进行数据迁移时，可以在配置文件中设置一个目标数据库的 DSN，直接将数据从Oracle导入到  IvorySQL 数据库中。
+默认情况下，Ora2Pg 导出一个 SQL 文件，可以通过 IvorySQL 客户端工具 psql 执行导出的SQL文件。当进行数据迁移时，可以在配置文件中设置一个目标数据库的 DSN，直接将数据从Oracle导入到 IvorySQL 数据库中。
 
 [%autowidth]
 |===
@@ -75,9 +75,9 @@ Internet, point your browser at http://www.perl.org/, the Perl Home Page.
 
 ==== 安装DBI模块
 
-DBI，Database Independent Interface，是Perl语言连接数据库的接口
+DBI，Database Independent Interface，是 Perl 语言连接数据库的接口
 
-下载地址 https://link.zhihu.com/?target=https%3A//cpan.metacpan.org/authors/id/T/TI/TIMB/DBI-1.643.tar.gz[https://cpan.metacpan.org/authors/id/T/TI/TIMB/DBI-1.643.tar.gz]
+下载地址 https://mirrors.sjtug.sjtu.edu.cn/cpan/modules/by-module/Plack/TIMB/DBI-1.643.tar.gz
 
 ```bash
 [root@localhost oracle2postgresql]# tar zxvf DBI-1.643.tar.gz 
