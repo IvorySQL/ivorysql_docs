@@ -4,6 +4,8 @@
 
 == 版本介绍
 
+[**发行日期：2023年11月17日**]
+
 IvorySQL 3.0 基于 PostgreSQL 16.0 ，包含来自 PostgreSQL 16.0 的各种修复。有关 PostgreSQL 16.0 中更详细的更新和错误修复，请参阅官方 https://www.postgresql.org/docs/release/16.0/[PostgreSQL 16.0 发行说明] 。
 
 == 已知问题
