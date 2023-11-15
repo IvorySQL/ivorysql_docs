@@ -91,4 +91,5 @@ The following individuals have contributed to this release as patch authors, com
 - Leo X.M. Zeng
 - Shaoan Yan
 - M.Imran Zaheer
+- Yunhe Xu
 
