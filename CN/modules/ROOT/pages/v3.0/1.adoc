@@ -72,3 +72,24 @@ IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL网�
 * IvorySQL代码仓： https://github.com/IvorySQL/IvorySQL[https://github.com/IvorySQL/IvorySQL]
 * IvorySQL网站仓： https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
 
+== 贡献人员
+以下个人作为补丁作者、提交者、审阅者、测试者或问题报告者为本版本做出了贡献。
+
+- 谭洋
+- 王杰
+- 穆帅楠
+- 张洪源
+- Cary Huang
+- Grant Zhou
+- David Zhang
+- 王守波
+- 任娇
+- 刘政
+- 肖哲凯
+- 金华建
+- 王丽
+- 宋金周
+- Leo X.M. Zeng
+- 严少安
+- M.Imran Zaheer
+
