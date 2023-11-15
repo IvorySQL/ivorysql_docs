@@ -70,4 +70,25 @@ IvorySQL contains 2 main code repositories, the database IvorySQL code bin, and 
 * IvorySQL code bin: https://github.com/IvorySQL/IvorySQL[https://github.com/IvorySQL/IvorySQL]
 * IvorySQL web bin: https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
 
+== Contributors
+
+The following individuals have contributed to this release as patch authors, committers, reviewers, testers, or issue reporters.
+
+- Yang Tan
+- Jie Wang
+- Shuainan Mu
+- Hongyuan Zhang
+- Cary Huang
+- Grant Zhou
+- David Zhang
+- Shoubo Wang
+- Jiao Ren
+- Zheng Liu
+- Zhekai Xiao
+- Huajian JIN
+- LIly Wang
+- Jinzhou song
+- Leo X.M. Zeng
+- Shaoan Yan
+- M.Imran Zaheer
 
