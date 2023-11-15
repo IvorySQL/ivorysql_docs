@@ -92,4 +92,5 @@ IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL网�
 - Leo X.M. Zeng
 - 严少安
 - M.Imran Zaheer
+- Yunhe Xu
 
