@@ -3,11 +3,113 @@
 :sectnumlevels: 5
 
 
-== Versions Inroduction
+== Version Inroduction
 
 [**Release date: November 17, 2023**]
 
-IvorySQL 3.0 is based on PostgreSQL 16.0 includes various fixes from PostgreSQL 16.0, For more detailed updates and bug fixes in PostgreSQL 16.0, see the official https://www.postgresql.org/docs/release/16/[PostgreSQL 16.0 Release Notes] .
+IvorySQL 3.0 is based on PostgreSQL 16.0 includes various fixes from PostgreSQL 16.0, for more detailed updates and bug fixes in PostgreSQL 16.0, see the official https://www.postgresql.org/docs/release/16/[PostgreSQL 16.0 Release Notes] .
+
+== Version differences
+
+The IvorySQL 3.0 version has undergone a great transformation in its architecture, and its usage is different from that of the 2.3 version. There are also some functions that were previously available in 2.3 that are not yet supported. The following are the differences between the features of the two versions.
+
+|====
+^e| Functional modules | function|IvorySQL-2.3|IvorySQL-3.0
+.14+|Built-in data types|char|not support|support
+|varchar|support|support
+|varchar2|support|support
+|number|not support|support
+|binary_float|not support|support
+|binary_double|not support|support
+|date|support|support
+|timestamp|not support|support
+|timestamp with time zone|not support|support
+|timestamp with local time zone|not support|support
+|interval year to month|not support|support
+|interval day to second|not support|support
+|raw|not support|support
+|long|not support|support
+.44+|Built-in functions|char|not support|support
+|sysdate|support|support
+|systimestamp|support|support
+|add_months|support|support
+|last_day|support|support
+|next_day|support|support
+|months_between|support|support
+|current_date                            | not support|support
+|current_timestamp                       | not support|support
+|new_time                                |support|support
+|tz_offset                               | not support|support
+|trunc                                 | support|support
+|instr                                   | not support|support
+|instrb                                  | not support|support
+|substr                                  | not support|support
+|substrb                                |support|support
+|trim                                    | not support|support
+|ltrim                                   | not support|support
+|rtrim                                   | not support|support
+|length                                  | not support|support
+|lengthb                                 | not support|support
+|rawtohex                                | not support|support
+|replace                                 | not support|support
+|regexp_replace                          | not support|support
+|regexp_substr                           | not support|support
+|regexp_instr                            | not support|support
+|regexp_like                             |not support|support
+|to_number                               | support|support
+|to_char                                 | support|support
+|to_date                                 | support|support
+|to_timestamp                            | support|support
+|to_timestamp_tz                         | support|support
+|to_yminterval                           |not support|support
+|to_dsinterval                           | support|support
+|numtodsinterval                         | support|support
+|numtoyminterval                         | support|support
+|localtimestamp                          | not support|support
+|new_time                                | not support|support
+|from_tz                                 | support|support
+|sys_extract_utc                         | support|support
+|sessiontimezone                         |support|support
+|hextoraw                                |not support|support
+|uid                                     | not support|support
+|USERENV                                 | not support|support
+.4+|NLS parameter|NLS_LENGTH_SEMANTICS|not support|support
+|NLS_DATE_FORMAT|not support|support
+|NLS_TIMESTAMP_FORMAT|not support|support
+|NLS_TIMESTAMP_TZ_FORMAT|not support|support
+|Function|Syntax compatibility is supported, and the OUT parameter is supported|support|support
+|Procedure|Syntax compatibility is supported, and the OUT parameter is supported|support|support
+|Anonymous block|Syntax compatibility is supported, and the OUT parameter is supported|not support|support
+|Nested subroutines|Nested stored procedures, functions, and so on are supported|not support|support
+|Merge|The Merge function of PG and the Merge function compatible with Oralce syntax are supported|not support|support
+|q`|Compatible escapes are supported|support|support
+|Keyword processing|Supports the processing of keywords in the database|not support|support
+.4+|Object case conversion|All uppercase plus double quotation marks are converted to lowercase|not support|support
+|All lowercase plus double quotation marks are converted to uppercase|not support|support
+|The mixed case plus double quotation marks remain the same|not support|support
+|Without double quotation marks (default), all are lowercase|not support|support
+|Search Path|In compatibility mode, the default search is sys mode, and then the pg_catalog mode|not support|support
+|Empty strings|Oracle-compatible conversion of empty strings to NULL is supported|not support|support
+|Lexical parser separation|Part of the 3.0 framework|not support|support
+|package||support|not support
+|Globally unique indexes||support|support
+|GUC Switch to oracle or pg||support|support
+|Hierarchical queries||support|not support
+|NANVL ||support|not support
+|GREATEST||support|not support
+|LEAST||support|not support
+|ADD_DAYS_TO_TIMESTAMP||support|not support
+|DAYS_BETWEEN ||support|not support
+|DAYS_BETWEEN_TMTZ ||support|not support
+|DBTIMEZONE||support|not support
+|TO_MULTI_BYTE||support|not support
+|TO_SINGLE_BYTE||support|not support
+|INTERVAL_TO_SECONDS||support|not support
+|HEX_TO_DECIMAL||support|not support
+|TO_BINARY_DOUBLE||support|not support
+|TO_BINARY_FLOAT||support|not support
+|BIN_TO_NUM||support|not support
+|====
 
 == Known Issues
 
@@ -74,6 +176,7 @@ IvorySQL contains 2 main code repositories, the database IvorySQL code bin, and 
 
 The following individuals have contributed to this release as patch authors, committers, reviewers, testers, or issue reporters.
 
+- IvorySQL Pro development & testing team
 - Yang Tan
 - Jie Wang
 - Shuainan Mu
@@ -85,11 +188,13 @@ The following individuals have contributed to this release as patch authors, com
 - Jiao Ren
 - Zheng Liu
 - Zhekai Xiao
-- Huajian JIN
-- LIly Wang
-- Jinzhou song
+- Huajian Jin
+- Lily Wang
+- Jinzhou Song
 - Leo X.M. Zeng
 - Shaoan Yan
 - M.Imran Zaheer
 - Yunhe Xu
-
+- Hao Wang
+- Miss Dong
+- Weibo Han
