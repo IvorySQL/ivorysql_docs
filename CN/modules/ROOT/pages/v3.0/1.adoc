@@ -8,6 +8,109 @@
 
 IvorySQL 3.0 基于 PostgreSQL 16.0 ，包含来自 PostgreSQL 16.0 的各种修复。有关 PostgreSQL 16.0 中更详细的更新和错误修复，请参阅官方 https://www.postgresql.org/docs/release/16.0/[PostgreSQL 16.0 发行说明] 。
 
+
+== 版本差异
+IvorySQL 3.0 版本在架构上发生了很大的变化，其使用方式与 2.3 版本不同。还有一些以前在 2.3 版本中可用的功能尚不受支持，以下是两个版本的功能差异。
+
+|====
+| 功能模块 | 功能|IvorySQL-2.3|IvorySQL-3.0
+.14+ |内置数据类型|char|不支持|支持
+|varchar|支持|支持
+|varchar2|支持|支持
+|number|不支持|支持
+|binary_float|不支持|支持
+|binary_double|不支持|支持
+|date|支持|支持
+|timestamp|不支持|支持
+|timestamp with time zone|不支持|支持
+|timestamp with local time zone|不支持|支持
+|interval year to month|不支持|支持
+|interval day to second|不支持|支持
+|raw|不支持|支持
+|long|不支持|支持
+.44+|内置函数|char|不支持|支持
+|sysdate|支持|支持
+|systimestamp|支持|支持
+|add_months|支持|支持
+|last_day|支持|支持
+|next_day| 不支持|支持
+|months_between|支持         | 支持
+|current_date                            | 不支持       | 支持
+|current_timestamp                       | 不支持       | 支持 
+|new_time                                | 支持         | 支持 
+|tz_offset                               | 不支持       | 支持 
+|trunc                                   | 支持         | 支持 
+|instr                                   | 不支持       | 支持
+|instrb                                  | 不支持       | 支持 
+|substr                                  | 不支持       | 支持
+|substrb                                 | 支持         | 支持
+|trim                                    | 不支持       | 支持 
+|ltrim                                   | 不支持       | 支持 
+|rtrim                                   | 不支持       | 支持 
+|length                                  | 不支持       | 支持
+|lengthb                                 | 不支持       | 支持 
+|rawtohex                                | 不支持       | 支持 
+|replace                                 | 不支持       | 支持
+|regexp_replace                          | 不支持       | 支持 
+|regexp_substr                           | 不支持       | 支持
+|regexp_instr                            | 不支持       | 支持 
+|regexp_like                             | 不支持       | 支持
+|to_number                               | 支持         | 支持  
+|to_char                                 | 支持         | 支持 
+|to_date                                 | 支持         | 支持 
+|to_timestamp                            | 支持         | 支持 
+|to_timestamp_tz                         | 支持         | 支持 
+|to_yminterval                           | 不支持       | 支持 
+|to_dsinterval                           | 支持         | 支持  
+|numtodsinterval                         | 支持         | 支持  
+|numtoyminterval                         | 支持         | 支持 
+|localtimestamp                          | 不支持       | 支持   
+|new_time                                | 不支持       | 支持 
+|from_tz                                 | 支持         | 支持  
+|sys_extract_utc                         | 支持         | 支持 
+|sessiontimezone                         | 支持         | 支持
+|hextoraw                                | 不支持       | 支持
+|uid                                     | 不支持       | 支持
+|USERENV                                 | 不支持       | 支持 
+.4+|NLS参数|NLS_LENGTH_SEMANTICS|不支持|支持
+|NLS_DATE_FORMAT|不支持|支持
+|NLS_TIMESTAMP_FORMAT|不支持|支持
+|NLS_TIMESTAMP_TZ_FORMAT|不支持|支持
+|Function（函数）|支持语法兼容，并支持OUT参数|支持         | 支持
+|Procedure（存储过程|支持语法兼容，并支持OUT参数|支持         | 支持
+|Anonymous block（匿名块）|支持语法兼容，并支持OUT参数|不支持         | 支持
+|嵌套子过程|支持嵌套存储过程、函数等|不支持         | 支持
+|Merge|支持PG的Merge功能以及兼容Oralce语法的Merge功能|不支持         | 支持
+|q`|支持兼容的转义符|支持         | 支持
+|关键字处理|支持数据库中关键字的处理|不支持         | 支持
+.5+|对象大小写转换|全部大写加双引号转换为小写|不支持         | 支持
+|全部小写加双引号转换为大写|不支持         | 支持
+|全部小写加双引号转换为大写|不支持         | 支持
+|大小写混合加双引号保持不变|不支持         | 支持
+|不加双引号(默认)全部转为小写|不支持         | 支持
+|Search Path|支持兼容模式下，默认搜索为sys模式，再搜索pg_catalog模式|不支持         | 支持
+|空串|支持Oracle兼容将空串转为NULL|不支持         | 支持
+|词法解析器分离|3.0框架的一部分|不支持         | 支持
+|包||支持|不支持
+|全局唯一索引||支持         | 支持
+|GUC切换oracle或pg||支持         | 支持
+|层级查询||支持         | 不支持
+|NANVL ||支持         | 不支持
+|GREATEST||支持         | 不支持
+|LEAST||支持         | 不支持
+|ADD_DAYS_TO_TIMESTAMP||支持         | 不支持
+|DAYS_BETWEEN ||支持        | 不支持
+|DAYS_BETWEEN_TMTZ ||支持         | 不支持
+|DBTIMEZONE||支持         | 不支持
+|TO_MULTI_BYTE||支持         | 不支持
+|TO_SINGLE_BYTE||支持         | 不支持
+|INTERVAL_TO_SECONDS||支持         |不支持
+|HEX_TO_DECIMAL||支持        | 不支持
+|TO_BINARY_DOUBLE||支持        | 不支持
+|TO_BINARY_FLOAT||支持         | 不支持
+|BIN_TO_NUM||支持         | 不支持
+|====
+
 == 已知问题
 
 * 暂无
@@ -75,6 +178,7 @@ IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL网�
 == 贡献人员
 以下个人作为补丁作者、提交者、审阅者、测试者或问题报告者为本版本做出了贡献。
 
+- IvorySQL Pro开发及测试团队
 - 谭洋
 - 王杰
 - 穆帅楠
@@ -93,4 +197,7 @@ IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL网�
 - 严少安
 - M.Imran Zaheer
 - Yunhe Xu
+- 王皓 
+- 董小姐 
+- 韩伟博
 
