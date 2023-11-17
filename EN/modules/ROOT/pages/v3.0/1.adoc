@@ -9,12 +9,12 @@
 
 IvorySQL 3.0 is based on PostgreSQL 16.0 includes various fixes from PostgreSQL 16.0, for more detailed updates and bug fixes in PostgreSQL 16.0, see the official https://www.postgresql.org/docs/release/16/[PostgreSQL 16.0 Release Notes] .
 
-== Version differences
+== Updates on Version 3.0 vs 2.3
 
-The IvorySQL 3.0 version has undergone a great transformation in its architecture, and its usage is different from that of the 2.3 version. There are also some functions that were previously available in 2.3 that are not yet supported. The following are the differences between the features of the two versions.
+IvorySQL 3.0 represents a significant architectural evolution, marking a departure from the usage patterns of version 2.3. It's important to note that some functionalities available in 2.3 are not yet supported in the new version. Here's a breakdown of the key feature differences between these two versions:
 
 |====
-^e| Functional modules | function|IvorySQL-2.3|IvorySQL-3.0
+| Functional modules | function|IvorySQL-2.3|IvorySQL-3.0
 .14+|Built-in data types|char|not support|support
 |varchar|support|support
 |varchar2|support|support
