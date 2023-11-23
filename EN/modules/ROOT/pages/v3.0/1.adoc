@@ -3,15 +3,15 @@
 :sectnumlevels: 5
 
 
-== Version Inroduction
+== Version Introduction
 
 [**Release date: November 17, 2023**]
 
-IvorySQL 3.0 is based on PostgreSQL 16.0 includes various fixes from PostgreSQL 16.0, for more detailed updates and bug fixes in PostgreSQL 16.0, see the official https://www.postgresql.org/docs/release/16/[PostgreSQL 16.0 Release Notes] .
+IvorySQL 3.0 is based on PostgreSQL 16.0 and includes various fixes from PostgreSQL 16.0, for more detailed updates and bug fixes in PostgreSQL 16.0, see the official https://www.postgresql.org/docs/release/16/[PostgreSQL 16.0 Release Notes].
 
 == Updates on Version 3.0 vs 2.3
 
-IvorySQL 3.0 represents a significant architectural evolution, marking a departure from the usage patterns of version 2.3. It's important to note that some functionalities available in 2.3 are not yet supported in the new version. Here's a breakdown of the key feature differences between these two versions:
+IvorySQL 3.0 signifies a major shift in its architectural design, diverging from the operational patterns established in version 2.3. It's crucial to recognize that certain features present in version 2.3 have not been incorporated into the new version. The following is an overview highlighting the primary distinctions in features between these two iterations:
 
 |====
 | Functional modules | function|IvorySQL-2.3|IvorySQL-3.0
@@ -81,7 +81,7 @@ IvorySQL 3.0 represents a significant architectural evolution, marking a departu
 |Procedure|Syntax compatibility is supported, and the OUT parameter is supported|support|support
 |Anonymous block|Syntax compatibility is supported, and the OUT parameter is supported|not support|support
 |Nested subroutines|Nested stored procedures, functions, and so on are supported|not support|support
-|Merge|The Merge function of PG and the Merge function compatible with Oralce syntax are supported|not support|support
+|Merge|The Merge function of PG and the Merge function compatible with Oracle syntax are supported|not support|support
 |q`|Compatible escapes are supported|support|support
 |Keyword processing|Supports the processing of keywords in the database|not support|support
 .4+|Object case conversion|All uppercase plus double quotation marks are converted to lowercase|not support|support
@@ -117,9 +117,9 @@ IvorySQL 3.0 represents a significant architectural evolution, marking a departu
 
 == Enhancements
 
-=== ivorysql frame
+=== IvorySQL core framework
 
-* Add double Parser to support different database parsers https://github.com/IvorySQL/IvorySQL/issues/208[Problem details]
+* Add dual parser functionality to support different database parsers https://github.com/IvorySQL/IvorySQL/issues/208[Problem details]
 * Added dual ports to support different database port numbers https://github.com/IvorySQL/IvorySQL/issues/200[Problem details]
 * Add initdb -m to support postgres mode or oracle mode https://github.com/IvorySQL/IvorySQL/issues/212[Problem details]
 
@@ -136,7 +136,7 @@ IvorySQL 3.0 represents a significant architectural evolution, marking a departu
 * Creating a function or procedure in SQL parser supports nested subprocedures https://github.com/IvorySQL/IvorySQL/issues/312[Problem details]
 * Nested child processes and functions IS/As do not need to be declared https://github.com/IvorySQL/IvorySQL/issues/303[Problem details]
 
-=== Other
+=== Others
 * Add meson compilation to action https://github.com/IvorySQL/IvorySQL/issues/512[Problem details]
 * Support for meson compilation https://github.com/IvorySQL/IvorySQL/issues/325[Problem details]
 * Add compatible test cases https://github.com/IvorySQL/IvorySQL/issues/479[Problem details]
@@ -148,7 +148,7 @@ IvorySQL 3.0 represents a significant architectural evolution, marking a departu
 * Compatible with Oracle built-in data types and built-in functions https://github.com/IvorySQL/IvorySQL/issues/239[Problem details]
 * Add the plisql extension  https://github.com/IvorySQL/IvorySQL/issues/211[Problem details]
 
-> Description:For more information about the new features, please refer to the feature list in this document center
+> Description: For more information about the new features, please refer to the feature list in this document center
 
 == Fixed issue
 
@@ -163,7 +163,7 @@ IvorySQL 3.0 represents a significant architectural evolution, marking a departu
 * Solve the problem that the NLS parameter is set to 12-hour clock, and the default rule for completing AM/PM keywords is inconsistent with Oracle  https://github.com/IvorySQL/IvorySQL/issues/405[Problem details]
 * The DEFAULTED field value in the function/stored procedure xx_arguments view created with default values is an issue of N https://github.com/IvorySQL/IvorySQL/issues/379[Problem details]
 * Functions/stored procedures without permissions can be viewed in all_procedures/all_arguments/all_source views https://github.com/IvorySQL/IvorySQL/issues/378[Problem details]
-* When the self-incrementing column type is numer type and the precision is specified, when a null value is inserted by default on null, it is not the inserted concrete sequence value, but the inserted null value  https://github.com/IvorySQL/IvorySQL/issues/386[Problem details]
+* When the self-incrementing column type is number type and the precision is specified, when a null value is inserted by default on null, it is not the inserted concrete sequence value, but the inserted null value  https://github.com/IvorySQL/IvorySQL/issues/386[Problem details]
 
 == Source Code
 
