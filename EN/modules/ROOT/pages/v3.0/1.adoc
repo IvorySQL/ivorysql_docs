@@ -134,7 +134,7 @@ IvorySQL 3.0 signifies a major shift in its architectural design, diverging from
 * Addresses an issue with PL/SQL creation functions/stored procedures https://github.com/IvorySQL/IvorySQL/issues/477[Problem details]
 * Compatible with Oracle anonymous blocks https://github.com/IvorySQL/IvorySQL/issues/304[Problem details]
 * Creating a function or procedure in SQL parser supports nested subprocedures https://github.com/IvorySQL/IvorySQL/issues/312[Problem details]
-* Nested child processes and functions IS/As do not need to be declared https://github.com/IvorySQL/IvorySQL/issues/303[Problem details]
+* Nested child processes and functions IS/AS do not need to be declared https://github.com/IvorySQL/IvorySQL/issues/303[Problem details]
 
 === Others
 * Add meson compilation to action https://github.com/IvorySQL/IvorySQL/issues/512[Problem details]
@@ -157,11 +157,11 @@ IvorySQL 3.0 signifies a major shift in its architectural design, diverging from
 * An error occurred while restoring the backup  https://github.com/IvorySQL/IvorySQL/issues/483[Problem details]
 * ivorysql_ora some test cases fail https://github.com/IvorySQL/IvorySQL/issues/461[Problem details]
 * The NLS parameter specifies that under the three relationships between the ff precision and the accuracy specified in the table, the data processing exceeding the length is inconsistent https://github.com/IvorySQL/IvorySQL/issues/436[Problem details]
-* The data processing after the data in the DD HH.MI, SS AM data in the date format is inconsistent with Oracle  https://github.com/IvorySQL/IvorySQL/issues/435[Problem details]
-* There are problems with the date format, the partial digit check for each part   https://github.com/IvorySQL/IvorySQL/issues/434[Problem details]
+* The data processing after special symbols appear in the data in DD HH.MI and SS AM in the date format is inconsistent with Oracle  https://github.com/IvorySQL/IvorySQL/issues/435[Problem details]
+* For the date format, there are problems with the digit verification of each part   https://github.com/IvorySQL/IvorySQL/issues/434[Problem details]
 * NLS related parameter verification issues  https://github.com/IvorySQL/IvorySQL/issues/433[Problem details]
 * Solve the problem that the NLS parameter is set to 12-hour clock, and the default rule for completing AM/PM keywords is inconsistent with Oracle  https://github.com/IvorySQL/IvorySQL/issues/405[Problem details]
-* The DEFAULTED field value in the function/stored procedure xx_arguments view created with default values is an issue of N https://github.com/IvorySQL/IvorySQL/issues/379[Problem details]
+* The problem that the DEFAULTED field value in the xx_arguments view of a function/stored procedure created with a default value is N https://github.com/IvorySQL/IvorySQL/issues/379[Problem details]
 * Functions/stored procedures without permissions can be viewed in all_procedures/all_arguments/all_source views https://github.com/IvorySQL/IvorySQL/issues/378[Problem details]
 * When the self-incrementing column type is number type and the precision is specified, when a null value is inserted by default on null, it is not the inserted concrete sequence value, but the inserted null value  https://github.com/IvorySQL/IvorySQL/issues/386[Problem details]
 
