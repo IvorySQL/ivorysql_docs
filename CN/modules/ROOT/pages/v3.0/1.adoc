@@ -85,7 +85,6 @@ IvorySQL 3.0 版本在架构上发生了很大的变化，其使用方式与 2.3
 |关键字处理|支持数据库中关键字的处理|不支持         | 支持
 .5+|对象大小写转换|全部大写加双引号转换为小写|不支持         | 支持
 |全部小写加双引号转换为大写|不支持         | 支持
-|全部小写加双引号转换为大写|不支持         | 支持
 |大小写混合加双引号保持不变|不支持         | 支持
 |不加双引号(默认)全部转为小写|不支持         | 支持
 |Search Path|支持兼容模式下，默认搜索为sys模式，再搜索pg_catalog模式|不支持         | 支持
@@ -150,6 +149,8 @@ IvorySQL 3.0 版本在架构上发生了很大的变化，其使用方式与 2.3
 * 兼容Oracle内置数据类型与内置函数  https://github.com/IvorySQL/IvorySQL/issues/239[问题细节]
 * 添加plisql扩展  https://github.com/IvorySQL/IvorySQL/issues/211[问题细节]
 
+> 说明：关于新增功能更多介绍请参考本文档中心功能列表
+
 
 == 问题修复
 
@@ -166,7 +167,6 @@ IvorySQL 3.0 版本在架构上发生了很大的变化，其使用方式与 2.3
 * 无权限的函数/存储过程 可以被all_procedures/all_arguments/all_source视图查看  https://github.com/IvorySQL/IvorySQL/issues/378[问题细节]
 * 当自增列类型为numer类型，且指定了精度时，by default on null插入null值时，不是插入的具体序列值，而是插入的null值  https://github.com/IvorySQL/IvorySQL/issues/386[问题细节]
 
-> 说明：关于新增功能更多介绍请参考本文档中心功能列表
 
 == 源代码
 
