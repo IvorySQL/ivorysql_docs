@@ -115,7 +115,8 @@ make install
 ==== Install the IvorySql database using the RPM package
 
 1. Run the following command to download the IvorySQL installation package.
-----
+
+```
 wget https://github.com/IvorySQL/IvorySQL/releases/tag/Ivorysql_3.0_Beta/ivorysql3-3.0-1.rhel7.x86_64.rpm
 
 wget https://github.com/IvorySQL/IvorySQL/releases/tag/Ivorysql_3.0_Beta/ivorysql3-contrib-3.0-1.rhel7.x86_64.rpm
@@ -139,9 +140,9 @@ rpm -ivh ivorysql3-server-3.0-1.rhel7.x86_64.rpm
 
 
 
-### 1.1.4 Initialize database service
+=== Initialize database service
 
-#### Initialize database
+==== Initialize database
 
 1.Create an operating system user: under the user root session, create a new user ivorysql:
 
