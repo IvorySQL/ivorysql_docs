@@ -69,12 +69,12 @@ IvorySQL是一个功能强大的开源对象关系数据库管理系统(ORDBMS)�
 
 == 与Oracle的兼容性
 
-* https://docs.ivorysql.org/cn/ivorysql-doc/v3.0/v3.0/14[ivorysql框架设计]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v3.0/v3.0/15[GUC框架]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v3.0/v3.0/16[大小写转换]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v3.0/v3.0/17[双模式设计]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v3.0/v3.0/18[兼容Oracle like]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v3.0/v3.0/19[兼容Oracle匿名块]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v3.0/v3.0/20[兼容Oracle函数与存储过程]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v3.0/v3.0/21[内置数据类型与内置函数]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v3.0/v3.0/22[新增Oracle兼容模式的端口与ip]
+* https://docs.ivorysql.org/cn/ivorysql-doc/v3.1/v3.1/14[ivorysql框架设计]
+* https://docs.ivorysql.org/cn/ivorysql-doc/v3.1/v3.1/15[GUC框架]
+* https://docs.ivorysql.org/cn/ivorysql-doc/v3.1/v3.1/16[大小写转换]
+* https://docs.ivorysql.org/cn/ivorysql-doc/v3.1/v3.1/17[双模式设计]
+* https://docs.ivorysql.org/cn/ivorysql-doc/v3.1/v3.1/18[兼容Oracle like]
+* https://docs.ivorysql.org/cn/ivorysql-doc/v3.1/v3.1/19[兼容Oracle匿名块]
+* https://docs.ivorysql.org/cn/ivorysql-doc/v3.1/v3.1/20[兼容Oracle函数与存储过程]
+* https://docs.ivorysql.org/cn/ivorysql-doc/v3.1/v3.1/21[内置数据类型与内置函数]
+* https://docs.ivorysql.org/cn/ivorysql-doc/v3.1/v3.1/22[新增Oracle兼容模式的端口与ip]
