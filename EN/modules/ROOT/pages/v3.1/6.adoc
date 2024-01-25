@@ -132,10 +132,10 @@ wget https://github.com/IvorySQL/IvorySQL/releases/tag/Ivorysql_3.0_Beta/ivorysq
 
 ```
 yum install -y libicu libxslt python3                   --Install dependencies first
-rpm -ivh ivorysql3-libs-3.0-1.rhel7.x86_64.rpm
-rpm -ivh ivorysql3-3.0-1.rhel7.x86_64.rpm
-rpm -ivh ivorysql3-contrib-3.0-1.rhel7.x86_64.rpm --nodeps
-rpm -ivh ivorysql3-server-3.0-1.rhel7.x86_64.rpm
+rpm -ivh ivorysql3-libs-3.1-1.rhel7.x86_64.rpm
+rpm -ivh ivorysql3-3.1-1.rhel7.x86_64.rpm
+rpm -ivh ivorysql3-contrib-3.1-1.rhel7.x86_64.rpm --nodeps
+rpm -ivh ivorysql3-server-3.1-1.rhel7.x86_64.rpm
 ```
 
 
@@ -148,7 +148,7 @@ rpm -ivh ivorysql3-server-3.0-1.rhel7.x86_64.rpm
 
 ```
 /usr/sbin/groupadd ivorysql
-/usr/sbin/useradd -g ivorysql ivorysql -c "IvorySQL3.0 Server"
+/usr/sbin/useradd -g ivorysql ivorysql -c "IvorySQL3.1 Server"
 passwd ivorysql
 ```
 
@@ -250,7 +250,7 @@ The editing contents are as follows:
 
 ```
 [Unit]
-Description=IvorySQL 3.0 database server
+Description=IvorySQL 3.1 database server
 Documentation=https://www.ivorysql.org
 Requires=network.target local-fs.target
 After=network.target local-fs.target

@@ -99,7 +99,7 @@ pg_upgrade 工具可以支持IvorySQL跨版本的就地升级。 升级可以在
 
 == 管理IvorySQL版本
 
-IvorySQL基于PostgreSQL开发，版本更新频率与PostgreSQL版本更新频率保持一致，每年更新一个大版本，每季度更新一个小版本。IvorySQL目前发布的版本有1.0到3.0，分别基于PostgreSQL 14.0到16.0进行开发，最新版本为IvorySQL 3.0， 基于PostgreSQL 16.0 进行开发。IvorySQL 的所有版本全部都做到了向下兼容。相关版本特性可以查看 https://deploy-preview-83--ivorysql.netlify.app/zh-CN/releases-page[官网]。
+IvorySQL基于PostgreSQL开发，版本更新频率与PostgreSQL版本更新频率保持一致，每年更新一个大版本，每季度更新一个小版本。IvorySQL目前发布的版本有1.0到3.1，分别基于PostgreSQL 14.0到16.1进行开发，最新版本为IvorySQL 3.1， 基于PostgreSQL 16.1 进行开发。IvorySQL 的所有版本全部都做到了向下兼容。相关版本特性可以查看 https://deploy-preview-83--ivorysql.netlify.app/zh-CN/releases-page[官网]。
 
 
 == 管理IvorySQL数据库访问

@@ -123,10 +123,10 @@ wget https://github.com/IvorySQL/IvorySQL/releases/tag/Ivorysql_3.0_Beta/ivorysq
 ----
 -- 先安装依赖
 yum install -y libicu libxslt python3
-rpm -ivh ivorysql3-libs-3.0-1.rhel7.x86_64.rpm
-rpm -ivh ivorysql3-3.0-1.rhel7.x86_64.rpm
-rpm -ivh ivorysql3-contrib-3.0-1.rhel7.x86_64.rpm --nodeps
-rpm -ivh ivorysql3-server-3.0-1.rhel7.x86_64.rpm
+rpm -ivh ivorysql3-libs-3.1-1.rhel7.x86_64.rpm
+rpm -ivh ivorysql3-3.1-1.rhel7.x86_64.rpm
+rpm -ivh ivorysql3-contrib-3.1-1.rhel7.x86_64.rpm --nodeps
+rpm -ivh ivorysql3-server-3.1-1.rhel7.x86_64.rpm
 ----
 
 === 初始化数据库服务
@@ -136,7 +136,7 @@ rpm -ivh ivorysql3-server-3.0-1.rhel7.x86_64.rpm
 1. 创建操作系统用户：用户root会话下，新建用户 ivorysql：
 ----
 /usr/sbin/groupadd ivorysql
-/usr/sbin/useradd -g ivorysql ivorysql -c "IvorySQL3.0 Server"
+/usr/sbin/useradd -g ivorysql ivorysql -c "IvorySQL3.1 Server"
 passwd ivorysql
 ----
 
@@ -218,7 +218,7 @@ firewall-cmd --reload
 编辑内容如下：
 ----
 [Unit]
-Description=IvorySQL 3.0 database server
+Description=IvorySQL 3.1 database server
 Documentation=https://www.ivorysql.org
 Requires=network.target local-fs.target
 After=network.target local-fs.target
