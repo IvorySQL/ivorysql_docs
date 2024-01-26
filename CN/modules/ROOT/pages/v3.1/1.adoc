@@ -4,7 +4,7 @@
 
 == 版本介绍
 
-[**发行日期：2024年1月31日**]
+[**发行日期：2024年1月26日**]
 
 IvorySQL 3.1 基于 PostgreSQL 16.1 ，包含来自 PostgreSQL 16.1 的各种修复。有关 PostgreSQL 16.1 中更详细的更新和错误修复，请参阅官方 https://www.postgresql.org/docs/release/16.1/[PostgreSQL 16.1 发行说明] 。
 
@@ -31,21 +31,30 @@ IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL网�
 == 贡献人员
 以下个人作为补丁作者、提交者、审阅者、测试者或问题报告者为本版本做出了贡献。
 
-- IvorySQL Pro开发及测试团
-- 高雪玉
+- Grant Zhou
 - 矫顺田
 - 牛世继
 - 梁翔宇
-- 谭洋
-- 张洪源
-- 穆帅楠
+- 高雪玉
 - Cary Huang
-- Grant Zhou
 - David Zhang
+- 谭洋
+- 王杰
+- 穆帅楠
+- 张洪源
 - 王守波
 - 任娇
 - 刘政
+- 肖哲凯
+- 金华建
+- 王丽
 - 尚雷
-- vonwind
+- 冯磊
+- 宋金周
+- Leo X.M. Zeng
+- 严少安
+- M.Imran Zaheer
+- Yunhe Xu
+- 王皓
+- 董小姐
 - 韩伟博
-
