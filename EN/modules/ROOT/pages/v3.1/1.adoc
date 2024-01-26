@@ -54,7 +54,7 @@ The following individuals have contributed to this release as patch authors, com
 - Lei Feng
 - Jinzhou Song
 - Leo X.M. Zeng
-- Shaoan Yan
+- Shawn Yan
 - M.Imran Zaheer
 - Yunhe Xu
 - Hao Wang
