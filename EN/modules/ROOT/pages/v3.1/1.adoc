@@ -5,7 +5,7 @@
 
 == Version Introduction
 
-[**Release date: January 31, 2024**]
+[**Release date: January 26, 2024**]
 
 IvorySQL 3.1 is based on PostgreSQL 16.1 and includes various fixes from PostgreSQL 16.1, for more detailed updates and bug fixes in PostgreSQL 16.1, see the official https://www.postgresql.org/docs/release/16/[PostgreSQL 16.1 Release Notes].
 
@@ -33,20 +33,30 @@ IvorySQL contains 2 main code repositories, the database IvorySQL code bin, and 
 
 The following individuals have contributed to this release as patch authors, committers, reviewers, testers, or issue reporters.
 
-- IvorySQL Pro development & testing team
-- Xueyu Gao
+- Grant Zhou
 - Shuntian Jiao
 - Shiji Niu
 - Xiangyu Liang
-- Yang Tan
-- Hongyuan Zhang
-- Shuainan Mu
+- Xueyu Gao
 - Cary Huang
-- Grant Zhou
 - David Zhang
+- Yang Tan
+- Jie Wang
+- Shuainan Mu
+- Hongyuan Zhang
 - Shoubo Wang
 - Jiao Ren
 - Zheng Liu
-- Shanglei
-- vonwind
+- Zhekai Xiao
+- Huajian Jin
+- Lily Wang
+- Lei Shang
+- Lei Feng
+- Jinzhou Song
+- Leo X.M. Zeng
+- Shaoan Yan
+- M.Imran Zaheer
+- Yunhe Xu
+- Hao Wang
+- Miss Dong
 - Weibo Han
