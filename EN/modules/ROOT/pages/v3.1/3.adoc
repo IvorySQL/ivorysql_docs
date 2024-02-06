@@ -59,7 +59,6 @@ To compile the IvorySQL from the source code, you have to ensure that prerequisi
 ----
 [highgo@ivorysql IvorySQL]$ make
 [highgo@ivorysql IvorySQL]$ make install
-----
 
 **Installation completed**
 
