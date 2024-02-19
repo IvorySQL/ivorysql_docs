@@ -3455,7 +3455,7 @@ pg_checksums — enable, disable or check data checksums in a IvorySQL database 
 
 #### Synopsis
 
-`pg_checksums` [*`option`*...] [[ `-D` | `--pgdata` ]*`datadir`*]
+`pg_checksums` [*`option`*...] [[ `-D` | `--pgdata` ] *`datadir`*]
 
 #### Options
 
@@ -3525,7 +3525,7 @@ pg_controldata — display control information of a IvorySQL database cluster
 
 #### Synopsis
 
-`pg_controldata` [*`option`*] [[ `-D` | `--pgdata` ]*`datadir`*]
+`pg_controldata` [*`option`*] [[ `-D` | `--pgdata` ] *`datadir`*]
 
 #### Environment
 
@@ -3732,7 +3732,7 @@ pg_resetwal — reset the write-ahead log and other control information of a Ivo
 
 #### Synopsis
 
-`pg_resetwal` [ `-f` | `--force` ] [ `-n` | `--dry-run` ] [*`option`*...] [ `-D` | `--pgdata` ]*`datadir`*
+`pg_resetwal` [ `-f` | `--force` ] [ `-n` | `--dry-run` ] [*`option`*...] [ `-D` | `--pgdata` ] *`datadir`*
 
 #### Options
 
