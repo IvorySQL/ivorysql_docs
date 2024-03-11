@@ -3527,7 +3527,7 @@ initdb — 创建一个新的IvorySQL数据库集簇
 
 #### 大纲
 
-`initdb` [*`option`*...] [ `--pgdata` | `-D` ]*` directory`*
+`initdb` [*`option`*...] [ `--pgdata` | `-D` ] *` directory`*
 
 #### 选项
 
@@ -3716,7 +3716,7 @@ pg_checksums — 在IvorySQL数据库集簇中启用、禁用或检查数据校�
 
 #### 大纲
 
-`pg_checksums` [*`option`*...] [[ `-D` | `--pgdata` ]*`datadir`*]
+`pg_checksums` [*`option`*...] [[ `-D` | `--pgdata` ] *`datadir`*]
 
 #### 选项
 
@@ -3788,7 +3788,7 @@ pg_controldata — 显示一个IvorySQL数据库集簇的控制信息
 
 #### 大纲
 
-`pg_controldata` [*`option`*] [[ `-D` | `--pgdata` ]*`datadir`*]
+`pg_controldata` [*`option`*] [[ `-D` | `--pgdata` ] *`datadir`*]
 
 #### 环境
 
@@ -3997,7 +3997,7 @@ pg_resetwal — 重置一个IvorySQL数据库集簇的预写式日志以及其�
 
 #### 大纲
 
-`pg_resetwal` [ `-f` | `--force` ] [ `-n` | `--dry-run` ] [*`option`*...] [ `-D` | `--pgdata` ]*`datadir`*
+`pg_resetwal` [ `-f` | `--force` ] [ `-n` | `--dry-run` ] [*`option`*...] [ `-D` | `--pgdata` ] *`datadir`*
 
 #### 选项
 

@@ -13,3 +13,6 @@ Go to https://www.ivorysql.org/releases-page[IvorySQL Release Page].
 IvorySQL project is an open source project proposed by Highgo Software to add the Oracle compatibility features into the popular PostgreSQL database.
 
 It is open source and free to use, any comments please contact contact@highgo.ca
+
+== Docs Download
+https://docs.ivorysql.org/en/ivorysql-doc/v3.1/ivorysql.pdf[IvorySQL v3.1 pdf documentation]
