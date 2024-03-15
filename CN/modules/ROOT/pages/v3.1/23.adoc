@@ -1,0 +1,176 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= **集群搭建**
+这里以最简单的一主一备（异步备）集群为例，介绍IvorySQL数据库集群的搭建方法。
+
+== 主节点
+
+=== 安装并启动数据库
+快速安装数据库，请参考xref:v3.1/3.adoc#快速安装[快速安装]。
+
+想要获取更多安装方式，请参考xref:v3.1/6.adoc#安装指南[安装指南]。
+
+[NOTE]
+主节点数据库需要安装并启动
+
+=== 关闭防火墙
+集群中各节点均需关闭防火墙才能正常通信。
+```
+$ sudo systemctl stop firewalld 
+```
+
+=== 配置文件
+为了从主节点向备节点搭建流复制，主节点需要对data目录下的postgresql.conf和pg_hba.conf两个文件进行配置。
+
+** postgresql.conf
+
++
+
+将以下配置追加到postgresql.conf文件末尾：
+```
+listen_addresses = '*'                                             
+max_connections = 100
+wal_level = replica
+max_wal_senders = 5
+hot_standby = on
+```
+
+** pg_hba.conf
+
++
+
+将以下配置追加到pg_hba.conf文件末尾：
+```
+host all all 0.0.0.0/0 trust
+host replication all 0.0.0.0/0 trust
+```
+
+=== 重启主节点数据库服务
+```
+$ pg_ctl restart 
+```
+
+== 备节点
+=== 安装数据库
+快速安装数据库，请参考xref:v3.1/3.adoc#快速安装[快速安装]。
+
+想要获取更多安装方式，请参考xref:v3.1/6.adoc#安装指南[安装指南]。
+
+[NOTE]
+备节点数据库只需要安装，不需要启动
+
+=== 关闭防火墙
+集群中各节点均需关闭防火墙才能正常通信。
+```
+$ sudo systemctl stop firewalld 
+```
+
+=== 搭建流复制
+在备节点上执行以下命令，创建一个主节点的基础备份，即搭建流复制：
+```
+$ pg_basebackup -F p -P -X fetch -R -h <primary_ip> -p <primary_port> -U ivorysql -D /usr/local/ivorysql/ivorysql-3/data 
+```
+- -h为主节点ip；
+- -p为主节点数据库端口号，默认为5432；
+- -U为数据库用户；
+- -D为要创建的备节点数据库数据目录。
+
+其他参数使用方法，请使用pg_basebackup --help命令获取。
+
+=== 配置环境变量
+
+将以下配置写入~/.bash_profile文件：
+```
+PATH=/usr/local/ivorysql/ivorysql-3/bin:$PATH
+export PATH
+LD_LIBRARY_PATH=/usr/local/ivorysql/ivorysql-3/lib
+export LD_LIBRARY_PATH
+PGDATA=/usr/local/ivorysql/ivorysql-3/data
+export PGDATA
+```
+source该文件使环境变量生效：
+```
+$ source ~/.bash_profile
+```
+
+=== 启动备节点数据库服务
+```
+$ pg_ctl -D /usr/local/ivorysql/ivorysql-3/data start
+```
+
+== 集群的使用
+=== 查看集群状态
+在主节点上执行以下命令可以看到walsender：
+```
+$ ps -ef |grep postgres
+...
+ivorysql 11176  8067  0 21:54 ?        00:00:00 postgres: walsender ivorysql 192.168.31.102(53416) streaming 0/7000060...
+```
+而备节点则可看到walreceiver：
+```
+$ ps -ef | grep postgres
+...
+ivorysql  6567  6139  0 21:54 ?        00:00:00 postgres: walreceiver streaming 0/7000060
+...
+```
+在主节点上psql连接数据库，并查看集群状态：
+```
+$ psql -d postgres
+psql (16.1)
+Type "help" for help.
+
+postgres=# select * from pg_stat_replication;
+  pid  | usesysid | usename  | application_name |  client_addr   | client_hostname | client_port |         backend_start         | backend_
+xmin |   state   | sent_lsn  | write_lsn | flush_lsn | replay_lsn | write_lag | flush_lag | replay_lag | sync_priority | sync_state |      
+    reply_time           
+-------+----------+----------+------------------+----------------+-----------------+-------------+-------------------------------+---------
+-----+-----------+-----------+-----------+-----------+------------+-----------+-----------+------------+---------------+------------+------
+-------------------------
+ 11176 |       10 | ivorysql | walreceiver      | 192.168.31.102 |                 |       53416 | 2024-02-25 21:54:52.041847-05 |         
+     | streaming | 0/7000148 | 0/7000148 | 0/7000148 | 0/7000148  |           |           |            |             0 | async      | 2024-
+02-25 22:52:07.325111-05
+(1 row)
+```
+这里192.168.31.102为备节点的ip，async表示数据同步方式为异步流复制。
+=== 使用集群
+集群中所有的写操作均在主节点执行，读操作则主备节点都可以执行。主节点的数据通过流复制同步到备节点。主节点写操作的结果在任何一个备节点都能够查询到。
+例如，在主节点创建一个新的数据库test，并在主节点进行查询：
+```
+$ psql -d postgres
+psql (16.1)
+Type "help" for help.
+
+postgres=# create database test;
+CREATE DATABASE
+postgres=# \l
+                                                       List of databases
+   Name    |  Owner   | Encoding | Locale Provider |   Collate   |    Ctype    | ICU Locale | ICU Rules |   Access privileges   
+-----------+----------+----------+-----------------+-------------+-------------+------------+-----------+-----------------------
+ postgres  | ivorysql | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |            |           | 
+ template0 | ivorysql | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |            |           | =c/ivorysql          +
+           |          |          |                 |             |             |            |           | ivorysql=CTc/ivorysql
+ template1 | ivorysql | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |            |           | =c/ivorysql          +
+           |          |          |                 |             |             |            |           | ivorysql=CTc/ivorysql
+ test      | ivorysql | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |            |           | 
+(4 rows)
+```
+在备节点查询：
+```
+$ psql -d postgres
+psql (16.1)
+Type "help" for help.
+
+postgres=# \l
+                                                       List of databases
+   Name    |  Owner   | Encoding | Locale Provider |   Collate   |    Ctype    | ICU Locale | ICU Rules |   Access privileges   
+-----------+----------+----------+-----------------+-------------+-------------+------------+-----------+-----------------------
+ postgres  | ivorysql | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |            |           | 
+ template0 | ivorysql | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |            |           | =c/ivorysql          +
+           |          |          |                 |             |             |            |           | ivorysql=CTc/ivorysql
+ template1 | ivorysql | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |            |           | =c/ivorysql          +
+           |          |          |                 |             |             |            |           | ivorysql=CTc/ivorysql
+ test      | ivorysql | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |            |           | 
+(4 rows)
+```

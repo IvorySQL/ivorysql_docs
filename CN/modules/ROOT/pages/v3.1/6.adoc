@@ -2,426 +2,268 @@
 :sectnums:
 :sectnumlevels: 5
 
+= **安装指南**
 
-= **安装部署**
+== 概述
 
-== 安装概述
+IvorySQL安装方式包括以下4种：
 
-本文介绍 Ivorysql 在Linux平台（以CentOS 7为例）的安装过程及注意事项。本文主要演示数据库在Centos 7环境下yum源安装步骤、rpm包安装步骤、源码安装步骤。
+- <<yum源安装>>
+- <<docker安装>>
+- <<rpm安装>>
+- <<源码安装>>
 
-=== 软硬件要求
+本章将详细介绍各个方式的安装、运行及卸载过程，想要更快获得IvorySQL，请参阅xref:v3.1/3.adoc#快速开始[快速开始]。
 
-==== 软件资源介绍
+[[yum源安装]]
+== yum源安装
 
+** 执行yum命令
+```
+$ sudo yum install -y https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-3.0-1.noarch.rpm
+
+$ sudo yum install -y ivorysql3 ivorysql3-server ivorysql3-contrib ivorysql3-test
+```
+安装完毕将创建yum源配置文件/etc/yum.repos.d/ivorysql.repo。
+
+** 查看安装结果
+```
+yum search ivorysql
+```
+查看结果说明如下：
 |====
-|操作系统|Yum源下载地址
-|CentOS 7、CentOS 8|https://yum.highgo.ca/ivorysql.html
-|====
-
-
-==== 硬件资源准备
-|====
-|**配置参数**|**最低配置**|**推荐配置**
-|**CPU**|4核|16核
-|**内存**|4GB|64GB
-|**存储**|800MB，机械硬盘|5GB以上，SSD或NvMe
-|**网络**|千兆网络|万兆网络
-|====
-
-=== 环境和配置检查
-
-部署 IvorySQL 数据库前，您需要进行系统环境和配置检查
-
-==== 查看资源
-
-IvorySQL 数据库支持CentOS 7.X，8.X操作系统。详细信息，参考<<#_软硬件要求>>
-
-
-==== 查看操作系统
-
-**CentOS 7.X**
-
-运行以下命令，查看操作系统信息：
-
-    cat /etc/redhat-release
-
-==== 查看内核参数
-
-    uname -r 
-
-==== 查看内存，清理缓存
-----
-    free -g
-
-    echo 3 > /proc/sys/vm/drop_caches
-----
-
-=== 获取安装包
-
-您可以通过 源码安装 IvorySQL 数据库或 RPM 包安装。
-
-==== 使用源码构建IvorySQL数据库
-
-1.获取源代码：运行以下命令，克隆 IvorySQL 数据库源代码到您的构建机器：
-----
-git clone https://github.com/IvorySQL/IvorySQL.git
-----
-
-> 注意：克隆代码需要先安装配置 Git。详细信息，参考 https://git-scm.com/doc[Git 文档]
-
-
-2.安装依赖包：要从源代码编译 IvorySQL，必须确保系统上有可用的先决条件包。 执行以下命令安装相关包：
-----
-sudo yum install -y bison-devel readline-devel zlib-devel openssl-devel wget
-sudo yum groupinstall -y 'Development Tools'
-----
-
-> 说明：“Development Tools” 包含了gcc，make，flex，bison。
-
-3.自行编译安装：前面通过获取的源码在文件夹IvorySQL里，接下来我们就进入这个文件夹进行操作。
-
-3.1 配置：Root用户执行以下命令进行配置：
-
-    ./configure --prefix=/usr/local/ivorysql/ivorysql-3
-
-> 说明： 由于没有提供 `--prefix`，默认安装在 `/usr/local/ivorysql`，故需要指定路径。
->
-> 注意：我们要记住指定的目录，因为系统查不出已经编译安装的程序在哪。更多 configure 参数通过 `./configure --help` 查看。还可以查看 PostgreSQL 手册。
-
-3.2 编译安装：配置完成后，执行 make 进行编译：
-
-    make
-
-要在安装新编译的服务之前使用回归测试测试一下，以下命令均可：
-
-----
-make check
-make all-check-world
-----
-
-然后安装：
-
-    sudo make install
-
-
-==== 使用 RPM 包安装 IvorySql 数据库
-
-1. 运行以下命令，下载 IvorySQL 安装包。
-----
-wget https://github.com/IvorySQL/IvorySQL/releases/tag/Ivorysql_3.0_Beta/ivorysql3-3.0-1.rhel7.x86_64.rpm
-
-wget https://github.com/IvorySQL/IvorySQL/releases/tag/Ivorysql_3.0_Beta/ivorysql3-contrib-3.0-1.rhel7.x86_64.rpm
-
-wget https://github.com/IvorySQL/IvorySQL/releases/tag/Ivorysql_3.0_Beta/ivorysql3-libs-3.0-1.rhel7.x86_64.rpm
-
-wget https://github.com/IvorySQL/IvorySQL/releases/tag/Ivorysql_3.0_Beta/ivorysql3-server-3.0-1.rhel7.x86_64.rpm
-----
-
-> 注意：示例中的安装包可能不是最新版本，建议您下载最新的安装包。
-
-2.运行以下命令，安装 IvorySQL 。
-----
--- 先安装依赖
-yum install -y libicu libxslt python3
-rpm -ivh ivorysql3-libs-3.1-1.rhel7.x86_64.rpm
-rpm -ivh ivorysql3-3.1-1.rhel7.x86_64.rpm
-rpm -ivh ivorysql3-contrib-3.1-1.rhel7.x86_64.rpm --nodeps
-rpm -ivh ivorysql3-server-3.1-1.rhel7.x86_64.rpm
-----
-
-=== 初始化数据库服务
-
-==== 初始化数据库
-
-1. 创建操作系统用户：用户root会话下，新建用户 ivorysql：
-----
-/usr/sbin/groupadd ivorysql
-/usr/sbin/useradd -g ivorysql ivorysql -c "IvorySQL3.1 Server"
-passwd ivorysql
-----
-
-2.修改权限：在root会话下执行以下命令：
-----
-chown -R ivorysql.ivorysql /var/lib/ivorysql/ivorysql-3
-----
-
-> 注意：这里没按RPM安装将数据目录放置到 `/var/lib/ivorysql/ivorysql-3/data`。
-
-3.环境变量：切换到用户ivorysql，修改文件 `/home/ivorysql/.bash_profile`，配置环境变量：
-----
-umask 022
-export LD_LIBRARY_PATH=/usr/local/ivorysql/ivorysql-3/lib:$LD_LIBRARY_PATH
-export PATH=/usr/local/ivorysql/ivorysql-3/bin:$PATH
-export PGDATA=/var/lib/ivorysql/ivorysql-3/data
-----
-
-使环境变量在当前ivorysql用户会话中生效：
-
-    source .bash_profile
-
-也可以重新登录或开启一个新的用户ivorysql的会话。
-
-4.设置防火墙：如果开启了防火墙，还需要将端口1521或者5432开放：
-----
-firewall-cmd --zone=public --add-port=1521/tcp --permanent
-firewall-cmd --reload
-----
-
-> 说明：默认端口是1521，如果不开放该端口，外部客户端通过ip连接会失败。
-
-5.初始化：在用户ivorysql下，简单执行initdb就可以完成初始化：
-
-    initdb
-
-
-> 说明：initdb操作与PostgreSQL一样，可以按照PG的习惯去初始化。
-
-6.启动数据库：使用pg_ctl启动数据库服务：
-
-    pg_ctl start
-
-查看状态，启动成功：
-
-    pg_ctl status
-
-=== 配置服务
-
-1. 客户端验证：修改 /ivorysql/1.2/data/pg_hba.conf，追加以下内容：
-
-    host    all             all             0.0.0.0/0               trust
-
-
-> 注意：这里是trust，就是说可以免密登录。
-
-执行以下命令加载配置：
-
-    pg_ctl reload
-
-2.基本参数
-
-通过psql连接数据库：
-
-    psql
-
-修改监听地址
-
-    alter system set listen_address = '*';
-
-> 说明：默认是监听在127.0.0.1，主机外是连不上服务的。
-
-3.守护服务
-
-创建service文件：
-
-    touch /usr/lib/systemd/system/ivorysql.service
-
-编辑内容如下：
-----
-[Unit]
-Description=IvorySQL 3.1 database server
-Documentation=https://www.ivorysql.org
-Requires=network.target local-fs.target
-After=network.target local-fs.target
-
-[Service]
-Type=forking
-
-User=ivorysql
-Group=ivorysql
-
-Environment=PGDATA=/var/lib/ivorysql/ivorysql-3/data
-
-OOMScoreAdjust=-1000
-
-ExecStart=/usr/local/ivorysql/bin/pg_ctl start -D ${PGDATA}
-ExecStop=/usr/local/ivorysql/bin/pg_ctl stop -D ${PGDATA}
-ExecReload=/usr/local/ivorysql/bin/pg_ctl reload -D ${PGDATA}
-
-TimeoutSec=0
-
-[Install]
-WantedBy=multi-user.target
-----
-
-> 说明：service的写法有很多，在生产环境使用时需谨慎，请多次重复测试。
-
-停止pg_ctl启动的数据库服务，启用systemd服务并启动：
-
-    systemctl enable --now ivorysql.service
-
-IvorSQL数据库服务操作命令：
-----
-systemctl start ivorysql.service            --启动数据库服务
-systemctl stop ivorysql.service             --停止数据库服务
-systemctl restart ivorysql.service          --重启数据库
-systemctl status ivorysql.service           --查看数据库状态
-systemctl reload ivorysql.service           --可以满足部分数据库配置修改完后生效
-----
-
-=== 安装
-
-==== yum源
-
-1. 下载YUM源:在Centos7上使用wget下载
-
-    wget https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-1.0-1.noarch.rpm
-
-安装ivorysql-release-1.0-1.noarch.rpm：
-
-    rpm -ivh ivorysql-release-1.0-1.noarch.rpm
-
-安装后，将创建YUM源配置文件：/etc/yum.repos.d/ivorysql.repo。
-
-搜索查看相关安装包：
-
-    yum search ivorysql
-
-搜索结果说明见表1：
-
-.YUN源说明
-|====
-|**序号**|**包名**|**描述**
-|1| https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql1-1.2-1.rhel7.x86_64.rpm[ivorysql1.x86_64] | IvorySQL客户端程序和库文件
-|2| https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql1-contrib-1.2-1.rhel7.x86_64.rpm[ivorysql1-contrib.x86_64] | 随IvorySQL发布的已贡献的源代码和二进制文件
-|3| ivorysql1-devel.x86_64| IvorySQL开发头文件和库
-|4| ivorysql1-docs.x86_64| IvorySQL的额外文档
-|5| https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql1-libs-1.2-1.rhel7.x86_64.rpm[ivorysql1-libs.x86_64] | 所有IvorySQL客户端所需的共享库
-|6| ivorysql1-llvmjit.x86_64 | 对IvorySQL的即时编译支持
-|7| ivorysql1-plperl.x86_64 | 用于IvorySQL的过程语言Perl
-|8| ivorysql1-plpython3.x86_64 | 用于IvorySQL的过程语言Python3
-|9| ivorysql1-pltcl.x86_64 | 用于IvorySQL的过程语言Tcl
-|10| https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql1-server-1.2-1.rhel7.x86_64.rpm[ivorysql1-server.x86_64] | 创建和运行IvorySQL服务器所需的程序
-|11| ivorysql1-test.x86_64 | 随IvorySQL发布的测试套件
-|12| ivorysql-release.noarch | 瀚高基础软件股份有限公司的Yum源配置RPM包
+| 序号 | 包名  | 描述
+| 1 | ivorysql3.x86_64 |  IvorySQL客户端程序和库文件
+| 2 | ivorysql3-contrib.x86_64 | 随IvorySQL发布的已贡献的源代码和二进制文件
+| 3 | Ivorysql3-devel.x86_64 | IvorySQL开发头文件和库
+| 4 | Ivorysql3-docs.x86_64 | IvorySQL的额外文档
+| 5 | ivorysql3-libs.x86_64 | 所有IvorySQL客户端所需的共享库
+| 6 | Ivorysql3-llvmjit.x86_64 | 对IvorySQL的即时编译支持
+| 7 | Ivorysql3-plperl.x86_64 | 用于IvorySQL的过程语言Perl
+| 8 | Ivorysql3-plpython3.x86_64 | 用于IvorySQL的过程语言Python3
+| 9 | Ivorysql3-pltcl.x86_64 | 用于IvorySQL的过程语言Tcl
+| 10 | ivorysql3-server.x86_64 | 创建和运行IvorySQL服务器所需的程序
+| 11 | Ivorysql3-test.x86_64 | 随IvorySQL发布的测试套件
+| 12 | ivorysql-release.noarch | 瀚高基础软件股份有限公司的Yum源配置RPM包
 |====
 
+[[docker安装]]
+== docker安装
 
-2.安装IvorySQL
+** 从Docker Hub上获取IvorySQL镜像
+```
+$ docker pull ivorysql/ivorysql:3.1-ubi8
+```
 
-要安装数据库服务，需要安装ivorysql1-server。 在用户root会话下执行以下命令：
-
-    yum install -y ivorysql1-server
-
-**安装清单：**
-
-    ivorysql1-server.x86_64 0:1.2-1.rhel7
-
-**依赖安装：**
-----
-ivorysql1.x86_64 0:1.2-1.rhel7 ivorysql1-contrib.x86_64 0:1.2-1.rhel7
-ivorysql1-libs.x86_64 0:1.2-1.rhel7 libicu.x86_64 0:50.2-4.el7_7
-libtirpc.x86_64 0:0.2.4-0.16.el7 libxslt.x86_64 0:1.1.28-6.el7
-python3.x86_64 0:3.6.8-18.el7 python3-libs.x86_64 0:3.6.8-18.el7
-python3-pip.noarch 0:9.0.3-8.el7 python3-setuptools.noarch 0:39.2.0-10.el7
-----
-
-3.已安装目录
-
-表2 对YUM安装过程产生的文件目录进行说明。
-
-.安装目录文件说明
+** 运行IvorySQL
+```
+$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:3.1-ubi8
+```
+-e参数说明
 |====
-|**序号**|**文件路径**|**描述**
-|1| /usr/local/ivorysql/ivorysql-3 |软件安装目录
-|2| /var/lib/ivorysql/ivorysql-3/data| 数据目录（默认）
-|3| /usr/bin/ivorysql-3-setup | 帮助管理员进行基本的数据库集群管理
-|4| /usr/lib/systemd/system/ivorysql-3.service | 守护服务
+| 参数名 | 是否必填 | 描述
+| IVORYSQL_USER | 否 | 数据库用户，默认 ivorysql
+| IVORYSQL_PASSWORD | 是 | 数据库用户密码
+| IVORYSQL_DB | 否 | 数据库名称，默认 ivorysql
+| POSTGRES_HOST_AUTH_METHOD | 否 | 修改主机身份验证方式，参考值：md5
+| POSTGRES_INITDB_ARGS | 否 | 为initdb是添加额外参数，参考值："--data-checksums"
 |====
 
-==== deb安装
+[TIP]
+====
+. 不推荐将POSTGRES_HOST_AUTH_METHOD参数填写为trust，这样将会使IVORYSQL_PASSWORD设置失效。
+. 如果POSTGRES_HOST_AUTH_METHOD参数设置为scram-sha-256，同时需将POSTGRES_INITDB_ARGS设置为--auth-host=scram-sha-256，才会使数据库正确进行初始化。
+====
 
-验证环境：Linux 20.04.1-Ubuntu 
+[[rpm安装]]
+== rpm安装
+** 安装依赖
+```
+$ sudo yum install -y libicu libxslt python3
+$ sudo yum --disablerepo=* localinstall *.rpm
+```
+** 获取rpm包
+```
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.1/ivorysql3-libs-3.1-1.rhel7.x86_64.rpm
 
-1、从官网获取deb包
+$ sudo wget 
+https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.1/ivorysql3-3.1-1.rhel7.x86_64.rpm
 
-> 说明：目前还未提供。
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.1/ivorysql3-contrib-3.1-1.rhel7.x86_64.rpm
 
-2、安装deb包
+$ sudo wget 
+https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.1/ivorysql3-server-3.1-1.rhel7.x86_64.rpm
+```
+** 安装rpm包
+
++ 
+
+各rpm包之间有依赖关系，请按照以下顺序安装rpm包：
+```
+$ sudo rpm -ivh ivorysql3-libs-3.1-1.rhel7.x86_64.rpm
+$ sudo rpm -ivh ivorysql3-3.1-1.rhel7.x86_64.rpm
+$ sudo rpm -ivh ivorysql3-server-3.1-1.rhel7.x86_64.rpm --nodeps
+$ sudo rpm -ivh ivorysql3-contrib-3.1-1.rhel7.x86_64.rpm
+```
+数据库将被安装在/usr/local/ivorysql路径下。
+
+[[源码安装]]
+== 源码安装
+** 安装依赖
+```
+$ sudo yum install -y bison-devel readline-devel zlib-devel openssl-devel
+$ sudo yum groupinstall -y 'Development Tools'
+```
+** 获取IvorySQL源代码
+```
+$ git clone https://github.com/IvorySQL/IvorySQL.git
+```
+** 配置
+
++
+
+进入IvorySQL目录，执行以下命令进行配置，请使用--prefix指定安装目录：
+```
+$ ./configure --prefix=/usr/local/ivorysql/ivorysql-3
+```
+** 编译
+
++
+
+执行以下命令进行编译：
+```
+$ make
+```
+
+** 安装
+
++
+
+执行以下命令安装，数据库将被安装在上述由--prefix指定的路径下：
+```
+$ sudo make install
+```
+
+[TIP]
+====
+编译完毕，安装之前可先执行make check或make all-check-world测试刚刚编译的结果
+====
+
+== 启动数据库
+参考<<yum源安装>>, <<rpm安装>>, <<源码安装>>的用户，需要手动启动数据库
+
+** 赋权
+
++
+
+执行以下命令为安装用户赋权，示例用户为ivorysql，安装目录为/usr/local/ivorysql：
+```
+$ sudo chown -R ivorysql:ivorysql /usr/local/ivorysql
+```
+[[配置环境变量]]
+** 配置环境变量
+
++
+
+将以下配置写入~/.bash_profile文件并使用source命令该文件使环境变量生效：
+```
+PATH=/usr/local/ivorysql/ivorysql-3/bin:$PATH
+export PATH
+LD_LIBRARY_PATH=/usr/local/ivorysql/ivorysql-3/lib
+export LD_LIBRARY_PATH
+PGDATA=/usr/local/ivorysql/ivorysql-3/data
+export PGDATA
+```
+```
+$ source ~/.bash_profile
+```
+** 数据库初始化
 
 ```
-dpkg -i ivorysql.deb
+$ initdb -D /usr/local/ivorysql/ivorysql-3/data
 ```
-> 说明：ivorysql.deb 为待安装包名。
+....
+  其中-D参数用来指定数据库的数据目录。更多参数使用方法，请使用initdb --help命令获取。
+....
 
-3、配置环境变量
-
-```
-vi ~/.bashrc
-    export PATH=/xxx/ivorysql/bin:$PATH
-    export LD_LIBRARY_PATH=/xxx/ivorysql/lib
-
-source .bashrc
-```
-
-> 说明：根据实际情况添加，有的可以不用添加。
->
-
-4、卸载deb包
+** 启动数据库服务
 
 ```
-dpkg -r ivorysql
+$ pg_ctl -D /usr/local/ivorysql/ivorysql-3/data -l ivory.log start 
 ```
 
-=== 卸载 IvorySQL 数据库
+其中-D参数用来指定数据库的数据目录，如果<<配置环境变量>> 配置了PGDATA，则该参数可以省略。-l参数用来指定日志目录。更多参数使用方法，请使用pg_ctl --help命令获取。
 
-==== 编译卸载
 
-1.备份数据：数据目录在“/var/lib/ivorysql/ivorysql-3/data”下，所以我们将该目录保护好就可以，最好停止数据库服务后做备份。
-
+查看确认数据库启动成功：
 ```
-systemctl stop ivorysql.service
+$ ps -ef | grep postgres
+ivorysql  3214     1  0 20:35 ?        00:00:00 /usr/local/ivorysql/ivorysql-3/bin/postgres -D /usr/local/ivorysql/ivorysql-3/data
+ivorysql  3215  3214  0 20:35 ?        00:00:00 postgres: checkpointer 
+ivorysql  3216  3214  0 20:35 ?        00:00:00 postgres: background writer 
+ivorysql  3218  3214  0 20:35 ?        00:00:00 postgres: walwriter 
+ivorysql  3219  3214  0 20:35 ?        00:00:00 postgres: autovacuum launcher 
+ivorysql  3220  3214  0 20:35 ?        00:00:00 postgres: logical replication launcher 
+ivorysql  3238  1551  0 20:35 pts/0    00:00:00 grep --color=auto postgres
 ```
 
-2.编译卸载：oot会话下切到源码目录下，分别执行以下命令：
+== 数据库连接
 
+psql连接数据库：
 ```
-make uninstall
+$ psql -d ivorysql
+psql (16.1)
+Type "help" for help.
+
+ivorysql=#
+```
+....
+  其中-d参数用来指定想要连接到的数据库名称。IvorySQL默认使用ivorysql数据库，但较低版本的IvorySQL首次使用时需用户先连接postgres数据库，然后自己创建ivorysql数据库。较高版本的IvorySQL则已为用户创建好ivorysql数据库，可以直接连接。
+
+  更多参数使用方法，请使用psql --help命令获取。
+....
+
+TIP: Docker运行IvorySQL时，需要添加额外参数，参考：psql -d ivorysql -U ivorysql -h 127.0.0.1 -p 5434
+
+== 卸载IvorySQL
+
+[CAUTION]
+====
+使用任何一种方法卸载前请先停止数据库服务并做好数据备份。
+====
+
+=== yum安装的卸载
+
+执行以下命令依次卸载：
+```
+$ sudo yum remove -y ivorysql3 ivorysql3-server ivorysql3-contrib ivorysql3-test
+$ sudo rpm -e ivorysql-release-3.0-1.noarch
+```
+
+=== docker安装的卸载
+执行以下命令，使IvorySQL容器停止运行，并删除IvorySQL容器和镜像：
+```
+$ docker stop ivorysql
+$ docker rm ivorysql
+$ docker rmi ivorysql/ivorysql:3.1-ubi8
+```
+
+=== rpm安装的卸载
+
+执行以下命令查询已安装的rpm包，依次卸载并清理文件夹：
+```
+$ rpm -qa | grep ivorysql
+$ sudo rpm -e ivorysql3-contrib-3.1-1.rhel7.x86_64
+$ sudo rpm -e ivorysql3-server-3.1-1.rhel7.x86_64
+$ sudo rpm -e ivorysql3-3.1-1.rhel7.x86_64
+$ sudo rpm -e ivorysql3-libs-3.1-1.rhel7.x86_64 
+$ sudo rm -rf /usr/local/ivorysql
+```
+
+=== 源码安装的卸载
+执行以下命令卸载数据库并清理文件夹：
+```
+sudo make uninstall
 make clean
+sudo rm -rf /usr/local/ivorysql
 ```
-
-3.删除残余目录和文件：
-
-```
-systemctl disable ivorysql.servicemake                  --禁用服务
-mv /usr/lib/systemd/system/ivorysql.service /tmp/       --服务文件移到/tmp，删除也可以
-rm -fr /usr/local/ivorysql/ivorysql-3                                 --删除残留安装目录
-```
-
-> 说明：还有用户ivorysql以及对应的环境变量，可以根据情况是否清理。剩下的就是数据目录“/var/lib/ivorysql/ivorysql-3/data”了，请务必做好备份再做处理。还有安装的依赖包，可根据情况决定是否卸载。
-
-==== YUM卸载
-
-1.停止数据库服务：
-
-```
-systemctl stop ivorysql-3.service
-```
-
-先使用“yum history list”确定yum安装的事务ID：
-
-```
-[root@Node02 ~]# yum history list
-Loaded plugins: fastestmirror
-ID     | Login user               | Date and time    | Action(s)      | Altered
--------------------------------------------------------------------------------
-     5 | root <root>              | 2022-04-27 12:38 | Install        |   11  <
-     4 | root <root>              | 2022-03-26 16:08 | Install        |   35 > 
-     3 | root <root>              | 2022-03-26 16:07 | I, U           |   19   
-     2 | root <root>              | 2022-03-26 16:07 | I, U           |   73   
-     1 | System <unset>           | 2022-03-26 15:59 | Install        |  299   
-history list
-```
-
-可以看到ID为5的是执行安装的事务。执行命令卸载（需将XX替换为“5”）：
-
-```
-yum history undo XX
-```
-
-2.卸载：
-
-```
-yum remove ivorysql-server
-```
-
-但该命令卸载并不彻底，只卸载了2个依赖，还有8个依赖未能卸载。可以根据是否保留这些依赖而决定是否使用这种方式卸载。

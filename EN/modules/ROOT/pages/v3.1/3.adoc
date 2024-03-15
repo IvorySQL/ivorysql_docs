@@ -3,314 +3,142 @@
 :sectnumlevels: 5
 
 :imagesdir: ./_images
-== User manual
+= **Quick Start**
 
-=== getting started guide
+== Environmental requirements
 
-==== Beginners
+** Hardware 
+|====
+|Parameter|Minimum|Recommended
+|CPU|4 cores|16 cores
+|RAM|4GB|64GB
+|Storage|800MB,HDD|5GB+,SSD or NvMe
+|Network|Gigabit network|10G network
+|====
 
-If you are new to IvorySQL, you can click https://deploy-preview-83--ivorysql.netlify.app/zh-CN/[here] to learn about features of IvorySQL in the beginning.Also, you can download our source code through [Github](https://github.com/IvorySQL/IvorySQL).By the way, don't forget to give our IvorySQL community a star.
+** Software
 
-You can refer to the following contents to install IvorySQL quickly.
++
 
-OS version of the demo:
-[source,shell]
-----
-[highgo@ivorysql ~]$ cat /proc/version
-Linux version 3.10.0-1160.el7.x86_64 (mockbuild@kbuilder.bsys.centos.org) (gcc version 4.8.5 20150623 (Red Hat 4.8.5-44) (GCC) ) #1 SMP Mon Oct 19 16:18:59 UTC 2020
-----
+Now, IvorySQL supports but is not limited to linux(CentOS 7.X/CentOS 8.X). 
 
-**Enter user directory**
+[[quick-installation]]
+== Quick installation 
+....
+  The operating system used for the quick start is CentOS 7.9.
+....
+=== yum installation
 
-[source,]
-----
-[highgo@ivorysql /]$ cd /home/highgo
-----
+** Pre-requirements
 
-**Getting the source**
-[source,]
-----
-[highgo@ivorysql ~]$ ls
-IvorySQL
-[highgo@ivorysql ~]$ cd IvorySQL/
-----
++
 
+Before getting started, please create an user and grant it root privileges. All the installation steps will be performed by this user. Here we just name it 'ivorysql'.
+https://www.ionos.com/help/server-cloud-infrastructure/server-administration/creating-a-sudo-enabled-user[How to create a sudo user]
 
-**Configuration**
-[source,]
-----
-[highgo@ivorysql IvorySQL]$ ./configure --prefix=/home/highgo
-----
+** installation
 
-You can install IvorySQL where you want to install it. If you want to install IvorySQL by default, execute ./configure directly.Remember to refer to the http://postgres.cn/docs/14/installation.html[manual] for other parameter settings.
++
 
-To compile the IvorySQL from the source code, you have to ensure that prerequisite packages are available on your system. The following software packages are required for building IvorySQL:
+Run the following commands to perform yum installation:
+```
+$ sudo yum install -y https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-3.0-1.noarch.rpm
 
-* make - GNU make version 3.80 or newer
-* gcc - ISO/ANSI C compiler (at least C99-compliant). Recent versions of GCC are recommended.
-* libreadline - The GNU Readline library is used by default.
-* zlib - zlib compression library is used by default.
-* Flex - (Flex 2.5.31 or later)
-* Bison - (Bison 1.875 or later)
+$ sudo yum install -y ivorysql3 ivorysql3-server ivorysql3-contrib ivorysql3-test --skip-broken
+```
+IvorySQL will be installed in a folder named 'ivorysql-version', such as 'ivorysql-3', within the /usr/local/ivorysql directory.
 
-**Install**
+Grant ivorysql privileges:
+```
+$ sudo chown -R ivorysql:ivorysql /usr/local/ivorysql
+```
+** Initializing database
 
-[source,]
-----
-[highgo@ivorysql IvorySQL]$ make
-[highgo@ivorysql IvorySQL]$ make install
+```
+$ initdb -D /usr/local/ivorysql/ivorysql-3/data
+```
+....
+  The -D option specifies the directory where the database cluster should be stored. This is the only information required by initdb, but you can avoid writing it by setting the PGDATA environment variable, which can be convenient since the database server can find the database directory later by the same variable. 
 
-**Installation completed**
+  For more options, refer to initdb --help.
+....
+[[setting-environment-variables]]
+** Setting environment variables
 
-    [highgo@ivorysql ~]$ ls
-    bin  include  IvorySQL  lib  share
++
 
-**Modify environment variables**
+Add below contents in ~/.bash_profile file and source to make it effective:
+```
+PATH=/usr/local/ivorysql/ivorysql-3/bin:$PATH
+export PATH
+LD_LIBRARY_PATH=/usr/local/ivorysql/ivorysql-3/lib
+export LD_LIBRARY_PATH
+PGDATA=/usr/local/ivorysql/ivorysql-3/data
+export PGDATA
+```
+```
+$ source ~/.bash_profile
+```
+** Starting IvorySQL service
 
-    [highgo@ivorysql ~]$ vi .bash_profile
+```
+$ pg_ctl -D /usr/local/ivorysql/ivorysql-3/data -l ivory.log start 
+```
 
-**Write and quit**
+  The -D option specifies the file system location of the database configuration files. If this option is omitted, the environment variable PGDATA in <<setting-environment-variables>> is used. -l option appends the server log output to filename. If the file does not exist, it is created.
 
-    PATH=/home/highgo/bin:$PATH
-    export PATH
-    LD_LIBRARY_PATH=/usr/local/pgsql/lib
-    export LD_LIBRARY_PATH
-
-**Source .bash_prifile**
-
-    [highgo@ivorysql ~]$ source .bash_profile
-
-**Initialize database**
-
-    [highgo@ivorysql ~]$ initdb -D data // 'data' is the name of your database, you can set it by yourself.
-    //-D location for this database cluster
-    //-m set database mode, default is oracle
-    //-C set case conversion mode, default is interchange
-----
-
-Please enter detailed parameter information initdb --help
-
-image::p19.png[]
-
-**Start server**
-
-    [highgo@ivorysql ~]$ pg_ctl -D data -l logfile start
-
-**Connection**
-----
-    [highgo@ivorysql ~]$ psql -d postgres
-    psql (16devel)
-    Type "help" for help.
-
-    postgres=#
-----
-
-Congratulation! You have installed IvorySQL successfully.Please enter SQL statements to experience.Have a nice day.
+  For more options, refer to pg_ctl --help.
 
 
+Confirm it’s successfully started:
+```
+$ ps -ef | grep postgres
+ivorysql  3214     1  0 20:35 ?        00:00:00 /usr/local/ivorysql/ivorysql-3/bin/postgres -D /usr/local/ivorysql/ivorysql-3/data
+ivorysql  3215  3214  0 20:35 ?        00:00:00 postgres: checkpointer 
+ivorysql  3216  3214  0 20:35 ?        00:00:00 postgres: background writer 
+ivorysql  3218  3214  0 20:35 ?        00:00:00 postgres: walwriter 
+ivorysql  3219  3214  0 20:35 ?        00:00:00 postgres: autovacuum launcher 
+ivorysql  3220  3214  0 20:35 ?        00:00:00 postgres: logical replication launcher 
+ivorysql  3238  1551  0 20:35 pts/0    00:00:00 grep --color=auto postgres
+```
 
-==== Developer guide
+=== Running IvorySQL in docker
 
-Developers are more concerned about how to download, install and access the database as quickly as possible. For download and installation, please refer to Part IV [Installation and Deployment]. The following describes how to access the database for clients
+** Get IvorySQL image from Docker Hub
+```
+$ docker pull ivorysql/ivorysql:3.1-ubi8
+```
 
-The client tool for connecting to the IvorySQL database service is the same as that of PostgreSQL.
+** Running IvorySQL
+```
+$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:3.1-ubi8
+```
 
-===== Psql connection
+** Check if the IvorySQL container is running successfully
+```
+$ docker ps | grep ivorysql
+CONTAINER ID   IMAGE               COMMAND                   CREATED          STATUS          PORTS                              NAMES
+6faa2d0ed705   ivorysql:3.1-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
+```
 
-Operating system user ivorysql session connection：
-----
-undefined
-[root@localhost ~]# su - ivorysql 
-Last login: Wed Feb 24 10:47:32 CST 2023 on pts/0
--bash-4.2$ psql
-psql (14.2)
+== Connecting to IvorySQL
+
+Connect to IovrySQL via psql:
+```
+$ psql -d ivorysql
+psql (16.1)
 Type "help" for help.
 
 ivorysql=#
-----
+```
+....
+  The -d option specifies the name of the database to connect to. ivorysql is the default database of IvorySQL. However,IvorySQL of lower versions need the users themselves to connect to postgres database at the first connection and then create the ivorysql database.The latest IvorySQL can do all these for users.
 
-===== DBeaver connection
+  For more options, refer to psql --help.
+....
 
-DBeaver is a powerful open source tool. The connection configuration is as follows:
+TIP: When running IvorySQL in Docker, additional parameters need to be added, like: psql -d ivorysql -U ivorysql -h 127.0.0.1 -p 5434
 
-image::p1.png[]
+Now you can start your journey of IvorySQL! Enjoy! 
 
-===== HIGHGO developer connection
-
-HIGHGO developer is a tool independently developed by HIGHGO. In addition to supporting HIGHGO database, it also supports PostgreSQL and IvorySQL databases. The connection configuration is as follows:
-
-image::p2.png[]
-
-> If you want to use this tool, please follow the official account to join the WeChat group "IvorySQL China Technology Exchange Group" for consultation.
-
-
-= Quick experience
-
-== Stand-alone simulation deployment
-
-=== stand-alone installation
-
-environment：**CentOS 7.X**
-
-Installation package：rpm
-
-Download YUM source: Use wget to download on Centos7
-
-wget https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-1.0-2.noarch.rpm
-
-
-
-installation source
-
-    yum install ivorysql-release-1.0-2.noarch.rpm
-
-install library
-
-    yum install -y ivorysql2-server
-
-Initialize the database
-
-    cd /usr/local/ivorysql/ivorysql-2/bin
-    ./initdb -D ../data
-
-=== cluster installation
-
-environment：**CentOS 7.X**
-
-Installation package：rpm
-
-Download YUM source: Use wget to download on Centos7
-
-wget https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-1.0-2.noarch.rpm
-
-installation source
-
-    yum install ivorysql-release-1.0-2.noarch.rpm
-
-install library
-
-    yum install -y ivorysql2-server
-
-**master node**
-
-Initialize the database
-
-    cd /usr/local/ivorysql/ivorysql-2/bin
-    ./initdb ../data-primary -U postgres
-
-Start the service and create a user
-
-    ALTER USER postgres WITH PASSWORD '123456';
-    CREATE ROLE repl WITH PASSWORD '123456' REPLICATION LOGIN;
-
-
-configuration: pg_hba.conf
-
-----
-shell
-host    all             all             0.0.0.0/0            trust
-host    replication     all             0.0.0.0/0            trust
-----
-
-restart service
-
-**standby node**
-
-1、basic backup
-
-----
-shell
-cd /usr/local/ivorysql/ivorysql-2/bin
-./pg_basebackup -h 127.0.0.1 -p 5333 -U repl -W -Fp -Xs -Pv -R -D ../data-standby01
-----
-
-2、modify port
-----
-vi ../data-standby01/postgresql.conf
-
-    port = 5334
-----
-
-3、Start the standby database
-
-== deploy cluster
-
-**master node**
-
-environment：**CentOS 7.X**
-
-Installation package：rpm
-
-Download YUM source: Use wget to download on Centos7
-
-wget https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-1.0-2.noarch.rpm
-
-
-
-installation source
-----
-yum install ivorysql-release-1.0-2.noarch.rpm
-----
-
-install library
-
-    yum install -y ivorysql2-server
-
-Initialize the master node
-
-    cd /usr/local/ivorysql/ivorysql-2/bin
-    ./initdb ../data-primary -U postgres
-
-Start the service and create a user
-----
-./psql -U postgres -d postgres -p 5333
-ALTER USER postgres WITH PASSWORD '123456';
-CREATE ROLE repl WITH PASSWORD '123456' REPLICATION LOGIN;
-----
-
-Revise:postgres.conf
-----
-listen_addresses = '*'          
-
-port = 5333
-max_connections = 100
-unix_socket_directories = '/tmp' 
-----
-
-configuration: pg_hba.conf
-----
-shell
-host    all             all             0.0.0.0/0            trust
-host    replication     all             0.0.0.0/0            trust
-----
-
-restart service
-
-**standby node**
-
-environment：**CentOS 7.X**
-
-Installation package：rpm
-
-Download YUM source: Use wget to download on Centos7
-
-wget https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-1.0-2.noarch.rpm
-
-
-
-installation source
-
-    yum install ivorysql-release-1.0-2.noarch.rpm
-
-install library
-
-    yum install -y ivorysql2-server
-
-1、basic backup
-----
-shell
-cd /usr/local/ivorysql/ivorysql-2/bin
-./pg_basebackup -h 192.168.xx.xx -p 5333 -U repl -W -Fp -Xs -Pv -R -D ../data-standby01
-----
-
-2、Start the standby database
+To explore additional installation methods, please refer to the xref:v3.1/6.adoc[Installation].

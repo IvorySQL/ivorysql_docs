@@ -3,353 +3,142 @@
 :sectnumlevels: 5
 
 :imagesdir: ./_images
-== 用户使用手册
 
-=== 入门指南
+= **快速开始**
 
-==== 新用户指南
+== 环境要求
 
-如果您刚开始接触IvorySQL，您可以访问我们的 https://docs.ivorysql.org/cn/ivorysql-doc/beta/beta/1[地址]来初步了解IvorySQL的各项特性。您同样可以前往我们的 https://github.com/IvorySQL/IvorySQL[Github]将我们的项目源代码下载到您的终端中。
+** 硬件要求 
+|====
+|配置参数|最低配置|推荐配置
+|CPU|4核|16核
+|内存|4GB|64GB
+|存储|800MB，机械硬盘|5GB以上，SSD或NvMe
+|网络|千兆网络|万兆网络
+|====
 
-如果您想快速安装IvorySQL并且进行一些数据库体验，您可以参考如下：
+** 软件要求
 
-笔者的OS版本如下
++
 
-[source,]
-----
-[highgo@ivorysql ~]$ cat /proc/version
-Linux version 3.10.0-1160.el7.x86_64 (mockbuild@kbuilder.bsys.centos.org) (gcc version 4.8.5 20150623 (Red Hat 4.8.5-44) (GCC) ) #1 SMP Mon Oct 19 16:18:59 UTC 2020
-----
+IvorySQL数据库目前支持的操作系统包括但不限于CentOS 7.X和CentOS 8.X。
 
-**进入用户目录**
+[[快速安装]]
+== 快速安装 
+....
+  快速开始所使用的操作系统为CentOS 7.9。
+....
+=== 从yum源安装IvorySQL数据库
 
-[source,]
-----
-[highgo@ivorysql /]$ cd /home/highgo
-----
+** 安装前准备
 
-**使用git命令下载项目源代码**
++
 
-[source,]
-----
-[highgo@ivorysql ~]$ git clone https://github.com/IvorySQL/IvorySQL.git
-----
+安装前请先创建一个用户，并赋予其root权限， 安装和使用均以该用户执行。这里以ivorysql用户为例。
+https://www.ionos.com/help/server-cloud-infrastructure/server-administration/creating-a-sudo-enabled-user[如何创建sudo用户]
 
-**进入下载好的项目目录中**
+** 下载安装
 
-[source,]
-----
-[highgo@ivorysql ~]$ ls
-IvorySQL
-[highgo@ivorysql ~]$ cd IvorySQL/
-----
++
 
-**编译**
+执行以下命令安装：
+```
+$ sudo yum install -y https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-3.0-1.noarch.rpm
 
-[source,]
-----
-[highgo@ivorysql IvorySQL]$ ./configure --prefix=/home/highgo
-----
+$ sudo yum install -y ivorysql3 ivorysql3-server ivorysql3-contrib ivorysql3-test --skip-broken
+```
+....
 
-prefix参数可以帮助您设置项目安装位置，如果您想默认安装，直接执行./configure即可，项目会默认安装至/usr/local/pgsql目录下，其余参数设置可以参考 http://postgres.cn/docs/14/installation.html[手册]
+  正确安装后，数据库将被安装在/usr/local/ivorysql路径下的ivorysql-version(如:ivorysql-3)文件夹内
+....
 
-如果安装过程中，提示您缺少依赖，您可以使用**yum**命令安装对应依赖即可
-以下的依赖是必需的
+执行以下命令为ivorysql用户赋权：
+```
+$ sudo chown -R ivorysql:ivorysql /usr/local/ivorysql
+```
+** 数据库初始化
 
-[source,]
-----
-GNU Make(版本3.80以上)
-GCC
-readline、readline-develop
-zlib
-----
+```
+$ initdb -D /usr/local/ivorysql/ivorysql-3/data
+```
+....
+  其中-D参数用来指定数据库的数据目录。更多参数使用方法，请使用initdb --help命令获取。
+....
+[[配置环境变量]]
+** 配置环境变量
 
-**安装**
++
 
-[source,]
-----
-[highgo@ivorysql ~]$ ls
-bin  include  IvorySQL  lib  share
-----
-
-**修改环境变量**
-
-[source,]
-----
-[highgo@ivorysql ~]$ vi .bash_profile
-PATH=/home/highgo/bin:$PATH
+将以下配置写入~/.bash_profile文件并使用source命令该文件使环境变量生效：
+```
+PATH=/usr/local/ivorysql/ivorysql-3/bin:$PATH
 export PATH
-LD_LIBRARY_PATH=/usr/local/pgsql/lib
+LD_LIBRARY_PATH=/usr/local/ivorysql/ivorysql-3/lib
 export LD_LIBRARY_PATH
-----
+PGDATA=/usr/local/ivorysql/ivorysql-3/data
+export PGDATA
+```
+```
+$ source ~/.bash_profile
+```
+** 启动数据库服务
 
-**使得改动生效**
+```
+$ pg_ctl -D /usr/local/ivorysql/ivorysql-3/data -l ivory.log start 
+```
 
-[source,]
-----
-[highgo@ivorysql ~]$ source .bash_profile
-----
+其中-D参数用来指定数据库的数据目录，如果<<配置环境变量>> 配置了PGDATA，则该参数可以省略。-l参数用来指定日志目录。更多参数使用方法，请使用pg_ctl --help命令获取。
 
-**初始化数据库**
 
-[source,]
-----
-[highgo@ivorysql ~]$ initdb -D data //data是您初始化的数据库名字，可以凭个人喜好设置
-//-D 参数指定数据库文件存放路径
-//-m 参数指定数据库模式，默认为oracle
-//-C 参数设置大小写转换模式，默认为interchange
-----
-详细参数信息请输入initdb --help
+查看确认数据库启动成功：
+```
+$ ps -ef | grep postgres
+ivorysql  3214     1  0 20:35 ?        00:00:00 /usr/local/ivorysql/ivorysql-3/bin/postgres -D /usr/local/ivorysql/ivorysql-3/data
+ivorysql  3215  3214  0 20:35 ?        00:00:00 postgres: checkpointer 
+ivorysql  3216  3214  0 20:35 ?        00:00:00 postgres: background writer 
+ivorysql  3218  3214  0 20:35 ?        00:00:00 postgres: walwriter 
+ivorysql  3219  3214  0 20:35 ?        00:00:00 postgres: autovacuum launcher 
+ivorysql  3220  3214  0 20:35 ?        00:00:00 postgres: logical replication launcher 
+ivorysql  3238  1551  0 20:35 pts/0    00:00:00 grep --color=auto postgres
+```
 
-image::p19.png[]
+=== docker方式运行
 
-**开启数据库服务**
+** 从Docker Hub上获取IvorySQL镜像
+```
+$ docker pull ivorysql/ivorysql:3.1-ubi8
+```
 
-[source,]
-----
-[highgo@ivorysql ~]$ pg_ctl -D data -l logfile start
-----
+** 运行IvorySQL
+```
+$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:3.1-ubi8
+```
 
-**连接数据库**
+** 查看IvorySQL容器运行是否成功
+```
+$ docker ps | grep ivorysql
+CONTAINER ID   IMAGE               COMMAND                   CREATED          STATUS          PORTS                              NAMES
+6faa2d0ed705   ivorysql:3.1-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
+```
 
-[source,]
-----
-[highgo@ivorysql ~]$ psql -d postgres
-psql (16devel)
-Type "help" for help.
+== 数据库连接
 
-postgres=#
-//出现上面的信息，则说明IvorySQL已经安装成功，您可以输入SQL语句进行体验以及学习。
-----
-
-==== 开发者指南
-
-开发者更关注的问题是：如何最快地下载，安装并接入数据库，关于下载安装请参考第四部分【安装部署】，以下介绍客户端如何接入数据库
-
-连接IvorySQL数据库服务的客户端工具和PostgreSQL的一样。
-
-===== psql连接
-
-操作系统用户ivorysql会话下连接：
-
-[source,]
-----
-undefined
-[root@localhost ~]# su - ivorysql 
-Last login: Wed Feb 24 10:47:32 CST 2023 on pts/0
--bash-4.2$ psql
-psql (14.2)
+psql连接数据库：
+```
+$ psql -d ivorysql
+psql (16.1)
 Type "help" for help.
 
 ivorysql=#
-----
+```
+....
+  其中-d参数用来指定想要连接到的数据库名称。IvorySQL默认使用ivorysql数据库，但较低版本的IvorySQL首次使用时需用户先连接postgres数据库，然后自己创建ivorysql数据库。较高版本的IvorySQL则已为用户创建好ivorysql数据库，可以直接连接。
 
-===== DBeaver连接
+  更多参数使用方法，请使用psql --help命令获取。
+....
 
-DBeaver是一个功能比较强大的开源工具，连接配置如下：
+TIP: Docker运行IvorySQL时，需要添加额外参数，如 psql -d ivorysql -U ivorysql -h 127.0.0.1 -p 5434
 
-image::p1.png[]
+现在可以开始使用IvorySQL啦！就是这么简单！
 
-===== 瀚高developer连接
-
-瀚高developer是瀚高自主研发的一个工具，除了可以支持瀚高数据库，还支持PostgreSQL以及IvorySQL数据库。连接配置如下：
-
-image::p2.png[]
-
-> 如果想使用该工具，请关注公众号加入微信群“IvorySQL中国技术交流群”咨询。
-
-
-=== 快速体验
-
-==== 单机模拟部署
-
-===== 单机安装
-
-环境：**CentOS 7.X**
-
-安装包：rpm
-
-下载YUM源:在Centos7上使用wget下载
-
-wget https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-1.0-2.noarch.rpm
-
-安装源
-[source,]
-----
-yum install ivorysql-release-1.0-2.noarch.rpm
-----
-
-
-安装库
-[source,]
-----
-yum install -y ivorysql2-server
-----
-
-初始化单机数据库
-[source,]
-----
-cd /usr/local/ivorysql/ivorysql-2/bin
-./initdb -D ../data
-----
-
-===== 集群安装（一主一备）
-
-环境：**CentOS 7.X**
-
-安装包：rpm
-
-下载YUM源:在Centos7上使用wget下载
-
-wget https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-1.0-2.noarch.rpm
-
-安装源
-[source,]
-----
-yum install ivorysql-release-1.0-2.noarch.rpm
-----
-
-安装库
-[source,]
-----
-yum install -y ivorysql2-server
-----
-
-**主节点**
-
-初始化主节点
-[source,]
-----
-cd /usr/local/ivorysql/ivorysql-2/bin
-./initdb ../data-primary -U postgres
-----
-
-启动服务，创建用户
-[source,]
-----
-ALTER USER postgres WITH PASSWORD '123456';
-CREATE ROLE repl WITH PASSWORD '123456' REPLICATION LOGIN;
-----
-
-配置pg_hba.conf
-[source,shell]
-----
-host    all             all             0.0.0.0/0            trust
-host    replication     all             0.0.0.0/0            trust
-----
-
-重启服务
-
-
-
-**备节点**
-
-1、 基础备份
-[source,shell]
-----
-cd /usr/local/ivorysql/ivorysql-2/bin
-./pg_basebackup -h 127.0.0.1 -p 5333 -U repl -W -Fp -Xs -Pv -R -D ../data-standby01
-----
-
-
-2、 修改端口（同一服务器实验，需要先修改postgresql.conf的端口）
-[source,shell]
-----
-vi ../data-standby01/postgresql.conf
-
-    port = 5334
-----
-
-3、 启动备库
-
-==== 部署本地集群
-
-**主节点**
-
-环境：**CentOS 7.X**
-
-安装包：rpm
-
-下载YUM源:在Centos7上使用wget下载
-
-wget https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-1.0-2.noarch.rpm
-
-
-安装源
-[source,]
-----
-yum install ivorysql-release-1.0-2.noarch.rpm
-----
-
-
-安装库
-[source,]
-----
-yum install -y ivorysql2-server
-----
-
-初始化主节点
-[source,]
-----
-cd /usr/local/ivorysql/ivorysql-2/bin
-./initdb ../data-primary -U postgres
-----
-
-启动服务，创建用户
-[source,]
-----
-./psql -U postgres -d postgres -p 5333
-ALTER USER postgres WITH PASSWORD '123456';
-CREATE ROLE repl WITH PASSWORD '123456' REPLICATION LOGIN;
-----
-
-修改postgres.conf
-[source,]
-----
-listen_addresses = '*'          
-
-port = 5333
-max_connections = 100
-unix_socket_directories = '/tmp' 
-----
-
-
-配置pg_hba.conf
-[source,]
-----
-shell
-host    all             all             0.0.0.0/0            trust
-host    replication     all             0.0.0.0/0            trust
-----
-
-重启服务
-
-
-**备节点**
-
-
-环境：**CentOS 7.X**
-
-安装包：rpm
-
-下载YUM源:在Centos7上使用wget下载
-
-wget https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-1.0-2.noarch.rpm
-
-安装源
-
-    yum install ivorysql-release-1.0-2.noarch.rpm
-
-安装库
-
-    yum install -y ivorysql2-server
-
-1、 基础备份
-[source,shell]
-----
-cd /usr/local/ivorysql/ivorysql-2/bin
-./pg_basebackup -h 192.168.xx.xx -p 5333 -U repl -W -Fp -Xs -Pv -R -D ../data-standby01
-----
-
-2、 启动备库
-
+想要获得更多安装方式，请参考xref:v3.1/6.adoc[安装指南]
