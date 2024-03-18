@@ -3,47 +3,26 @@
 
 :imagesdir: ./_images
 
-= Compatible with Oracle anonymous block
+= Added Oracle compatibility mode ports and IP
 
 == Objective
 
-- This document is a design document for the PLSQL anonymous block compatible Oracle syntax function, in order to be compatible with Oracle's anonymous block statements in IvorySQL.
+- In order to distinguish the Oracle port, IP and PG port IP. THERE IS NOW A NEED TO INCREASE THE PROCESSING OF ORAPORT AND ORAHOST;
 
-== Function description
+== Function
 
-- Anonymous blocks are PLSQL structures that dynamically create and execute procedural code without the need to persistently store the code as database objects in the system directory. In this implementation, IvorySQL is mainly compatible with the syntax format of PLSQL anonymous blocks, and the parts we mainly deal with include client tool psql, master server and PSQL side support.
+- Add ivoryhost: You need to add the parameter ivoryhost when connecting, and its function is similar to host;
 
-== Test cases
+- New ivoryport: Compared to host, the function of port is relatively complex. It involves specifying ports in the configure phase and connection phase;
 
+== Test method:
 ```
-
-declare
-i integer := 10;
-begin
- raise notice '%', i;
- raise notice '%', main.i;
-end;
-/
-NOTICE:  10
-NOTICE:  10
-
+   ./configure --with-oraport=5555
+   ./initdb ....
+   ./pg_ctl -D ../data start
+    
+   ./pg_ctl -o "-p 5433 -o 1522" -D ../data
 ```
+ 
 
-```
-
-DECLARE
-  grade CHAR(1);
-BEGIN
-  grade := 'B';
-  CASE grade
-    WHEN 'A' THEN raise notice 'Excellent';
-    WHEN 'B' THEN raise notice 'Very Good';
-  END CASE;
-EXCEPTION
-  WHEN CASE_NOT_FOUND THEN
-    raise notice 'No such grade';
-END;
-/
-NOTICE:  Very Good
-
-```
+​      
