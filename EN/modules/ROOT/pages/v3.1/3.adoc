@@ -52,16 +52,7 @@ Grant ivorysql privileges:
 ```
 $ sudo chown -R ivorysql:ivorysql /usr/local/ivorysql
 ```
-** Initializing database
 
-```
-$ initdb -D /usr/local/ivorysql/ivorysql-3/data
-```
-....
-  The -D option specifies the directory where the database cluster should be stored. This is the only information required by initdb, but you can avoid writing it by setting the PGDATA environment variable, which can be convenient since the database server can find the database directory later by the same variable. 
-
-  For more options, refer to initdb --help.
-....
 [[setting-environment-variables]]
 ** Setting environment variables
 
@@ -79,6 +70,18 @@ export PGDATA
 ```
 $ source ~/.bash_profile
 ```
+
+** Initializing database
+
+```
+$ initdb -D /usr/local/ivorysql/ivorysql-3/data
+```
+....
+  The -D option specifies the directory where the database cluster should be stored. This is the only information required by initdb, but you can avoid writing it by setting the PGDATA environment variable, which can be convenient since the database server can find the database directory later by the same variable. 
+
+  For more options, refer to initdb --help.
+....
+
 ** Starting IvorySQL service
 
 ```
@@ -125,7 +128,7 @@ CONTAINER ID   IMAGE               COMMAND                   CREATED          ST
 
 Connect to IovrySQL via psql:
 ```
-$ psql -d ivorysql
+$ psql -d <database>
 psql (16.1)
 Type "help" for help.
 

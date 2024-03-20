@@ -69,7 +69,9 @@ $ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d 
 | IVORYSQL_PASSWORD | yes | Database password
 | IVORYSQL_DB | no | Database name,default is ivorysql
 | POSTGRES_HOST_AUTH_METHOD | no | Modify host authentication method,reference value:md5
-| POSTGRES_INITDB_ARGS | 否 | Add additional parameters to initdb,reference value:"--data-checksums"
+| POSTGRES_INITDB_ARGS | no | Add additional parameters to initdb,reference value:"--data-checksums"
+| PGDATA | no | Define the data directory to be located in another path or folder (e.g., subdirectory), defaulting to /var/lib/ivorysql/data
+| POSTGRES_INITDB_WALDIR | no | Define the IvorySQL transaction folder path, which defaults to a subdirectory within the data directory (PGDATA)
 |====
 
 [TIP]
@@ -149,7 +151,7 @@ $ sudo make install
 
 [TIP]
 ====
-When the compilation is completed, you can test the result with 'make check' or 'make all-check-world', before your installation
+When the compilation is completed, you can test the result with 'make check' or 'make all-check-world' before your installation
 ====
 
 == 启动数据库
@@ -215,7 +217,7 @@ ivorysql  3238  1551  0 20:35 pts/0    00:00:00 grep --color=auto postgres
 
 Connect to IovrySQL via psql:
 ```
-$ psql -d ivorysql
+$ psql -d <database>
 psql (16.1)
 Type "help" for help.
 

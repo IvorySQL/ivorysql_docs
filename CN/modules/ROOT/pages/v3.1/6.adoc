@@ -67,6 +67,8 @@ $ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d 
 | IVORYSQL_DB | 否 | 数据库名称，默认 ivorysql
 | POSTGRES_HOST_AUTH_METHOD | 否 | 修改主机身份验证方式，参考值：md5
 | POSTGRES_INITDB_ARGS | 否 | 为initdb是添加额外参数，参考值："--data-checksums"
+| PGDATA | 否 | 将数据目录定义到其他路径文件夹下（例如子目录），默认 /var/lib/ivorysql/data
+| POSTGRES_INITDB_WALDIR | 否 | 定义IvorySQL transaction文件夹路径，默认在数据目录（PGDATA）的子目录中。
 |====
 
 [TIP]
@@ -211,7 +213,7 @@ ivorysql  3238  1551  0 20:35 pts/0    00:00:00 grep --color=auto postgres
 
 psql连接数据库：
 ```
-$ psql -d ivorysql
+$ psql -d <database>
 psql (16.1)
 Type "help" for help.
 
@@ -253,7 +255,7 @@ $ docker rmi ivorysql/ivorysql:3.1-ubi8
 执行以下命令查询已安装的rpm包，依次卸载并清理文件夹：
 ```
 $ rpm -qa | grep ivorysql
-$ sudo rpm -e ivorysql3-contrib-3.1-1.rhel7.x86_64
+$ sudo rpm -e ivorysql3-contrib-3.1-1.rhel7.x86_64 --nodeps
 $ sudo rpm -e ivorysql3-server-3.1-1.rhel7.x86_64
 $ sudo rpm -e ivorysql3-3.1-1.rhel7.x86_64
 $ sudo rpm -e ivorysql3-libs-3.1-1.rhel7.x86_64 

@@ -8,12 +8,12 @@
 == 主节点
 
 === 安装并启动数据库
-快速安装数据库，请参考xref:v3.1/3.adoc#快速安装[快速安装]。
+yum源快速安装数据库，请参考xref:v3.1/3.adoc[快速安装]。
 
 想要获取更多安装方式，请参考xref:v3.1/6.adoc#安装指南[安装指南]。
 
 [NOTE]
-主节点数据库需要安装并启动
+主节点数据库需要安装并**启动**
 
 === 关闭防火墙
 集群中各节点均需关闭防火墙才能正常通信。
@@ -46,6 +46,8 @@ hot_standby = on
 host all all 0.0.0.0/0 trust
 host replication all 0.0.0.0/0 trust
 ```
+[CAUTION]
+示例中的pg_hba的配置，仅做为demo用来测试，这种配置会导致数据库密码失效，请根据环境实际情况进行配置
 
 === 重启主节点数据库服务
 ```
@@ -54,12 +56,12 @@ $ pg_ctl restart
 
 == 备节点
 === 安装数据库
-快速安装数据库，请参考xref:v3.1/3.adoc#快速安装[快速安装]。
+Yum源快速安装数据库，请参考xref:v3.1/3.adoc#快速安装[快速安装]。
 
 想要获取更多安装方式，请参考xref:v3.1/6.adoc#安装指南[安装指南]。
 
 [NOTE]
-备节点数据库只需要安装，不需要启动
+备节点数据库只需要安装，**不需要启动**
 
 === 关闭防火墙
 集群中各节点均需关闭防火墙才能正常通信。
@@ -70,7 +72,7 @@ $ sudo systemctl stop firewalld
 === 搭建流复制
 在备节点上执行以下命令，创建一个主节点的基础备份，即搭建流复制：
 ```
-$ pg_basebackup -F p -P -X fetch -R -h <primary_ip> -p <primary_port> -U ivorysql -D /usr/local/ivorysql/ivorysql-3/data 
+$ sudo pg_basebackup -F p -P -X fetch -R -h <primary_ip> -p <primary_port> -U ivorysql -D /usr/local/ivorysql/ivorysql-3/data 
 ```
 - -h为主节点ip；
 - -p为主节点数据库端口号，默认为5432；
