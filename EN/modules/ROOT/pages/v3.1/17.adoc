@@ -3,50 +3,83 @@
 
 :imagesdir: ./_images
 
-= Dual-mode design
+= Compatible with Oracle functions and stored procedures
 
 == Objective
 
-- In order to meet the PG mode and the compatible Oracle mode, IVORYSQL designed two modes: PG and Oracle. And the schema can be specified at initdb time;
+- This document is intended to be compatible with the syntax of Oracle PLSQL functions and stored procedures, which we call PLISQL in IvorySQL.
 
-== Function
+== Function description
 
-- Initdb -m initialization requires judgment of different modes, among which oracle mode requires the execution of SQL statements postgres_oracle.bki. The default is Oracle compatibility mode, and the process is as follows:
- 
-- Startup: When starting, it determines whether it is an Oracle compatibility mode based on the initialization mode;
+.FUNCTION
+|====
+|THE FUNCTION SYNTAX SUPPORTS EDITIONABLE/NONEDITIONABLE
+|THE FUNCTION syntax supports the RETURN, IS keywords, and does not specify language
+|THE FUNCTION syntax functions have no arguments, and the function name does not follow ()
+|The maximum number of CREATE FUNCTION parameters is 32767
+|THE CREATE FUNCTION in END; End with / in psql
+|THE CREATE FUNCTION syntax variable declaration is not preceded by the DECLARE keyword
+|THE CREATE FUNCTION SYNTAX SUPPORTS THE OUT PARAMETER NOCOPY
+|THE CREATE FUNCTION syntax supports sharing_clause
+|THE CREATE FUNCTION syntax supports invoker_rights_clause, and the default permission is changed to DR (DEFINER)
+|THE CREATE FUNCTION syntax supports ACCESSIBLE BY 
+|THE CREATE FUNCTION SYNTAX SUPPORTS DEFAULT COLLATION
+|THE CREATE FUNCTION syntax supports result_cache_clause 
+|THE CREATE FUNCTION syntax supports aggregate_clause
+|THE CREATE FUNCTION syntax supports pipelined_clause
+|THE CREATE FUNCTION syntax supports sql_macro_clause
+|ALTER FUNCTION syntax
+|Functions and stored procedure-related views
+|====
 
-```
-Description:
-database_mode: Used to indicate initialization mode;
-database_mode=DB_PG，PG mode, and cannot be switched;
-database_mode=DB_ORACLE， oracle compatibility mode;
-```
+.Stored procedures
+|====
+|THE CREATE PROCEDURE SYNTAX SUPPORTS EDITIONABLE/NONEDITIONABLE
+|THE CREATE PROCEDURE syntax function has no arguments, no () after the function name
+|The maximum number of CREATE PROCEDURE parameters is 32767
+|THE CREATE PROCEDURE in END; End with / in psql
+|THE CREATE PROCEDURE syntax supports sharing_clause
+|THE CREATE PROCEDURE SYNTAX SUPPORTS DEFAULT COLLATION
+|THE CREATE PROCEDURE syntax supports invoker_rights_clause
+|THE CREATE PROCEDURE syntax supports ACCESSIBLE BY 
+|ALTER PROCEDURE syntax
+|Stored procedures have no parameters, and invocation support is not carried out with ()
+|Stored procedure calls support EXEC
+|When calling a stored procedure in PL/SQL, you can omit CALL and use the stored procedure name directly
+|Both annotation methods are supported -- and /**/
+|====
 
 == Test cases
 
 ```
-Initialize the PG mode:
-./initdb -D ../data -m pg
 
-Initialize the Oracle compatibility mode:
-./initdb -D ../data -m oracle
+declare
+i integer := 10;
+begin
+ raise notice '%', i;
+ raise notice '%', main.i;
+end;
+/
+NOTICE:  10
+NOTICE:  10
 
-or
-./initdb -D ../data
 ```
 
+```
 
+DECLARE
+  grade CHAR(1);
+BEGIN
+  grade := 'B';
+  CASE grade
+    WHEN 'A' THEN raise notice 'Excellent';
+    WHEN 'B' THEN raise notice 'Very Good';
+  END CASE;
+EXCEPTION
+  WHEN CASE_NOT_FOUND THEN
+    raise notice 'No such grade';
+END;
+/
+NOTICE:  Very Good
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+```

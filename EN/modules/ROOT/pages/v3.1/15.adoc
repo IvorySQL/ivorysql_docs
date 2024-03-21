@@ -3,32 +3,67 @@
 
 :imagesdir: ./_images
 
-== New GUC variables
+= Compatible with Oracle Like
 
-In order to be compatible with Oracle, it is necessary to add some variables for controlling the database execution results on the basis of the original GUC variables, so as to achieve the same behavior as Oracle.
+== Objective
 
-In order to better add compatible GUC parameters and to minimize changes to the PG kernel source code, we need to design a framework to add GUC to a unified location.
+- This document is intended to provide people using like fuzzy queries with an in-depth understanding of Oracle-compatible fuzzy query like implementations.
 
+== Function description
+|====
+|Database name|Like fuzzy queries
+|oracle|oracle's string type is varchar2, which supports fuzzy queries using the Like keyword with wildcards for columns of number, date, and string field types
+|IvorySQL|The basic type of IvorySQL's string is text, so like is based on text, and other IvorySQL types can be implicitly converted to text, so that they can be automatically converted without creating opeartor
+|====
 
-=== Achieve
+== Test cases
 
-When adding guc parameters, we need to add them uniformly in the *ivy_guc.c*. Where `Ivy_ConfigureNamesBool`, `Ivy_ConfigureNamesInt`, `Ivy_ConfigureNamesString`, `Ivy_ConfigureNamesReal` and `Ivy_ConfigureNamesEnum` represent 5 different types of guc parameters. When adding guc parameters, simply add the value of guc to the corresponding array.
+```
 
-=== New variables(currently)
+create table t_ora_like (id int ,str1 varchar(8), date1 timestamp with time zone, date2 time with time zone, num int, str2 varchar(8));
+insert into t_ora_like (id ,str1 ,date1 ,date2) values (123456,'test1','2022-09-26 16:39:20','2022-09-26 16:39:20');
+insert into t_ora_like (id ,str1 ,date1 ,date2) values (123457,'test2','2022-09-26 16:40:20','2022-09-26 16:40:20');
+insert into t_ora_like (id ,str1 ,date1 ,date2) values (223456,'test3','2022-09-26 16:41:20','2022-09-26 16:41:20');
+insert into t_ora_like (id ,str1 ,date1 ,date2) values (123458,'test4','2022-09-26 16:42:20','2022-09-26 16:42:20');
 
-[cols="^1,^2"]
-|===
-| Variable | Description
-| ivorysql.compatible_mode | Indicates which database (pg/oracle) is currently compatible with, which can be viewed through the show command. The set command changes this variable, and the reset command resets it to the database mode at the time of connection. Resetting all will affect this variable
-| ivorysql.database_mode | Indicates the current database schema (pg/oracle), which can be viewed through the show command. The set/reset/reset all command does not affect this variable
-| ivorysql.datetime_ignore_nls_mask | Indicates whether the date format will be affected by the NLS parameter. The default value is 0, which can be set using the set command. The reset command resets the date format, and the reset all command resets the variable
-| ivorysql.enable_emptystring_to_NULL | The value is (on/off), and when this variable is on, it will convert the inserted empty string into a NULL value for storage
-| ivorysql.identifier_case_switch | Set character case conversion mode
-| ivorysql.listen_address | Indicates the address for compatibility mode listening. When initializing the database, read the configuration from the ivorysql.conf file, modify the value in the configuration file, and restart the database to take effect. This can be viewed through the show command
-| ivorysql.port | Indicates the port number for connecting in compatibility mode. When initializing the database, read the configuration from the ivorysql.conf file and modify the value in the configuration file. To take effect, restart the database and view it through the show command
-| nls_date_format | Represents the default date format, which can be viewed through the show command and defaults to 'YYYY-MM-DD'. It can be set through the set command and reset back to the default value through the reset command. The reset all command will reset this variable
-| nls_length_semantic | Compatible with oracle parameters of the same name, controlling the size of memory occupied by a character
-| nls_timestamp_format | Compatible with oracle parameters of the same name, controlling date format with time
-| nls_timestamp_tz_format | Compatible with oracle parameters of the same name, controlling the date format with time zone
-| shared_preload_libraries | When initializing the database, read from the ivorysql.conf file and view it through the show command. Modify the value in the configuration file and restart the database to take effect.
-|===
+select * from t_ora_like where str1 like 'test%';
+   id   | str1  |               date1               |    date2    | num | str2 
+--------+-------+-----------------------------------+-------------+-----+------
+ 123456 | test1 | 2022-09-26 16:39:20.000000 +08:00 | 16:39:20+08 |     | 
+ 123457 | test2 | 2022-09-26 16:40:20.000000 +08:00 | 16:40:20+08 |     | 
+ 223456 | test3 | 2022-09-26 16:41:20.000000 +08:00 | 16:41:20+08 |     | 
+ 123458 | test4 | 2022-09-26 16:42:20.000000 +08:00 | 16:42:20+08 |     | 
+(4 rows)
+
+select * from t_ora_like where date1 like '2022%';
+   id   | str1  |               date1               |    date2    | num | str2 
+--------+-------+-----------------------------------+-------------+-----+------
+ 123456 | test1 | 2022-09-26 16:39:20.000000 +08:00 | 16:39:20+08 |     | 
+ 123457 | test2 | 2022-09-26 16:40:20.000000 +08:00 | 16:40:20+08 |     | 
+ 223456 | test3 | 2022-09-26 16:41:20.000000 +08:00 | 16:41:20+08 |     | 
+ 123458 | test4 | 2022-09-26 16:42:20.000000 +08:00 | 16:42:20+08 |     | 
+(4 rows)
+
+select * from t_ora_like where date2 like '16%';
+   id   | str1  |               date1               |    date2    | num | str2 
+--------+-------+-----------------------------------+-------------+-----+------
+ 123456 | test1 | 2022-09-26 16:39:20.000000 +08:00 | 16:39:20+08 |     | 
+ 123457 | test2 | 2022-09-26 16:40:20.000000 +08:00 | 16:40:20+08 |     | 
+ 223456 | test3 | 2022-09-26 16:41:20.000000 +08:00 | 16:41:20+08 |     | 
+ 123458 | test4 | 2022-09-26 16:42:20.000000 +08:00 | 16:42:20+08 |     | 
+(4 rows)
+
+select * from t_ora_like where id like '123%';
+   id   | str1  |               date1               |    date2    | num | str2 
+--------+-------+-----------------------------------+-------------+-----+------
+ 123456 | test1 | 2022-09-26 16:39:20.000000 +08:00 | 16:39:20+08 |     | 
+ 123457 | test2 | 2022-09-26 16:40:20.000000 +08:00 | 16:40:20+08 |     | 
+ 123458 | test4 | 2022-09-26 16:42:20.000000 +08:00 | 16:42:20+08 |     | 
+(3 rows)
+
+select * from t_ora_like where id like null;
+ id | str1 | date1 | date2 | num | str2 
+----+------+-------+-------+-----+------
+(0 rows)
+
+```

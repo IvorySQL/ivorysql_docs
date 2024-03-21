@@ -1,65 +1,49 @@
-
 :sectnums:
 :sectnumlevels: 5
 
-= 引用标识符的大小写转换设计
+:imagesdir: ./_images
+
+= 兼容Oracle匿名块
 
 == 目的
 
-- 为了满足PG和Oracle的引用标识符大小写兼容，ivorysql设计了三种引用标识符的大小写转换模式。通过guc参数“identifier_case_switch”选择转换模式;
+- 本文档是PLSQL匿名块（anonymous block）兼容Oracle语法功能的设计文档，目的是可以在IvorySQL中兼容Oracle的匿名块语句。
 
-== 功能
+== 功能说明
 
-=== 大小写转换的三种模式（默认为interchange）
+- 匿名块是能够动态地创建和执行过程代码的PLSQL结构，而不需要以持久化的方式将代码作为数据库对象储存在系统目录中。本次实现中IvorySQL主要兼容的是PLSQL匿名块的语法格式，我们主要处理的部分包括客户端工具psql、主服务器和PSQL端支持。
 
-- 如果 guc参数“identifier_case_switch”值为“interchange”：
-
-   1). 如果双引号所引用的标识符中的字母全部为大写，则将大写转换为小写。
-
-   2). 如果双引号所引用的标识符中的字母全部为小写，则将小写转换为大写。
-
-   3). 如果用双引号引起来的标识符中的字母是大小写混合的，则保持标识符不变。
-
-=== 初始化数据库集簇时
-
-- 在initdb程序中加入 -C选项设置大小写转换模式，-C对应的值为：
-
-  "normal"   ------ "0"同义
-
-  "interchange" ------ "1"同义
-
-  "lowercase"  ------ "2"同义
-
-  在初始化数据库集簇的过程中，将大小写转换模式保存到data目录的global/pg_control文件中。
-  
-=== 测试用例
-
-```
-SET ivorysql.enable_case_switch = true;
-SET ivorysql.identifier_case_switch = interchange;
-CREATE TABLE "ABC"(c1 int, c2 int);
-SELECT relname FROM pg_class WHERE relname = 'ABC';
-SELECT relname FROM pg_class WHERE relname = 'abc';
-SELECT * FROM "ABC";
-SELECT * FROM ABC;
-SELECT * FROM abc;
-SELECT * FROM Abc;
-SELECT * FROM "Abc"; -- ERROR
-DROP TABLE abc;
-
-CREATE TABLE "Abc"(c1 int, c2 int);
-SELECT relname FROM pg_class WHERE relname = 'ABC';
-SELECT relname FROM pg_class WHERE relname = 'abc';
-SELECT relname FROM pg_class WHERE relname = 'Abc';
-SELECT * FROM "ABC"; -- ERROR
-SELECT * FROM ABC; -- ERROR
-SELECT * FROM abc; -- ERROR
-SELECT * FROM Abc; -- ERROR
-SELECT * FROM "Abc";
-DROP TABLE "Abc";
+== 测试用例
 
 ```
 
+declare
+i integer := 10;
+begin
+ raise notice '%', i;
+ raise notice '%', main.i;
+end;
+/
+NOTICE:  10
+NOTICE:  10
 
+```
 
+```
 
+DECLARE
+  grade CHAR(1);
+BEGIN
+  grade := 'B';
+  CASE grade
+    WHEN 'A' THEN raise notice 'Excellent';
+    WHEN 'B' THEN raise notice 'Very Good';
+  END CASE;
+EXCEPTION
+  WHEN CASE_NOT_FOUND THEN
+    raise notice 'No such grade';
+END;
+/
+NOTICE:  Very Good
+
+```

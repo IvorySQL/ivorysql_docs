@@ -3,67 +3,963 @@
 
 :imagesdir: ./_images
 
-= 兼容Oracle like
+= 内置数据类型与内置函数
 
-== 目的
+== 内置数据类型
 
-- 本文档意在为使用 like 模糊查询的人员提供一个深入了解兼容Oracle 的模糊查询like实现的过程，是like兼容的实现文档。
-
-== 功能说明
 |====
-|数据库名称|like模糊查询
-|oracle|oracle的字符串类型是varchar2，支持对数字、日期、字符串字段类型的列用Like关键字配合通配符来实现模糊查询
-|IvorySQL|IvorySQL的字符串基本类型是text，所以like是以text为基础上，其他IvorySQL的类型能隐式转换成text，这样不用创建opeartor就能自动转换
+|char
+|varchar
+|varchar2
+|number
+|binary_float
+|binary_double
+|date
+|timestamp
+|timestamp with time zone
+|timestamp with local time zone
+|interval year to month
+|interval day to second
+|raw
+|long
 |====
 
-== 测试用例
+== 内置函数类型
+
+|====
+|sysdate
+|systimestamp
+|add_months
+|last_day
+|next_day
+|months_between
+|current_date
+|current_timestamp
+|new_time
+|tz_offset
+|trunc
+|instrb
+|substr
+|substrb
+|trim
+|ltrim
+|rtrim
+|length
+|lengthb
+|rawtohex
+|replace
+|regexp_replace
+|regexp_substr
+|regexp_instr
+|regexp_like
+|to_number
+|to_char
+|to_date
+|to_timestamp
+|to_timestamp_tz
+|to_yminterval
+|to_dsinterval
+|numtodsinterval
+|numtoyminterval
+|localtimestamp
+|from_tz
+|sys_extract_utc
+|sessiontimezone
+|hextoraw
+|uid
+|USERENV
+|====
+
+== 内置函数说明
+
+1、兼容sysdate函数，功能：查看对应的日期与时间，测试用例如下：
+查询当前系统的日期：
 
 ```
+select sysdate() from dual;
+  sysdate
+------------
+ 2023-07-06
+(1 row)
+```
 
-create table t_ora_like (id int ,str1 varchar(8), date1 timestamp with time zone, date2 time with time zone, num int, str2 varchar(8));
-insert into t_ora_like (id ,str1 ,date1 ,date2) values (123456,'test1','2022-09-26 16:39:20','2022-09-26 16:39:20');
-insert into t_ora_like (id ,str1 ,date1 ,date2) values (123457,'test2','2022-09-26 16:40:20','2022-09-26 16:40:20');
-insert into t_ora_like (id ,str1 ,date1 ,date2) values (223456,'test3','2022-09-26 16:41:20','2022-09-26 16:41:20');
-insert into t_ora_like (id ,str1 ,date1 ,date2) values (123458,'test4','2022-09-26 16:42:20','2022-09-26 16:42:20');
+查询往前推1天的日期：
 
-select * from t_ora_like where str1 like 'test%';
-   id   | str1  |               date1               |    date2    | num | str2 
---------+-------+-----------------------------------+-------------+-----+------
- 123456 | test1 | 2022-09-26 16:39:20.000000 +08:00 | 16:39:20+08 |     | 
- 123457 | test2 | 2022-09-26 16:40:20.000000 +08:00 | 16:40:20+08 |     | 
- 223456 | test3 | 2022-09-26 16:41:20.000000 +08:00 | 16:41:20+08 |     | 
- 123458 | test4 | 2022-09-26 16:42:20.000000 +08:00 | 16:42:20+08 |     | 
-(4 rows)
+```
+select sysdate()-1 from dual;
+  ?column?
+------------
+ 2023-07-05
+(1 row)
+```
 
-select * from t_ora_like where date1 like '2022%';
-   id   | str1  |               date1               |    date2    | num | str2 
---------+-------+-----------------------------------+-------------+-----+------
- 123456 | test1 | 2022-09-26 16:39:20.000000 +08:00 | 16:39:20+08 |     | 
- 123457 | test2 | 2022-09-26 16:40:20.000000 +08:00 | 16:40:20+08 |     | 
- 223456 | test3 | 2022-09-26 16:41:20.000000 +08:00 | 16:41:20+08 |     | 
- 123458 | test4 | 2022-09-26 16:42:20.000000 +08:00 | 16:42:20+08 |     | 
-(4 rows)
+2、兼容systimestamp函数，功能：返回本机数据库上当前系统日期和时间（包括微秒和时区），测试用例如下：
+查询当前日期的日期和时间：
 
-select * from t_ora_like where date2 like '16%';
-   id   | str1  |               date1               |    date2    | num | str2 
---------+-------+-----------------------------------+-------------+-----+------
- 123456 | test1 | 2022-09-26 16:39:20.000000 +08:00 | 16:39:20+08 |     | 
- 123457 | test2 | 2022-09-26 16:40:20.000000 +08:00 | 16:40:20+08 |     | 
- 223456 | test3 | 2022-09-26 16:41:20.000000 +08:00 | 16:41:20+08 |     | 
- 123458 | test4 | 2022-09-26 16:42:20.000000 +08:00 | 16:42:20+08 |     | 
-(4 rows)
+```
+select systimestamp() from dual;
+  systimestamp
+-----------------------------------
+ 2023-07-06 10:18:31.674322 +08:00
+(1 row)
+```
 
-select * from t_ora_like where id like '123%';
-   id   | str1  |               date1               |    date2    | num | str2 
---------+-------+-----------------------------------+-------------+-----+------
- 123456 | test1 | 2022-09-26 16:39:20.000000 +08:00 | 16:39:20+08 |     | 
- 123457 | test2 | 2022-09-26 16:40:20.000000 +08:00 | 16:40:20+08 |     | 
- 123458 | test4 | 2022-09-26 16:42:20.000000 +08:00 | 16:42:20+08 |     | 
+3、兼容add_months函数，功能：函数将一个月数(n)添加一个日期，并返回相隔n月的同一天，支持参数：date, number；测试用例如下：
+查询当前日期（七月六日）的下个月的同一天：
+
+```
+select add_months(sysdate(),1) from dual;
+ add_months
+------------
+ 2023-08-06
+(1 row)
+```
+
+查询当前日期的上个月的同一天：
+
+```
+select add_months(sysdate(),-1) from dual;
+ add_months
+------------
+ 2023-06-06
+(1 row)
+```
+
+4、兼容last_day函数，功能：返回指定日期所在月份的最后一天，支持参数：date,测试用例如下：
+查询当天所在月份的最后一天：
+
+```
+select last_day(sysdate())from dual;
+  last_day
+------------
+ 2023-07-31
+(1 row)
+```
+
+查询某一天所在月份的最后一天：
+
+```
+select last_day(to_date('2019-09-01'))from dual;
+  last_day
+------------
+ 2019-09-30
+(1 row)
+```
+
+5、兼容next_day函数，功能：返回指定日期的下一个日期。支持参数:date, integer /date ,text, 说明：当函数中第二个参数传的星期数比现有星期数小时，会返回下一个星期的日期；当函数中第二个参数所传的日期比现有星期数大，会返回本周相应星期日期。测试用例如下：
+查询当前日期的下一天：
+
+```
+select next_day(sysdate(),1) from dual;
+ next_day
+------------
+ 2023-07-07
+(1 row)
+```
+
+查询当前日期的下个星期五：
+
+```
+select next_day(sysdate(),'FRIDAY') from dual;
+  next_day
+------------
+ 2023-07-07
+(1 row)
+```
+
+6、兼容months_between函数，功能：返回日期类型的date1和date2之间相差的月份，支持参数：date,date，说明：如果date1晚于date2，返回正数；如果date1早于date2返回负数；如果date1和date2是某月里的同一天，返回结果为整数；如果不是同一天，会在每月31天的基础上返回带有小数部分的结果。测试用例如下：
+查询不同月份同一天之间相差的月份：
+
+```
+select months_between(to_date('2023-07-06'),to_date('2023-08-06')) from dual;
+ months_between
+----------------
+             -1
+(1 row)
+```
+
+查询不同月份不同日期之间相差的月份：
+
+```
+select months_between(to_date('2023-07-06'),to_date('2023-08-05')) from dual;
+   months_between
+--------------------
+ -0.967741935483871
+(1 row)
+```
+
+7、兼容current_date函数，功能：返回当前时区的当前日期，测试用例如下：
+查询当前时区的当前日期：
+
+```
+select current_date from dual;
+ current_date
+--------------
+ 2023-07-06
+(1 row)
+```
+
+8、兼容current_timestamp函数，功能：返回当前时区的当前日期与当前时间，包含当前时区信息。支持参数：integer, 说明：返回的时间可调整精度。测试用例如下：
+查询当前时区的当前日期与时间：
+
+```
+select current_timestamp from dual;
+      current_timestamp
+-----------------------------------
+ 2023-07-06 10:27:01.440600 +08:00
+(1 row)
+```
+
+查询当前时区的当前日期与时间(精度调整为前三位小数)：
+
+```
+select current_timestamp(3) from dual;
+      current_timestamp
+-----------------------------------
+ 2023-07-06 10:27:14.182000 +08:00
+(1 row)
+```
+
+9、兼容new_time函数，功能：返回某个时间在某时区所对应的在另一个时区的日期，支持参数：date, text, text ,测试用例如下：
+返回当前日期在另一个时区对应的日期：
+
+```
+select sysdate() bj_time,new_time(sysdate(),'PDT','GMT')los_angles from dual;
+  bj_time   | los_angles
+------------+------------
+ 2023-07-06 | 2023-07-06
+(1 row)
+```
+
+10、兼容tz_offset函数，功能：返回给定时区与标准时区的偏移量，支持参数：text,测试用例如下：
+返回给定时区与标准时区偏移量：
+
+```
+select tz_offset('US/Eastern') from dual;
+ tz_offset
+-----------
+ -04:00
+(1 row)
+```
+
+11、兼容trunc函数，功能：可以截取日期，得到想要的数值，如年，月，日，时，分，支持参数：date/date,text,测试用例如下：
+截取当前日期：
+
+```
+select trunc(sysdate()) from dual;
+ trunc
+------------
+ 2023-07-06
+(1 row)
+```
+
+截取年，返回值只有年是正确的，月和日不是准确值：
+
+```
+select trunc(sysdate(),'yyyy') from dual;
+   trunc
+------------
+ 2023-01-01
+(1 row)
+```
+
+截取月，返回值只有月是正确的，年和日不是准确值：
+
+```
+select trunc(sysdate(),'mm') from dual;
+   trunc
+------------
+ 2023-07-01
+(1 row)
+```
+
+12、兼容instrb函数，功能：字符串查找函数，返回字符串的位置，支持参数： varchar2, text, number DEFAULT 1, number DEFAULT 1,以下为测试用例：
+返回CORPORATE FLOOR中默认第一次出现OR时字符串的位置：
+
+```
+SELECT INSTRB('CORPORATE FLOOR','OR') "Instring in bytes" FROM DUAL;
+ Instring in bytes
+-------------------
+                 2
+(1 row)
+```
+
+返回corporate floor中从第五个字符开始查询，第二次出现or时字符串的位置：
+
+```
+SELECT INSTRB('CORPORATE FLOOR','OR',5,2) "Instring in bytes" FROM DUAL;
+ Instring in bytes
+-------------------
+                14
+(1 row)
+```
+
+13、兼容substr函数，功能：截取字符串函数，以字符为单位截取，支持参数：text, integer, 测试用例如下：
+截取’今天天气很好’中从第五个字符开始，往后的字符串：
+
+```
+SELECT SUBSTR('今天天气很好',5) "Substring with bytes" FROM DUAL;
+
+ Substring with bytes
+----------------------
+ 很好
+(1 row)
+```
+
+14、兼容substrb函数，功能：截取字符串函数，以字节为单位截取，支持参数：varchar2, number/varchar2, number，number,测试用例如下：
+截取’今天天气很好’中从第五个字节开始，往后的字符串：
+
+```
+SELECT SUBSTRB('今天天气很好',5) "Substring with bytes" FROM DUAL;
+ Substring with bytes
+----------------------
+ 天气很好
+(1 row)
+```
+
+截取’今天天气很好’中从第五个字节开始，第八个字节结束的字符串：
+
+```
+SELECT SUBSTRB('今天天气很好',5，8) "Substring with bytes" FROM DUAL;
+ Substring with bytes
+----------------------
+   天气
+(1 row)
+```
+
+15、兼容trim函数，功能：去除指定字符串的左右空格或对应数据，支持参数：varchar2 /varchar2，varchar2，测试用例如下：
+去除'   aaa bbb ccc   '的左右空格：
+
+```
+select trim('   aaa bbb ccc   ')trim from dual;
+  trim
+-------------
+ aaa bbb ccc
+(1 row)
+```
+
+去除'aaa bbb ccc'中的aaa：
+
+```
+select trim('aaa bbb ccc','aaa')trim from dual;
+  trim
+----------
+  bbb ccc
+(1 row)
+```
+
+16、兼容ltrim函数，功能：去除指定字符串的左侧空格或对应数据，支持参数：varchar2 /varchar2,varchar2,测试用例如下：
+去除'   abcdefg   '的左侧空格：
+
+```
+select ltrim('   abcdefg   ')ltrim from dual;
+    ltrim
+------------
+ abcdefg
+(1 row)
+```
+
+从'abcdefg'左侧开始遍历，一旦存在某字符出现在'fegab'中就去除，不存在则返回结果：
+
+```
+select ltrim('abcdefg','fegab')ltrim from dual;
+ ltrim
+-------
+ cdefg
+(1 row)
+```
+
+17、兼容rtrim函数，功能：去除指定字符串的右侧空格，测试用例如下：
+去除'   abcdefg   '的右侧空格：
+
+```
+select rtrim('   abcdefg   ')rtrim from dual;
+     rtrim
+----------------
+    abcdefg
+(1 row)
+```
+
+从'abcdefg'右侧开始遍历，一旦存在某字符出现在'fegab'中就去除，不存在则返回结果：
+
+```
+select rtrim('abcdefg','fegab')rtrim from dual;
+ rtrim
+-------
+ abcd
+(1 row)
+```
+
+18、兼容length函数，功能：求取指定字符串字符的长度，支持参数：char/integer/varchar2测试用例如下：
+查询223的字符长度：
+
+```
+select length(223) from dual;
+ length
+--------
+      3
+(1 row)
+```
+
+查询'223'的字符长度：
+
+```
+select length('223') from dual;
+ length
+--------
+      3
+(1 row)
+```
+
+查询'ivorysql数据库'的字符长度：
+
+```
+select length('ivorysql数据库') from dual;
+ length
+--------
+     11
+(1 row)
+```
+
+19、兼容lengthb功能：求取指定字符串字节的长度，支持参数：char/bytea/varchar2测试用例如下：
+查询'ivorysql'的字节长度:
+
+```
+select lengthb('ivorysq'::char) from dual;
+ lengthb
+---------
+       1
+(1 row)
+```
+
+查询'0x2C'的字节长度:
+
+```
+select lengthb('0x2C'::bytea) from dual;
+ lengthb
+---------
+       4
+(1 row)
+```
+
+查询'ivorysql数据库'的字节长度：
+
+```
+select lengthb('ivorysql数据库'::varchar2) from dual;
+ lengthb
+---------
+      17
+(1 row)
+```
+
+20、兼容replace函数，功能：替换指定字符串中的字符或删除字符，支持参数：text, text, text/varchar2, varchar2, varchar2 DEFAULT NULL::varchar2, 测试用例如下：
+替换'jack and jue'中的'j'为'bl'：
+
+```
+select replace('jack and jue','j','bl') from dual;
+    replace
+----------------
+ black and blue
+(1 row)
+```
+
+删除'jack and jue'中的'j':
+
+```
+select replace('jack and jue','j') from dual;
+  replace
+------------
+ ack and ue
+(1 row)
+```
+
+21、兼容regexp_replace函数，此函数为replace函数的扩展。功能：用于通过正则表达式来进行匹配替换。支持参数：text, text, text /text, text, text, integer/varchar2, varchar2/varchar2, varchar2 varchar2, 测试用例如下：
+将匹配到的数字替换为*#：
+
+```
+select regexp_replace('01234abcd56789','[0-9]','*#')from  dual;
+      regexp_replace
+--------------------------
+ *#*#*#*#*#abcd*#*#*#*#*#
+(1 row)
+```
+
+从第二个数开始将匹配到的数字替换为*#：
+
+```
+select regexp_replace('01234abcd56789','[0-9]','*#'，2)from  dual;
+    regexp_replace
+-------------------------
+ 0*#*#*#*#abcd*#*#*#*#*#
+```
+
+删除'01234abcd56789'中的'01'：
+
+```
+select regexp_replace('01234abcd56789','01')from dual;
+ regexp_replace
+----------------
+ 234abcd56789
+(1 row)
+```
+
+用'xxx'替换01234abcd56789'中的012：
+
+```
+select regexp_replace('01234abcd56789','012','xxx')from dual;
+ regexp_replace
+----------------
+ xxx34abcd56789
+(1 row)
+```
+
+22、兼容regexp_substr函数，功能：拾取合符正则表达式描述的字符子串，支持参数：text, text,integer /text, text, integer, integer/ text, text, integer, integer, text /varchar2 ,varchar2,测试用例如下：
+查询'012ab34'中从第一个数开始的012字串：
+
+```
+select regexp_substr('012ab34', '012',1) from dual;
+ regexp_substr
+---------------
+ 012
+(1 row)
+```
+
+查询'012ab34'中从第一个数第一组开始的012字串：
+```
+select regexp_substr('012ab34', '012',1,1) from  dual;
+ regexp_substr
+---------------
+ 012
+(1 row)
+```
+
+查询'012a012Ab34'中从第一个数第一组开始不区分大小写的012字串：
+
+```
+select regexp_substr('012a012Ab34', '012A',1,1,'i') from dual;
+ regexp_substr
+---------------
+ 012a
+(1 row)
+```
+
+查询'012a012Ab34'中从第一个数第一组开始区分大小写的012字串：
+
+```
+select regexp_substr('012a012Ab34', '012A',1,1,'c') from dual;
+ regexp_substr
+---------------
+ 012A
+(1 row)
+```
+
+查询'数据库'中 '数据'子串：
+
+```
+select regexp_substr('数据库', '数据') from dual;
+ regexp_substr
+---------------
+ 数据
+(1 row)
+```
+
+23、兼容regexp_instr函数，功能：用于标定符合正则表达式的字符子串的开始位置，支持参数：text, text,integer /text, text, integer, integer/ text, text, integer, integer, text/text, text, integer, integer, text, integer/ varchar2, varchar2,测试用例如下：
+查询'abcaBcabc'中从第一个字符开始，出现abc子串的位置：
+
+```
+SELECT regexp_instr('abcaBcabc', 'abc', 1);
+ regexp_instr
+--------------
+ 1
+(1 row)
+```
+
+查询'abcaBcabc'中从第一个字符开始，第三次出现abc子串的位置：
+
+```
+SELECT regexp_instr('abcaBcabc', 'abc', 1, 3);
+ regexp_instr
+--------------
+ 7
+(1 row)
+```
+
+查询'abcabcabc'中从第一个字符开始，第二次出现abc子串后发生的位置：
+
+```
+SELECT regexp_instr('abcaBcabc', 'abc', 1, 2,1);
+ regexp_instr
+--------------
+ 7
+(1 row)
+```
+
+查询'abcaBcabc'中从第一个字符开始，第一次出现abc子串后发生的位置（区分大小写）：
+
+```
+SELECT regexp_instr('abcaBcabc', 'abc',1,2,1,'c');
+ regexp_instr
+--------------
+ 7
+(1 row)
+```
+
+查询'数据库'中'库'出现的位置：
+
+```
+SELECT regexp_instr('数据库', '库');
+ regexp_instr
+--------------
+            3
+(1 row)
+```
+
+24、兼容regexp_like函数，功能：与like类似，用于模糊查询。支持参数：varchar2, varchar2 /varchar2, varchar2 varchar2,
+首先创建一个regexp_like表用于测试用例查询：
+
+```
+create table t_regexp_like
+(
+  id varchar(4),
+  value varchar(10)
+
+);
+insert into t_regexp_like values ('1','1234560');
+insert into t_regexp_like values ('2','1234560');
+insert into t_regexp_like values ('3','1b3b560');
+insert into t_regexp_like values ('4','abc');
+insert into t_regexp_like values ('5','abcde');
+insert into t_regexp_like values ('6','ADREasx');
+insert into t_regexp_like values ('7','123  45');
+insert into t_regexp_like values ('8','adc  de');
+insert into t_regexp_like values ('9','adc,.de');
+insert into t_regexp_like values ('10','abcbvbnb');
+insert into t_regexp_like values ('11','11114560');
+```
+
+测试用例如下：
+查询t_regexp_like表中带有abc的列：
+
+```
+select * from t_regexp_like where regexp_like(value,'abc');
+ id |  value
+----+----------
+ 4  | abc
+ 5  | abcde
+ 10 | abcbvbnb
 (3 rows)
 
-select * from t_ora_like where id like null;
- id | str1 | date1 | date2 | num | str2 
-----+------+-------+-------+-----+------
-(0 rows)
+```
+ 
+查询t_regexp_like表中带有ABC的列(不区分大小写)：
 
 ```
+select * from t_regexp_like where regexp_like(value,'ABC','i');
+ id |  value
+----+----------
+ 4  | abc
+ 5  | abcde
+ 10 | abcbvbnb
+(3 rows)
+
+```
+
+25、兼容to_number函数，功能：是将一些处理过的按一定格式编排过的字符串变回数值型的格式，支持参数：text/text,text测试用例如下：
+将字符串'-34,338,492'转换为数值型格式：
+
+```
+SELECT to_number('34,338,492', '99,999,999') from dual;
+ to_number
+-----------
+ -34338492
+(1 row)
+```
+
+将字符串'5.01-'转换为数值型格式：
+
+```
+SELECT to_number('5.01-', '9.99S');
+
+ to_number
+-----------
+ -5.01
+(1 row)
+```
+
+26、兼容to_char函数，功能：将数字或日期转换为字符类型，支持参数：date/date,text/timestamp/timestamp,text测试用例如下：
+将当前系统日期转换为字符格式：
+
+```
+select to_char(sysdate()) from dual;
+  to_char
+------------
+ 2023-07-10
+(1 row)
+```
+
+将当前系统日期转换为月份/日期/年字符格式：
+
+```
+select to_char(sysdate(),'mm/dd/yyyy') from dual;
+  to_char
+------------
+ 07/10/2023
+(1 row)
+```
+
+将当前日期的timestamp格式转换为字符格式：
+
+```
+SELECT to_char(sysdate()::timestamp);
+         to_char
+----------------------------
+ 2023-07-10 09:46:44.000000
+```
+
+将当前日期的timestamp格式转换为月份/日期/年字符格式：
+
+```
+SELECT to_char(sysdate()::timestamp,'MM-YYYY-DD');
+  to_char
+------------
+ 07-2023-10
+(1 row)
+```
+
+27、兼容to_date函数，功能：将字符类型转换为日期类型，支持参数：text/text,text测试用例如下：
+将'2023/07/06'转换为日期类型：
+
+```
+select to_date('20230706') from dual;
+  to_date
+------------
+ 2023-07-06
+(1 row)
+```
+
+将'-44-02-01'转换为日期类型：
+
+```
+SELECT to_date('-44,0201','YYYY-MM-DD');
+ to_date
+------------
+ 0044-02-01
+(1 row)
+```
+
+28、兼容to_timestamp函数，功能：可以存储年、月、日、小时、分钟、秒，同时还可以存储秒的小数部分。支持参数：text/text,text测试用例如下：
+查询'2018-11-02 12:34:56.025'以日期形式输出：
+
+```
+SELECT to_timestamp('20181102.12.34.56.025');
+        to_timestamp
+----------------------------
+ 2018-11-02 12:34:56.025000
+(1 row)
+```
+
+查询’2011,12,18 11:38’以日期形式输出：
+
+```
+SELECT to_timestamp('2011,12,18 11:38 ', 'YYYY-MM-DD HH24:MI:SS');
+       to_timestamp
+----------------------------
+ 2011-12-18 11:38:00.000000
+(1 row)
+```
+
+29、兼容to_timestamp_tz函数,功能：根据时间查询，时间字符串有T,Z并有毫秒，时区。测试用例如下：
+查询'2016-10-9 14:10:10.123000'以日期形式输出：
+
+```
+ SELECT to_timestamp_tz('2016-10-9 14:10:10.123000') FROM DUAL;
+          to_timestamp_tz
+-----------------------------------
+ 2016-10-09 14:10:10.123000 +08:00
+(1 row)
+```
+
+查询'10-9-2016 14:10:10.123000 +8:30'以日期形式输出：
+
+```
+ SELECT to_timestamp_tz('10-9-2016 14:10:10.123000 +8:30', 'DD-MM-YYYY HH24:MI:SS.FF TZH:TZM') FROM DUAL;
+          to_timestamp_tz
+-----------------------------------
+ 2016-09-10 13:40:10.123000 +08:00
+(1 row)
+```
+
+30、兼容to_yminterval函数，功能：将一个字符串类型转化为年和月的时间差类型，支持参数:text, 测试用例如下：
+查询'20110101'以后两个年零八个月后的日期：
+
+```
+select to_date('20110101','yyyymmdd')+to_yminterval('02-08') from dual;
+  ?column?
+------------
+ 2013-09-01
+(1 row)
+```
+
+31、兼容to_dsinterval函数，功能：将一个日期加上一定的小时或者天数变成另外一个日期,支持参数:text,测试用例如下：
+查询当前系统时间加上9个半小时后的日期（当前为2023-07-06，18：00）：
+
+```
+select sysdate()+to_dsinterval('0 09:30:00')as newdate from dual;
+ newdate
+------------
+ 2023-07-07
+(1 row)
+```
+
+32、兼容numtodsinterval函数，功能：将数字转换成时间间隔类型的数据。支持参数:double precision, text测试用例如下：
+转换100.00个小时为时间间隔类型数据：
+
+```
+SELECT NUMTODSINTERVAL(100.00, 'hour');
+        numtodsinterval
+-------------------------------
+ +000000004 04:00:00.000000000
+(1 row)
+```
+
+转换100分钟为时间间隔类型数据：
+
+```
+SELECT NUMTODSINTERVAL(100, 'minute');
+      numtodsinterval
+-------------------------------
+ +000000000 01:40:00.000000000
+(1 row)
+```
+
+33、兼容numtoyminterval函数，功能：将数字转换成日期间隔类型的数据。
+支持参数：double precision,text,测试用例如下：
+转换1.00，year为日期间隔：
+
+```
+SELECT NUMTOYMINTERVAL(1.00,'year');
+ numtoyminterval
+-----------------
+ +000000001-00
+(1 row)
+```
+
+转换1，mouth为日期间隔：
+
+```
+SELECT NUMTOYMINTERVAL(1,'month');
+ numtoyminterval
+-----------------
+ +000000000-01
+(1 row)
+```
+
+34、兼容localtimestamp函数，功能：返回会话中的日期和时间，支持参数：integer, 函数中增加参数为精度，测试用例如下：
+返回当前会话中的日期和时间：
+
+```
+select localtimestamp from dual;
+       localtimestamp
+----------------------------
+ 2023-07-07 09:18:15.896472
+(1 row)
+```
+
+返回当前会话中的日期和时间（精度为1）：
+
+```
+select localtimestamp(1) from dual;
+     localtimestamp
+----------------------------
+ 2023-07-07 09:18:16.100000
+(1 row)
+```
+
+35、兼容from_tz函数，功能：将时间从一个时区转换为另一个时区，支持参数;timestamp, text ,测试用例如下：
+将'2000-03-28 08:00:00', '3:00'转换为当前时区：
+
+```
+SELECT FROM_TZ(TIMESTAMP '2000-03-28 08:00:00', '3:00') FROM DUAL;
+              from_tz
+-----------------------------------
+ 2000-03-28 13:00:00.000000 +08:00
+(1 row)
+```
+
+36、兼容sys_extract_utc函数，功能：将一个timestamptz转换为UTC时区时间。支持参数:timestamp with time zone 测试用例如下：
+查询转换timestamp '2000-03-28 11:30:00.00 -8:00'为UTC时区后的时间：
+
+```
+select sys_extract_utc(timestamp '2000-03-28 11:30:00.00 -8:00') from dual;
+      sys_extract_utc
+----------------------------
+ 2000-03-28 19:30:00.000000
+(1 row)
+```
+
+37、兼容sessiontimezone函数，功能：查看时区详细信息，测试用例如下：
+查看当前时区的详细信息：
+
+```
+select sessiontimezone() from dual;
+ sessiontimezone
+-----------------
+ Asia/Shanghai
+(1 row)
+```
+
+修改timezone后，查看时区相信信息：
+
+```
+set timezone = 'Asia/Hong_Kong';
+SET
+select sessiontimezone() from dual;
+ sessiontimezone
+-----------------
+ Asia/Hong_Kong
+(1 row)
+```
+
+38、兼容hextoraw函数，功能：将字符串表示的二进制数值转换为一个raw数值。支持参数：text,测试用例如下：
+将字符串'abcdef'转换为raw数值：
+
+```
+select hextoraw('abcdef')from dual;
+ hextoraw
+----------
+ \xabcdef
+(1 row)
+```
+
+39、兼容uid函数，功能：获取数据库的实例名。测试用例如下：
+获取当前数据库的实例名：
+
+```
+select uid() from dual;
+ uid
+-----
+  10
+(1 row)
+```
+
+40、兼容USERENV函数，功能：返回当前用户环境的信息，测试用例如下：
+查看当前用户是否是dba，如果是返回ture：
+
+```
+select userenv('isdba')from dual;
+ get_isdba
+-----------
+ TRUE
+(1 row)
+```
+
+查看会话标志：
+
+```
+select userenv('sessionid')from dual;
+ get_sessionid
+---------------
+ 1
+(1 row)
+```
+

@@ -3,31 +3,99 @@
 
 :imagesdir: ./_images
 
-= 双模式设计
+= 兼容Oracle函数与存储过程
 
 == 目的
 
-- 为了满足PG模式和兼容Oracle模式，Ivorysql设计了pg和oracle两种模式。并且可以在initdb时指定模式;
+- 本文档意在兼容Oracle PLSQL函数和存储过程的语法，在IvorySQL中我们称其为PLISQL语言。
 
-== 功能
+== 功能说明
 
-- Initdb -m 初始化，需要判断不同的模式，其中Oracle模式下，需要执行postgres_oracle.bki的SQL语句;
-- 启动时会根据初始化模式，判断是否为oracle兼容模式。
+.函数（FUNCTION）
+|====
+|CREATE FUNCTION语法支持EDITIONABLE/NONEDITIONABLE
+|CREATE FUNCTION语法支持RETURN, IS关键字，不指定language
+|CREATE FUNCTION语法函数没有参数，函数名后面不带()
+|CREATE FUNCTION参数个数最多是32767
+|CREATE FUNCTION语法中END; 在psql中以/结束
+|CREATE FUNCTION语法变量声明前面没有DECLARE关键字
+|CREATE FUNCTION语法支持OUT 参数NOCOPY功能
+|CREATE FUNCTION语法支持sharing_clause
+|CREATE FUNCTION语法支持invoker_rights_clause，默认权限改成DR（DEFINER）
+|CREATE FUNCTION语法支持ACCESSIBLE BY 
+|CREATE FUNCTION语法支持DEFAULT COLLATION
+|CREATE FUNCTION语法支持result_cache_clause 
+|CREATE FUNCTION语法支持aggregate_clause
+|CREATE FUNCTION语法支持pipelined_clause
+|CREATE FUNCTION语法支持sql_macro_clause
+|ALTER FUNCTION语法
+|函数和存储过程相关的视图
+|====
 
-```
-database_mode：用于表示初始化模式；
-database_mode=DB_PG，PG模式，且不可切换；
-database_mode=DB_ORACLE，Oracle兼容模式；
-```
+
+.存储过程（PROCEDURE)
+|====
+|CREATE PROCEDURE语法支持EDITIONABLE/NONEDITIONABLE
+|CREATE PROCEDURE语法函数没有参数，函数名后面不带()
+|CREATE PROCEDURE参数个数最多是32767
+|CREATE PROCEDURE语法中END; 在psql中以/结束
+|CREATE PROCEDURE语法支持sharing_clause
+|CREATE PROCEDURE语法支持DEFAULT COLLATION
+|CREATE PROCEDURE语法支持invoker_rights_clause
+|CREATE PROCEDURE语法支持ACCESSIBLE BY 
+|ALTER PROCEDURE语法
+|存储过程没有参数，调用支持不带（）
+|存储过程调用支持EXEC 
+|在PL/SQL 中调用存储过程，可以省略CALL，直接使用存储过程名字
+|支持--和/**/两种注释方法
+|====
+
 
 == 测试用例
 
 ```
-初始化PG模式：
-./initdb -D ../data -m pg
 
-初始化oracle兼容模式：
-./initdb -D ../data -m oracle
-或
-./initdb -D ../data
+CREATE or replace FUNCTION ora_func RETURN integer AS
+BEGIN    
+    RETURN 1;
+END;
+/
+
+CREATE OR REPLACE FUNCTION test_nocopy(a IN int, b OUT NOCOPY int, c IN OUT NOCOPY int) 
+RETURN record 
+IS
+BEGIN 
+   b := a;
+   c := a; 
+END;
+/
+
 ```
+```
+
+CREATE OR REPLACE PROCEDURE ora_procedure()
+AS
+	p integer := 20;   
+begin
+	raise notice '%', p;
+end;
+/
+call ora_procedure();
+
+CREATE OR REPLACE PROCEDURE ora_procedure
+SHARING = METADATA
+DEFAULT COLLATION USING_NLS_COMP
+AUTHID CURRENT_USER
+ACCESSIBLE BY ( FUNCTION A.B )
+IS
+	p integer := 20;   
+begin
+	raise notice '%', p;
+end;
+/
+
+```
+
+
+
+

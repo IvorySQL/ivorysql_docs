@@ -3,25 +3,50 @@
 
 :imagesdir: ./_images
 
-= IVORYSQL framework design
+= Dual-mode design
+
 == Objective
 
-- In order to minimize changes to the original Postgres, it is compatible with Oracle. We need to implement a framework for dual-parser, dual-port, modal PLPGSQL to implement PLiSQL. The implementation flowchart is as follows:
-
-image::p18.png[]
+- In order to meet the PG mode and the compatible Oracle mode, IVORYSQL designed two modes: PG and Oracle. And the schema can be specified at initdb time;
 
 == Function
 
-=== Dual-port design
+- Initdb -m initialization requires judgment of different modes, among which oracle mode requires the execution of SQL statements postgres_oracle.bki. The default is Oracle compatibility mode, and the process is as follows:
+ 
+- Startup: When starting, it determines whether it is an Oracle compatibility mode based on the initialization mode;
 
-- The ivorysql port 5432 is kept compatible with the original Postgres situation, so Ivorysql uses another separate port to log in, which defaults to 1521. Log in from this port, and the Oracle compatibility mode is used by default. If you need to log in from port 5432 and also enter compatibility mode, you need to set it through the compatible_mode parameters;
+```
+Description:
+database_mode: Used to indicate initialization mode;
+database_mode=DB_PG，PG mode, and cannot be switched;
+database_mode=DB_ORACLE， oracle compatibility mode;
+```
 
-=== Parser module design
+== Test cases
 
-- In order to minimize the interference between Oracle syntax and Postgres syntax, a parser module has been added to handle oracle-related syntax;
+```
+Initialize the PG mode:
+./initdb -D ../data -m pg
 
-=== Added PL\iSQL procedural language
+Initialize the Oracle compatibility mode:
+./initdb -D ../data -m oracle
 
--Similarly, in order to reduce the conflict between Oracle compatibility and Postgres syntax, a separate set of Oracle-specific test cases is designed,This set of test cases is a copy of Postgres' original test framework;
+or
+./initdb -D ../data
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

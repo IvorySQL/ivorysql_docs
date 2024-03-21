@@ -2,468 +2,275 @@
 :sectnums:
 :sectnumlevels: 5
 
+= **Installation**
 
-# **Installation Deployment**
+== Introduction
 
-## Installation overview
+The installation methods for IvorySQL include the following four:
 
-This article introduces the installation process and precautions of Ivorysql on Linux platform. This article mainly demonstrates the yum source installation steps, rpm package installation steps, and source code installation steps of the database under the Centos 7 environment.
+- <<Yum-installation>>
+- <<Docker-installation>>
+- <<Rpm-installation>>
+- <<Source-code-installation>>
 
 
-=== Software and hardware requirements
+This chapter will provide detailed instructions on the installation, execution, and uninstallation processes for each method. For a quicker access to IvorySQL, please refer to xref:v3.1/3.adoc#quick-installation[Quick installation].
 
-==== Introduction to software resources
-|====
-| operating system | Yum source download address
-| CentOS 7、CentOS 8 | https://yum.highgo.ca/ivorysql.html
-|====
+[[Yum-installation]]
+== Yum installation
 
-==== Hardware resource preparation
-
-|====
-| Configuration parameters | **Minimum configuration** | **Recommended configuration**
-| **CPU** | 4 cores | 16 cores
-| **Memory** | 4GB | 64GB
-| **Storage** | 800MB，mechanical hard disk | Above 5GB，SSD or NvMe
-| **Network** | gigabit lan | 10 Gigabit network
-|====
-
-=== Environment and configuration check
-
-Before deploying the IvorySQL database, you need to check the system environment and configuration
-
-==== View resources
-
-The IvorySQL database supports CentOS 7. X, 8. X operating systems. For details, refer to <<#_software_and_hardware_requirements>>.
-
-==== View the operating system
-
-Run the following command to view the operating system information：
-
+** Run yum install commands
 ```
-cat /etc/redhat-release
+$ sudo yum install -y https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-3.0-1.noarch.rpm
+
+$ sudo yum install -y ivorysql3 ivorysql3-server ivorysql3-contrib ivorysql3-test
 ```
+IvorySQL then will be installed in the /usr/local/ivorysql directory.
 
-==== View kernel parameters
+Yum configuration file /etc/yum.repos.d/ivorysql.repo will be created after the successful installation.
 
-```
-uname -r 
-```
-
-==== View memory and clear cache
-
-```
-free -g
-
-echo 3 > /proc/sys/vm/drop_caches
-```
-
-=== Get installation package
-
-You can install the IvorySql database or RPM package through the source code.
-
-==== Use source code to build IvorySQL database
-
-1.Get the source code: Run the following command to clone the source code of the IvorySQL database to your build machine:
-
-```
-git clone https://github.com/IvorySQL/IvorySQL.git
-```
-
-> Note: To clone code, you need to install and configure Git first. For details, refer to https://git-scm.com/doc[Git doc].
-
-2.Install dependent packages: To compile IvorySQL from source code, you must ensure that prerequisite packages are available on the system. Execute the following command to install related packages：
-
-```
-sudo yum install -y bison-devel readline-devel zlib-devel openssl-devel wget
-sudo yum groupinstall -y 'Development Tools'
-```
-
-> Note: "Development Tools" includes gcc, make, flex, bison.
-
-3.Self-compilation and installation: The source code obtained previously is in the folder IvorySQL. Next, we will enter this folder for operation.
-
-Configuration: Root users execute the following commands to configure:
-
-```
-./configure --prefix=/usr/local/ivorysql/ivorysql-3
-```
-
-> Note: Because -- prefix is not provided, it is installed in/usr/local/pgsql by default, so you need to specify the path
-
-> Note: We should remember the specified directory, because the system cannot find out where the compiled and installed programs are. More configure parameters can be viewed through "./configure -- help". You can also view the PostgreSQL manual
-
-Compile and install: After the configuration is completed, execute make to compile:
-
-```
-make
-```
-
-Perform a regression test before installing the newly compiled service (the following commands can be used):
-
-```
-make check
-make all-check-world
-```
-
-Installation:
-
-```
-make install
-```
-
-==== Install the IvorySql database using the RPM package
-
-1. Run the following command to download the IvorySQL installation package.
-
-```
-wget https://github.com/IvorySQL/IvorySQL/releases/tag/Ivorysql_3.0_Beta/ivorysql3-3.0-1.rhel7.x86_64.rpm
-
-wget https://github.com/IvorySQL/IvorySQL/releases/tag/Ivorysql_3.0_Beta/ivorysql3-contrib-3.0-1.rhel7.x86_64.rpm
-
-wget https://github.com/IvorySQL/IvorySQL/releases/tag/Ivorysql_3.0_Beta/ivorysql3-libs-3.0-1.rhel7.x86_64.rpm
-
-wget https://github.com/IvorySQL/IvorySQL/releases/tag/Ivorysql_3.0_Beta/ivorysql3-server-3.0-1.rhel7.x86_64.rpm
-```
-
-> Note: The installation package in the example may not be the latest version. It is recommended that you download the latest installation package.
-
-2.Run the following command to install IvorySQL.
-
-```
-yum install -y libicu libxslt python3                   --Install dependencies first
-rpm -ivh ivorysql3-libs-3.1-1.rhel7.x86_64.rpm
-rpm -ivh ivorysql3-3.1-1.rhel7.x86_64.rpm
-rpm -ivh ivorysql3-contrib-3.1-1.rhel7.x86_64.rpm --nodeps
-rpm -ivh ivorysql3-server-3.1-1.rhel7.x86_64.rpm
-```
-
-
-
-=== Initialize database service
-
-==== Initialize database
-
-1.Create an operating system user: under the user root session, create a new user ivorysql:
-
-```
-/usr/sbin/groupadd ivorysql
-/usr/sbin/useradd -g ivorysql ivorysql -c "IvorySQL3.1 Server"
-passwd ivorysql
-```
-
-2.Create a data directory and modify permissions: Execute the following command in the root session:
-
-```
-chown -R ivorysql.ivorysql /var/lib/ivorysql/ivorysql-3
-```
-
-> Note: The data directory is not placed in "/var/lib/ivorysql/ivorysql-3/data" according to RPM installation.
-
-3.Environment variable: switch to user ivorysql, modify the file "/home/ivorysql/. bash_profile", and configure the environment variable：
-
-```
-umask 022
-export LD_LIBRARY_PATH=/usr/local/ivorysql/ivorysql-3/lib:$LD_LIBRARY_PATH
-export PATH=/usr/local/ivorysql/ivorysql-3/bin:$PATH
-export PGDATA=/var/lib/ivorysql/ivorysql-3/data
-```
-
-Make the environment variable effective in the current ivorysql user session:
-
-```
-source .bash_profile
-```
-
-You can also log in again or open a new user ivorysql session.
-
-4.Set the firewall: If the firewall is enabled, port 5333 needs to be opened:
-
-```
-firewall-cmd --zone=public --add-port=5333/tcp --permanent
-firewall-cmd --reload
-```
-
-> Note: The default port is 5333. If the port is not opened, the external client will fail to connect via IP.
-
-5.Initialization: Under user ivorysql, simply execute initdb to complete initialization:
-
-```
-initdb
-```
-
-> Note: The initdb operation is the same as PostgreSQL. It can be initialized according to the habits of PG.
-
-6.Start database: use pg_ Ctl starts the database service:
-
-```
-pg_ctl start
-```
-
-View the status and start successfully:
-
-```
-pg_ctl status
-```
-
-=== Configure service
-
-1.Client authentication: modify/ivorysql/1.2/data/pg_ Hba.conf, add the following:
-
-```
-host    all             all             0.0.0.0/0               trust
-```
-
-> Note: This is trust, which means that you can log in without password.
-
-Execute the following command to load the configuration:
-
-```
-pg_ctl reload
-```
-
-2.Basic parameters
-
-Connect to the database through psql:
-
-```
-psql
-```
-
-Modify listening address
-
-```
-alter system set listen_addresses = '*';
-```
-
-> Note: The default is listening at 127.0.0.1. The service cannot be connected outside the host.
-
-3.Guard service
-
-Create a service file:
-
-```
-touch /usr/lib/systemd/system/ivorysql.service
-```
-
-The editing contents are as follows:
-
-```
-[Unit]
-Description=IvorySQL 3.1 database server
-Documentation=https://www.ivorysql.org
-Requires=network.target local-fs.target
-After=network.target local-fs.target
-
-[Service]
-Type=forking
-
-User=ivorysql
-Group=ivorysql
-
-Environment=PGDATA=/ivorysql/1.2/data/
-
-OOMScoreAdjust=-1000
-
-ExecStart=/usr/local/ivorysql/bin/pg_ctl start -D ${PGDATA}
-ExecStop=/usr/local/ivorysql/bin/pg_ctl stop -D ${PGDATA}
-ExecReload=/usr/local/ivorysql/bin/pg_ctl reload -D ${PGDATA}
-A}
-
-TimeoutSec=0
-
-[Install]
-WantedBy=multi-user.target
-```
-
-> Note: There are many ways to write a service. Be careful when using it in a production environment. Please repeat the test several times.
-
-Stop pg_ The database service started by ctl enables the systemd service and starts:
-
-```
-systemctl enable --now ivorysql.service
-```
-
-IvorSQL database service operation command:
-
-```
-systemctl start ivorysql.service           
-systemctl stop ivorysql.service            
-systemctl restart ivorysql.service         
-systemctl status ivorysql.service          
-systemctl reload ivorysql.service           
-```
-
-=== installation
-
-==== Yum source
-
-1.Download YUM source: use wget to download on Centos7
-
-```
-wget https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-1.0-1.noarch.rpm
-```
-
-Install ivorysql-release-1.0-1.noarch.rpm：
-
-```
-rpm -ivh ivorysql-release-1.0-1.noarch.rpm
-```
-
-After installation, the YUM source profile will be created：/etc/yum.repos.d/ivorysql.repo。
-
-Search to view relevant installation packages：
-
+** Checking installation results
 ```
 yum search ivorysql
 ```
-
-Table 1 for the description of search results：
-
-.YUM source description
+Details:
 |====
-| **serial number** | **Package name** | **description**
-|1| https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql1-1.2-1.rhel7.x86_64.rpm[ivorysql1.x86_64] | IvorySQL client program and library files
-|2| https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql1-contrib-1.2-1.rhel7.x86_64.rpm[ivorysql1-contrib.x86_64] | Contributed source code and binaries released with IvorySQL
-|3| ivorysql1-devel.x86_64 | IvorySQL develops header files and libraries
-|4| ivorysql1-docs.x86_64 | Additional documentation for IvorySQL
-|5| https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql1-libs-1.2-1.rhel7.x86_64.rpm[ivorysql1-libs.x86_64] | Shared libraries required by all IvorySQL clients
-|6| ivorysql1-llvmjit.x86_64 | Just-in-time compilation support for IvorySQL 
-|7| ivorysql1-plperl.x86_64 | Perl, the procedural language used for IvorySQL
-|8| ivorysql1-plpython3.x86_64 | Python3, the procedural language for IvorySQL
-|9| ivorysql1-pltcl.x86_64 | Tcl, the procedural language used for IvorySQL
-|10| https://yum.highgo.ca/dists/ivorysql-rpms/1/redhat/rhel-7-x86_64/ivorysql1-server-1.2-1.rhel7.x86_64.rpm[ivorysql1-server.x86_64] | The programs required to create and run the IvorySQL server
-|11| ivorysql1-test.x86_64 | Test suite released with IvorySQL
-|12| vorysql-release.noarch | The Yum source configuration RPM package of Hanco Basic Software Co., Ltd
+| id | Package name  | Description
+| 1 | ivorysql3.x86_64 |  IvorySQL client programs and lib files
+| 2 | ivorysql3-contrib.x86_64 | Contributed source code and binary files released with IvorySQL
+| 3 | Ivorysql3-devel.x86_64 | IvorySQL development header files and libraries
+| 4 | Ivorysql3-docs.x86_64 | Additional docs for IvorySQL
+| 5 | ivorysql3-libs.x86_64 | Shared libraries required by all IvorySQL clients
+| 6 | Ivorysql3-llvmjit.x86_64 | Instant compilation support for IvorySQL
+| 7 | Ivorysql3-plperl.x86_64 | Perl, a procedural language for IvorySQL
+| 8 | Ivorysql3-plpython3.x86_64 | Python3, a procedural language for IvorySQL
+| 9 | Ivorysql3-pltcl.x86_64 | Tcl, a procedural language for IvorySQL
+| 10 | ivorysql3-server.x86_64 | The programs required to create and run an IvorySQL server
+| 11 | Ivorysql3-test.x86_64 | Test suite released with IvorySQL
+| 12 | ivorysql-release.noarch | Yum Source Configuration RPM Package of HighGo
 |====
 
-2.Install IvorySQL
-To install the database service, you need to install ivorysql1-server. Execute the following command in the user root session:
+[[Docker-installation]]
+== Docker installation
 
+** Get IvorySQL image from Docker Hub
 ```
-yum install -y ivorysql1-server
-```
-
-**Installation list:：**
-
-```
-ivorysql1-server.x86_64 0:1.2-1.rhel7
+$ docker pull ivorysql/ivorysql:3.1-ubi8
 ```
 
-**Dependencies Installation: **
-
+** Run IvorySQL
 ```
-ivorysql1.x86_64 0:1.2-1.rhel7 ivorysql1-contrib.x86_64 0:1.2-1.rhel7
-ivorysql1-libs.x86_64 0:1.2-1.rhel7 libicu.x86_64 0:50.2-4.el7_7
-libtirpc.x86_64 0:0.2.4-0.16.el7 libxslt.x86_64 0:1.1.28-6.el7
-python3.x86_64 0:3.6.8-18.el7 python3-libs.x86_64 0:3.6.8-18.el7
-python3-pip.noarch 0:9.0.3-8.el7 python3-setuptools.noarch 0:39.2.0-10.el7
+$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:3.1-ubi8
 ```
-
-3.Installed directory
-Table 2 describes the file directories generated during YUM installation.
-
-
-.Description of installation directory file
+-e Parameter Explanation
 |====
-|**serial number** | **File path** | **description**
-|1| /usr/local/ivorysql/ivorysql-1 | Software installation directory
-|2| /var/lib/ivorysql/ivorysql-1/data | Data directory (default)
-|3| /usr/bin/ivorysql-1-setup | Helps system administrators with basic database cluster management
-|4| /usr/lib/systemd/system/ivorysql-1.service | Guardian services
+| Parameter Name | Required | Description
+| IVORYSQL_USER | No | Database user, default is ivorysql
+| IVORYSQL_PASSWORD | yes | Database password
+| IVORYSQL_DB | no | Database name,default is ivorysql
+| POSTGRES_HOST_AUTH_METHOD | no | Modify host authentication method,reference value:md5
+| POSTGRES_INITDB_ARGS | no | Add additional parameters to initdb,reference value:"--data-checksums"
+| PGDATA | no | Define the data directory to be located in another path or folder (e.g., subdirectory), defaulting to /var/lib/ivorysql/data
+| POSTGRES_INITDB_WALDIR | no | Define the IvorySQL transaction folder path, which defaults to a subdirectory within the data directory (PGDATA)
 |====
 
-==== deb pckage
+[TIP]
+====
+. It is not recommended to set the POSTGRES_HOST_AUTH_METHOD parameter to trust, as this will make the IVORYSQL_PASSWORD setting ineffective.
+. If the POSTGRES_HOST_AUTH_METHOD parameter is set to scram-sha-256, it is also necessary to set POSTGRES_INITDB_ARGS to --auth-host=scram-sha-256 to ensure proper initialization of the database.
+====
 
-Verification environment: Linux 20.04.1-Ubuntu 
+[[Rpm-installation]]
+== rpm installation
+** Installing dependencies
+```
+$ sudo yum install -y libicu libxslt python3
+$ sudo yum --disablerepo=* localinstall *.rpm
+```
+** Getting rpms
+```
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.1/ivorysql3-libs-3.1-1.rhel7.x86_64.rpm
 
-1、Get deb from the official website
+$ sudo wget 
+https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.1/ivorysql3-3.1-1.rhel7.x86_64.rpm
 
-explain：ivorysql.deb is not currently available
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.1/ivorysql3-contrib-3.1-1.rhel7.x86_64.rpm
 
-2、Install deb package
+$ sudo wget 
+https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.1/ivorysql3-server-3.1-1.rhel7.x86_64.rpm
+```
+** Installing rpms
+
++ 
+
+Install the rpms in the following order, since the latters depend on the formers:
+```
+$ sudo rpm -ivh ivorysql3-libs-3.1-1.rhel7.x86_64.rpm
+$ sudo rpm -ivh ivorysql3-3.1-1.rhel7.x86_64.rpm
+$ sudo rpm -ivh ivorysql3-server-3.1-1.rhel7.x86_64.rpm --nodeps
+$ sudo rpm -ivh ivorysql3-contrib-3.1-1.rhel7.x86_64.rpm
+```
+IvorySQL then will be installed in the /usr/local/ivorysql directory.
+
+[[Source-code-installation]]
+== Source code installation
+** Installing dependencies
+```
+$ sudo yum install -y bison-devel readline-devel zlib-devel openssl-devel
+$ sudo yum groupinstall -y 'Development Tools'
+```
+** Getting source code
+```
+$ git clone https://github.com/IvorySQL/IvorySQL.git
+```
+** Configuring
+
++
+
+In the IvorySQL directory run the following command with --prefix to specify the directory where you want the database to be installed:
+```
+$ ./configure --prefix=/usr/local/ivorysql/ivorysql-3
+```
+** Compiling
+
++
+
+Run the following command to compile the source code:
+```
+$ make
+```
+
+** Installing
+
++
+
+Run the following command to install the database system, IvorySQL then will be installed in the directory specified by --prefix:
+```
+$ sudo make install
+```
+
+[TIP]
+====
+When the compilation is completed, you can test the result with 'make check' or 'make all-check-world' before your installation
+====
+
+== 启动数据库
+Users following the instructions in <<Yum-installation>>, <<Rpm-installation>>, and <<Source-code-installation>> need to manually start the database.
+
+Execute the following command to grant permissions to the installation user. The example user is ivorysql, and the installation directory is /usr/local/ivorysql.:
+```
+$ sudo chown -R ivorysql:ivorysql /usr/local/ivorysql
+```
+[[setting-environment-variables]]
+** Setting environment variables
+
++
+
+Add below contents in ~/.bash_profile file and source to make it effective:
+```
+PATH=/usr/local/ivorysql/ivorysql-3/bin:$PATH
+export PATH
+LD_LIBRARY_PATH=/usr/local/ivorysql/ivorysql-3/lib
+export LD_LIBRARY_PATH
+PGDATA=/usr/local/ivorysql/ivorysql-3/data
+export PGDATA
+```
+```
+$ source ~/.bash_profile
+```
+
+** Initializing database
 
 ```
-dpkg -i ivorysql.deb
+$ initdb -D /usr/local/ivorysql/ivorysql-3/data
 ```
+....
+  The -D option specifies the directory where the database cluster should be stored. This is the only information required by initdb, but you can avoid writing it by setting the PGDATA environment variable, which can be convenient since the database server can find the database directory later by the same variable. 
 
-3、Configure environment variables
+  For more options, refer to initdb --help.
+....
 
-```
-vi ~/.bashrc
-    export PATH=/xxx/ivorysql/bin:$PATH
-    export LD_LIBRARY_PATH=/xxx/ivorysql/lib
-
-source .bashrc
-```
-
-4、Uninstall deb package
+** Starting IvorySQL service
 
 ```
-dpkg -r ivorysql
+$ pg_ctl -D /usr/local/ivorysql/ivorysql-3/data -l ivory.log start 
 ```
 
-=== Uninstall the IvorySQL database
+The -D option specifies the file system location of the database configuration files. If this option is omitted, the environment variable PGDATA in <<setting-environment-variables>> is used. -l option appends the server log output to filename. If the file does not exist, it is created.
 
-==== Compile Uninstall
+For more options, refer to pg_ctl --help.
 
-1.Backup data: The data directory is under "/ivorysql/1.2/data", so we can protect the directory. It is better to stop the database service and make a backup.
 
+Confirm it's successfully started:
 ```
-systemctl stop ivorysql-1.service
+$ ps -ef | grep postgres
+ivorysql  3214     1  0 20:35 ?        00:00:00 /usr/local/ivorysql/ivorysql-3/bin/postgres -D /usr/local/ivorysql/ivorysql-3/data
+ivorysql  3215  3214  0 20:35 ?        00:00:00 postgres: checkpointer 
+ivorysql  3216  3214  0 20:35 ?        00:00:00 postgres: background writer 
+ivorysql  3218  3214  0 20:35 ?        00:00:00 postgres: walwriter 
+ivorysql  3219  3214  0 20:35 ?        00:00:00 postgres: autovacuum launcher 
+ivorysql  3220  3214  0 20:35 ?        00:00:00 postgres: logical replication launcher 
+ivorysql  3238  1551  0 20:35 pts/0    00:00:00 grep --color=auto postgres
 ```
 
-2.Compile and uninstall: switch the root session to the source directory and execute the following commands respectively:
+== Connecting to IvorySQL
 
+Connect to IovrySQL via psql:
 ```
-make uninstall
+$ psql -d <database>
+psql (16.1)
+Type "help" for help.
+
+ivorysql=#
+```
+....
+  The -d option specifies the name of the database to connect to. ivorysql is the default database of IvorySQL. However,IvorySQL of lower versions need the users themselves to connect to postgres database at the first connection and then create the ivorysql database.The latest IvorySQL can do all these for users.
+
+  For more options, refer to psql --help.
+....
+
+TIP: When running IvorySQL in Docker, additional parameters need to be added, like: psql -d ivorysql -U ivorysql -h 127.0.0.1 -p 5434
+
+== Uninstallation
+
+[CAUTION]
+====
+No matter which method is used for the uninstallation, make sure the service has been stopped cleanly and your data has been backed up safely.
+====
+
+=== Uninstallation for yum installation
+
+Run the following commands in turn and clean the residual folders:
+```
+$ sudo yum remove -y ivorysql3 ivorysql3-server ivorysql3-contrib ivorysql3-test
+$ sudo rpm -e ivorysql-release-3.0-1.noarch
+$ sudo rm -rf /usr/local/ivorysql
+```
+
+=== Uninstallation for docker installation
+Stop IvorySQL container and remove IvorySQL image:
+```
+$ docker stop ivorysql
+$ docker rm ivorysql
+$ docker rmi ivorysql/ivorysql:3.1-ubi8
+```
+
+=== Uninstallation for rpm installation
+
+Query the rpms installed and uninstall them in turn, then clear the residual folders:
+```
+$ rpm -qa | grep ivorysql
+$ sudo rpm -e ivorysql3-contrib-3.1-1.rhel7.x86_64
+$ sudo rpm -e ivorysql3-server-3.1-1.rhel7.x86_64
+$ sudo rpm -e ivorysql3-3.1-1.rhel7.x86_64
+$ sudo rpm -e ivorysql3-libs-3.1-1.rhel7.x86_64 
+$ sudo rm -rf /usr/local/ivorysql
+```
+
+=== Uninstallation for source code installation
+Uninstall the database system, then clear the residual folders:
+```
+sudo make uninstall
 make clean
+sudo rm -rf /usr/local/ivorysql
 ```
-
-3.Delete residual directories and files:
-
-```
-systemctl disable ivorysql.servicemake                  --disable Service
-mv /usr/lib/systemd/system/ivorysql.service /tmp/       --the service file can be moved                                                             to/tmp or deleted
-rm -fr /usr/local/ivorysql/ivorysql-3                                --remove residual installation                                                             directory
-```
-
-> Note: There are also user ivorysql and corresponding environment variables, which can be cleaned according to the situation. The rest is the data directory "/var/lib/ivorysql/ivorysql-3/data". Please make sure to make a backup before processing. There are also installed dependent packages, which can be uninstalled according to the situation.
-
-
-==== YUM Uninstall
-
-1.Stop database service:
-
-```
-systemctl stop ivorysql-1.service
-```
-
-First use "yum history list" to determine the transaction ID of yum installation:
-
-```
-[root@Node02 ~]# yum history list
-Loaded plugins: fastestmirror
-ID     | Login user               | Date and time    | Action(s)      | Altered
--------------------------------------------------------------------------------
-     5 | root <root>              | 2022-04-27 12:38 | Install        |   11  <
-     4 | root <root>              | 2022-03-26 16:08 | Install        |   35 > 
-     3 | root <root>              | 2022-03-26 16:07 | I, U           |   19   
-     2 | root <root>              | 2022-03-26 16:07 | I, U           |   73   
-     1 | System <unset>           | 2022-03-26 15:59 | Install        |  299   
-history list
-```
-
-You can see that the transaction with ID 5 is to execute the installation. Execute the command to uninstall (replace XX with "5"):
-
-```
-yum history undo XX
-```
-
-2.unload：
-
-```
-yum remove ivorysql-server
-```
-
-However, this command is not completely uninstalled. Only 2 dependencies have been uninstalled, and 8 dependencies have not been uninstalled. You can decide whether to uninstall in this way based on whether to retain these dependencies.

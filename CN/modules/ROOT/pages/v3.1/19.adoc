@@ -3,47 +3,26 @@
 
 :imagesdir: ./_images
 
-= 兼容Oracle匿名块
+= 新增Oracle兼容模式的端口与Ip
 
 == 目的
 
-- 本文档是PLSQL匿名块（anonymous block）兼容Oracle语法功能的设计文档，目的是可以在IvorySQL中兼容Oracle的匿名块语句。
+- 为了将Oracle端口、Ip与PG的端口Ip进行区分。现需要增加对ORAPORT和ORAHOST的处理;
 
-== 功能说明
+== 功能
 
-- 匿名块是能够动态地创建和执行过程代码的PLSQL结构，而不需要以持久化的方式将代码作为数据库对象储存在系统目录中。本次实现中IvorySQL主要兼容的是PLSQL匿名块的语法格式，我们主要处理的部分包括客户端工具psql、主服务器和PSQL端支持。
+- 新增ivoryhost：需要在连接时新增参数ivoryhost即可指定，其功能类似 host;
 
-== 测试用例
+- 新增ivoryport：相较于host，port的功能相对复杂一些。其中涉及到可以在configure阶段配置，连接阶段指定端口;
 
+== 测试用例：
 ```
-
-declare
-i integer := 10;
-begin
- raise notice '%', i;
- raise notice '%', main.i;
-end;
-/
-NOTICE:  10
-NOTICE:  10
-
+   ./configure --with-oraport=5555
+   ./initdb ....
+   ./pg_ctl -D ../data start
+    
+   ./pg_ctl -o "-p 5433 -o 1522" -D ../data
 ```
+  
 
-```
-
-DECLARE
-  grade CHAR(1);
-BEGIN
-  grade := 'B';
-  CASE grade
-    WHEN 'A' THEN raise notice 'Excellent';
-    WHEN 'B' THEN raise notice 'Very Good';
-  END CASE;
-EXCEPTION
-  WHEN CASE_NOT_FOUND THEN
-    raise notice 'No such grade';
-END;
-/
-NOTICE:  Very Good
-
-```
+​      
