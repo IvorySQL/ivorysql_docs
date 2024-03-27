@@ -154,7 +154,7 @@ $ sudo make install
 When the compilation is completed, you can test the result with 'make check' or 'make all-check-world' before your installation
 ====
 
-== 启动数据库
+== Start Database
 Users following the instructions in <<Yum-installation>>, <<Rpm-installation>>, and <<Source-code-installation>> need to manually start the database.
 
 Execute the following command to grant permissions to the installation user. The example user is ivorysql, and the installation directory is /usr/local/ivorysql.:
