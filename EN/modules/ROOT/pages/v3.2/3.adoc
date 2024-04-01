@@ -109,19 +109,19 @@ ivorysql  3238  1551  0 20:35 pts/0    00:00:00 grep --color=auto postgres
 
 ** Get IvorySQL image from Docker Hub
 ```
-$ docker pull ivorysql/ivorysql:3.1-ubi8
+$ docker pull ivorysql/ivorysql:3.2-ubi8
 ```
 
 ** Running IvorySQL
 ```
-$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:3.1-ubi8
+$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:3.2-ubi8
 ```
 
 ** Check if the IvorySQL container is running successfully
 ```
 $ docker ps | grep ivorysql
 CONTAINER ID   IMAGE               COMMAND                   CREATED          STATUS          PORTS                              NAMES
-6faa2d0ed705   ivorysql:3.1-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
+6faa2d0ed705   ivorysql:3.2-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
 ```
 
 == Connecting to IvorySQL
@@ -129,7 +129,7 @@ CONTAINER ID   IMAGE               COMMAND                   CREATED          ST
 Connect to IovrySQL via psql:
 ```
 $ psql -d <database>
-psql (16.1)
+psql (16.2)
 Type "help" for help.
 
 ivorysql=#
@@ -144,4 +144,4 @@ TIP: When running IvorySQL in Docker, additional parameters need to be added, li
 
 Now you can start your journey of IvorySQL! Enjoy! 
 
-To explore additional installation methods, please refer to the xref:v3.1/6.adoc[Installation].
+To explore additional installation methods, please refer to the xref:v3.2/6.adoc[Installation].

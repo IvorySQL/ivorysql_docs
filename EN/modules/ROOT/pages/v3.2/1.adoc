@@ -7,7 +7,7 @@
 
 [**Release date: January 26, 2024**]
 
-IvorySQL 3.1 is based on PostgreSQL 16.1 and includes various fixes from PostgreSQL 16.1, for more detailed updates and bug fixes in PostgreSQL 16.1, see the official https://www.postgresql.org/docs/release/16/[PostgreSQL 16.1 Release Notes].
+IvorySQL 3.2 is based on PostgreSQL 16.2 and includes various fixes from PostgreSQL 16.2, for more detailed updates and bug fixes in PostgreSQL 16.2, see the official https://www.postgresql.org/docs/release/16/[PostgreSQL 16.2 Release Notes].
 
 
 == Known Issues
