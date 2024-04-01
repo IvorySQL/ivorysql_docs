@@ -11,6 +11,8 @@
 ** xref:v3.1/8.adoc[开发者指南]
 ** xref:v3.1/9.adoc[运维管理指南]
 ** xref:v3.1/10.adoc[迁移指南]
+* IvorySQL生态
+** xref:v3.1/23.adoc[PostGIS]
 * 功能列表
 ** xref:v3.1/11.adoc[1、框架设计]
 ** xref:v3.1/12.adoc[2、GUC框架]
