@@ -4,7 +4,7 @@
 
 == 版本介绍
 
-[**发行日期：2024年1月26日**]
+[**发行日期：2024年4月11日**]
 
 IvorySQL 3.2 基于 PostgreSQL 16.2 ，包含来自 PostgreSQL 16.2 的各种修复。有关 PostgreSQL 16.2 中更详细的更新和错误修复，请参阅官方 https://www.postgresql.org/docs/release/16.2/[PostgreSQL 16.2 发行说明] 。
 
@@ -15,11 +15,27 @@ IvorySQL 3.2 基于 PostgreSQL 16.2 ，包含来自 PostgreSQL 16.2 的各种修
 
 == 增强功能
 
-* 暂无
+引入一部分XML函数，包括：
+
+    - APPENDCHILDXML
+    - DELETEXML
+    - EXISTSNODE
+    - EXTRACT(XML)
+    - EXTRACTVALUE
+    - INSERTCHILDXMLAFTER
+    - INSERTCHILDXMLBEFORE
+    - INSERTCHILDXML
+    - INSERTXMLAFTER
+    - INSERTXMLBEFORE
+    - UPDATEXML
+
 
 == 问题修复
 
-* 暂无
+    - 修复build文档失败的问题
+	- 清除build时的警告
+	- 解决问题 https://github.com/IvorySQL/IvorySQL/issues/592[#592]
+	- 解决问题 https://github.com/IvorySQL/IvorySQL/issues/624[#624]
 
 == 源代码
 
@@ -38,16 +54,12 @@ IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL网�
 - 高雪玉
 - Cary Huang
 - David Zhang
-- 谭洋
-- 王杰
-- 穆帅楠
-- 张洪源
 - 王守波
 - 任娇
-- 刘政
-- 肖哲凯
 - 金华建
 - 王丽
+- 付贝
+- 贾楠
 - 尚雷
 - 冯磊
 - 宋金周
@@ -57,4 +69,3 @@ IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL网�
 - Yunhe Xu
 - 王皓
 - 董小姐
-- 韩伟博

@@ -5,7 +5,7 @@
 
 == Version Introduction
 
-[**Release date: January 26, 2024**]
+[**Release date: April 11, 2024**]
 
 IvorySQL 3.2 is based on PostgreSQL 16.2 and includes various fixes from PostgreSQL 16.2, for more detailed updates and bug fixes in PostgreSQL 16.2, see the official https://www.postgresql.org/docs/release/16/[PostgreSQL 16.2 Release Notes].
 
@@ -16,11 +16,26 @@ IvorySQL 3.2 is based on PostgreSQL 16.2 and includes various fixes from Postgre
 
 == Enhancements
 
-* None
+Some XML functions are introduced, including:
+
+    - APPENDCHILDXML
+    - DELETEXML
+    - EXISTSNODE
+    - EXTRACT(XML)
+    - EXTRACTVALUE
+    - INSERTCHILDXMLAFTER
+    - INSERTCHILDXMLBEFORE
+    - INSERTCHILDXML
+    - INSERTXMLAFTER
+    - INSERTXMLBEFORE
+    - UPDATEXML
 
 == Fixed issue
 
-* None
+    - Fix the doc build failure issue
+	- Clear the build warnings
+	- Solved issue https://github.com/IvorySQL/IvorySQL/issues/592[#592]
+	- Solved issue https://github.com/IvorySQL/IvorySQL/issues/624[#624]
 
 == Source Code
 
@@ -40,16 +55,13 @@ The following individuals have contributed to this release as patch authors, com
 - Xueyu Gao
 - Cary Huang
 - David Zhang
-- Yang Tan
 - Jie Wang
-- Shuainan Mu
-- Hongyuan Zhang
 - Shoubo Wang
 - Jiao Ren
-- Zheng Liu
-- Zhekai Xiao
 - Huajian Jin
 - Lily Wang
+- Bei Fu
+- Nan Jia
 - Lei Shang
 - Lei Feng
 - Jinzhou Song
@@ -59,4 +71,3 @@ The following individuals have contributed to this release as patch authors, com
 - Yunhe Xu
 - Hao Wang
 - Miss Dong
-- Weibo Han
