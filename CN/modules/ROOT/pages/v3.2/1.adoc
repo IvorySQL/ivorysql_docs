@@ -4,7 +4,7 @@
 
 == 版本介绍
 
-[**发行日期：2024年4月11日**]
+[**发行日期：2024年4月07日**]
 
 IvorySQL 3.2 基于 PostgreSQL 16.2 ，包含来自 PostgreSQL 16.2 的各种修复。有关 PostgreSQL 16.2 中更详细的更新和错误修复，请参阅官方 https://www.postgresql.org/docs/release/16.2/[PostgreSQL 16.2 发行说明] 。
 
@@ -15,7 +15,7 @@ IvorySQL 3.2 基于 PostgreSQL 16.2 ，包含来自 PostgreSQL 16.2 的各种修
 
 == 增强功能
 
-引入一部分XML函数，包括：
+完成部分XML函数兼容 https://github.com/IvorySQL/IvorySQL/issues/587[#587]，包括：
 
     - APPENDCHILDXML
     - DELETEXML
@@ -32,10 +32,11 @@ IvorySQL 3.2 基于 PostgreSQL 16.2 ，包含来自 PostgreSQL 16.2 的各种修
 
 == 问题修复
 
-    - 修复build文档失败的问题
-	- 清除build时的警告
-	- 解决问题 https://github.com/IvorySQL/IvorySQL/issues/592[#592]
-	- 解决问题 https://github.com/IvorySQL/IvorySQL/issues/624[#624]
+    - 修复build文档失败的问题 https://github.com/IvorySQL/IvorySQL/issues/645[#645]
+	- 清除build时的警告 https://github.com/IvorySQL/IvorySQL/issues/649[#649]
+	- 解决问题 https://github.com/IvorySQL/IvorySQL/issues/592[#592]，当年份为 0000 时，to_date()函数将报错
+	- 解决问题 https://github.com/IvorySQL/IvorySQL/issues/624[#624]，
+创建函数时，出现未指定标签块的错误
 
 == 源代码
 
@@ -60,6 +61,7 @@ IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL网�
 - 王丽
 - 付贝
 - 贾楠
+- 李永昊
 - 尚雷
 - 冯磊
 - 宋金周
