@@ -1,0 +1,207 @@
+:sectnums:
+:sectnumlevels: 5
+
+= XML
+
+== 目的
+在Oralce中，常会出现带有XML函数的SQL代码，IvorySQL在PostgreSQL的基础上，实现与Oracle XML函数的高度兼容，确保了从Oracle迁移到IvorySQL后的数据格式和结构的一致性。这种兼容性意味着用户无需对现有的XML处理逻辑进行大规模修改，从而保证了数据的完整性和准确性。此外，IvorySQL的这种跨平台的兼容特性，也降低了因格式差异带来的额外用户维护和升级成本，使得数据处理和管理更加高效、可靠和灵活。
+[TIP]
+====
+XML（eXtended Markup Language可扩展标记语言）是一种基于文本的，用于结构化任何可标记文档的格式语言。它是一种轻便的，可扩展的，标准的且简学易懂的保存数据的语言。
+====
+
+== 实现原理
+IvorySQL在实现与Oracle 12c中11个常用XML SQL函数的兼容性时，与PostgreSQL保持了一致，底层处理函数同样采用了libxml2库提供的接口。这些XML函数作为ivorysql_ora插件的一个子插件提供，确保了与PostgreSQL数据库在XML处理方面的兼容性和一致性。
+
+由于Oracle的xml函数要求某些参数类型是 XMLType，比如下面这个existsnode()函数：
+
+原型：
+EXISTSNODE(XMLType_instance, XPath_string [, namespace_string ])
+
+示例：
+SELECT existsnode(XMLType('<a><b>d</b></a>'), '/a') from dual;
+
+因此为了兼容，添加了一个 XMLType 数据类型，作用是把用户提供的字符串转换成内部的xmltype类型，让用户的SQL语句从Oracle迁移到IvorySQL不用做改动
+
+另外，为了避免与PostgreSQL中已有的同名关键字“extract”产生混淆，IvorySQL将原有的同名关键字重命名为“PGEXTRACT”，以确保函数调用的清晰性和准确性。
+
+在实现这11个Oracle兼容的XML函数时，IvorySQL采用了两种不同的实现方式。其中，除了UPDATEXML函数外，其他10个函数均通过SQL函数的方式进行实现。由于UPDATEXML函数的参数数量是不确定的，因此采用了表达式方式来实现，这要求为其编写专门的语法分析代码和执行器代码，以确保其功能的正确性和灵活性。    
+
+== 兼容函数如下
+|====
+| 序号 |函数名 | 功能简介
+| 1 | <<extract(XML)>> | 该函数用于返回XML节点路径下的相应内容, 其中参数XMLType_instance用于指定XMLType实例，Xpath_string用于指定XML节点路径 
+| 2 | <<extractvalue>> | 该函数提供对XML内容的检索功能，extractvalue只能返回一个节点的一个值。 
+| 3 | <<existsnode>> | 该函数用于检查XML内容是否符合指定的路径表达式。
+| 4 | <<deletexml>> | 该函数用于删除指定路径的XML节点
+| 5 | <<appendchildxml>> | 该函数用于在XML对象中插入子节点。 它接受一个XML对象和一个XML片段作为参数，并将XML片段作为子节点插入到XML对象中
+| 6 | <<updatexml>> | 该函数用于更新特定XML相应的节点路径的内容
+| 7 | <<insertxmlbefore>> | 该函数用于在XML中的指定路径前插入子节点
+| 8 | <<insertxmlafter>> | 该函数用于在XML中的指定路径后插入子节点
+| 9 | <<insertchildxml>> | 该函数用于向指定的XML路径中插入子节点
+| 10 | <<insertchildxmlbefore>> | 该函数用于向指定的XML路径之前插入子节点
+| 11 | <<insertchildxmlafter>> | 该函数用于向指定的XML路径之后插入子节点
+|====
+
+
+== XML函数使用示例
+
+=== 准备表与数据
+```
+ivorysql=# set ivorysql.compatible_mode to oracle;
+SET
+ivorysql=# create table inaf(a int, b xmltype);
+CREATE TABLE
+ivorysql=# insert into inaf values(1,xmltype('<a><b>100</b></a>'));
+INSERT 0 1
+ivorysql=# insert into inaf values(2, '');
+INSERT 0 1
+ivorysql=# select * from inaf;
+ a |         b
+---+-------------------
+ 1 | <a><b>100</b></a>
+ 2 |
+(2 rows)
+ivorysql=# create table xmltest(id int, data XMLType);
+CREATE TABLE
+ivorysql=# insert into xmltest values(1, '<value>one</value>');
+INSERT 0 1
+ivorysql=# insert into xmltest values(2, '<value>two</value>');
+INSERT 0 1
+ivorysql=# select * from xmltest;
+ id |        data
+----+--------------------
+  1 | <value>one</value>
+  2 | <value>two</value>
+(2 rows)
+ivorysql=# create table xmlnstest(id int, data xmltype);
+CREATE TABLE
+ivorysql=# INSERT INTO xmlnstest VALUES(1, xmltype('<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:typ="http://www.def.com" xmlns:web="http://www.abc.com"><soapenv:Body><web:BBB><typ:EEE>41</typ:EEE><typ:FFF>42</typ:FFF></web:BBB></soapenv:Body></soapenv:Envelope>'));
+INSERT 0 1
+```
+
+[id=extract(XML)]
+=== extract(XML)
+```
+ivorysql# SELECT extract(XMLType('<AA><ID>1</ID></AA>'), '/AA/ID') from dual;
+  extract
+------------
+ <ID>1</ID>
+(1 row)
+```
+
+[[extractvalue]]
+=== extractvalue
+```
+ivorysql# SELECT extractvalue(XMLType('<a><b>100</b></a>'),'/a/b') from dual;
+ extractvalue
+--------------
+ 100
+(1 row)
+```
+
+[[existsnode]]
+=== existsnode
+```
+ivorysql=# SELECT existsnode(XMLType('<a><b>d</b></a>'), '/a/b') from dual;
+ existsnode
+------------
+          1
+(1 row)
+```
+
+[[deletexml]]
+=== deletexml
+```
+ivorysql=# SELECT deletexml(XMLType('<test><value>oldnode</value><value>oldnode</value></test>'),  '/test/value') from dual;
+ deletexml
+-----------
+ <test/>
+(1 row)
+```
+
+[[appendchildxml]]
+=== appendchildxml
+```
+ivorysql=# ELECT appendchildxml(XMLType('<test><value></value><value></value></test>'),  '/test/value', XMLTYPE('<name>newnode</name>')) from dual;
+      appendchildxml
+--------------------------
+ <test>                  +
+   <value>               +
+     <name>newnode</name>+
+   </value>              +
+   <value>               +
+     <name>newnode</name>+
+   </value>              +
+ </test>
+(1 row)
+```
+
+[[updatexml]]
+=== updatexml
+```
+ivorysql=# SELECT updatexml(xmltype('<value>one</value>'), '/value', xmltype('<newvalue>1111</newvalue>')) FROM dual;
+         updatexml
+---------------------------
+ <newvalue>1111</newvalue>
+(1 row)
+```
+
+[[insertxmlbefore]]
+=== insertxmlbefore
+```
+ivorysql=# SELECT insertxmlbefore(XMLType('<a>222<b>100</b><b>200</b></a>'), '/a/b', XMLTYPE('<c>88</c>')) from dual;
+                 insertxmlbefore
+--------------------------------------------------
+ <a>222<c>88</c><b>100</b><c>88</c><b>200</b></a>
+(1 row)
+```
+
+[[insertxmlafter]]
+=== insertxmlafter
+```
+ivorysql=# SELECT insertxmlafter(XMLType('<a><b>100</b></a>'),'/a/b',XMLType('<c>88</c>')) from dual;
+ insertxmlafter
+----------------
+ <a>           +
+   <b>100</b>  +
+   <c>88</c>   +
+ </a>
+(1 row)
+```
+
+[[insertchildxml]]
+=== insertchildxml
+```
+ivorysql=# SELECT insertchildxml(XMLType('<a>one<b></b>three<b></b></a>'), '//b', 'name', XMLTYPE('<name>newnode</name>')) from dual;
+                            insertchildxml
+-----------------------------------------------------------------------
+ <a>one<b><name>newnode</name></b>three<b><name>newnode</name></b></a>
+(1 row)
+```
+
+[[insertchildxmlbefore]]
+=== insertchildxmlbefore
+```
+ivorysql=# SELECT insertchildxmlbefore(XMLType('<a><b>100</b></a>'), '/a', 'b', XMLType('<c>88</c>')) from dual;
+ insertchildxmlbefore
+----------------------
+ <a>                 +
+   <c>88</c>         +
+   <b>100</b>        +
+ </a>
+(1 row)
+```
+
+[[insertchildxmlafter]]
+=== insertchildxmlafter
+```
+ivorysql=# SELECT insertchildxmlafter(XMLType('<a><b>100</b></a>'), '/a', 'b', XMLType('<c>88</c>')) from dual;
+ insertchildxmlafter
+---------------------
+ <a>                +
+   <b>100</b>       +
+   <c>88</c>        +
+ </a>
+(1 row)
+```

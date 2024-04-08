@@ -7,8 +7,12 @@
 
 == Objective
 
-- In order to meet the PG mode and the compatible Oracle mode, IVORYSQL designed two modes: PG and Oracle. And the schema can be specified at initdb time;
-
+- In order to support both the PG mode and Oracle-compatible mode, IvorySQL allows specifying the -m parameter during initdb to obtain either a PG mode database or an Oracle-compatible mode database.
+[TIP]
+====
+- If the -m parameter is not specified, it defaults to Oracle-compatible mode.
+- If the -m parameter is specified as pg, the database will no longer be compatible with Oracle syntax.
+====
 == Function
 
 - Initdb -m initialization requires judgment of different modes, among which oracle mode requires the execution of SQL statements postgres_oracle.bki. The default is Oracle compatibility mode, and the process is as follows:

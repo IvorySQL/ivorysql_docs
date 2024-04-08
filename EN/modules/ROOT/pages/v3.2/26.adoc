@@ -1,0 +1,210 @@
+:sectnums:
+:sectnumlevels: 5
+
+= XML
+
+== Objective
+
+In Oracle, SQL code often contains XML functions. To ensure consistency in data format and structure when migrating from Oracle to IvorySQL, IvorySQL achieves high compatibility with Oracle XML functions, building upon the foundation of PostgreSQL.
+
+This compatibility means that users do not need to make extensive modifications to their existing XML processing logic, thereby ensuring the integrity and accuracy of the data. Furthermore, IvorySQL's cross-platform compatibility reduces the additional user maintenance and upgrade costs caused by format differences, making data processing and management more efficient, reliable, and flexible.
+[TIP]
+====
+XML (eXtended Markup Language) is a text-based format language used to structure any document that can be tagged. It is a lightweight, extensible, standard, and easy-to-understand language for storing data.
+====
+
+== Implementation Principle
+When IvorySQL achieves compatibility with 11 commonly used XML SQL functions in Oracle 12c, it maintains consistency with PostgreSQL by utilizing the same underlying processing functions, which are provided by the libxml2 library interface. These XML functions are provided as a sub-plugin of the ivorysql_ora plugin, ensuring compatibility and consistency with PostgreSQL databases in terms of XML processing.
+
+Due to Oracle's XML functions requiring certain parameter types to be XMLType, such as the existsnode() function below:
+
+Prototype:
+EXISTSNODE(XMLType_instance, XPath_string [, namespace_string ])
+
+Demo:
+SELECT existsnode(XMLType('<a><b>d</b></a>'), '/a') from dual;
+
+Therefore, for compatibility purposes, an XMLType data type has been added. Its function is to convert the string provided by the user into an internal XMLType type, allowing SQL statements to be migrated from Oracle to IvorySQL without modification.
+
+Additionally, to avoid confusion with the existing keyword "extract" in PostgreSQL, IvorySQL has renamed the original keyword to "PGEXTRACT" to ensure clarity and accuracy in function calls.
+
+When implementing these 11 Oracle-compatible XML functions, IvorySQL adopted two different approaches. Among them, besides the UPDATEXML function, the other 10 functions are implemented using SQL functions. Since the number of parameters for the UPDATEXML function is uncertain, an expression-based approach was used for its implementation. This required writing specialized syntax parsing and executor code to ensure the correctness and flexibility of its functionality.
+
+== Compatible Function
+|====
+| Num | Function Name | Function Introduction
+| 1 | <<extract(XML)>> | This function is used to return the corresponding content under the XML node path. The parameter XMLType_instance is used to specify the XMLType instance, while Xpath_string is used to specify the XML node path. 
+| 2 | <<extractvalue>> | This function provides retrieval functionality for XML content. The extractvalue function can only return one value from one node.
+| 3 | <<existsnode>> | This function is used to check whether the XML content matches the specified path expression.
+| 4 | <<deletexml>> | This function is used to delete XML nodes at specified paths.
+| 5 | <<appendchildxml>> | This function is used to insert child nodes into an XML object. It takes an XML object and an XML fragment as parameters, and inserts the XML fragment as a child node into the XML object.
+| 6 | <<updatexml>> | This function is used to update the content of a specific XML node path.
+| 7 | <<insertxmlbefore>> | This function is used to insert child nodes before a specified path in XML.
+| 8 | <<insertxmlafter>> | This function is used to insert child nodes after a specified path in XML.
+| 9 | <<insertchildxml>> | This function is used to insert child nodes into a specified XML path.
+| 10 | <<insertchildxmlbefore>> | This function is used to insert child nodes before a specified XML path.
+| 11 | <<insertchildxmlafter>> | This function is used to insert child nodes after a specified XML path.
+|====
+
+
+== XML Function Demo
+
+=== Prepare table and data
+```
+ivorysql=# set ivorysql.compatible_mode to oracle;
+SET
+ivorysql=# create table inaf(a int, b xmltype);
+CREATE TABLE
+ivorysql=# insert into inaf values(1,xmltype('<a><b>100</b></a>'));
+INSERT 0 1
+ivorysql=# insert into inaf values(2, '');
+INSERT 0 1
+ivorysql=# select * from inaf;
+ a |         b
+---+-------------------
+ 1 | <a><b>100</b></a>
+ 2 |
+(2 rows)
+ivorysql=# create table xmltest(id int, data XMLType);
+CREATE TABLE
+ivorysql=# insert into xmltest values(1, '<value>one</value>');
+INSERT 0 1
+ivorysql=# insert into xmltest values(2, '<value>two</value>');
+INSERT 0 1
+ivorysql=# select * from xmltest;
+ id |        data
+----+--------------------
+  1 | <value>one</value>
+  2 | <value>two</value>
+(2 rows)
+ivorysql=# create table xmlnstest(id int, data xmltype);
+CREATE TABLE
+ivorysql=# INSERT INTO xmlnstest VALUES(1, xmltype('<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:typ="http://www.def.com" xmlns:web="http://www.abc.com"><soapenv:Body><web:BBB><typ:EEE>41</typ:EEE><typ:FFF>42</typ:FFF></web:BBB></soapenv:Body></soapenv:Envelope>'));
+INSERT 0 1
+```
+
+[id=extract(XML)]
+=== extract(XML)
+```
+ivorysql# SELECT extract(XMLType('<AA><ID>1</ID></AA>'), '/AA/ID') from dual;
+  extract
+------------
+ <ID>1</ID>
+(1 row)
+```
+
+[[extractvalue]]
+=== extractvalue
+```
+ivorysql# SELECT extractvalue(XMLType('<a><b>100</b></a>'),'/a/b') from dual;
+ extractvalue
+--------------
+ 100
+(1 row)
+```
+
+[[existsnode]]
+=== existsnode
+```
+ivorysql=# SELECT existsnode(XMLType('<a><b>d</b></a>'), '/a/b') from dual;
+ existsnode
+------------
+          1
+(1 row)
+```
+
+[[deletexml]]
+=== deletexml
+```
+ivorysql=# SELECT deletexml(XMLType('<test><value>oldnode</value><value>oldnode</value></test>'),  '/test/value') from dual;
+ deletexml
+-----------
+ <test/>
+(1 row)
+```
+
+[[appendchildxml]]
+=== appendchildxml
+```
+ivorysql=# ELECT appendchildxml(XMLType('<test><value></value><value></value></test>'),  '/test/value', XMLTYPE('<name>newnode</name>')) from dual;
+      appendchildxml
+--------------------------
+ <test>                  +
+   <value>               +
+     <name>newnode</name>+
+   </value>              +
+   <value>               +
+     <name>newnode</name>+
+   </value>              +
+ </test>
+(1 row)
+```
+
+[[updatexml]]
+=== updatexml
+```
+ivorysql=# SELECT updatexml(xmltype('<value>one</value>'), '/value', xmltype('<newvalue>1111</newvalue>')) FROM dual;
+         updatexml
+---------------------------
+ <newvalue>1111</newvalue>
+(1 row)
+```
+
+[[insertxmlbefore]]
+=== insertxmlbefore
+```
+ivorysql=# SELECT insertxmlbefore(XMLType('<a>222<b>100</b><b>200</b></a>'), '/a/b', XMLTYPE('<c>88</c>')) from dual;
+                 insertxmlbefore
+--------------------------------------------------
+ <a>222<c>88</c><b>100</b><c>88</c><b>200</b></a>
+(1 row)
+```
+
+[[insertxmlafter]]
+=== insertxmlafter
+```
+ivorysql=# SELECT insertxmlafter(XMLType('<a><b>100</b></a>'),'/a/b',XMLType('<c>88</c>')) from dual;
+ insertxmlafter
+----------------
+ <a>           +
+   <b>100</b>  +
+   <c>88</c>   +
+ </a>
+(1 row)
+```
+
+[[insertchildxml]]
+=== insertchildxml
+```
+ivorysql=# SELECT insertchildxml(XMLType('<a>one<b></b>three<b></b></a>'), '//b', 'name', XMLTYPE('<name>newnode</name>')) from dual;
+                            insertchildxml
+-----------------------------------------------------------------------
+ <a>one<b><name>newnode</name></b>three<b><name>newnode</name></b></a>
+(1 row)
+```
+
+[[insertchildxmlbefore]]
+=== insertchildxmlbefore
+```
+ivorysql=# SELECT insertchildxmlbefore(XMLType('<a><b>100</b></a>'), '/a', 'b', XMLType('<c>88</c>')) from dual;
+ insertchildxmlbefore
+----------------------
+ <a>                 +
+   <c>88</c>         +
+   <b>100</b>        +
+ </a>
+(1 row)
+```
+
+[[insertchildxmlafter]]
+=== insertchildxmlafter
+```
+ivorysql=# SELECT insertchildxmlafter(XMLType('<a><b>100</b></a>'), '/a', 'b', XMLType('<c>88</c>')) from dual;
+ insertchildxmlafter
+---------------------
+ <a>                +
+   <b>100</b>       +
+   <c>88</c>        +
+ </a>
+(1 row)
+```

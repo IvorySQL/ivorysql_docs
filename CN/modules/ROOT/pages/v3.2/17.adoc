@@ -7,7 +7,13 @@
 
 == 目的
 
-- 为了满足PG模式和兼容Oracle模式，Ivorysql设计了pg和oracle两种模式。并且可以在initdb时指定模式;
+- 为了满足PG模式和兼容Oracle模式， IvorySQL在initdb时，可以指定-m参数，来获取PG模式数据库或Oracle兼容模式数据库。
+
+[TIP]
+====
+. 不指定-m参数时，默认为Oracle兼容模式
+. 指定-m参数为pg时，数据库将不再兼容Oracle语法。
+====
 
 == 功能
 

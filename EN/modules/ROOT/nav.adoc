@@ -23,6 +23,7 @@
 ** xref:v3.2/20.adoc[7、Compatible with Oracle functions and stored procedures]
 ** xref:v3.2/21.adoc[8、Built-in data types and built-in functions]
 ** xref:v3.2/22.adoc[9、Added Oracle compatibility mode ports and IP]
+** xref:v3.2/26.adoc[10、XML Function]
 * xref:v3.2/23.adoc[Community contribution]
 * xref:v3.2/24.adoc[Tool Reference]
 * xref:v3.2/25.adoc[FAQ]

@@ -23,6 +23,7 @@
 ** xref:v3.2/20.adoc[7、兼容Oracle函数与存储过程]
 ** xref:v3.2/21.adoc[8、内置数据类型与内置函数]
 ** xref:v3.2/22.adoc[9、新增Oracle兼容模式的端口与IP]
+** xref:v3.2/26.adoc[10、XML函数]
 * xref:v3.2/23.adoc[社区贡献指南]
 * xref:v3.2/24.adoc[工具参考]
 * xref:v3.2/25.adoc[FAQ]
