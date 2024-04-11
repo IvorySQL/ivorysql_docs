@@ -488,7 +488,7 @@ select regexp_replace('01234abcd56789','[0-9]','*#')from  dual;
 Start with the second number by replacing the matched number with *#:
 
 ```
-select regexp_replace('01234abcd56789','[0-9]','*#'，2)from  dual;
+select regexp_replace('01234abcd56789','[0-9]','*#',2)from  dual;
     regexp_replace
 -------------------------
  0*#*#*#*#abcd*#*#*#*#*#
