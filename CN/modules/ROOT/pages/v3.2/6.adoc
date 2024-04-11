@@ -13,7 +13,7 @@ IvorySQL安装方式包括以下4种：
 - <<rpm安装>>
 - <<源码安装>>
 
-本章将详细介绍各个方式的安装、运行及卸载过程，想要更快获得IvorySQL，请参阅xref:v3.1/3.adoc#快速开始[快速开始]。
+本章将详细介绍各个方式的安装、运行及卸载过程，想要更快获得IvorySQL，请参阅xref:v3.2/3.adoc#快速开始[快速开始]。
 
 [[yum源安装]]
 == yum源安装
@@ -52,12 +52,12 @@ yum search ivorysql
 
 ** 从Docker Hub上获取IvorySQL镜像
 ```
-$ docker pull ivorysql/ivorysql:3.1-ubi8
+$ docker pull ivorysql/ivorysql:3.2-ubi8
 ```
 
 ** 运行IvorySQL
 ```
-$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:3.1-ubi8
+$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:3.2-ubi8
 ```
 -e参数说明
 |====
@@ -86,15 +86,15 @@ $ sudo yum --disablerepo=* localinstall *.rpm
 ```
 ** 获取rpm包
 ```
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.1/ivorysql3-libs-3.1-1.rhel7.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.2/ivorysql3-libs-3.2-1.rhel7.x86_64.rpm
 
 $ sudo wget 
-https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.1/ivorysql3-3.1-1.rhel7.x86_64.rpm
+https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.2/ivorysql3-2-1.rhel7.x86_64.rpm
 
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.1/ivorysql3-contrib-3.1-1.rhel7.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.2/ivorysql3-contrib-3.2-1.rhel7.x86_64.rpm
 
 $ sudo wget 
-https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.1/ivorysql3-server-3.1-1.rhel7.x86_64.rpm
+https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.2/ivorysql3-server-3.2-1.rhel7.x86_64.rpm
 ```
 ** 安装rpm包
 
@@ -102,10 +102,10 @@ https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.1/ivorysql3-se
 
 各rpm包之间有依赖关系，请按照以下顺序安装rpm包：
 ```
-$ sudo rpm -ivh ivorysql3-libs-3.1-1.rhel7.x86_64.rpm
-$ sudo rpm -ivh ivorysql3-3.1-1.rhel7.x86_64.rpm
-$ sudo rpm -ivh ivorysql3-server-3.1-1.rhel7.x86_64.rpm --nodeps
-$ sudo rpm -ivh ivorysql3-contrib-3.1-1.rhel7.x86_64.rpm
+$ sudo rpm -ivh ivorysql3-libs-3.2-1.rhel7.x86_64.rpm
+$ sudo rpm -ivh ivorysql3-3.2-1.rhel7.x86_64.rpm
+$ sudo rpm -ivh ivorysql3-server-3.2-1.rhel7.x86_64.rpm --nodeps
+$ sudo rpm -ivh ivorysql3-contrib-3.2-1.rhel7.x86_64.rpm
 ```
 数据库将被安装在/usr/local/ivorysql路径下。
 
@@ -214,7 +214,7 @@ ivorysql  3238  1551  0 20:35 pts/0    00:00:00 grep --color=auto postgres
 psql连接数据库：
 ```
 $ psql -d <database>
-psql (16.1)
+psql (16.2)
 Type "help" for help.
 
 ivorysql=#
@@ -247,7 +247,7 @@ $ sudo rpm -e ivorysql-release-3.0-1.noarch
 ```
 $ docker stop ivorysql
 $ docker rm ivorysql
-$ docker rmi ivorysql/ivorysql:3.1-ubi8
+$ docker rmi ivorysql/ivorysql:3.2-ubi8
 ```
 
 === rpm安装的卸载
@@ -255,10 +255,10 @@ $ docker rmi ivorysql/ivorysql:3.1-ubi8
 执行以下命令查询已安装的rpm包，依次卸载并清理文件夹：
 ```
 $ rpm -qa | grep ivorysql
-$ sudo rpm -e ivorysql3-contrib-3.1-1.rhel7.x86_64 --nodeps
-$ sudo rpm -e ivorysql3-server-3.1-1.rhel7.x86_64
-$ sudo rpm -e ivorysql3-3.1-1.rhel7.x86_64
-$ sudo rpm -e ivorysql3-libs-3.1-1.rhel7.x86_64 
+$ sudo rpm -e ivorysql3-contrib-3.2-1.rhel7.x86_64 --nodeps
+$ sudo rpm -e ivorysql3-server-3.2-1.rhel7.x86_64
+$ sudo rpm -e ivorysql3-3.2-1.rhel7.x86_64
+$ sudo rpm -e ivorysql3-libs-3.2-1.rhel7.x86_64 
 $ sudo rm -rf /usr/local/ivorysql
 ```
 

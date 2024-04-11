@@ -32,3 +32,92 @@ When adding guc parameters, we need to add them uniformly in the *ivy_guc.c*. Wh
 | nls_timestamp_tz_format | Compatible with oracle parameters of the same name, controlling the date format with time zone
 | shared_preload_libraries | When initializing the database, read from the ivorysql.conf file and view it through the show command. Modify the value in the configuration file and restart the database to take effect.
 |===
+
+=== Example
+
+==== ivorysql.datetime_ignore_nls_mask
+The optional values ​​of this GUC variable are from 0 to 15.
+|====
+| optional values | Types not formatted through NLS
+| 0 | Does not block any types, all time formats are formatted by NLS.
+| 1 | date
+| 2 | timestamp
+| 3 | date、timestamp
+| 4 | timestamptz
+| 5 | date、timestamptz
+| 6 | timestamp、timestamptz
+| 7 | date、timestamp、timestamptz
+| 8 | timestampltz
+| 9 | date、timestampltz
+| 10 | timestamp、timestampltz
+| 11 | date、timestamp、timestampltz
+| 12 | timestamptz、timestampltz
+| 13 | date、timestamptz、timestampltz
+| 14 | timestamp、timestamptz、timestampltz
+| 15 | date、timestamp、timestamptz、timestampltz
+|====
+
+** Usage Example(date)
+
+check value of **nls_date_format** and **datetime_ignore_nls_mask** 
+```
+ivorysql=# set ivorysql.compatible_mode to oracle;
+SET
+ivorysql=# show nls_date_format;
+ nls_date_format
+-----------------
+ YYYY-MM-DD
+(1 row)
+ivorysql=# show ivorysql.datetime_ignore_nls_mask;
+ ivorysql.datetime_ignore_nls_mask
+-----------------------------------
+ 0
+(1 row)
+```
+create a table for testing
+```
+ivorysql=# create table test_nls_date(a int, created_at date);
+CREATE TABLE
+```
+insert data
+```
+ivorysql=# insert into test_nls_date values(1, '2024/04/05');
+INSERT 0 1
+ivorysql=# select * from test_nls_date;
+ a | created_at
+---+------------
+ 1 | 2024-04-05
+(1 row)
+```
+modify nls_date_format
+```
+ivorysql=# set nls_date_format to 'yy-mm-dd';
+SET
+```
+Insert NLS formatted data and view, insert successfully.
+```
+ivorysql=# insert into test_nls_date values(2, '24/04/15');
+INSERT 0 1
+ivorysql=# select * from test_nls_date;
+ a | created_at
+---+------------
+ 1 | 24-04-05
+ 2 | 24-04-15
+(2 rows)
+```
+Changing the date type to not undergo NLS processing, and inserting the same data, such as changing it to 1 (3, 5, 7, etc.), will result in an error upon data insertion. NLS formatting will not affect the query results for dates.
+```
+ivorysql=# set ivorysql.datetime_ignore_nls_mask to 1;
+SET
+ivorysql=# insert into test_nls_date values(3, '24/05/15');
+ERROR:  date/time field value out of range: "24/05/15"
+LINE 1: insert into test_nls_date values(3, '24/05/15');
+                                            ^
+HINT:  Perhaps you need a different "datestyle" setting.
+ivorysql=#  select * from test_nls_date;
+ a | created_at
+---+------------
+ 1 | 2024-04-05
+ 2 | 2024-04-15
+(2 rows)
+```

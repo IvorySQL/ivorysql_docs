@@ -14,7 +14,7 @@ The installation methods for IvorySQL include the following four:
 - <<Source-code-installation>>
 
 
-This chapter will provide detailed instructions on the installation, execution, and uninstallation processes for each method. For a quicker access to IvorySQL, please refer to xref:v3.1/3.adoc#quick-installation[Quick installation].
+This chapter will provide detailed instructions on the installation, execution, and uninstallation processes for each method. For a quicker access to IvorySQL, please refer to xref:v3.2/3.adoc#quick-installation[Quick installation].
 
 [[Yum-installation]]
 == Yum installation
@@ -55,12 +55,12 @@ Details:
 
 ** Get IvorySQL image from Docker Hub
 ```
-$ docker pull ivorysql/ivorysql:3.1-ubi8
+$ docker pull ivorysql/ivorysql:3.2-ubi8
 ```
 
 ** Run IvorySQL
 ```
-$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:3.1-ubi8
+$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:3.2-ubi8
 ```
 -e Parameter Explanation
 |====
@@ -89,15 +89,15 @@ $ sudo yum --disablerepo=* localinstall *.rpm
 ```
 ** Getting rpms
 ```
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.1/ivorysql3-libs-3.1-1.rhel7.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.2/ivorysql3-libs-3.2-1.rhel7.x86_64.rpm
 
 $ sudo wget 
-https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.1/ivorysql3-3.1-1.rhel7.x86_64.rpm
+https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.2/ivorysql3-3.2-1.rhel7.x86_64.rpm
 
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.1/ivorysql3-contrib-3.1-1.rhel7.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.2/ivorysql3-contrib-3.2-1.rhel7.x86_64.rpm
 
 $ sudo wget 
-https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.1/ivorysql3-server-3.1-1.rhel7.x86_64.rpm
+https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.2/ivorysql3-server-3.2-1.rhel7.x86_64.rpm
 ```
 ** Installing rpms
 
@@ -105,10 +105,10 @@ https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_3.1/ivorysql3-se
 
 Install the rpms in the following order, since the latters depend on the formers:
 ```
-$ sudo rpm -ivh ivorysql3-libs-3.1-1.rhel7.x86_64.rpm
-$ sudo rpm -ivh ivorysql3-3.1-1.rhel7.x86_64.rpm
-$ sudo rpm -ivh ivorysql3-server-3.1-1.rhel7.x86_64.rpm --nodeps
-$ sudo rpm -ivh ivorysql3-contrib-3.1-1.rhel7.x86_64.rpm
+$ sudo rpm -ivh ivorysql3-libs-3.2-1.rhel7.x86_64.rpm
+$ sudo rpm -ivh ivorysql3-3.2-1.rhel7.x86_64.rpm
+$ sudo rpm -ivh ivorysql3-server-3.2-1.rhel7.x86_64.rpm --nodeps
+$ sudo rpm -ivh ivorysql3-contrib-3.2-1.rhel7.x86_64.rpm
 ```
 IvorySQL then will be installed in the /usr/local/ivorysql directory.
 
@@ -218,7 +218,7 @@ ivorysql  3238  1551  0 20:35 pts/0    00:00:00 grep --color=auto postgres
 Connect to IovrySQL via psql:
 ```
 $ psql -d <database>
-psql (16.1)
+psql (16.2)
 Type "help" for help.
 
 ivorysql=#
@@ -252,7 +252,7 @@ Stop IvorySQL container and remove IvorySQL image:
 ```
 $ docker stop ivorysql
 $ docker rm ivorysql
-$ docker rmi ivorysql/ivorysql:3.1-ubi8
+$ docker rmi ivorysql/ivorysql:3.2-ubi8
 ```
 
 === Uninstallation for rpm installation
@@ -260,10 +260,10 @@ $ docker rmi ivorysql/ivorysql:3.1-ubi8
 Query the rpms installed and uninstall them in turn, then clear the residual folders:
 ```
 $ rpm -qa | grep ivorysql
-$ sudo rpm -e ivorysql3-contrib-3.1-1.rhel7.x86_64
-$ sudo rpm -e ivorysql3-server-3.1-1.rhel7.x86_64
-$ sudo rpm -e ivorysql3-3.1-1.rhel7.x86_64
-$ sudo rpm -e ivorysql3-libs-3.1-1.rhel7.x86_64 
+$ sudo rpm -e ivorysql3-contrib-3.2-1.rhel7.x86_64
+$ sudo rpm -e ivorysql3-server-3.2-1.rhel7.x86_64
+$ sudo rpm -e ivorysql3-3.2-1.rhel7.x86_64
+$ sudo rpm -e ivorysql3-libs-3.2-1.rhel7.x86_64 
 $ sudo rm -rf /usr/local/ivorysql
 ```
 

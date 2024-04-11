@@ -8,9 +8,9 @@ This chapter is a demo to show you how to build an IvorySQL cluster. Just take a
 == Primary node
 
 === Installing and start database
-For quick database installation by yum, please refer to xref:v3.1/3.adoc#quick-installation[Quick installation]。
+For quick database installation by yum, please refer to xref:v3.2/3.adoc#quick-installation[Quick installation]。
 
-For more installation options, please refer to xref:v3.1/6.adoc#Installation[Installation]。
+For more installation options, please refer to xref:v3.2/6.adoc#Installation[Installation]。
 [NOTE]
 The master node database needs to be installed and **started**.
 
@@ -55,9 +55,9 @@ $ pg_ctl restart
 
 == Standby node
 === Installing database
-For quick database installation by yum, please refer to xref:v3.1/3.adoc#quick-installation[Quick installation]。
+For quick database installation by yum, please refer to xref:v3.2/3.adoc#quick-installation[Quick installation]。
 
-For more installation options, please refer to xref:v3.1/6.adoc#Installation[Installation]。
+For more installation options, please refer to xref:v3.2/6.adoc#Installation[Installation]。
 
 [NOTE]
 The standby node database only needs to be installed and **not started**.
@@ -119,7 +119,7 @@ ivorysql  6567  6139  0 21:54 ?        00:00:00 postgres: walreceiver streaming 
 On the primary node, connect to IvorySQL and show the status:
 ```
 $ psql -d postgres
-psql (16.1)
+psql (16.2)
 Type "help" for help.
 
 postgres=# select * from pg_stat_replication;
@@ -143,7 +143,7 @@ All writing operations are performed on the primary node, while reading can be o
 Below is an example. Create a new database test on primary and query:
 ```
 $ psql -d postgres
-psql (16.1)
+psql (16.2)
 Type "help" for help.
 
 postgres=# create database test;
@@ -163,7 +163,7 @@ postgres=# \l
 Query on the standby node:
 ```
 $ psql -d postgres
-psql (16.1)
+psql (16.2)
 Type "help" for help.
 
 postgres=# \l
