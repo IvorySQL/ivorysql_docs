@@ -3,11 +3,11 @@
 
 :imagesdir: ./_images
 
-= 新增Oracle兼容模式的端口与Ip
+= 新增Oracle兼容模式的端口与IP
 
 == 目的
 
-- 为了将Oracle端口、Ip与PG的端口Ip进行区分。现需要增加对ORAPORT和ORAHOST的处理;
+- 为了将Oracle端口、IP与PG的端口IP进行区分。现需要增加对ORAPORT和ORAHOST的处理;
 
 == 功能
 
@@ -23,6 +23,3 @@
     
    ./pg_ctl -o "-p 5433 -o 1522" -D ../data
 ```
-  
-
-​      

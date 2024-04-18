@@ -1,0 +1,124 @@
+:sectnums:
+:sectnumlevels: 5
+
+= pgvector
+
+== 概述
+向量数据库是生成式人工智能(GenAI)的关键组成部分。pgvector作为PostgreSQL的重要扩展，不仅能够支持高达16000维度的向量计算，还提供了强大的向量操作和索引功能，使得PostgreSQL能够直接转化为高效的向量数据库。由于IvorySQL基于PostgreSQL研发，这使得它具备了与pgvector扩展无缝集成的能力，从而为用户提供了更广泛的数据处理和分析选项。在Oracle兼容模式下，pgvector扩展同样可用，这为Oracle用户使用向量数据库提供了极大的便利，使其能够轻松地迁移和管理数据，实现更高效的业务操作。
+
+
+== 原理介绍
+
+IVFFLAT和HNSW是PGVector的两个索引算法
+
+=== IVFFLAT
+
+IVFFLAT的工作原理是将相似的向量聚类为区域，并建立一个倒排索引，将每个区域映射到其向量。这使得查询可以集中在数据的一个子集上，从而实现快速搜索。通过调整列表和探针参数，ivfflat 可以平衡数据集的速度和准确性，使 PostgreSQL 有能力对复杂数据进行快速的语义相似性搜索。通过简单的查询，应用程序可以在数百万个高维向量中找到与查询向量最近的邻居。对于自然语言处理、信息检索等，ivfflat 是一个比较好的解决方案
+在建立 ivfflat 索引时，你需要决定索引中包含多少个 list。每个 list 代表一个 "中心"；这些中心通过 k-means 算法计算而来。一旦确定了所有中心，ivfflat 就会确定每个向量最靠近哪个中心，并将其添加到索引中。当需要查询向量数据时，你可以决定要检查多少个中心，这由 ivfflat.probes 参数决定。这就是 ANN 性能/召回率的结果：访问的中心越多，结果就越精确，但这是以牺牲性能为代价的。
+
+=== HNSW
+
+HNSW (Hierarchical Navigating Small World) 是一种基于图的索引算法，它由多层的邻近图组成，因此称为分层的 NSW 方法。它会为一张图按规则建成多层导航图，并让越上层的图越稀疏，结点间的距离越远；越下层的图越稠密，结点间的距离越近。HNSW 算法是一种经典的空间换时间的算法，它的搜索质量和搜索速度都比较高，但是它的内存开销也比较大，因为不仅需要将所有的向量都存储在内存中。还需要维护一个图的结构，也同样需要存储。
+
+== 安装
+[TIP]
+====
+环境中已经安装了IvorySQL3.0及以上版本，安装路径为/usr/local/ivorysql/ivorysql-3
+====
+
+=== 源码安装
+
+** 设置PG_CONFIG环境变量
+```
+export PG_CONFIG=/usr/local/ivorysql/ivorysql-3/bin/pg_config
+```
+
+** 拉取pg_vector源码
+```
+git clone --branch v0.6.2 https://github.com/pgvector/pgvector.git
+```
+
+** 安装 pgvector
+```
+cd pgvector
+
+sudo --preserve-env=PG_CONFIG make
+sudo --preserve-env=PG_CONFIG make install
+```
+
+** 创建pgvector扩展
+```
+[ivorysql@localhost ivorysql-3]$ psql
+psql (16.2)
+Type "help" for help.
+
+ivorysql=# create extension vector;
+CREATE EXTENSION
+```
+至此，pgvector扩展安装已完成。
+更多用例，请参考 https://github.com/pgvector/pgvector?tab=readme-ov-file#getting-started[pgvector文档]
+
+== Oracle兼容性
+
+在IvorySQL Oracle兼容模式下，pgvector扩展同样可以正确运行
+[TIP]
+建议用户使用1521端口进行测试， psql -p 1521
+
+=== 数据类型
+
+```
+ivorysql=# CREATE TABLE items5 (id bigserial PRIMARY KEY, name varchar2(20), num number(20), embedding bit(3));
+CREATE TABLE
+ivorysql=# INSERT INTO items5 (name, num, embedding) VALUES ('1st oracle data',0, '000'), ('2nd oracle data', 111, '111');
+INSERT 0 2
+ivorysql=# SELECT * FROM items5 ORDER BY bit_count(embedding # '101') LIMIT 5;
+ id |      name       | num | embedding
+----+-----------------+-----+-----------
+  2 | 2nd oracle data | 111 | 111
+  1 | 1st oracle data | 0   | 000
+```
+
+=== 匿名块
+
+```
+ivorysql=# declare
+i vector(3) := '[1,2,3]';
+begin
+raise notice '%', i;
+end;
+ivorysql-# /
+NOTICE:  [1,2,3]
+DO
+```
+
+=== 存储过程（PROCEDURE）
+```
+ivorysql=# CREATE OR REPLACE PROCEDURE ora_procedure()
+AS
+p vector(3) := '[4,5,6]';
+begin
+raise notice '%', p;
+end;
+/
+CREATE PROCEDURE
+ivorysql=# call ora_procedure();
+NOTICE:  [4,5,6]
+CALL
+```
+
+==== 函数（FUNCTION）
+```
+ivorysql=# CREATE OR REPLACE FUNCTION AddVector(a vector(3), b vector(3))
+RETURN vector(3)
+IS
+BEGIN
+RETURN a + b;
+END;
+/
+CREATE FUNCTION
+ivorysql=# SELECT AddVector('[1,2,3]','[4,5,6]') FROM DUAL;
+ addvector
+----------------
+ [5,7,9]
+(1 row)
+```

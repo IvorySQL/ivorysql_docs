@@ -13,6 +13,7 @@
 ** xref:v3.2/10.adoc[迁移指南]
 * IvorySQL生态
 ** xref:v3.2/11.adoc[PostGIS]
+** xref:v3.2/12.adoc[pgvector]
 * 功能列表
 ** xref:v3.2/14.adoc[1、框架设计]
 ** xref:v3.2/15.adoc[2、GUC框架]
