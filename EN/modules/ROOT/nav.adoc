@@ -13,6 +13,7 @@
 ** xref:v3.2/10.adoc[Migration]
 * IvorySQL Ecosystem 
 ** xref:v3.2/11.adoc[PostGIS]
+** xref:v3.2/12.adoc[pgvector]
 * List of features
 ** xref:v3.2/14.adoc[1、Ivorysql frame design]
 ** xref:v3.2/15.adoc[2、GUC Framework]
