@@ -2084,11 +2084,9 @@ Parameters are set in the same way as in native IvorySQL. All parameter names ar
 
 ==== `compatible_mode (enum)`
 
-This parameter controls the behavior of the database server. The default value is `postgres`, which means it is a native installation and the server will be installed as a native PG. If it is set to `oracle`, then the query output and overall system behavior will change, as it will be more Oracle-like.
+This parameter controls the behavior of the database server. The default value is `pg`, which means it is a native installation and the server will be installed as a native PG. If it is set to `oracle`, then the query output and overall system behavior will change, as it will be more Oracle-like.
 
 When set to `oracle`, this parameter will implicitly add a Schema with the same name to `search_path`. so that Oracle-compatible objects can be located.
-
-This parameter can be set via the `postgresql.conf` configuration file to take effect for the entire database. Or it can be set on the session by the client using the `set` command.
 
 === Packages
 
@@ -2665,7 +2663,7 @@ Id  |    flg
 #### Example
 
 ```undefined
-set compatible_mode to oracle;
+set ivorysql.compatible_mode to oracle;
 
 create table students(student_id varchar(20) primary key ,
 student_name varchar(40),
