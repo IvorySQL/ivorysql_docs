@@ -7,7 +7,7 @@
 [**发行日期：2024年4月11日**]
 
 
-IvorySQL 3.2基于PostgreSQL 16.2，引入了Oracle XML函数兼容性功能，同时修复了多个问题。更多信息请参考 https://docs.ivorysql.org/[文档网站] 。
+IvorySQL 3.3基于PostgreSQL 16.3，引入了Oracle XML函数兼容性功能，同时修复了多个问题。更多信息请参考 https://docs.ivorysql.org/[文档网站] 。
 
 == 增强功能
 
@@ -17,17 +17,15 @@ IvorySQL 3.2基于PostgreSQL 16.2，引入了Oracle XML函数兼容性功能，�
 
 该功能整合了对各种Oracle XML函数的兼容性，包括APPENDCHILDXML、DELETEXML、EXISTSNODE、EXTRACT(XML)、EXTRACTVALUE、INSERTCHILDXMLAFTER、INSERTCHILDXMLBEFORE、INSERTCHILDXML、INSERTXMLAFTER、INSERTXMLBEFORE、UPDATEXML，有关该功能的更多细节，请查看 https://github.com/IvorySQL/IvorySQL/issues/587[#587]
 
-- PostgreSQL 16.2 的增强功能
+- PostgreSQL 16.3 的增强功能
 
-1. 确保CREATE DATABASE的持久性
-2. 确保pgoutput逻辑复制插件正确传输列的默认值
-3. 在使用之前重新验证订阅的连接字符串
-4. 当新客户端在不响应服务器的密码挑战时断开连接时，返回正确的状态代码
-5. 在PL/pgSQL中支持具有SQL标准体的CREATE FUNCTION/CREATE PROCEDURE的SQL命令
+1. 将 pg_stats_ext 和 pg_stats_ext_exprs 条目的可见性限制为表所有者
+2. 通过 ALTER FOREIGN TABLE SET SCHEMA 命令，可将自己的任何序列移动到新schema中
+3. 通过 ALTER TABLE ... ADD COLUMN 命令，能够创建与所属表具有相同持久性的 identity/serial 序列
 
 +
 
-更多细节, 请参阅 https://www.postgresql.org/docs/release/16.2/[PostgreSQL发布说明].
+更多细节, 请参阅 https://www.postgresql.org/docs/release/16.3/[PostgreSQL发布说明].
 
 
 == 问题修复

@@ -7,28 +7,19 @@
 
 [**Release date: April 11, 2024**]
 
-IvorySQL 3.2, based on PostgreSQL 16.2, introduces Oracle XML function compatibility features along with a variety of bug fixes. For a comprehensive list of updates, please visit our https://docs.ivorysql.org/[documentation site].
+IvorySQL 3.3, based on PostgreSQL 16.3, introduces Oracle XML function compatibility features along with a variety of bug fixes. For a comprehensive list of updates, please visit our https://docs.ivorysql.org/[documentation site].
 
 == Enhancements
 
-- Oracle XML Function Compatibility
+- PostgreSQL 16.3 Enhancements
+
+1. Restrict visibility of pg_stats_ext and pg_stats_ext_exprs entries to the table owner
+2. Make ALTER FOREIGN TABLE SET SCHEMA move any owned sequences into the new schema
+3. Make ALTER TABLE ... ADD COLUMN create identity/serial sequences with the same persistence as their owning tables
 
 +
 
-This Feature integrates compatibility for various Oracle XML functions, including APPENDCHILDXML, DELETEXML, EXISTSNODE, EXTRACT(XML), EXTRACTVALUE, INSERTCHILDXMLAFTER, INSERTCHILDXMLBEFORE, INSERTCHILDXML, INSERTXMLAFTER, INSERTXMLBEFORE and UPDATEXML.
-For further details, visit issue https://github.com/IvorySQL/IvorySQL/issues/587[#587].
-
-- PostgreSQL 16.2 Enhancements
-
-1. Ensure durability of CREATE DATABASE
-2. Ensure that column default values are correctly transmitted by the pgoutput logical replication plugin
-3. Re-validate a subscription's connection string before use
-4. Return the correct status code when a new client disconnects without responding to the server's password challenge
-5. In PL/pgSQL, support SQL commands that are CREATE FUNCTION/CREATE PROCEDURE with SQL-standard bodies
-
-+
-
-For further details, visit https://www.postgresql.org/docs/release/16.2/[PostgreSQL’s release notes].
+For further details, visit https://www.postgresql.org/docs/release/16.3/[PostgreSQL’s release notes].
 
 == Fixed Issue
 

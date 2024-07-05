@@ -7,7 +7,7 @@
 
 == Migration overview
 
-The so-called database migration is any form of data movement between this database and another database, and the databases at both ends may be PostgreSql, mySQL, oracle, Sql Server, Highgo DB, etc. The migration process is a challenging, complex process that requires a thorough understanding of how databases work and their characteristics. If the application has been deployed to the production environment and is in a normal operating state, a smooth application migration is required after database migration to maintain uninterrupted business operation and no data loss.
+Database migration refers to the process of transferring data from one database to another, and the databases at both ends may be PostgreSql, IvoySQL, MySQL, Oracle, SQL Server, etc. The migration process is a challenging, complex process that requires a thorough understanding of how databases work and their characteristics. If the application has been deployed to the production environment and is in a normal operating state, a smooth application migration is required after database migration to maintain uninterrupted business operation and no data loss.
 
 After migration, databases and systems should meet the following requirements:
 
@@ -44,16 +44,16 @@ By default, Ora2Pg exports an SQL file, which can be executed through the IvoryS
 
 |===
 | linux | Oracle Version | IvorySQL Version
-| Centos 7.X | 11.2.0.3.0 | 2.1 
+| Centos 7.X | 19.0.0.0 | 3.2 
 |===
 
 === Environment-dependent installation
 
 ==== Install Perl
 
-```bash
-[root@localhost /]# yum install -y perl perl-ExtUtils-CBuilder perl-ExtUtils-MakeMaker
-[root@localhost /]# perl -v
+```
+# yum install -y perl perl-ExtUtils-CBuilder perl-ExtUtils-MakeMaker
+# perl -v
 
 
 This is perl 5, version 16, subversion 3 (v5.16.3) built for x86_64-linux-thread-multi
@@ -78,12 +78,12 @@ DBI，Database Independent Interface，is the interface of the Perl language to 
 
 Download address: https://link.zhihu.com/?target=https%3A//cpan.metacpan.org/authors/id/T/TI/TIMB/DBI-1.643.tar.gz[https://cpan.metacpan.org/authors/id/T/TI/TIMB/DBI-1.643.tar.gz]
 
-```bash
-[root@localhost oracle2postgresql]# tar zxvf DBI-1.643.tar.gz 
-[root@localhost oracle2postgresql]# cd DBI-1.643/
-[root@localhost DBI-1.643]# perl Makefile.PL
-[root@localhost DBI-1.643]# make
-[root@localhost DBI-1.643]# make install
+```
+# tar zxvf DBI-1.643.tar.gz 
+# cd DBI-1.643/
+# perl Makefile.PL
+# make
+# make install
 ```
 
 ==== Install DBD-Oracle
@@ -109,7 +109,7 @@ Download address：https://metacpan.org/release/DBD-Pg/
 Set environment variables：
 
 ```
-export POSTGRES_HOME=/opt/ivorysql/2.1
+export POSTGRES_HOME=/opt/ivorysql/3.2
 # tar -zxvf DBD-Pg-3.80.tar.gz
 # source /home/ivorysql/.bashrc
 # cd DBD-Pg-3.8.0
@@ -123,17 +123,17 @@ export POSTGRES_HOME=/opt/ivorysql/2.1
 Download address：https://sourceforge.net/projects/ora2pg/
 
 ```
-[root@Test01 ~]# tar -xjf  ora2pg-20.0.tar.bz2
-[root@Test01 ~]# cd ora2pg-xx/
-[root@Test01 ~]# perl Makefile.PL  PREFIX=<your_install_dir>
-[root@Test01 ora2pg-18.2]# make && make install
+# tar -xjf  ora2pg-24.0.tar.bz2
+# cd ora2pg-xx/
+# perl Makefile.PL  PREFIX=<your_install_dir>
+# make && make install
 ```
 
 Installed in/usr/local/bin/directory by default
 Check the software environment:
 
 ```
-[root@Test01 ~]# vi check.pl
+# vi check.pl
 #!/usr/bin/perl
 use strict;
 use ExtUtils::Installed;
@@ -146,11 +146,11 @@ foreach(@modules)
 
 }
 exit;
-[root@test01 bin]# perl check.pl
+# perl check.pl
 DBD::Oracle  --  1.76
 DBD::Pg      --  3.8.0
-DBI          --  1.642
-Ora2Pg       --  20.0
+DBI          --  1.643
+Ora2Pg       --  24.0
 Perl         --  5.16.3
 ```
 
@@ -204,9 +204,9 @@ By default, Ora2Pg will find the/etc/ora2pg/ora2pg.conf configuration file. If t
 ```
 cat /etc/ora2pg/ora2pg.conf.dist  | grep -v ^# |grep -v ^$ >ora2pg.conf
 vi ora2pg.conf
-[root@test01 ora2pg]# cat ora2pg.conf
-ORACLE_HOME     /usr/lib/oracle/18.3/client64
-ORACLE_DSN      dbi:Oracle:host=10.85.10.6 ;sid=PROD1;port=1521
+# cat ora2pg.conf
+ORACLE_HOME     /opt/oracle/product/19c/dbhome_1
+ORACLE_DSN      dbi:Oracle:host=localhost;sid=ORCLCDB;port=1521
 ORACLE_USER     system
 ORACLE_PWD      oracle
 SCHEMA          SH
@@ -228,11 +228,9 @@ OUTPUT     sh.sql
 After setting the Oracle database DSN, you can execute ora2pg to check whether it is valid：
 
 ```
-[root@test01 ora2pg]#  ora2pg -t SHOW_VERSION -c config/ora2pg.conf
+#  ora2pg -t SHOW_VERSION -c config/ora2pg.conf
 
-WARNING: target IvorySQL version must be set in PG_VERSION configuration directive. Using default: 11
-
-Oracle Database 11g Enterprise Edition Release 11.2.0.3.0
+Oracle Database 19c Enterprise Edition Release 19.0.0.0.0
 ```
 
 ==== Migration cost assessment
@@ -241,14 +239,13 @@ It is not easy to estimate the cost of the migration process from Oracle to Post
 Ora2Pg has a content analysis mode, which checks the Oracle database to generate a text report about the content contained in the Oracle database and the content that cannot be exported.
 
 ```
-[root@test01 ora2pg]# ora2pg -t SHOW_REPORT --estimate_cost  -c ora2pg.conf
-WARNING: target IvorySQL version must be set in PG_VERSION configuration directive. Using default: 11
+# ora2pg -t SHOW_REPORT --estimate_cost  -c ora2pg.conf
 [========================>] 11/11 tables (100.0%) end of scanning.                       
 [========================>] 11/11 objects types (100.0%) end of objects auditing.         
 -------------------------------------------------------------------------------
-Ora2Pg v20.0 - Database Migration Report
+Ora2Pg v24.0 - Database Migration Report
 -------------------------------------------------------------------------------
-Version Oracle Database 11g Enterprise Edition Release 11.2.0.3.0
+Version Oracle Database 19c Enterprise Edition Release 19.0.0.0.0
 Schema  SH
 Size    287.25 MB
 -------------------------------------------------------------------------------
@@ -305,8 +302,7 @@ Technical levels:
 ==== **Export SH table structure**
 
 ```
-[root@test01 ora2pg]#  ora2pg  -c ora2pg.conf              
-WARNING: target IvorySQL version must be set in PG_VERSION configuration directive. Using default: 11
+# ora2pg  -c ora2pg.conf              
 [========================>] 11/11 tables (100.0%) end of scanning.                       
 
 [========================>] 12/12 tables (100.0%) end of table export.              
@@ -342,9 +338,9 @@ Fixing function calls in output files....
 Configure the type of ora2pg.conf as COPY or INSERT
 
 ```
-[root@test01 ora2pg]# cp ora2pg.conf sh_data.conf
+# cp ora2pg.conf sh_data.conf
 
-[root@test01 ora2pg]# vi sh_data.conf
+# vi sh_data.conf
 
 ORACLE_HOME     /usr/lib/oracle/18.3/client64
 
@@ -372,9 +368,7 @@ OUTPUT     sh_data.sql
 Export Data
 
 ```
-[root@test01 ora2pg]# ora2pg  -c sh_data.conf
-
-WARNING: target PostgreSQL version must be set in PG_VERSION configuration directive. Using default: 11
+# ora2pg  -c sh_data.conf
 
 [========================>] 11/11 tables (100.0%) end of scanning.                       
 
@@ -412,7 +406,7 @@ Fixing function calls in output files...
 To view the exported file:  
 
 ```
-[root@test01 ora2pg]# ls -lrt *.sql
+# ls -lrt *.sql
 
 -rw-r--r-- 1 root root 15716 Jul  2 21:21 TABLE_sh.sql
 
@@ -458,15 +452,15 @@ Export HR and SCOTT user data in the same way.
 Create ORCL database
 
 ```
-[root@test01 ~]# su - ivorysql  
+# su - ivorysql  
 
 Last login: Tue Jul  2 20:04:30 CST 2019 on pts/3
 
-[postgres@test01 ~]$ createdb orcl
+$ createdb orcl
 
-[postgres@test01 ~]$ psql
+$ psql
 
-psql (11.2)
+psql (15.6, server 16.2)
 
 Type "help" for help.
 
@@ -474,25 +468,16 @@ Type "help" for help.
 
 ivorysql=# \l
 
-                                 List of databases
-
-   Name    |  Owner   | Encoding |  Collate   |   Ctype    |   Access privileges  
-
------------+----------+----------+------------+------------+-----------------------
-
- orcl      | postgres | UTF8     | en_US.utf8 | en_US.utf8 |
-
- pgdb      | postgres | UTF8     | en_US.utf8 | en_US.utf8 |
-
- postgres  | postgres | UTF8     | en_US.utf8 | en_US.utf8 |
-
- template0 | postgres | UTF8     | en_US.utf8 | en_US.utf8 | =c/postgres          +
-
-           |          |          |            |            | postgres=CTc/postgres
-
- template1 | postgres | UTF8     | en_US.utf8 | en_US.utf8 | =c/postgres          +
-
-           |          |          |            |            | postgres=CTc/postgres
+                                             List of databases
+   Name    |  Owner   | Encoding  | Collate | Ctype | ICU Locale | Locale Provider |   Access privileges
+-----------+----------+-----------+---------+-------+------------+-----------------+-----------------------
+ ivorysql  | ivorysql | SQL_ASCII | C       | C     |            | libc            |
+ orcl      | ivorysql | SQL_ASCII | C       | C     |            | libc            |
+ postgres  | ivorysql | SQL_ASCII | C       | C     |            | libc            |
+ template0 | ivorysql | SQL_ASCII | C       | C     |            | libc            | =c/ivorysql          +
+           |          |           |         |       |            |                 | ivorysql=CTc/ivorysql
+ template1 | ivorysql | SQL_ASCII | C       | C     |            | libc            | =c/ivorysql          +
+           |          |           |         |       |            |                 | ivorysql=CTc/ivorysql
 
 (5 rows)
 
@@ -502,9 +487,9 @@ ivorysql=#
 Create SH, HR, SCOTT users:
 
 ```
-[postgres@test01 ~]$ psql orcl
+$ psql orcl
 
-psql (11.2)
+psql (15.6, server 16.2)
 
 Type "help" for help.
 
@@ -566,7 +551,7 @@ GRANT ALL ON  sh.fweek_pscat_sales_mv TO sh;
 Materialized views require relevant query permissions, so import permissions. Please keep up with users here
 
 ```
- [ivorysql@test01 ora2pg]$  psql orcl sh -f  MVIEW_sh.sql  
+$  psql orcl sh -f  MVIEW_sh.sql  
 SELECT 0
 SELECT 0
 CREATE INDEX
@@ -578,7 +563,7 @@ CREATE INDEX
 === Import View
 
 ```
-[ivorysql@test01 ora2pg]$  psql orcl  -f  VIEW_sh.sql
+$  psql orcl  -f  VIEW_sh.sql
 SET
 SET
 SET
@@ -589,7 +574,7 @@ CREATE VIEW
 === Import partition table
 
 ```
-[ivorysql@test01 ora2pg]$  psql orcl  -f  PARTITION_sh.sql
+$  psql orcl  -f  PARTITION_sh.sql
 SET
 SET
 SET
@@ -605,7 +590,7 @@ CREATE TABLE
 === Import data
 
 ```
-[ivorysql@test01 ora2pg]$  psql orcl   -f   sh_data.sql
+$  psql orcl   -f   sh_data.sql
 SET
 COPY 0
 SET
@@ -682,7 +667,7 @@ When using, there are two options -- project_ Base and -- init_ Project indicate
 ```
 mkdir -p  /ora2pg/migration
 
-[root@test01 ora2pg-20.0]# ora2pg --project_base /ora2pg/migration/ --init_project test_project
+# ora2pg --project_base /ora2pg/migration/ --init_project test_project
 Creating project test_project.
 /ora2pg/migration//test_project/
         schema/
