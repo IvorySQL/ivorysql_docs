@@ -4,18 +4,12 @@
 
 == 版本概览
 
-[**发行日期：2024年4月11日**]
+[**发行日期：2024年7月11日**]
 
 
-IvorySQL 3.3基于PostgreSQL 16.3，引入了Oracle XML函数兼容性功能，同时修复了多个问题。更多信息请参考 https://docs.ivorysql.org/[文档网站] 。
+IvorySQL 3.3基于PostgreSQL 16.3，并修复了多个问题。更多信息请参考 https://docs.ivorysql.org/[文档网站] 。
 
 == 增强功能
-
-- Oracle XML函数兼容性
-
-+
-
-该功能整合了对各种Oracle XML函数的兼容性，包括APPENDCHILDXML、DELETEXML、EXISTSNODE、EXTRACT(XML)、EXTRACTVALUE、INSERTCHILDXMLAFTER、INSERTCHILDXMLBEFORE、INSERTCHILDXML、INSERTXMLAFTER、INSERTXMLBEFORE、UPDATEXML，有关该功能的更多细节，请查看 https://github.com/IvorySQL/IvorySQL/issues/587[#587]
 
 - PostgreSQL 16.3 的增强功能
 
@@ -28,12 +22,9 @@ IvorySQL 3.3基于PostgreSQL 16.3，引入了Oracle XML函数兼容性功能，�
 更多细节, 请参阅 https://www.postgresql.org/docs/release/16.3/[PostgreSQL发布说明].
 
 
-== 问题修复
+== 问题修复(等待release note)
 
-    - 解决了文档构建失败的问题: https://github.com/IvorySQL/IvorySQL/issues/645[#645]
-	- 消除了构建警告: https://github.com/IvorySQL/IvorySQL/issues/649[#649]
-	- 修正了 to_date 函数的参数问题: https://github.com/IvorySQL/IvorySQL/issues/592[#592]
-	- 修复了在创建函数时的标签问题: https://github.com/IvorySQL/IvorySQL/issues/624[#624]
+
 
 == 源代码
 
@@ -42,7 +33,7 @@ IvorySQL主要包含2个代码仓库:
 * IvorySQL数据库源码: https://github.com/IvorySQL/IvorySQL
 * IvorySQL官方网站: https://github.com/IvorySQL/Ivory-www
 
-== 贡献人员
+== 贡献人员(等待release note)
 以下个人（按姓氏排序）作为补丁作者、提交者、审查者、测试者或问题报告者为此版本做出了贡献。
 
 - Cary Huang

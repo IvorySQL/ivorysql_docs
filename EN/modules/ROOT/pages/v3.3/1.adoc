@@ -5,9 +5,9 @@
 
 == Version Overview
 
-[**Release date: April 11, 2024**]
+[**Release date: July 11, 2024**]
 
-IvorySQL 3.3, based on PostgreSQL 16.3, introduces Oracle XML function compatibility features along with a variety of bug fixes. For a comprehensive list of updates, please visit our https://docs.ivorysql.org/[documentation site].
+IvorySQL 3.3, based on PostgreSQL 16.3, and Fixed a series of bugs. For a comprehensive list of updates, please visit our https://docs.ivorysql.org/[documentation site].
 
 == Enhancements
 
@@ -21,12 +21,9 @@ IvorySQL 3.3, based on PostgreSQL 16.3, introduces Oracle XML function compatibi
 
 For further details, visit https://www.postgresql.org/docs/release/16.3/[PostgreSQL’s release notes].
 
-== Fixed Issue
+== Fixed Issue(waiting for release notes)
 
-    - Resolved documentation build failure: Issue https://github.com/IvorySQL/IvorySQL/issues/645[#645]
-	- Eliminated build warnings: Issue https://github.com/IvorySQL/IvorySQL/issues/649[#649]
-	- Corrected parameter issue with the to_date function: Issue https://github.com/IvorySQL/IvorySQL/issues/592[#592]
-	- Fix label issues in create function: Issue https://github.com/IvorySQL/IvorySQL/issues/624[#624]
+
 
 == Source Code
 
@@ -35,7 +32,7 @@ IvorySQL's development is maintained across two main repositories:
 * IvorySQL database source code: https://github.com/IvorySQL/IvorySQL
 * IvorySQL official website: https://github.com/IvorySQL/Ivory-www
 
-== Contributors
+== Contributors(waiting for release notes)
 
 The following individuals (in alphabetical order) have contributed to this release as patch authors, committers, reviewers, testers, or reporters of issues.
 
