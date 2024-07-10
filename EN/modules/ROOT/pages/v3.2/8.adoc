@@ -3570,7 +3570,7 @@ SELECT least('HARRY', 'HARRIOT', NULL);
 ```
 
 
-=== NLS_LENGTH_SEMANTICSParameters
+=== NLS_LENGTH_SEMANTICS Parameters
 
 #### Overview
 
