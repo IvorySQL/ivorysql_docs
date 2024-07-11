@@ -41,7 +41,7 @@ IvorySQL主要包含2个代码仓库:
 * IvorySQL数据库源码: https://github.com/IvorySQL/IvorySQL
 * IvorySQL官方网站: https://github.com/IvorySQL/Ivory-www
 
-== 贡献人员(等待release note)
+== 贡献人员
 以下个人（按姓氏排序）作为补丁作者、提交者、审查者、测试者或问题报告者为此版本做出了贡献。
 
 - Cary Huang
