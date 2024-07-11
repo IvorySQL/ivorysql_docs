@@ -161,7 +161,7 @@ END;/
 
 查询源端对象的类型
 
-```
+```bash
 SYS@PROD1>set pagesize 200
 SYS@PROD1>select distinct OBJECT_TYPE from  dba_objects where OWNER in ('SH','SCOTT','HR') ;
 OBJECT_TYPE
