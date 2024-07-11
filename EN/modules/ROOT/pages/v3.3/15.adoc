@@ -27,7 +27,7 @@ When adding guc parameters, we need to add them uniformly in the *ivy_guc.c*. Wh
 | ivorysql.listen_address | Indicates the address for compatibility mode listening. When initializing the database, read the configuration from the ivorysql.conf file, modify the value in the configuration file, and restart the database to take effect. This can be viewed through the show command
 | ivorysql.port | Indicates the port number for connecting in compatibility mode. When initializing the database, read the configuration from the ivorysql.conf file and modify the value in the configuration file. To take effect, restart the database and view it through the show command
 | nls_date_format | Represents the default date format, which can be viewed through the show command and defaults to 'YYYY-MM-DD'. It can be set through the set command and reset back to the default value through the reset command. The reset all command will reset this variable
-| nls_length_semantic | Compatible with oracle parameters of the same name, controlling the size of memory occupied by a character
+| nls_length_semantics | Compatible with oracle parameters of the same name, controlling the size of memory occupied by a character
 | nls_timestamp_format | Compatible with oracle parameters of the same name, controlling date format with time
 | nls_timestamp_tz_format | Compatible with oracle parameters of the same name, controlling the date format with time zone
 | shared_preload_libraries | When initializing the database, read from the ivorysql.conf file and view it through the show command. Modify the value in the configuration file and restart the database to take effect.

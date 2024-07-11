@@ -15,4 +15,4 @@ IvorySQL project is an open source project proposed by Highgo Software to add th
 It is open source and free to use, any comments please contact contact@highgo.ca
 
 == Docs Download
-https://docs.ivorysql.org/en/ivorysql-doc/v3.2/ivorysql.pdf[IvorySQL v3.2 pdf documentation]
+https://docs.ivorysql.org/en/ivorysql-doc/v3.3/ivorysql.pdf[IvorySQL v3.3 pdf documentation]

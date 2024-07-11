@@ -3,53 +3,54 @@
 :sectnumlevels: 5
 
 
-= Migration guide
+= 迁移指南
 
-== Migration overview
+== 迁移概述
 
-The so-called database migration is any form of data movement between this database and another database, and the databases at both ends may be PostgreSql, mySQL, oracle, Sql Server, Highgo DB, etc. The migration process is a challenging, complex process that requires a thorough understanding of how databases work and their characteristics. If the application has been deployed to the production environment and is in a normal operating state, a smooth application migration is required after database migration to maintain uninterrupted business operation and no data loss.
+数据库迁移是指将数据从一个数据库转移到另一个数据库的过程，两端的数据库可能是PostgreSQL, IvorySQL, MySQL, Oracle, SQL Server等。迁移过程是一个具有挑战性的复杂过程，需要对数据库的原理以及各自的特性了如指掌。如果应用已经部署到生产环境并处于正常运行状态，为了保持业务不中断运行，并且不发生数据丢失，数据库迁移后需进行平滑的应用迁移。
 
-After migration, databases and systems should meet the following requirements:
+迁移后数据库和系统应符合以下要求：
 
-- The migrated database system should fully host the data of the original database system. Avoid data loss during migration that causes incomplete data to the new database system.
+- 迁移后的数据库系统应完全承载原数据库系统的数据。避免迁移过程中数据丢失导致新的数据库系统数据不完整。
 
-- The migrated database system should fully adapt to the functions of the original database. Avoid the inability to run or throw errors of the entire business system due to data types, syntax, and functions that are not supported after migration, and there is no alternative.
+- 迁移后的数据库系统应完全适配原有数据库的功能。避免迁移后因数据类型或语法、函数的不支持，且无替代方案，导致整个业务系统的无法运行或抛错。
 
-- The migrated database should be adapted to the upstream and downstream of the entire business system to ensure the stable and reliable operation of the entire business system.
+- 迁移后的数据库应适配整个业务系统的上下游，稳定可靠的保障整个业务系统的运行。
 
-- The comprehensive performance of the migrated database cannot be weaker than that of the original database, providing performance guarantee for the entire business system.
+- 迁移后的数据库各方面综合性能不能弱于原数据库，为整个业务系统提供性能保证。
 
-== Migration tool——Ora2Pg
+== 迁移工具Ora2Pg
 
-Ora2Pg is a free tool for migrating Oracle databases to an IvorySQL-compatible schema. It connects to your Oracle database, automatically scans and extracts its structure or data, and then generates SQL scripts that can be loaded into an IvorySQL database. Ora2Pg can migrate from a reverse-engineered Oracle database to a large enterprise database, or simply copy some Oracle data into an IvorySQL database. It is very easy to use and does not require any Oracle database knowledge without providing the parameters required to connect to Oracle Database.
+Ora2Pg 是一个免费的工具，用于将 Oracle 数据库迁移到 IvorySQL 兼容的模式。它连接您的 Oracle 数据库，自动扫描并提取它的结构或数据，然后生成可以装载到 IvorySQL 数据库的 SQL 脚本。Ora2Pg 可以从逆向工程 Oracle 数据库到大型企业数据库迁移，或者简单地将一些 Oracle 数据复制到 IvorySQL 数据库中。它非常容易使用，并且不需要任何 Oracle 数据库知识，而不需要提供连接到Oracle数据库所需的参数。
 
-Ora2Pg consists of a Perl script (ora2pg) and a Perl module (https://link.zhihu.com/?target=http%3A//ora2pg.pm/[Ora2Pg.pm]), the only thing that needs to be done is to modify its configuration file, ora2pg.conf, set the DSN to connect to the Oracle database, and an optional SCHEMA name. ONCE THAT'S DONE, YOU ONLY NEED TO SET THE EXPORTED TYPE: TABLE (INCLUDING CONSTRAINTS AND INDEXES), VIEW, MVIEW, TABLESPACE, SEQUENCE, INDEXES, TRIGGER, GRANT, FUNCTION, PROCEDURE, PACKAGE, PARTITION, TYPE, INSERT OR COPY, FDW, QUERY, KETTLE, AND SYNONYM.
+Ora2Pg 由一个 Perl 脚本（ora2pg）以及一个 Perl 模块（ https://github.com/darold/ora2pg/blob/master/lib/Ora2Pg.pm[Ora2Pg.pm]）组成，唯一需要做的事情就是修改它的配置文件 ora2pg.conf，设置连接 Oracle 数据库的 DSN 和一个可选的 SCHEMA 名称。完成之后，只需要设置导出的类型：TABLE（包括约束和索引）、VIEW、MVIEW、TABLESPACE、SEQUENCE、INDEXES、TRIGGER、GRANT、FUNCTION、PROCEDURE、PACKAGE、PARTITION、TYPE、INSERT 或 COPY、FDW、QUERY、KETTLE 以及 SYNONYM。
 
-By default, Ora2Pg exports an SQL file, which can be executed through the IvorySQL client tool psql. When performing data migration, you can set the DSN of the target database in the configuration file to import data directly from Oracle into the IvorySQL database.
+默认情况下，Ora2Pg 导出一个 SQL 文件，可以通过 IvorySQL 客户端工具 psql 执行导出的SQL文件。当进行数据迁移时，可以在配置文件中设置一个目标数据库的 DSN，直接将数据从Oracle导入到 IvorySQL 数据库中。
 
+[%autowidth]
 |===
-| Object | Whether ora2pg is supported
-| view | yes
-| trigger           | yes，In some cases, you need to modify the script manually
-| sequence          | yes
-| function          | yes
-| procedure         | yes，In some cases, you need to modify the script manually
-| type              | yes，In some cases, you need to modify the script manually
-| materialized view | yes，In some cases, you need to modify the script manually
-|===
-
-== Migrate Oracle Database to IvorySQL
-
-=== Environment preparation
-
-|===
-| linux | Oracle Version | IvorySQL Version
-| Centos 7.X | 11.2.0.3.0 | 2.1 
+| **对象** | ora2pg是否支持
+| view | 是
+| trigger | 是，某些情况下需要手工修改脚本
+| sequence | 是
+| function | 是
+| procedure | 是，某些情况下需要手工修改脚本
+| type | 是，某些情况下需要手工修改脚本
+| materialized view | 是，某些情况下需要手工修改脚本
 |===
 
-=== Environment-dependent installation
+== 迁移Oracle数据库至IvorySQL
 
-==== Install Perl
+=== 环境准备
+
+|===
+| linux环境 | Oracle版本 | IvorySQL版本
+| Centos 7.X | 19.0.0.0 | 3.2
+|===
+
+=== 依赖环境安装
+
+==== 安装Perl
 
 ```bash
 [root@localhost /]# yum install -y perl perl-ExtUtils-CBuilder perl-ExtUtils-MakeMaker
@@ -72,68 +73,51 @@ this system using "man perl" or "perldoc perl".  If you have access to the
 Internet, point your browser at http://www.perl.org/, the Perl Home Page.
 ```
 
-==== Install the DBI module
+==== 安装DBI模块
 
-DBI，Database Independent Interface，is the interface of the Perl language to connect to the database
+DBI，Database Independent Interface，是 Perl 语言连接数据库的接口
 
-Download address: https://link.zhihu.com/?target=https%3A//cpan.metacpan.org/authors/id/T/TI/TIMB/DBI-1.643.tar.gz[https://cpan.metacpan.org/authors/id/T/TI/TIMB/DBI-1.643.tar.gz]
-
-```bash
-[root@localhost oracle2postgresql]# tar zxvf DBI-1.643.tar.gz 
-[root@localhost oracle2postgresql]# cd DBI-1.643/
-[root@localhost DBI-1.643]# perl Makefile.PL
-[root@localhost DBI-1.643]# make
-[root@localhost DBI-1.643]# make install
-```
-
-==== Install DBD-Oracle
-
-Download address：https://sourceforge.net/projects/ora2pg/
-
-Set environment variables; Load environment variables; Because ORACLE must be defined_ HOME environment variable; This example configures environment variables under the ivorysql user
+下载地址 https://mirrors.sjtug.sjtu.edu.cn/cpan/modules/by-module/Plack/TIMB/DBI-1.643.tar.gz
 
 ```
-export LD_LIBRARY_PATH=/usr/lib/oracle/18.3/client64/lib:$LD_LIBRARY_PATH
-export ORACLE_HOME=/usr/lib/oracle/18.3/client64
+# tar zxvf DBI-1.643.tar.gz 
+# cd DBI-1.643/
+# perl Makefile.PL
+# make && make install
+```
+
+==== 安装DBD-Oracle
+
+下载地址：https://sourceforge.net/projects/ora2pg/
+
+设置环境变量; 加载环境变量;因为必须定义ORACLE_HOME环境变量;本例在ivorysql用户下配置环境变量
+
+```
+export LD_LIBRARY_PATH=/opt/oracle/product/19c/dbhome_1/lib:$LD_LIBRARY_PATH
+export ORACLE_HOME=/opt/oracle/product/19c/dbhome_1
 # tar -zxvf DBD-Oracle-1.76.tar.gz # source /home/postgres/.bashrc
 # cd DBD-Oracle-1.76
 # perl Makefile.PL
-# make
-# make install
+# make && make install
 ```
 
-==== Install DBD-PG (optional)
+=== 安装Ora2pg
 
-Download address：https://metacpan.org/release/DBD-Pg/
-
-Set environment variables：
+下载地址：https://sourceforge.net/projects/ora2pg/
 
 ```
-export POSTGRES_HOME=/opt/ivorysql/2.1
-# tar -zxvf DBD-Pg-3.80.tar.gz
-# source /home/ivorysql/.bashrc
-# cd DBD-Pg-3.8.0
+# tar -xjf ora2pg-24.0.tar.bz2
+# cd ora2pg-24.0
 # perl Makefile.PL
-# make
-# make install
+# make && make install
 ```
 
-=== Install Ora2pg
+默认安装在/usr/local/bin/目录下
 
-Download address：https://sourceforge.net/projects/ora2pg/
-
-```
-[root@Test01 ~]# tar -xjf  ora2pg-20.0.tar.bz2
-[root@Test01 ~]# cd ora2pg-xx/
-[root@Test01 ~]# perl Makefile.PL  PREFIX=<your_install_dir>
-[root@Test01 ora2pg-18.2]# make && make install
-```
-
-Installed in/usr/local/bin/directory by default
-Check the software environment:
+检查软件环境：
 
 ```
-[root@Test01 ~]# vi check.pl
+# vi check.pl
 #!/usr/bin/perl
 use strict;
 use ExtUtils::Installed;
@@ -146,36 +130,36 @@ foreach(@modules)
 
 }
 exit;
-[root@test01 bin]# perl check.pl
+
+
+# perl check.pl
 DBD::Oracle  --  1.76
 DBD::Pg      --  3.8.0
-DBI          --  1.642
-Ora2Pg       --  20.0
+DBI          --  1.643
+Ora2Pg       --  24.0
 Perl         --  5.16.3
-```
-
-Set environment variables
+设置环境变量
 
 ```
 export PERL5LIB=<your_install_dir>
 #export PERL5LIB=/usr/local/bin/
 ```
 
-=== Source side preparation
+=== 源端准备工作
 
-Update oracle statistics to improve performance
+更新oracle统计信息 提高性能
 
 ```
 BEGIN
 DBMS_STATS.GATHER_SCHEMA_STATS('SH');
 DBMS_STATS.GATHER_SCHEMA_STATS('SCOTT');
 DBMS_STATS.GATHER_SCHEMA_STATS('HR');
-DBMS_STATS.GATHER_DATABASE_STATS ;
+DBMS_STATS.GATHER_DATABASE_STATS;
 DBMS_STATS.GATHER_DICTIONARY_STATS;
 END;/
 ```
 
-Query the source end object pair type
+查询源端对象的类型
 
 ```
 SYS@PROD1>set pagesize 200
@@ -195,60 +179,62 @@ INDEX
 VIEW
 11 rows selected.
 ```
-=== Ora2pg export table structure
 
-Configure ora2pg.conf
+=== ora2pg导出表结构
 
-By default, Ora2Pg will find the/etc/ora2pg/ora2pg.conf configuration file. If the file exists, you only need to execute:/usr/local/bin/ora2pg
+**配置ora2pg.conf:**
+
+默认情况下，Ora2Pg会查找/etc/ora2pg/ora2pg.conf配置文件，如果文件存在，您只需执行：/usr/local/bin/ora2pg
 
 ```
 cat /etc/ora2pg/ora2pg.conf.dist  | grep -v ^# |grep -v ^$ >ora2pg.conf
 vi ora2pg.conf
-[root@test01 ora2pg]# cat ora2pg.conf
-ORACLE_HOME     /usr/lib/oracle/18.3/client64
-ORACLE_DSN      dbi:Oracle:host=10.85.10.6 ;sid=PROD1;port=1521
+# cat ora2pg.conf
+ORACLE_HOME     /opt/oracle/product/19c/dbhome_1
+ORACLE_DSN      dbi:Oracle:host=localhost;sid=ORCLCDB;port=1521
 ORACLE_USER     system
 ORACLE_PWD      oracle
 SCHEMA          SH
-EXPORT_SCHEMA  1       
-SKIP  fkeys ukeys checks      
+EXPORT_SCHEMA  1         # 将用户导入到PostgreSQL数据库中 
+DISABLE_UNLOGGED  1       #避免将NOLOGGING属性设为UNLOGGED
+SKIP  fkeys ukeys checks      #跳过外键 唯一 和检查约束
 TYPE            TABLE,VIEW,GRANT,SEQUENCE,TABLESPACE,PROCEDURE,TRIGGER,FUNCTION,PACKAGE,PARTITION,TYPE,MVIEW,QUERY,DBLINK,SYNONYM,DIRECTORY,TEST,TEST_VIEW
 NLS_LANG    AMERICAN_AMERICA.UTF8
 OUTPUT     sh.sql
 ```
 
-> 1. Only one type of export can be executed at the same time, so the TYPE instruction must be unique. If you have more than one, only the last one will be found in the file. But I can export multiple types at the same time.
-> 2. Please note that you can link multiple exports by providing a comma-separated list of export types to the TYPE directive, but in this case, you cannot use COPY or INSERT with other export types.
-> 3. Some export types cannot or should not be directly loaded into the IvorySQL database, and still require little manual editing. This is the case for GRANT, TABLESPACE, TRIGGER, FUNCTION, PROCEDURE, TYPE, QUERY and PACKAGE export types, especially if you have PLSQL code or Oracle specific SQL.
-> 4. For TABLESPACE, you must ensure that the file path exists on the system. For SYNONYM, you can ensure that the owner and schema of the object correspond to the new PostgreSQL database design.
-> 5. It is recommended to export the table structure one type at a time to avoid other errors affecting each other.
+> 1. 只能同时执行一种类型的导出，因此TYPE指令必须是唯一的。如果您有多个，则只会在文件中找到最后一个。但我测试就可以同时导出多个类型的。
+>
+> 2. 请注意，您可以通过向TYPE指令提供以逗号分隔的导出类型列表来链接多个导出，但在这种情况下，您不能将COPY或INSERT与其他导出类型一起使用。
+>
+> 3. 某些导出类型不能或不应该直接加载到 IvorySQL 数据库中，仍然需要很少的手动编辑。GRANT，TABLESPACE，TRIGGER，FUNCTION，PROCEDURE，TYPE，QUERY和PACKAGE导出类型就是这种情况，特别是如果您有PLSQL代码或Oracle特定SQL。
+> 4. 对于TABLESPACE，您必须确保系统上存在文件路径，对于SYNONYM，您可以确保对象的所有者和模式对应于新的PostgreSQL数据库设计。
+> 5. 建议导出表结构时，一个类型一个类型的操作，避免其它错误相互影响。
 
-==== **Test connection**
+==== **测试连接**
 
-After setting the Oracle database DSN, you can execute ora2pg to check whether it is valid：
-
-```
-[root@test01 ora2pg]#  ora2pg -t SHOW_VERSION -c config/ora2pg.conf
-
-WARNING: target IvorySQL version must be set in PG_VERSION configuration directive. Using default: 11
-
-Oracle Database 11g Enterprise Edition Release 11.2.0.3.0
-```
-
-==== Migration cost assessment
-
-It is not easy to estimate the cost of the migration process from Oracle to PostgreSQL. In order to obtain a good evaluation of the migration cost, Ora2Pg will check all database objects, all functions and stored procedures to detect whether there are still some objects and PL/SQL code that cannot be automatically converted by Ora2Pg.
-Ora2Pg has a content analysis mode, which checks the Oracle database to generate a text report about the content contained in the Oracle database and the content that cannot be exported.
+设置Oracle数据库DSN后，您可以执行ora2pg以查看它是否有效：
 
 ```
-[root@test01 ora2pg]# ora2pg -t SHOW_REPORT --estimate_cost  -c ora2pg.conf
-WARNING: target IvorySQL version must be set in PG_VERSION configuration directive. Using default: 11
+#  ora2pg -t SHOW_VERSION -c ora2pg.conf
+
+Oracle Database 19c Enterprise Edition Release 19.0.0.0.0
+```
+
+==== 迁移成本评估
+
+估算从Oracle到PostgreSQL的迁移过程的成本并不容易。为了获得对此迁移成本的良好评估，Ora2Pg将检查所有数据库对象，所有函数和存储过程，以检测是否仍有一些对象和PL / SQL代码无法由Ora2Pg自动转换。
+
+Ora2Pg具有内容分析模式，该模式检查Oracle数据库以生成有关Oracle数据库包含的内容和无法导出的内容的文本报告。
+
+```
+# ora2pg -t SHOW_REPORT --estimate_cost  -c ora2pg.conf
 [========================>] 11/11 tables (100.0%) end of scanning.                       
 [========================>] 11/11 objects types (100.0%) end of objects auditing.         
 -------------------------------------------------------------------------------
-Ora2Pg v20.0 - Database Migration Report
+Ora2Pg v24.0 - Database Migration Report
 -------------------------------------------------------------------------------
-Version Oracle Database 11g Enterprise Edition Release 11.2.0.3.0
+Version Oracle Database 19c Enterprise Edition Release 19.0.0.0.0
 Schema  SH
 Size    287.25 MB
 -------------------------------------------------------------------------------
@@ -302,11 +288,10 @@ Technical levels:
 -------------------------------------------------------------------------------
 ```
 
-==== **Export SH table structure**
+==== **导出SH表构**
 
 ```
-[root@test01 ora2pg]#  ora2pg  -c ora2pg.conf              
-WARNING: target IvorySQL version must be set in PG_VERSION configuration directive. Using default: 11
+#  ora2pg  -c ora2pg.conf              
 [========================>] 11/11 tables (100.0%) end of scanning.                       
 
 [========================>] 12/12 tables (100.0%) end of table export.              
@@ -337,18 +322,18 @@ WARNING: target IvorySQL version must be set in PG_VERSION configuration directi
 Fixing function calls in output files.... 
 ```
 
-==== **Export SH user data**
+==== **导出SH用户数据**
 
-Configure the type of ora2pg.conf as COPY or INSERT
+配置ora2pg.conf 的TYPE 为COPY 或 INSERT
 
 ```
-[root@test01 ora2pg]# cp ora2pg.conf sh_data.conf
+# cp ora2pg.conf sh_data.conf
 
-[root@test01 ora2pg]# vi sh_data.conf
+# vi sh_data.conf
 
-ORACLE_HOME     /usr/lib/oracle/18.3/client64
+ORACLE_HOME     /opt/oracle/product/19c/dbhome_1
 
-ORACLE_DSN      dbi:Oracle:host=10.85.10.6 ;sid=PROD1;port=1521
+ORACLE_DSN      dbi:Oracle:host=localhost;sid=ORCLCDB;port=1521
 
 ORACLE_USER     system
 
@@ -369,12 +354,10 @@ NLS_LANG    AMERICAN_AMERICA.UTF8
 OUTPUT     sh_data.sql
 ```
 
-Export Data
+导出数据
 
 ```
-[root@test01 ora2pg]# ora2pg  -c sh_data.conf
-
-WARNING: target PostgreSQL version must be set in PG_VERSION configuration directive. Using default: 11
+# ora2pg  -c sh_data.conf
 
 [========================>] 11/11 tables (100.0%) end of scanning.                       
 
@@ -409,7 +392,7 @@ WARNING: target PostgreSQL version must be set in PG_VERSION configuration direc
 Fixing function calls in output files...
 ```
 
-To view the exported file:  
+查看导出的文件：   
 
 ```
 [root@test01 ora2pg]# ls -lrt *.sql
@@ -451,22 +434,22 @@ To view the exported file:
  
 ```
 
-Export HR and SCOTT user data in the same way.
+以同样的方法分别导出HR，SCOTT用户数据。
 
-=== Create orcl library in IvorySQL environment
+=== 在IvorySQL环境中创建orcl库
 
-Create ORCL database
+创建ORCL 数据库
 
 ```
-[root@test01 ~]# su - ivorysql  
+# su - ivorysql  
 
 Last login: Tue Jul  2 20:04:30 CST 2019 on pts/3
 
-[postgres@test01 ~]$ createdb orcl
+$ createdb orcl
 
-[postgres@test01 ~]$ psql
+$ psql
 
-psql (11.2)
+psql (15.6, server 16.2)
 
 Type "help" for help.
 
@@ -474,37 +457,28 @@ Type "help" for help.
 
 ivorysql=# \l
 
-                                 List of databases
-
-   Name    |  Owner   | Encoding |  Collate   |   Ctype    |   Access privileges  
-
------------+----------+----------+------------+------------+-----------------------
-
- orcl      | postgres | UTF8     | en_US.utf8 | en_US.utf8 |
-
- pgdb      | postgres | UTF8     | en_US.utf8 | en_US.utf8 |
-
- postgres  | postgres | UTF8     | en_US.utf8 | en_US.utf8 |
-
- template0 | postgres | UTF8     | en_US.utf8 | en_US.utf8 | =c/postgres          +
-
-           |          |          |            |            | postgres=CTc/postgres
-
- template1 | postgres | UTF8     | en_US.utf8 | en_US.utf8 | =c/postgres          +
-
-           |          |          |            |            | postgres=CTc/postgres
+                                             List of databases
+   Name    |  Owner   | Encoding  | Collate | Ctype | ICU Locale | Locale Provider |   Access privileges
+-----------+----------+-----------+---------+-------+------------+-----------------+-----------------------
+ ivorysql  | ivorysql | SQL_ASCII | C       | C     |            | libc            |
+ orcl      | ivorysql | SQL_ASCII | C       | C     |            | libc            |
+ postgres  | ivorysql | SQL_ASCII | C       | C     |            | libc            |
+ template0 | ivorysql | SQL_ASCII | C       | C     |            | libc            | =c/ivorysql          +
+           |          |           |         |       |            |                 | ivorysql=CTc/ivorysql
+ template1 | ivorysql | SQL_ASCII | C       | C     |            | libc            | =c/ivorysql          +
+           |          |           |         |       |            |                 | ivorysql=CTc/ivorysql
 
 (5 rows)
 
 ivorysql=#
 ```
 
-Create SH, HR, SCOTT users:
+ 创建SH,HR,SCOTT 用户：
 
 ```
-[postgres@test01 ~]$ psql orcl
+$ psql orcl
 
-psql (11.2)
+psql (15.6, server 16.2)
 
 Type "help" for help.
 
@@ -515,12 +489,13 @@ orcl=# create user sh with password 'sh';
 CREATE ROLE 
 ```
 
-== Migration Portal
+== 迁移门户
 
-=== Import table structure
+=== 导入表结构
 
-Because of the materialized view, in TABLE_ The sh.sql contains the index of the materialized view, which will fail to create. You need to first create a table, then create a materialized view, and finally create an index.
-Cancel the materialized view index and create it separately later:
+由于有物化视图，在TABLE_sh.sql 里包含了物化视图的索引，会创建失败。需先创建表，在创建物化视图，最后创建索引。
+
+取消物化视图索引，后面单独创建：
 
 ```
 CREATE INDEX fw_psc_s_mv_chan_bix ON fweek_pscat_sales_mv (channel_id);
@@ -536,7 +511,7 @@ ALTER TEXT SEARCH CONFIGURATION en ALTER MAPPING FOR hword, hword_part, word WIT
 ```
 
 ```
-psql orcl  -f  tab.sql.sql
+psql orcl  -f  tab.sql
 
 ALTER TABLE PARTITION sh.sales OWNER TO sh;
 COMMENT
@@ -552,7 +527,7 @@ ALTER TABLE
 ………………………………
 ```
 
-=== Authorize objects
+=== 给对象授权
 
 ```
 cat psql orcl  -f  GRANT_sh.sql
@@ -561,12 +536,12 @@ ALTER TABLE sh.fweek_pscat_sales_mv OWNER TO sh;
 GRANT ALL ON  sh.fweek_pscat_sales_mv TO sh;
 ```
 
-=== Import materialized view structure
+=== 导入物化视图结构
 
-Materialized views require relevant query permissions, so import permissions. Please keep up with users here
+物化视图需要相关查询权限,所以导入权限,注意这里要跟上用户
 
 ```
- [ivorysql@test01 ora2pg]$  psql orcl sh -f  MVIEW_sh.sql  
+$  psql orcl sh -f  MVIEW_sh.sql  
 SELECT 0
 SELECT 0
 CREATE INDEX
@@ -575,10 +550,10 @@ CREATE INDEX
 CREATE INDEX
 ```
 
-=== Import View
+=== 导入视图
 
 ```
-[ivorysql@test01 ora2pg]$  psql orcl  -f  VIEW_sh.sql
+$  psql orcl  -f  VIEW_sh.sql
 SET
 SET
 SET
@@ -586,10 +561,10 @@ CREATE VIEW
 
 ```
 
-=== Import partition table
+=== 导入分区表
 
 ```
-[ivorysql@test01 ora2pg]$  psql orcl  -f  PARTITION_sh.sql
+$  psql orcl  -f  PARTITION_sh.sql
 SET
 SET
 SET
@@ -602,10 +577,10 @@ CREATE TABLE
 …………………………
 ```
 
-=== Import data
+=== 导入数据
 
 ```
-[ivorysql@test01 ora2pg]$  psql orcl   -f   sh_data.sql
+$  psql orcl   -f   sh_data.sql
 SET
 COPY 0
 SET
@@ -627,9 +602,9 @@ COPY 1826
 COMMIT
 ```
 
-== Data validation
+== 数据验证
 
-Source database and target side extract part of objects for comparison：
+源库,目标端抽取部份对象对比：
 
 ```
 SYS@PROD1>select count(*) from sh.products;
@@ -675,14 +650,14 @@ orcl=# select count(*) from sh.customers ;
 (1 row)
 ```
 
-== Generate migration template
+== 生成迁移模板
 
-When using, there are two options -- project_ Base and -- init_ Project indicates to ora2pg that he must create a project template, which contains the work tree, configuration files and scripts for exporting all objects from the Oracle database. Generate a generic configuration file. 1. Create script export_ Schema.sh to automatically perform all exports. 2. Create script import_ All.sh to automatically perform all imports. example：
+使用时，两个选项--project_base和--init_project向Ora2Pg表明他必须创建一个项目模板，其中包含工作树，配置文件和从Oracle数据库导出所有对象的脚本。 生成通用配置文件。 1.创建脚本export_schema.sh以自动执行所有导出。2.创建脚本import_all.sh以自动执行所有导入。例：
 
 ```
 mkdir -p  /ora2pg/migration
 
-[root@test01 ora2pg-20.0]# ora2pg --project_base /ora2pg/migration/ --init_project test_project
+# ora2pg --project_base /ora2pg/migration/ --init_project test_project
 Creating project test_project.
 /ora2pg/migration//test_project/
         schema/
