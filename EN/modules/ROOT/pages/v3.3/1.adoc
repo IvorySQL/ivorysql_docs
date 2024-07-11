@@ -14,16 +14,24 @@ IvorySQL 3.3, based on PostgreSQL 16.3, and Fixed a series of bugs. For a compre
 - PostgreSQL 16.3 Enhancements
 
 1. Restrict visibility of pg_stats_ext and pg_stats_ext_exprs entries to the table owner
-2. Make ALTER FOREIGN TABLE SET SCHEMA move any owned sequences into the new schema
-3. Make ALTER TABLE ... ADD COLUMN create identity/serial sequences with the same persistence as their owning tables
+2. Fix INSERT from multiple VALUES rows into a target column that is a domain over an array or composite type.
+3. Require SELECT privilege on the target table for MERGE with a DO NOTHING clause.
+4. Fix handling of self-modified tuples in MERGE.
+5. Fix incorrect pruning of NULL partition when a table is partitioned on a boolean column and the query has a boolean IS NOT clause.
 
 +
 
 For further details, visit https://www.postgresql.org/docs/release/16.3/[PostgreSQL’s release notes].
 
-== Fixed Issue(waiting for release notes)
+== Fixed Issue
 
-
+- Fix issue when SYSDATE is used as the default value for date: Issue #633  
+- Fix issue when SYSTIMESTAMP is used as the default value for date: Issue #661 
+- Date timestamp precision with nls mask: Issue #634
+- More test case for ivorysql.datetime_ignore_nls_mask: Issue #657 
+- Fix incorrect result for timestamp(7) type in Oracle compatible mode: issue #658
+- Support data type VARCHAR2: issue #652
+- Fix IvorySQL related issue in docker_library project: [#4](https://github.com/IvorySQL/docker_library/issues/4)
 
 == Source Code
 
@@ -36,15 +44,20 @@ IvorySQL's development is maintained across two main repositories:
 
 The following individuals (in alphabetical order) have contributed to this release as patch authors, committers, reviewers, testers, or reporters of issues.
 
-- Bei Fu
 - Cary Huang
+- Chase Wu
 - David Zhang
 - Grant Zhou
+- Hope Gao
+- Håkan Arpfors
+- Imran Zaheer
 - Jiao Ren
 - Lei Shang
 - Leo X.M. Zeng
 - Lily Wang
 - Nan Jia
+- Ruike Sun
+- shanInfo
 - Shawn Yan
 - Shiji Niu
 - Shoubo Wang
@@ -53,7 +66,3 @@ The following individuals (in alphabetical order) have contributed to this relea
 - Xinjie Lv
 - Xinyuan Guo
 - Xiuhua Ruan
-- Xueyu Gao
-- Ying Huang
-- Yonghao Li
-- Zheng Liu

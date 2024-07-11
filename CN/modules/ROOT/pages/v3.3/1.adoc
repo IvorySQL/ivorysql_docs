@@ -13,18 +13,26 @@ IvorySQL 3.3基于PostgreSQL 16.3，并修复了多个问题。更多信息请�
 
 - PostgreSQL 16.3 的增强功能
 
-1. 将 pg_stats_ext 和 pg_stats_ext_exprs 条目的可见性限制为表所有者
-2. 通过 ALTER FOREIGN TABLE SET SCHEMA 命令，可将自己的任何序列移动到新schema中
-3. 通过 ALTER TABLE ... ADD COLUMN 命令，能够创建与所属表具有相同持久性的 identity/serial 序列
+1. 将 pg_stats_ext 和 pg_stats_ext_exprs 条目的可见性限制为表所有者。
+2. 修复将多个 VALUES 行插入到作为数组或复合类型域的目标列中的问题。
+3. 对于带有 DO NOTHING 子句的 MERGE 语句，要求对目标表具有 SELECT 权限。
+4. 修复处理 MERGE 中自我修改元组的问题。
+5. 修复当表按布尔列分区且查询中包含布尔 IS NOT 子句时错误地修剪 NULL 分区的问题。
 
 +
 
 更多细节, 请参阅 https://www.postgresql.org/docs/release/16.3/[PostgreSQL发布说明].
 
 
-== 问题修复(等待release note)
+== 问题修复
 
-
+- 修复使用 SYSDATE 作为日期默认值时的问题: https://github.com/IvorySQL/IvorySQL/issues/633[#633]  
+- 修复使用 SYSTIMESTAMP 作为日期默认值时的问题: https://github.com/IvorySQL/IvorySQL/issues/661[#661]
+- 修复nls mask时间戳精度问题: https://github.com/IvorySQL/IvorySQL/issues/634[#634]
+- 为ivorysql.datetime_ignore_nls_mask参数添加更多测试用例: https://github.com/IvorySQL/IvorySQL/issues/657[#657] 
+- 修复兼容模式下使用timestamp(7)类型返回错误问题: https://github.com/IvorySQL/IvorySQL/issues/658[#658]
+- 数据类型VARCHAR2问题的支持: https://github.com/IvorySQL/IvorySQL/issues/652[#652]
+- 解决docker_library项目中，有关IvorySQL的相关问题: https://github.com/IvorySQL/docker_library/issues/4[#4]
 
 == 源代码
 
@@ -37,23 +45,24 @@ IvorySQL主要包含2个代码仓库:
 以下个人（按姓氏排序）作为补丁作者、提交者、审查者、测试者或问题报告者为此版本做出了贡献。
 
 - Cary Huang
+- Chase Wu
 - David Zhang
 - Grant Zhou
+- Håkan Arpfors
+- Imran Zaheer
 - Leo X.M. Zeng
-- 付贝
+- shanInfo
 - 高雪玉
 - 郭新源
-- 黄迎
 - 贾楠
 - 矫顺田
-- 李永昊
 - 梁翔宇
-- 刘政
 - 吕新杰
 - 牛世继
 - 任娇
 - 阮秀华
 - 尚雷
+- 孙锐克
 - 王丽
 - 王守波
 - 严少安
