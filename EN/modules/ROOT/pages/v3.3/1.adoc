@@ -40,7 +40,7 @@ IvorySQL's development is maintained across two main repositories:
 * IvorySQL database source code: https://github.com/IvorySQL/IvorySQL
 * IvorySQL official website: https://github.com/IvorySQL/Ivory-www
 
-== Contributors(waiting for release notes)
+== Contributors
 
 The following individuals (in alphabetical order) have contributed to this release as patch authors, committers, reviewers, testers, or reporters of issues.
 
