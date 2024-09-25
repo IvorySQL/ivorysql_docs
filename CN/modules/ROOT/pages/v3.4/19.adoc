@@ -21,10 +21,8 @@ declare
 i integer := 10;
 begin
  raise notice '%', i;
- raise notice '%', main.i;
 end;
 /
-NOTICE:  10
 NOTICE:  10
 
 ```

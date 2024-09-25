@@ -68,6 +68,11 @@
 |hextoraw
 |uid
 |USERENV
+|asciistr
+|to_multi_byte
+|to_single_byte
+|compose
+|decompose
 |====
 
 == 内置函数说明
@@ -963,3 +968,67 @@ select userenv('sessionid')from dual;
 (1 row)
 ```
 
+41、兼容ASCIISTR函数，功能：传入字符串，返回对应的ASCII字符，测试用例如下：
+只有ASCII字符：
+```
+ select asciistr('Hello, World!') from dual;
+   asciistr    
+---------------
+ Hello, World!
+(1 row)
+```
+
+非ASCII字符：
+```
+ select asciistr('你好') from dual;
+  asciistr  
+------------
+ \4F60\597D
+```
+
+同时包含ASCII字符和非ASCII字符：
+```
+ select asciistr('ABÄCDE') from dual;
+  asciistr  
+------------
+ AB\00C4CDE
+(1 row)
+```
+
+42、兼容TO_MULTI_BYTE函数, 功能：将字符串中的半角字符转换为全角字符：
+输入半角字符，转换为全角字符：
+```
+select to_multi_byte('1.2'::text) ;
+ to_multi_byte 
+---------------
+ １．２
+```
+
+43、兼容TO_SINGLE_BYTE函数, 功能：将字符串中的半角字符转换为全角字符
+输入全角字符，转换为半角字符：
+```
+select to_single_byte('１．２');
+ to_single_byte 
+----------------
+ 1.2
+```
+
+44、兼容COMPOSE函数,功能：将基本字符和组合标记组合一个复合Unicode字符:
+输入基本字符a和组合标记768, 返回法语à
+```
+select compose('a'||chr(768)) from dual;
+ compose 
+---------
+ à
+(1 row)
+```
+
+
+45、兼容DECOMPOSE函数,功能：将复合Unicode字符（如带有重音或特殊符号的字符）分解为其基本字符和组合标记
+输入法语é,返回基本字符e和组合标记301：
+```
+select asciistr(decompose('é')) from dual;
+ asciistr 
+----------
+ e\0301
+```

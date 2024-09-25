@@ -11,14 +11,14 @@ IvorySQL is fully compatible with PostgreSQL, allowing for seamless integration 
 Users can select the installation method for PostGIS that best suits their development environment from the https://postgis.net/documentation/getting_started/#installing-postgis[PostGIS installation page].
 
 === Source Code Installation
-Apart from the installation methods provided by the PostGIS community, the IvorySQL community also offers a source code installation method, with CentOS 7.9 (x86_64) as the environment for source code installation.
+Apart from the installation methods provided by the PostGIS community, the IvorySQL community also offers a source code installation method, with CentOS Stream 9 (x86_64) as the environment for source code installation.
 
 [NOTE]
 Please make sure that IvorySQL version 3.0 or newer is installed in the environment.
 
 ** Install dependencies
 ```
-yum install -y gcc gcc-c++ libtiff libtiff-devel.x86_64 libcurl-devel.x86_64 libtool libxml2-devel redhat-rpm-config clang llvm geos311 automake protobuf-c-devel
+dnf install -y gcc gcc-c++ libtiff libtiff-devel.x86_64 libcurl-devel.x86_64 libtool libxml2-devel redhat-rpm-config clang llvm geos311 automake protobuf-c-devel
 ```
 
 ** Install SQLITE

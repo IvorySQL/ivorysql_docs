@@ -13,7 +13,7 @@ Since IvorySQL is based on PostgreSQL, it is recommended that when reading and u
 
 The IvorySQL version number consists of a major version and a minor version. For example, 3 in IvorySQL 3.2 is the major version and 2 is the minor version.
 
-Releasing a minor version is not going to change the in-memory storage format, so it is always compatible with the same major version. For example, IvorySQL 3.3 is compatible with Ivory SQL 3.0 and the subsequent Ivory SQL 3.x. Upgrading for these compatible versions is as simple as shutting down the database service, installing a replacement binary executable, and restarting the service.
+Releasing a minor version is not going to change the in-memory storage format, so it is always compatible with the same major version. For example, IvorySQL 3.4 is compatible with Ivory SQL 3.0 and the subsequent Ivory SQL 3.x. Upgrading for these compatible versions is as simple as shutting down the database service, installing a replacement binary executable, and restarting the service.
 
 ​    Next, we focus on cross-version upgrades of IvorySQL, for example, from IvorySQL 2.3 to IvorySQL 3.2. Major version upgrades may modify the internal data storage format and therefore require additional operations to be performed. The common cross-version upgrade methods and applicable scenarios are as follows.
 
@@ -87,7 +87,7 @@ This upgrade method can be used with built-in logical replication tools and exte
 
 == Managing IvorySQL Versions
 
-IvorySQL is based on PostgreSQL and is updated at the same frequency as PostgreSQL, with one major release per year and one minor release per quarter. IvorySQL 3.3 is based on PostgreSQL 16.3, and all versions of IvorySQL are backward compatible.The relevant version features can be viewed by looking at https://deploy-preview-83--ivorysql.netlify.app/zh-CN/releases-page[Official Website]。
+IvorySQL is based on PostgreSQL and is updated at the same frequency as PostgreSQL, with one major release per year and one minor release per quarter. IvorySQL 3.4 is based on PostgreSQL 16.4, and all versions of IvorySQL are backward compatible.The relevant version features can be viewed by looking at https://deploy-preview-83--ivorysql.netlify.app/zh-CN/releases-page[Official Website]。
 
 
 == Managing IvorySQL database access

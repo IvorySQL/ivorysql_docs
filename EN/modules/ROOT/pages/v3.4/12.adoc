@@ -52,7 +52,7 @@ sudo --preserve-env=PG_CONFIG make install
 ** Create pgvector extension
 ```
 [ivorysql@localhost ivorysql-3]$ psql
-psql (16.3)
+psql (16.4)
 Type "help" for help.
 
 ivorysql=# create extension vector;

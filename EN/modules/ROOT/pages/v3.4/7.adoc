@@ -2,33 +2,32 @@
 :sectnums:
 :sectnumlevels: 5
 
-= **集群搭建**
-这里以最简单的一主一备（异步备）集群为例，介绍IvorySQL数据库集群的搭建方法。
+= **Building an IvorySQL cluster**
+This chapter is a demo to show you how to build an IvorySQL cluster. Just take a cluster with one primary node and only one standby node(async standby) as example.
 
-== 主节点
+== Primary node
 
-=== 安装并启动数据库
-yum源快速安装数据库，请参考xref:v3.3/3.adoc[快速安装]。
+=== Installing and start database
+For quick database installation by yum, please refer to xref:v3.4/3.adoc#quick-installation[Quick installation]。
 
-想要获取更多安装方式，请参考xref:v3.3/6.adoc#安装指南[安装指南]。
-
+For more installation options, please refer to xref:v3.4/6.adoc#Installation[Installation]。
 [NOTE]
-主节点数据库需要安装并**启动**
+The master node database needs to be installed and **started**.
 
-=== 关闭防火墙
-集群中各节点均需关闭防火墙才能正常通信。
+=== Stopping firewall
+Stop firewall for all the nodes in the cluster to ensure the communication:
 ```
 $ sudo systemctl stop firewalld 
 ```
 
-=== 配置文件
-为了从主节点向备节点搭建流复制，主节点需要对data目录下的postgresql.conf和pg_hba.conf两个文件进行配置。
+=== Setting environment variables
+To create the streaming replication, we need configure the postgresql.conf and pg_hba.conf files on the primary node.
 
 ** postgresql.conf
 
 +
 
-将以下配置追加到postgresql.conf文件末尾：
+Append the following contents to the end of postgresql.conf:
 ```
 listen_addresses = '*'                                             
 max_connections = 100
@@ -41,49 +40,49 @@ hot_standby = on
 
 +
 
-将以下配置追加到pg_hba.conf文件末尾：
+Append the following contents to the end of pg_hba.conf:
 ```
 host all all 0.0.0.0/0 trust
 host replication all 0.0.0.0/0 trust
 ```
 [CAUTION]
-示例中的pg_hba的配置，仅做为demo用来测试，这种配置会导致数据库密码失效，请根据环境实际情况进行配置
+The configuration of pg_hba in the example is only for demo purposes and testing. This configuration will result in invalidation of the database password. Please configure according to the actual environment.
 
-=== 重启主节点数据库服务
+=== Restarting IvorySQL sevice
 ```
 $ pg_ctl restart 
 ```
 
-== 备节点
-=== 安装数据库
-Yum源快速安装数据库，请参考xref:v3.3/3.adoc#快速安装[快速安装]。
+== Standby node
+=== Installing database
+For quick database installation by yum, please refer to xref:v3.4/3.adoc#quick-installation[Quick installation]。
 
-想要获取更多安装方式，请参考xref:v3.3/6.adoc#安装指南[安装指南]。
+For more installation options, please refer to xref:v3.4/6.adoc#Installation[Installation]。
 
 [NOTE]
-备节点数据库只需要安装，**不需要启动**
+The standby node database only needs to be installed and **not started**.
 
-=== 关闭防火墙
-集群中各节点均需关闭防火墙才能正常通信。
+=== Stopping firewall
+Stop firewall for all the nodes in the cluster to ensure the communication:
 ```
 $ sudo systemctl stop firewalld 
 ```
 
-=== 搭建流复制
-在备节点上执行以下命令，创建一个主节点的基础备份，即搭建流复制：
+=== Building streaming replication
+Run below command on the standby node to take base backups of the primary, that is, to build a streaming replication:
 ```
 $ sudo pg_basebackup -F p -P -X fetch -R -h <primary_ip> -p <primary_port> -U ivorysql -D /usr/local/ivorysql/ivorysql-3/data 
 ```
-- -h为主节点ip；
-- -p为主节点数据库端口号，默认为5432；
-- -U为数据库用户；
-- -D为要创建的备节点数据库数据目录。
+- Specifies the host name of the machine on which the server is running;
+- Specifies the TCP port or local Unix domain socket file extension on which the server is listening for connections. Defaults is 5432;
+- User name to connect as;
+- Directory to write the output to. pg_basebackup will create the directory and any parent directories if necessary. The directory may already exist, but it is an error if the directory already exists and is not empty.
 
-其他参数使用方法，请使用pg_basebackup --help命令获取。
+For more options, refer to pg_basebackup --help.
 
-=== 配置环境变量
+=== Setting environment variables
 
-将以下配置写入~/.bash_profile文件：
+Add below contents in ~/.bash_profile file:
 ```
 PATH=/usr/local/ivorysql/ivorysql-3/bin:$PATH
 export PATH
@@ -92,35 +91,35 @@ export LD_LIBRARY_PATH
 PGDATA=/usr/local/ivorysql/ivorysql-3/data
 export PGDATA
 ```
-source该文件使环境变量生效：
+Source to make it effective:
 ```
 $ source ~/.bash_profile
 ```
 
-=== 启动备节点数据库服务
+=== Starting IvorySQL sevice
 ```
-$ pg_ctl -D /usr/local/ivorysql/ivorysql-3/data start
+$ sudo pg_ctl -D /usr/local/ivorysql/ivorysql-3/data start
 ```
 
-== 集群的使用
-=== 查看集群状态
-在主节点上执行以下命令可以看到walsender：
+== Experience the IvorySQL cluster
+===  Checking cluster status
+Run below command on the primary node, you will see walsender:
 ```
 $ ps -ef |grep postgres
 ...
 ivorysql 11176  8067  0 21:54 ?        00:00:00 postgres: walsender ivorysql 192.168.31.102(53416) streaming 0/7000060...
 ```
-而备节点则可看到walreceiver：
+while it is walreceiver on standby:
 ```
 $ ps -ef | grep postgres
 ...
 ivorysql  6567  6139  0 21:54 ?        00:00:00 postgres: walreceiver streaming 0/7000060
 ...
 ```
-在主节点上psql连接数据库，并查看集群状态：
+On the primary node, connect to IvorySQL and show the status:
 ```
 $ psql -d postgres
-psql (16.3)
+psql (16.4)
 Type "help" for help.
 
 postgres=# select * from pg_stat_replication;
@@ -135,13 +134,16 @@ xmin |   state   | sent_lsn  | write_lsn | flush_lsn | replay_lsn | write_lag | 
 02-25 22:52:07.325111-05
 (1 row)
 ```
-这里192.168.31.102为备节点的ip，async表示数据同步方式为异步流复制。
-=== 使用集群
-集群中所有的写操作均在主节点执行，读操作则主备节点都可以执行。主节点的数据通过流复制同步到备节点。主节点写操作的结果在任何一个备节点都能够查询到。
-例如，在主节点创建一个新的数据库test，并在主节点进行查询：
+Here 192.168.31.102 is the ip address of the standby node, and async means the data synchronization method is asynchronous.
+
+=== Using the cluster
+
+All writing operations are performed on the primary node, while reading can be on both primary and standby. The data on primary is synchronized to standby through streaming replication. The writing result can be queried on all the nodes in the cluster.
+
+Below is an example. Create a new database test on primary and query:
 ```
 $ psql -d postgres
-psql (16.3)
+psql (16.4)
 Type "help" for help.
 
 postgres=# create database test;
@@ -158,10 +160,10 @@ postgres=# \l
  test      | ivorysql | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |            |           | 
 (4 rows)
 ```
-在备节点查询：
+Query on the standby node:
 ```
 $ psql -d postgres
-psql (16.3)
+psql (16.4)
 Type "help" for help.
 
 postgres=# \l

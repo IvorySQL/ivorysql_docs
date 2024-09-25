@@ -15,7 +15,7 @@ IvorySQL版本号由主要版本和次要版本组成。例如，IvorySQL 3.2 �
 
 ​发布次要版本是不会改变内存的存储格式，因此总是和相同的主要版本兼容。例如，IvorySQL 3.2 和Ivory SQL 3.0 以及后续的 Ivory SQL 3.x 兼容。对于这些兼容版本的升级非常简单，只要关闭数据库服务，安装替换二进制的可执行文件，重新启动服务即可。
 
-​接下来，我们主要讨论IvorySQL的跨版本升级问题，例如，从 IvorySQL 2.3 升级到 IvorySQL 3.3 。主要版本的升级可能会修改内部数据的存储格式，因此需要执行额外的操作。常用的跨版本升级方法和适用场景如下：
+​接下来，我们主要讨论IvorySQL的跨版本升级问题，例如，从 IvorySQL 2.3 升级到 IvorySQL 3.4 。主要版本的升级可能会修改内部数据的存储格式，因此需要执行额外的操作。常用的跨版本升级方法和适用场景如下：
 
 |====
 |升级方法|适用场景|停机时间
@@ -99,7 +99,7 @@ pg_upgrade 工具可以支持IvorySQL跨版本的就地升级。 升级可以在
 
 == 管理IvorySQL版本
 
-IvorySQL基于PostgreSQL开发，版本更新频率与PostgreSQL版本更新频率保持一致，每年更新一个大版本，每季度更新一个小版本。IvorySQL目前发布的版本有1.0到3.3，分别基于PostgreSQL 14.0到16.3进行开发，最新版本为IvorySQL 3.3， 基于PostgreSQL 16.3 进行开发。IvorySQL 的所有版本全部都做到了向下兼容。相关版本特性可以查看 https://www.ivorysql.org/zh-CN/releases-page[官网]。
+IvorySQL基于PostgreSQL开发，版本更新频率与PostgreSQL版本更新频率保持一致，每年更新一个大版本，每季度更新一个小版本。IvorySQL目前发布的版本有1.0到3.4，分别基于PostgreSQL 14.0到16.4进行开发，最新版本为IvorySQL 3.4， 基于PostgreSQL 16.4 进行开发。IvorySQL 的所有版本全部都做到了向下兼容。相关版本特性可以查看 https://www.ivorysql.org/zh-CN/releases-page[官网]。
 
 
 == 管理IvorySQL数据库访问

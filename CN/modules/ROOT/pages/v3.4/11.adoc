@@ -11,14 +11,14 @@ IvorySQL原生100%兼容PostgreSQL,因此，PostGIS可以完美适配IvorySQL。
 根据开发环境，用户可从 https://postgis.net/documentation/getting_started/#installing-postgis[PostGIS安装] 页面选择适合自己的方式进行安装PostGIS安装。
 
 === 源码安装
-除PostGIS社区提供的安装方式以外，IvorySQL社区也提供了源码安装方式，源码安装环境为 CentOS 7.9(x86_64)。
+除PostGIS社区提供的安装方式以外，IvorySQL社区也提供了源码安装方式，源码安装环境为 CentOS Stream 9(x86_64)。
 
 [NOTE]
 请确保环境中已安装了**IvorySQL3.0及以上版本**
 
 ** 安装依赖
 ```
-yum install -y gcc gcc-c++ libtiff libtiff-devel.x86_64 libcurl-devel.x86_64 libtool libxml2-devel redhat-rpm-config clang llvm geos311 automake protobuf-c-devel
+dnf install -y gcc gcc-c++ libtiff libtiff-devel.x86_64 libcurl-devel.x86_64 libtool libxml2-devel redhat-rpm-config clang llvm geos311 automake protobuf-c-devel
 ```
 
 ** 安装SQLITE
