@@ -68,6 +68,11 @@
 |hextoraw
 |uid
 |USERENV
+|asciistr
+|to_multi_byte
+|to_single_byte
+|compose
+|decompose
 |====
 
 == Built-in function descriptions
@@ -961,3 +966,67 @@ select userenv('sessionid')from dual;
 (1 row)
 ```
 
+41、Compatible with ASCIISTR function, function: input string, return ASCII characters, the test cases are as follows:
+string with only ascii chars:
+```
+ select asciistr('Hello, World!') from dual;
+   asciistr    
+---------------
+ Hello, World!
+(1 row)
+```
+
+string with non-ascii chars:
+```
+ select asciistr('你好') from dual;
+  asciistr  
+------------
+ \4F60\597D
+```
+
+string with mixed ascii and non-ascii:
+```
+ select asciistr('ABÄCDE') from dual;
+  asciistr  
+------------
+ AB\00C4CDE
+(1 row)
+```
+
+42、Compatible with TO_MULTI_BYTE function, function: Convert half-width characters in a string to full-width characters:
+input half-width characters, Convert to full-width characters:
+```
+select to_multi_byte('1.2'::text) ;
+ to_multi_byte 
+---------------
+ １．２
+```
+
+43、Compatible with TO_SINGLE_BYTE function, function: Convert full-width characters in a string to half-width characters:
+input full-width characters, Convert to half-width characters: 输入全角字符，转换为半角字符：
+```
+select to_single_byte('１．２');
+ to_single_byte 
+----------------
+ 1.2
+```
+
+44、Compatible with COMPOSE function,function: Combine base characters and combining marks into a composite Unicode character:
+input base character 'a' with a combining mark '768', return à：
+```
+select compose('a'||chr(768)) from dual;
+ compose 
+---------
+ à
+(1 row)
+```
+
+
+45、ompatible with DECOMPOSE function, function: Decompose composite Unicode characters (like those with accents or special symbols) into their base characters and combining marks.
+input é, return a base character 'e' with a combining mark '301'：
+```
+select asciistr(decompose('é')) from dual;
+ asciistr 
+----------
+ e\0301
+```

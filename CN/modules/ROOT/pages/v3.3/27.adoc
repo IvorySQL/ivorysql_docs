@@ -1,0 +1,35 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= 兼容Oracle sequence
+
+== 目的
+
+- 本文档是IvorySQL兼容Oracle sequence文档，目的是可以在IvorySQL中使用Oracle的sequence语句。
+
+== 功能说明
+
+- 序列是一个数据库对象，与表和视图类似，它表示可以由全局数据库命名空间中的任何表和视图使用的整数序列。可以使用NEXTVAL和CURRVAL访问序列值。序列可以是升序或降序
+
+== 测试用例
+
+```
+ivorysql=# CREATE sequence seq;
+CREATE SEQUENCE
+ivorysql=# SELECT seq.NEXTVAL FROM DUAL;
+ nextval
+---------
+       1
+(1 row)
+ivorysql=# ALTER sequence seq restart start with 10;
+ALTER SEQUENCE
+ivorysql=# SELECT seq.NEXTVAL FROM DUAL;
+ nextval
+---------
+       10
+(1 row)
+ivorysql=# DROP SEQUENCE seq;
+DROP SEQUENCE
+```

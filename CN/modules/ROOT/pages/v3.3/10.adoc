@@ -45,7 +45,7 @@ Ora2Pg 由一个 Perl 脚本（ora2pg）以及一个 Perl 模块（ https://gith
 
 |===
 | linux环境 | Oracle版本 | IvorySQL版本
-| Centos 7.X | 19.0.0.0 | 3.2
+| Centos Stream 9 | 19.0.0.0 | 3.4
 |===
 
 === 依赖环境安装
@@ -53,7 +53,7 @@ Ora2Pg 由一个 Perl 脚本（ora2pg）以及一个 Perl 模块（ https://gith
 ==== 安装Perl
 
 ```bash
-[root@localhost /]# yum install -y perl perl-ExtUtils-CBuilder perl-ExtUtils-MakeMaker
+[root@localhost /]# dnf install -y perl perl-ExtUtils-CBuilder perl-ExtUtils-MakeMaker
 [root@localhost /]# perl -v
 
 

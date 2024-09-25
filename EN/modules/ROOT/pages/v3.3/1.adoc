@@ -5,33 +5,32 @@
 
 == Version Overview
 
-[**Release date: July 11, 2024**]
+[**Release date: September 26, 2024**]
 
-IvorySQL 3.3, based on PostgreSQL 16.3, and Fixed a series of bugs. For a comprehensive list of updates, please visit our https://docs.ivorysql.org/[documentation site].
+IvorySQL 3.4, based on PostgreSQL 16.4, and Fixed a series of bugs. For a comprehensive list of updates, please visit our https://docs.ivorysql.org/[documentation site].
 
 == Enhancements
 
-- PostgreSQL 16.3 Enhancements
+- PostgreSQL 16.4 Enhancements
 
-1. Restrict visibility of pg_stats_ext and pg_stats_ext_exprs entries to the table owner
-2. Fix INSERT from multiple VALUES rows into a target column that is a domain over an array or composite type.
-3. Require SELECT privilege on the target table for MERGE with a DO NOTHING clause.
-4. Fix handling of self-modified tuples in MERGE.
-5. Fix incorrect pruning of NULL partition when a table is partitioned on a boolean column and the query has a boolean IS NOT clause.
+1. Prevent unauthorized code execution during pg_dump
+2. Avoid incorrect results from Merge Right Anti Join plans
+3. Prevent infinite loop in VACUUM 
+4. Fix failure after attaching a table as a partition, if the table had previously had inheritance children
+5. Fix input of ISO-8601 “extended” time format for types time and timetz
 
 +
 
-For further details, visit https://www.postgresql.org/docs/release/16.3/[PostgreSQL’s release notes].
+For further details, visit https://www.postgresql.org/docs/release/16.4/[PostgreSQL’s release notes].
 
 == Fixed Issue
 
-- Fix issue when SYSDATE is used as the default value for date: Issue #633  
-- Fix issue when SYSTIMESTAMP is used as the default value for date: Issue #661 
-- Date timestamp precision with nls mask: Issue #634
-- More test case for ivorysql.datetime_ignore_nls_mask: Issue #657 
-- Fix incorrect result for timestamp(7) type in Oracle compatible mode: issue #658
-- Support data type VARCHAR2: issue #652
-- Fix IvorySQL related issue in docker_library project: [#4](https://github.com/IvorySQL/docker_library/issues/4)
+- Add support for oracle sequence: Issue https://github.com/IvorySQL/IvorySQL/issues/588[#588]
+- Support xmlisvalid and xmlelement functions : Issue https://github.com/IvorySQL/IvorySQL/issues/695[#695]
+- Set limit 2000 for character type in oracle mode: Issue https://github.com/IvorySQL/IvorySQL/issues/561[#561]
+- Support for adding constraints to existing tables using the SQL command ALTER TABLE ADD (CONSTRAINT ...): Issue https://github.com/IvorySQL/IvorySQL/issues/612[#612]
+- Support TO_MULTI_BYTE(), TO_SINGLE_BYTE(), ASCIISTR(), COMPOSE(), DECOMPOSE() functions: Issue https://github.com/IvorySQL/IvorySQL/issues/609[#609]
+- Support X86 and ARM architecture for debian in docker_library project: https://github.com/IvorySQL/docker_library/issues/16[#16]
 
 == Source Code
 
@@ -46,18 +45,18 @@ The following individuals (in alphabetical order) have contributed to this relea
 
 - Cary Huang
 - Chase Wu
-- David Zhang
+- Chong Peng
 - Grant Zhou
 - Hope Gao
 - Håkan Arpfors
 - Imran Zaheer
+- Jiajie Zhou
 - Jiao Ren
+- Lei Feng
 - Lei Shang
 - Leo X.M. Zeng
 - Lily Wang
-- Nan Jia
-- Ruike Sun
-- shanInfo
+- ShanInfo
 - Shawn Yan
 - Shiji Niu
 - Shoubo Wang
@@ -65,4 +64,4 @@ The following individuals (in alphabetical order) have contributed to this relea
 - Xiangyu Liang
 - Xinjie Lv
 - Xinyuan Guo
-- Xiuhua Ruan
+- Yi Wen

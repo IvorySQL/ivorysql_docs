@@ -4,35 +4,34 @@
 
 == 版本概览
 
-[**发行日期：2024年7月11日**]
+[**发行日期：2024年9月26日**]
 
 
-IvorySQL 3.3基于PostgreSQL 16.3，并修复了多个问题。更多信息请参考 https://docs.ivorysql.org/[文档网站] 。
+IvorySQL 3.4基于PostgreSQL 16.4，并修复了多个问题。更多信息请参考 https://docs.ivorysql.org/[文档网站] 。
 
 == 增强功能
 
-- PostgreSQL 16.3 的增强功能
+- PostgreSQL 16.4 的增强功能
 
-1. 将 pg_stats_ext 和 pg_stats_ext_exprs 条目的可见性限制为表所有者。
-2. 修复将多个 VALUES 行插入到作为数组或复合类型域的目标列中的问题。
-3. 对于带有 DO NOTHING 子句的 MERGE 语句，要求对目标表具有 SELECT 权限。
-4. 修复处理 MERGE 中自我修改元组的问题。
-5. 修复当表按布尔列分区且查询中包含布尔 IS NOT 子句时错误地删除 NULL 分区的问题。
+1. 在未经授权时防止pg_dump执行
+2. 避免归并右反连接计划产生错误结果
+3. 防止VACUUM中出现无限循环
+4. 修复在将表作为分区附加后失败的问题，前提是该表之前有继承子表
+5. 修复了 time 和 timetz 类型的 ISO-8601“扩展”时间格式的输入
 
 +
 
-更多细节, 请参阅 https://www.postgresql.org/docs/release/16.3/[PostgreSQL发布说明].
+更多细节, 请参阅 https://www.postgresql.org/docs/release/16.4/[PostgreSQL发布说明].
 
 
 == 问题修复
 
-- 修复使用 SYSDATE 作为日期默认值时的问题: https://github.com/IvorySQL/IvorySQL/issues/633[#633]  
-- 修复使用 SYSTIMESTAMP 作为日期默认值时的问题: https://github.com/IvorySQL/IvorySQL/issues/661[#661]
-- 修复nls mask时间戳精度问题: https://github.com/IvorySQL/IvorySQL/issues/634[#634]
-- 为ivorysql.datetime_ignore_nls_mask参数添加更多测试用例: https://github.com/IvorySQL/IvorySQL/issues/657[#657] 
-- 修复兼容模式下使用timestamp(7)类型返回错误问题: https://github.com/IvorySQL/IvorySQL/issues/658[#658]
-- 数据类型VARCHAR2问题的支持: https://github.com/IvorySQL/IvorySQL/issues/652[#652]
-- 解决docker_library项目中，有关IvorySQL的相关问题: https://github.com/IvorySQL/docker_library/issues/4[#4]
+- 新增 Oracle sequence功能: 问题 https://github.com/IvorySQL/IvorySQL/issues/588[#588]
+- 支持 xmlisvalid 和 xmlelement 函数: 问题 https://github.com/IvorySQL/IvorySQL/issues/695[#695]
+- 在Oracle模式下为字符类型限制设置为2000: 问题 https://github.com/IvorySQL/IvorySQL/issues/561[#561]
+- 支持使用SQL命令ALTER TABLE ADD (CONSTRAINT ...)向现有表添加约束。: 问题 https://github.com/IvorySQL/IvorySQL/issues/612[#612]
+- 支持以下函数 TO_MULTI_BYTE(), TO_SINGLE_BYTE(), ASCIISTR(), COMPOSE(), DECOMPOSE(): 问题 https://github.com/IvorySQL/IvorySQL/issues/609[#609]
+- docker_library项目现已支持Debian的X86和ARM架构: https://github.com/IvorySQL/docker_library/issues/16[#16]
 
 == 源代码
 
@@ -46,23 +45,23 @@ IvorySQL主要包含2个代码仓库:
 
 - Cary Huang
 - Chase Wu
-- David Zhang
 - Grant Zhou
 - Håkan Arpfors
 - Imran Zaheer
 - Leo X.M. Zeng
-- shanInfo
+- ShanInfo
+- 冯磊
 - 高雪玉
 - 郭新源
-- 贾楠
 - 矫顺田
 - 梁翔宇
 - 吕新杰
 - 牛世继
+- 彭冲
 - 任娇
-- 阮秀华
 - 尚雷
-- 孙锐克
 - 王丽
 - 王守波
+- 文一
 - 严少安
+- 周家杰

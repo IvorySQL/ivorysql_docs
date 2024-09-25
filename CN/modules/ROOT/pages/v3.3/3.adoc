@@ -21,12 +21,12 @@
 
 +
 
-IvorySQL数据库目前支持的操作系统包括但不限于CentOS 7.X和CentOS 8.X。
+IvorySQL数据库目前支持的操作系统包括但不限于CentOS 8.X和CentOS Stream 9。
 
 [[快速安装]]
 == 快速安装 
 ....
-  快速开始所使用的操作系统为CentOS 7.9。
+  快速开始所使用的操作系统为CentOS Stream 9。
 ....
 === 从yum源安装IvorySQL数据库
 
@@ -43,9 +43,9 @@ https://www.ionos.com/help/server-cloud-infrastructure/server-administration/cre
 
 执行以下命令安装：
 ```
-$ sudo yum install -y https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-3.0-1.noarch.rpm
+$ sudo dnf install -y https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-3.0-1.noarch.rpm
 
-$ sudo yum install -y ivorysql3 ivorysql3-server ivorysql3-contrib ivorysql3-test --skip-broken
+$ sudo dnf install -y ivorysql3 ivorysql3-server ivorysql3-contrib ivorysql3-test --skip-broken --nogpgcheck
 ```
 ....
 
@@ -108,19 +108,19 @@ ivorysql  3238  1551  0 20:35 pts/0    00:00:00 grep --color=auto postgres
 
 ** 从Docker Hub上获取IvorySQL镜像
 ```
-$ docker pull ivorysql/ivorysql:3.3-ubi8
+$ docker pull ivorysql/ivorysql:3.4-ubi8
 ```
 
 ** 运行IvorySQL
 ```
-$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:3.3-ubi8
+$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:3.4-ubi8
 ```
 
 ** 查看IvorySQL容器运行是否成功
 ```
 $ docker ps | grep ivorysql
 CONTAINER ID   IMAGE               COMMAND                   CREATED          STATUS          PORTS                              NAMES
-6faa2d0ed705   ivorysql:3.3-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
+6faa2d0ed705   ivorysql:3.4-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
 ```
 
 == 数据库连接
@@ -128,7 +128,7 @@ CONTAINER ID   IMAGE               COMMAND                   CREATED          ST
 psql连接数据库：
 ```
 $ psql -d <database>
-psql (16.3)
+psql (16.4)
 Type "help" for help.
 
 ivorysql=#
@@ -143,4 +143,4 @@ TIP: Docker运行IvorySQL时，需要添加额外参数，如 psql -d ivorysql -
 
 现在可以开始使用IvorySQL啦！就是这么简单！
 
-想要获得更多安装方式，请参考xref:v3.3/6.adoc[安装指南]
+想要获得更多安装方式，请参考xref:v3.4/6.adoc[安装指南]

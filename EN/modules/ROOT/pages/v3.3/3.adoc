@@ -20,12 +20,12 @@
 
 +
 
-Now, IvorySQL supports but is not limited to linux(CentOS 7.X/CentOS 8.X). 
+Now, IvorySQL supports but is not limited to linux(CentOS 8.X/CentOS Stream 9). 
 
 [[quick-installation]]
 == Quick installation 
 ....
-  The operating system used for the quick start is CentOS 7.9.
+  The operating system used for the quick start is CentOS Stream 9.
 ....
 === yum installation
 
@@ -42,9 +42,9 @@ https://www.ionos.com/help/server-cloud-infrastructure/server-administration/cre
 
 Run the following commands to perform yum installation:
 ```
-$ sudo yum install -y https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-3.0-1.noarch.rpm
+$ sudo dnf install -y https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-3.0-1.noarch.rpm
 
-$ sudo yum install -y ivorysql3 ivorysql3-server ivorysql3-contrib ivorysql3-test --skip-broken
+$ sudo dnf install -y ivorysql3 ivorysql3-server ivorysql3-contrib ivorysql3-test --skip-broken
 ```
 IvorySQL will be installed in a folder named 'ivorysql-version', such as 'ivorysql-3', within the /usr/local/ivorysql directory.
 
@@ -109,19 +109,19 @@ ivorysql  3238  1551  0 20:35 pts/0    00:00:00 grep --color=auto postgres
 
 ** Get IvorySQL image from Docker Hub
 ```
-$ docker pull ivorysql/ivorysql:3.3-ubi8
+$ docker pull ivorysql/ivorysql:3.4-ubi8
 ```
 
 ** Running IvorySQL
 ```
-$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:3.3-ubi8
+$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:3.4-ubi8
 ```
 
 ** Check if the IvorySQL container is running successfully
 ```
 $ docker ps | grep ivorysql
 CONTAINER ID   IMAGE               COMMAND                   CREATED          STATUS          PORTS                              NAMES
-6faa2d0ed705   ivorysql:3.3-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
+6faa2d0ed705   ivorysql:3.4-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
 ```
 
 == Connecting to IvorySQL
@@ -129,7 +129,7 @@ CONTAINER ID   IMAGE               COMMAND                   CREATED          ST
 Connect to IovrySQL via psql:
 ```
 $ psql -d <database>
-psql (16.3)
+psql (16.4)
 Type "help" for help.
 
 ivorysql=#
@@ -144,4 +144,4 @@ TIP: When running IvorySQL in Docker, additional parameters need to be added, li
 
 Now you can start your journey of IvorySQL! Enjoy! 
 
-To explore additional installation methods, please refer to the xref:v3.3/6.adoc[Installation].
+To explore additional installation methods, please refer to the xref:v3.4/6.adoc[Installation].

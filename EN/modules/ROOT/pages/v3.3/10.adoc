@@ -44,7 +44,7 @@ By default, Ora2Pg exports an SQL file, which can be executed through the IvoryS
 
 |===
 | linux | Oracle Version | IvorySQL Version
-| Centos 7.X | 19.0.0.0 | 3.2 
+| Centos Stream 9 | 19.0.0.0 | 3.2 
 |===
 
 === Environment-dependent installation
@@ -52,7 +52,7 @@ By default, Ora2Pg exports an SQL file, which can be executed through the IvoryS
 ==== Install Perl
 
 ```
-# yum install -y perl perl-ExtUtils-CBuilder perl-ExtUtils-MakeMaker
+# dnf install -y perl perl-ExtUtils-CBuilder perl-ExtUtils-MakeMaker
 # perl -v
 
 
