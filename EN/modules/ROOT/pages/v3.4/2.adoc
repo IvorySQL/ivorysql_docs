@@ -73,3 +73,4 @@ IvorySQL is a powerful open source object-relational database management system 
 * https://docs.ivorysql.org/cn/ivorysql-doc/v3.4/v3.4/21[8. Built-in data types and built-in functions]
 * https://docs.ivorysql.org/cn/ivorysql-doc/v3.4/v3.4/22[9. Added Oracle compatibility mode ports and IP]
 * https://docs.ivorysql.org/cn/ivorysql-doc/v3.4/v3.4/26[10. XML Function]
+* https://docs.ivorysql.org/cn/ivorysql-doc/v3.4/v3.4/27[11. Compatible with Oracle sequence]

@@ -79,3 +79,4 @@ IvorySQL是一个功能强大的开源对象关系数据库管理系统(ORDBMS)�
 * https://docs.ivorysql.org/cn/ivorysql-doc/v3.4/v3.4/21[内置数据类型与内置函数]
 * https://docs.ivorysql.org/cn/ivorysql-doc/v3.4/v3.4/22[新增Oracle兼容模式的端口与IP]
 * https://docs.ivorysql.org/cn/ivorysql-doc/v3.4/v3.4/26[XML函数]
+* https://docs.ivorysql.org/cn/ivorysql-doc/v3.4/v3.4/27[兼容Oracle sequence]
