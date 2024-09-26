@@ -42,7 +42,6 @@ SELECT existsnode(XMLType('<a><b>d</b></a>'), '/a') from dual;
 | 10 | <<insertchildxmlbefore>> | 该函数用于向指定的XML路径之前插入子节点
 | 11 | <<insertchildxmlafter>> | 该函数用于向指定的XML路径之后插入子节点
 | 12 | <<xmlisvalid>> | 该函数用于检查XML格式是否正确
-| 13 | <<xmlelement>> | 该函数用于生成XML格式的数据结构
 |====
 
 
@@ -222,21 +221,4 @@ xmlisvalid
 ------------
 t
 (1 row)
-```
-
-[[xmlelement]]
-=== xmlelement
-```
-ivorysql=# create table xmltest(id int, data XMLType);
-CREATE TABLE
-ivorysql=# insert into xmltest values(1,'<value>one</value>');
-INSERT 0 1
-ivorysql=# insert into xmltest values(2,'<value>two</value>');
-INSERT 0 1
-ivorysql=# SELECT XMLELEMENT("Employee"), XMLELEMENT("Id", x.id), XMLELEMENT("Data", x.data) AS "Result" FROM xmltest x;
-xmlelement  | xmlelement |   Result
-------------+------------+-------------
-<Employee/> | <Id>1</Id> | <Data>&lt;value&gt;one&lt;/value&gt;</Data>
-<Employee/> | <Id>2</Id> | <Data>&lt;value&gt;two&lt;/value&gt;</Data>
-(2 rows)
 ```
