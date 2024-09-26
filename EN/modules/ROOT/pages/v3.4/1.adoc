@@ -26,7 +26,7 @@ For further details, visit https://www.postgresql.org/docs/release/16.4/[Postgre
 == Fixed Issue
 
 - Add support for oracle sequence: Issue https://github.com/IvorySQL/IvorySQL/issues/588[#588]
-- Support xmlisvalid and xmlelement functions : Issue https://github.com/IvorySQL/IvorySQL/issues/695[#695]
+- Support xmlisvalid function: Issue https://github.com/IvorySQL/IvorySQL/issues/695[#695]
 - Set limit 2000 for character type in oracle mode: Issue https://github.com/IvorySQL/IvorySQL/issues/561[#561]
 - Support for adding constraints to existing tables using the SQL command ALTER TABLE ADD (CONSTRAINT ...): Issue https://github.com/IvorySQL/IvorySQL/issues/612[#612]
 - Support TO_MULTI_BYTE(), TO_SINGLE_BYTE(), ASCIISTR(), COMPOSE(), DECOMPOSE() functions: Issue https://github.com/IvorySQL/IvorySQL/issues/609[#609]

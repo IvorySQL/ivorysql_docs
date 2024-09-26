@@ -45,7 +45,6 @@ When implementing these 11 Oracle-compatible XML functions, IvorySQL adopted two
 | 10 | <<insertchildxmlbefore>> | This function is used to insert child nodes before a specified XML path.
 | 11 | <<insertchildxmlafter>> | This function is used to insert child nodes after a specified XML path.
 | 12 | <<xmlisvalid>> | This functions is used to check the xml content is valid or not
-| 13 | <<xmlelement>> | This functions is used to produce an XML element.
 |====
 
 
@@ -225,21 +224,4 @@ xmlisvalid
 ------------
 t
 (1 row)
-```
-
-[[xmlelement]]
-=== xmlelement
-```
-ivorysql=# create table xmltest(id int, data XMLType);
-CREATE TABLE
-ivorysql=# insert into xmltest values(1,'<value>one</value>');
-INSERT 0 1
-ivorysql=# insert into xmltest values(2,'<value>two</value>');
-INSERT 0 1
-ivorysql=# SELECT XMLELEMENT("Employee"), XMLELEMENT("Id", x.id), XMLELEMENT("Data", x.data) AS "Result" FROM xmltest x;
-xmlelement  | xmlelement |   Result
-------------+------------+-------------
-<Employee/> | <Id>1</Id> | <Data>&lt;value&gt;one&lt;/value&gt;</Data>
-<Employee/> | <Id>2</Id> | <Data>&lt;value&gt;two&lt;/value&gt;</Data>
-(2 rows)
 ```

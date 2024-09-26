@@ -27,9 +27,9 @@ IvorySQL 3.4基于PostgreSQL 16.4，并修复了多个问题。更多信息请�
 == 问题修复
 
 - 新增 Oracle sequence功能: 问题 https://github.com/IvorySQL/IvorySQL/issues/588[#588]
-- 支持 xmlisvalid 和 xmlelement 函数: 问题 https://github.com/IvorySQL/IvorySQL/issues/695[#695]
+- 支持 xmlisvalid 函数: 问题 https://github.com/IvorySQL/IvorySQL/issues/695[#695]
 - 在Oracle模式下为字符类型限制设置为2000: 问题 https://github.com/IvorySQL/IvorySQL/issues/561[#561]
-- 支持使用SQL命令ALTER TABLE ADD (CONSTRAINT ...)向现有表添加约束。: 问题 https://github.com/IvorySQL/IvorySQL/issues/612[#612]
+- 支持使用SQL命令ALTER TABLE ADD (CONSTRAINT ...)向现有表添加约束: 问题 https://github.com/IvorySQL/IvorySQL/issues/612[#612]
 - 支持以下函数 TO_MULTI_BYTE(), TO_SINGLE_BYTE(), ASCIISTR(), COMPOSE(), DECOMPOSE(): 问题 https://github.com/IvorySQL/IvorySQL/issues/609[#609]
 - docker_library项目现已支持Debian的X86和ARM架构: https://github.com/IvorySQL/docker_library/issues/16[#16]
 
