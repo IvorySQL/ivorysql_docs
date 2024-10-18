@@ -4,7 +4,7 @@
 = XML
 
 == 目的
-在Oralce中，常会出现带有XML函数的SQL代码，IvorySQL在PostgreSQL的基础上，实现与Oracle XML函数的高度兼容，确保了从Oracle迁移到IvorySQL后的数据格式和结构的一致性。这种兼容性意味着用户无需对现有的XML处理逻辑进行大规模修改，从而保证了数据的完整性和准确性。此外，IvorySQL的这种跨平台的兼容特性，也降低了因格式差异带来的额外用户维护和升级成本，使得数据处理和管理更加高效、可靠和灵活。
+在Oracle中，常会出现带有XML函数的SQL代码，IvorySQL在PostgreSQL的基础上，实现与Oracle XML函数的高度兼容，确保了从Oracle迁移到IvorySQL后的数据格式和结构的一致性。这种兼容性意味着用户无需对现有的XML处理逻辑进行大规模修改，从而保证了数据的完整性和准确性。此外，IvorySQL的这种跨平台的兼容特性，也降低了因格式差异带来的额外用户维护和升级成本，使得数据处理和管理更加高效、可靠和灵活。
 [TIP]
 ====
 XML（eXtended Markup Language可扩展标记语言）是一种基于文本的，用于结构化任何可标记文档的格式语言。它是一种轻便的，可扩展的，标准的且简学易懂的保存数据的语言。
@@ -124,7 +124,7 @@ ivorysql=# SELECT deletexml(XMLType('<test><value>oldnode</value><value>oldnode<
 [[appendchildxml]]
 === appendchildxml
 ```
-ivorysql=# ELECT appendchildxml(XMLType('<test><value></value><value></value></test>'),  '/test/value', XMLTYPE('<name>newnode</name>')) from dual;
+ivorysql=# SELECT appendchildxml(XMLType('<test><value></value><value></value></test>'),  '/test/value', XMLTYPE('<name>newnode</name>')) from dual;
       appendchildxml
 --------------------------
  <test>                  +

@@ -127,7 +127,7 @@ ivorysql=# SELECT deletexml(XMLType('<test><value>oldnode</value><value>oldnode<
 [[appendchildxml]]
 === appendchildxml
 ```
-ivorysql=# ELECT appendchildxml(XMLType('<test><value></value><value></value></test>'),  '/test/value', XMLTYPE('<name>newnode</name>')) from dual;
+ivorysql=# SELECT appendchildxml(XMLType('<test><value></value><value></value></test>'),  '/test/value', XMLTYPE('<name>newnode</name>')) from dual;
       appendchildxml
 --------------------------
  <test>                  +
