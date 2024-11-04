@@ -2084,7 +2084,7 @@ Parameters are set in the same way as in native IvorySQL. All parameter names ar
 
 ==== `ivorysql.compatible_mode (enum)`
 
-This parameter controls the behavior of the database server. The default value is `pg`, which means it is a native installation and the server will be installed as a native PG. If it is set to `oracle`, then the query output and overall system behavior will change, as it will be more Oracle-like.
+This parameter controls the behavior of the database server.  If it is set to `pg`, which means it is a native installation and the server will be installed as a native PG. If it is set to `oracle`, then the query output and overall system behavior will change, as it will be more Oracle-like.
 
 When set to `oracle`, this parameter will implicitly add a Schema with the same name to `search_path`. so that Oracle-compatible objects can be located.
 
