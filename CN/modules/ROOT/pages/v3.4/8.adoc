@@ -1987,7 +1987,7 @@ SELECT concat_lower_or_upper('Hello', 'World', uppercase => true);
 
 ==== `ivorysql.compatible_mode (enum)`
 
-此参数控制数据库服务器的行为。 默认值为 `pg`，表示它是原生安装，服务器将作为原生 PG 安装。 如果它设置为“oracle”，那么查询的输出和系统行为整体会发生变化，因为它会更像 Oracle。
+此参数控制数据库服务器的行为。 如果它设置为`pg`，表示它是原生安装，服务器将作为原生 PG 安装。 如果它设置为“oracle”，那么查询的输出和系统行为整体会发生变化，因为它会更像 Oracle。
 
 当设置为 `oracle` 时，此参数会隐式地将同样名字的Schema添加到 `search_path`。 以便可以定位 Oracle 兼容对象。
 
