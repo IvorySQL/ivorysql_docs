@@ -13,8 +13,6 @@ IvorySQL社区始终承诺与PostgreSQL数据库保持100%兼容，并且可以�
 
 IvorySQL增加了一个名为 `ivorysql.compatible_mode` 的GUC参数用以控制IvorySQL的兼容模式，该参数有 `oracle` 和 `pg` 两种值。在初始化数据目录的时候，通过指定 `-m` 参数来指定数据目录的兼容模式，`-m pg` 则数据目录为PostgreSQL模式，该模式下 `ivorysql.compatible_mode` 参数将会失效，`-m oracle` 或者不指定 `-m` 参数则数据目录为兼容Oracle模式，该模式下 `ivorysql.compatible_mode` 参数初始值为 `oracle` 并且不支持部分PostgreSQL的语法，通过 `set ivorysql.compatible_mode to pg` 就可以使得数据库100%支持PostgreSQL的语法及功能。
 
-IvorySQL的亮点之一是PL/iSQL过程语言，它支持Oracle的PL/SQL语法。同时，IvorySQL通过增加与内核绑定的插件 *ivorysql_ora* 来实现兼容Oracle的功能，目前实现的功能包括内置函数、数据类型、系统视图、merge以及GUC参数的增加，未来将会继续以绑定内核的插件的形式来实现新的兼容功能。
-
 IvorySQL项目是在Apache 2.0许可证下发布的，社区鼓励且欢迎所有类型的贡献和参与。
 
 === 产品目标和范围
@@ -66,15 +64,3 @@ Ivory数据库的主要应用场景：
 == 主要、基本功能
 
 IvorySQL是一个功能强大的开源对象关系数据库管理系统(ORDBMS)。 用于安全地存储数据，支持最佳做法，并允许在处理请求时检索它们。除此之外，还兼容了Oracle的语法，适用于使用Oracle的场景。
-
-== 与Oracle的兼容性
-
-* https://docs.ivorysql.org/cn/ivorysql-doc/v3.0/v3.0/14[ivorysql框架设计]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v3.0/v3.0/15[GUC框架]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v3.0/v3.0/16[大小写转换]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v3.0/v3.0/17[双模式设计]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v3.0/v3.0/18[兼容Oracle like]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v3.0/v3.0/19[兼容Oracle匿名块]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v3.0/v3.0/20[兼容Oracle函数与存储过程]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v3.0/v3.0/21[内置数据类型与内置函数]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v3.0/v3.0/22[新增Oracle兼容模式的端口与ip]

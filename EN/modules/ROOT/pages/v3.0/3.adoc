@@ -99,7 +99,7 @@ image::p19.png[]
 **Connection**
 ----
     [highgo@ivorysql ~]$ psql -d postgres
-    psql (16devel)
+    psql (14.8)
     Type "help" for help.
 
     postgres=#
@@ -123,7 +123,7 @@ undefined
 [root@localhost ~]# su - ivorysql 
 Last login: Wed Feb 24 10:47:32 CST 2023 on pts/0
 -bash-4.2$ psql
-psql (14.2)
+psql (14.8)
 Type "help" for help.
 
 ivorysql=#
@@ -154,24 +154,19 @@ environment：**CentOS 7.X**
 
 Installation package：rpm
 
-Download YUM source: Use wget to download on Centos7
+Download RPM source: Use wget to download on Centos7
 
-wget https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-1.0-2.noarch.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_8/ivorysql1-1.8-1.el7.x86_64.rpm
 
 
 
-installation source
+installation library
 
-    yum install ivorysql-release-1.0-2.noarch.rpm
-
-install library
-
-    yum install -y ivorysql2-server
+    yum install ivorysql1-1.8-1.el7.x86_64.rpm
 
 Initialize the database
 
-    cd /usr/local/ivorysql/ivorysql-2/bin
-    ./initdb -D ../data
+    /opt/IvorySQL-1.8/bin/initdb -D data/
 
 === cluster installation
 
@@ -179,23 +174,19 @@ environment：**CentOS 7.X**
 
 Installation package：rpm
 
-Download YUM source: Use wget to download on Centos7
+Download RPM source: Use wget to download on Centos7
 
-wget https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-1.0-2.noarch.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_8/ivorysql1-1.8-1.el7.x86_64.rpm
 
-installation source
+installation library
 
-    yum install ivorysql-release-1.0-2.noarch.rpm
-
-install library
-
-    yum install -y ivorysql2-server
+    yum install ivorysql1-1.8-1.el7.x86_64.rpm
 
 **master node**
 
 Initialize the database
 
-    cd /usr/local/ivorysql/ivorysql-2/bin
+    /opt/IvorySQL-1.8/bin/initdb -D data/
     ./initdb ../data-primary -U postgres
 
 Start the service and create a user
@@ -220,7 +211,7 @@ restart service
 
 ----
 shell
-cd /usr/local/ivorysql/ivorysql-2/bin
+cd /opt/IvorySQL-1.8/bin
 ./pg_basebackup -h 127.0.0.1 -p 5333 -U repl -W -Fp -Xs -Pv -R -D ../data-standby01
 ----
 
@@ -241,25 +232,20 @@ environment：**CentOS 7.X**
 
 Installation package：rpm
 
-Download YUM source: Use wget to download on Centos7
+Download RPM source: Use wget to download on Centos7
 
-wget https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-1.0-2.noarch.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_8/ivorysql1-1.8-1.el7.x86_64.rpm
 
 
-
-installation source
-----
-yum install ivorysql-release-1.0-2.noarch.rpm
-----
 
 install library
-
-    yum install -y ivorysql2-server
+----
+yum install ivorysql1-1.8-1.el7.x86_64.rpm
+----
 
 Initialize the master node
 
-    cd /usr/local/ivorysql/ivorysql-2/bin
-    ./initdb ../data-primary -U postgres
+    /opt/IvorySQL-1.8/bin/initdb -D data/
 
 Start the service and create a user
 ----
@@ -292,24 +278,20 @@ environment：**CentOS 7.X**
 
 Installation package：rpm
 
-Download YUM source: Use wget to download on Centos7
+Download RPM source: Use wget to download on Centos7
 
-wget https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-1.0-2.noarch.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_8/ivorysql1-1.8-1.el7.x86_64.rpm
 
 
-
-installation source
-
-    yum install ivorysql-release-1.0-2.noarch.rpm
 
 install library
 
-    yum install -y ivorysql2-server
+    yum install ivorysql1-1.8-1.el7.x86_64.rpm
 
 1、basic backup
 ----
 shell
-cd /usr/local/ivorysql/ivorysql-2/bin
+cd /opt/IvorySQL-1.8/bin
 ./pg_basebackup -h 192.168.xx.xx -p 5333 -U repl -W -Fp -Xs -Pv -R -D ../data-standby01
 ----
 
