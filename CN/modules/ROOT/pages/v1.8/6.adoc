@@ -15,7 +15,7 @@
 
 |====
 |操作系统|RPM包下载地址
-|CentOS 7、CentOS 8|https://github.com/IvorySQL/IvorySQL/releases
+|CentOS 7|https://github.com/IvorySQL/IvorySQL/releases
 |====
 
 
@@ -81,9 +81,10 @@ sudo yum groupinstall -y 'Development Tools'
 3.自行编译安装：前面通过获取的源码在文件夹IvorySQL里，接下来我们就进入这个文件夹进行操作。
 
 3.1 配置：Root用户执行以下命令进行配置：
-    git checkout tags/Ivory_REL_1_8
-    ./configure --prefix=/usr/local/ivorysql/ivorysql-1.8
-
+----
+git checkout tags/Ivory_REL_1_8
+./configure --prefix=/usr/local/ivorysql/ivorysql-1.8
+----
 > 说明： 由于没有提供 `--prefix`，默认安装在 `/usr/local/ivorysql`，故需要指定路径。
 >
 > 注意：我们要记住指定的目录，因为系统查不出已经编译安装的程序在哪。更多 configure 参数通过 `./configure --help` 查看。还可以查看 PostgreSQL 手册。
