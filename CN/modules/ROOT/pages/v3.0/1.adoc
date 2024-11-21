@@ -4,111 +4,9 @@
 
 == 版本介绍
 
-[**发行日期：2023年11月17日**]
+[**发行日期：2024年11月20日**]
 
-IvorySQL 3.0 基于 PostgreSQL 16.0 ，包含来自 PostgreSQL 16.0 的各种修复。有关 PostgreSQL 16.0 中更详细的更新和错误修复，请参阅官方 https://www.postgresql.org/docs/release/16.0/[PostgreSQL 16.0 发行说明] 。
-
-
-== 版本差异
-IvorySQL 3.0 版本在架构上发生了很大的变化，其使用方式与 2.3 版本不同。还有一些以前在 2.3 版本中可用的功能尚不受支持，以下是两个版本的功能差异。
-
-|====
-| 功能模块 | 功能|IvorySQL-2.3|IvorySQL-3.0
-.14+|内置数据类型|char|不支持|支持
-|varchar|支持|支持
-|varchar2|支持|支持
-|number|不支持|支持
-|binary_float|不支持|支持
-|binary_double|不支持|支持
-|date|支持|支持
-|timestamp|不支持|支持
-|timestamp with time zone|不支持|支持
-|timestamp with local time zone|不支持|支持
-|interval year to month|不支持|支持
-|interval day to second|不支持|支持
-|raw|不支持|支持
-|long|不支持|支持
-.44+|内置函数|char|不支持|支持
-|sysdate|支持|支持
-|systimestamp|支持|支持
-|add_months|支持|支持
-|last_day|支持|支持
-|next_day| 不支持|支持
-|months_between|支持         | 支持
-|current_date                            | 不支持       | 支持
-|current_timestamp                       | 不支持       | 支持 
-|new_time                                | 支持         | 支持 
-|tz_offset                               | 不支持       | 支持 
-|trunc                                   | 支持         | 支持 
-|instr                                   | 不支持       | 支持
-|instrb                                  | 不支持       | 支持 
-|substr                                  | 不支持       | 支持
-|substrb                                 | 支持         | 支持
-|trim                                    | 不支持       | 支持 
-|ltrim                                   | 不支持       | 支持 
-|rtrim                                   | 不支持       | 支持 
-|length                                  | 不支持       | 支持
-|lengthb                                 | 不支持       | 支持 
-|rawtohex                                | 不支持       | 支持 
-|replace                                 | 不支持       | 支持
-|regexp_replace                          | 不支持       | 支持 
-|regexp_substr                           | 不支持       | 支持
-|regexp_instr                            | 不支持       | 支持 
-|regexp_like                             | 不支持       | 支持
-|to_number                               | 支持         | 支持  
-|to_char                                 | 支持         | 支持 
-|to_date                                 | 支持         | 支持 
-|to_timestamp                            | 支持         | 支持 
-|to_timestamp_tz                         | 支持         | 支持 
-|to_yminterval                           | 不支持       | 支持 
-|to_dsinterval                           | 支持         | 支持  
-|numtodsinterval                         | 支持         | 支持  
-|numtoyminterval                         | 支持         | 支持 
-|localtimestamp                          | 不支持       | 支持   
-|new_time                                | 不支持       | 支持 
-|from_tz                                 | 支持         | 支持  
-|sys_extract_utc                         | 支持         | 支持 
-|sessiontimezone                         | 支持         | 支持
-|hextoraw                                | 不支持       | 支持
-|uid                                     | 不支持       | 支持
-|USERENV                                 | 不支持       | 支持 
-.4+|NLS参数|NLS_LENGTH_SEMANTICS|不支持|支持
-|NLS_DATE_FORMAT|不支持|支持
-|NLS_TIMESTAMP_FORMAT|不支持|支持
-|NLS_TIMESTAMP_TZ_FORMAT|不支持|支持
-|Function（函数）|支持语法兼容，并支持OUT参数|支持         | 支持
-|Procedure（存储过程|支持语法兼容，并支持OUT参数|支持         | 支持
-|Anonymous block（匿名块）|支持语法兼容，并支持OUT参数|不支持         | 支持
-|嵌套子过程|支持嵌套存储过程、函数等|不支持         | 支持
-|Merge|支持PG的Merge功能以及兼容Oralce语法的Merge功能|不支持         | 支持
-|q`|支持兼容的转义符|支持         | 支持
-|关键字处理|支持数据库中关键字的处理|不支持         | 支持
-.4+|对象大小写转换|全部大写加双引号转换为小写|不支持         | 支持
-|全部小写加双引号转换为大写|不支持         | 支持
-|大小写混合加双引号保持不变|不支持         | 支持
-|不加双引号(默认)全部转为小写|不支持         | 支持
-|Search Path|支持兼容模式下，默认搜索为sys模式，再搜索pg_catalog模式|不支持         | 支持
-|空串|支持Oracle兼容将空串转为NULL|不支持         | 支持
-|词法解析器分离|3.0框架的一部分|不支持         | 支持
-|包||支持|不支持
-|全局唯一索引||支持         | 支持
-|GUC切换oracle或pg||支持         | 支持
-|层级查询||支持         | 不支持
-|NANVL ||支持         | 不支持
-|GREATEST||支持         | 不支持
-|LEAST||支持         | 不支持
-|ADD_DAYS_TO_TIMESTAMP||支持         | 不支持
-|DAYS_BETWEEN ||支持        | 不支持
-|DAYS_BETWEEN_TMTZ ||支持         | 不支持
-|DBTIMEZONE||支持         | 不支持
-|TO_MULTI_BYTE||支持         | 不支持
-|TO_SINGLE_BYTE||支持         | 不支持
-|INTERVAL_TO_SECONDS||支持         |不支持
-|HEX_TO_DECIMAL||支持        | 不支持
-|TO_BINARY_DOUBLE||支持        | 不支持
-|TO_BINARY_FLOAT||支持         | 不支持
-|BIN_TO_NUM||支持         | 不支持
-|====
+IvorySQL 1.8 基于 PostgreSQL 14.8 ，包含来自 PostgreSQL 14.8 的各种修复。有关 PostgreSQL 14.8 中更详细的更新和错误修复，请参阅官方 https://www.postgresql.org/docs/release/14.8/[PostgreSQL 14.8 发行说明] 。
 
 == 已知问题
 
@@ -116,57 +14,19 @@ IvorySQL 3.0 版本在架构上发生了很大的变化，其使用方式与 2.3
 
 == 增强功能
 
-=== IvorySQL 框架
+* PostgreSQL 14.8
+1. 防止 CREATE SCHEMA 操作破坏 search_path 中的更改。
+2. 在内联集合返回函数后，正确执行行级安全策略。
+3. 修复在 CREATE SCHEMA 中省略新架构名称时可能导致的崩溃问题。
+4. 修复分区表中克隆触发器的启用/禁用问题。
+5. 禁止修改存储在索引中的复合类型。
 
-
-* 添加双Parser支持不同的数据库parser https://github.com/IvorySQL/IvorySQL/issues/208[问题细节]
-* 添加双端口支持不同的数据库端口号  https://github.com/IvorySQL/IvorySQL/issues/200[问题细节]
-* 添加 initdb -m，支持postgres模式或 Oracle模式  https://github.com/IvorySQL/IvorySQL/issues/212[问题细节]
-
-
-=== SQL兼容
-
-* 兼容oracle merge command https://github.com/IvorySQL/IvorySQL/issues/262[问题细节]
-* 兼容oracle q转义 https://github.com/IvorySQL/IvorySQL/issues/293[问题细节]
-* 兼容oracle like https://github.com/IvorySQL/IvorySQL/issues/291[问题细节]
-
-=== PL/SQL兼容
-
-* 解决PL/SQL 创建函数/存储过程存在问题  https://github.com/IvorySQL/IvorySQL/issues/477[问题细节]
-* 兼容Oracle匿名块  https://github.com/IvorySQL/IvorySQL/issues/304[问题细节]
-* 在 SQL parser中创建函数或过程支持嵌套子过程  https://github.com/IvorySQL/IvorySQL/issues/312[问题细节]
-* 嵌套的子进程和函数 is/as 不需要声明  https://github.com/IvorySQL/IvorySQL/issues/303[问题细节]
-
-=== 其它
-* 在action中增加meson编译  https://github.com/IvorySQL/IvorySQL/issues/512[问题细节]
-* 支持meson编译 https://github.com/IvorySQL/IvorySQL/issues/325[问题细节]
-* 添加兼容的测试用例 https://github.com/IvorySQL/IvorySQL/issues/479[问题细节]
-* 添加contrib回归  https://github.com/IvorySQL/IvorySQL/issues/452[问题细节]
-* 兼容btree_gist索引 https://github.com/IvorySQL/IvorySQL/issues/354[问题细节]
-* 兼容btree_gin索引  https://github.com/IvorySQL/IvorySQL/issues/353[问题细节]
-* 添加Oracle数据类型 GIN索引操作  https://github.com/IvorySQL/IvorySQL/issues/347[问题细节]
-* 添加Oracle数据类型 Gist索引操作   https://github.com/IvorySQL/IvorySQL/issues/341[问题细节]
-* 兼容Oracle内置数据类型与内置函数  https://github.com/IvorySQL/IvorySQL/issues/239[问题细节]
-* 添加plisql扩展  https://github.com/IvorySQL/IvorySQL/issues/211[问题细节]
-
-> 说明：关于新增功能更多介绍请参考本文档中心功能列表
-
-
-== 问题修复
-
-* 使用meson编译后，initdb执行失败  https://github.com/IvorySQL/IvorySQL/issues/520[问题细节]
-* 字符类型 null 值的运算符结果不正确  https://github.com/IvorySQL/IvorySQL/issues/499[问题细节]
-* 还原备份时出错  https://github.com/IvorySQL/IvorySQL/issues/483[问题细节]
-* ivorysql_ora部分测试用例失败  https://github.com/IvorySQL/IvorySQL/issues/461[问题细节]
-* nls参数指定ff精度与表指定精度的三种关系下，对超出长度的数据处理不一致  https://github.com/IvorySQL/IvorySQL/issues/436[问题细节]
-* 日期格式中的DD HH.MI,SS AM中数据出现特殊符号后的数据处理与Oracle不一致  https://github.com/IvorySQL/IvorySQL/issues/435[问题细节]
-* 对日期格式，各部分 位数校验均存在问题  https://github.com/IvorySQL/IvorySQL/issues/434[问题细节]
-* NLS相关参数校验问题  https://github.com/IvorySQL/IvorySQL/issues/433[问题细节]
-* 解决NLS参数设置为12小时制，默认完成AM/PM关键字的规则与Oracle不一致问题  https://github.com/IvorySQL/IvorySQL/issues/405[问题细节]
-* 带默认值创建的函数/存储过程xx_arguments视图中DEFAULTED字段值为N 问题  https://github.com/IvorySQL/IvorySQL/issues/379[问题细节]
-* 无权限的函数/存储过程 可以被all_procedures/all_arguments/all_source视图查看  https://github.com/IvorySQL/IvorySQL/issues/378[问题细节]
-* 当自增列类型为numer类型，且指定了精度时，by default on null插入null值时，不是插入的具体序列值，而是插入的null值  https://github.com/IvorySQL/IvorySQL/issues/386[问题细节]
-
+* IvorySQL 1.8
+1. 添加默认数据库 "ivorysql"。
+2. 支持 X86 和 ARM 架构。
+3. 兼容国产操作系统，例如麒麟 V10。
+4. 更新部分 IvorySQL 回归测试。
+5. 支持更多开源插件，例如 ddlx 0.20、pgvector v0.8.0 和 PGroonga 3.0.0。
 
 == 源代码
 
@@ -178,26 +38,12 @@ IvorySQL主要包含2个代码仓库，数据库IvorySQL代码仓、IvorySQL网�
 == 贡献人员
 以下个人作为补丁作者、提交者、审阅者、测试者或问题报告者为本版本做出了贡献。
 
-- IvorySQL Pro开发及测试团队
-- 谭洋
-- 王杰
-- 穆帅楠
-- 张洪源
-- Cary Huang
 - Grant Zhou
-- David Zhang
-- 王守波
-- 任娇
-- 刘政
-- 肖哲凯
-- 金华建
-- 王丽
-- 宋金周
-- Leo X.M. Zeng
-- 严少安
-- M.Imran Zaheer
-- Yunhe Xu
-- 王皓 
-- 董小姐 
-- 韩伟博
-
+- 高雪玉
+- 矫顺田
+- 梁翔宇
+- 吕新杰
+- 马继超
+- 牛世继
+- 仇振超
+- 王颖泽

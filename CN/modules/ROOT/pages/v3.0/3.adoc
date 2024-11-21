@@ -115,7 +115,7 @@ image::p19.png[]
 [source,]
 ----
 [highgo@ivorysql ~]$ psql -d postgres
-psql (16devel)
+psql (14.8)
 Type "help" for help.
 
 postgres=#
@@ -138,7 +138,7 @@ undefined
 [root@localhost ~]# su - ivorysql 
 Last login: Wed Feb 24 10:47:32 CST 2023 on pts/0
 -bash-4.2$ psql
-psql (14.2)
+psql (14.8)
 Type "help" for help.
 
 ivorysql=#
@@ -169,28 +169,21 @@ image::p2.png[]
 
 安装包：rpm
 
-下载YUM源:在Centos7上使用wget下载
+下载RPM包:在Centos7上使用wget下载
 
-wget https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-1.0-2.noarch.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_8/ivorysql1-1.8-1.el7.x86_64.rpm
 
-安装源
+
+安装IvorySQL
 [source,]
 ----
-yum install ivorysql-release-1.0-2.noarch.rpm
-----
-
-
-安装库
-[source,]
-----
-yum install -y ivorysql2-server
+yum install ivorysql1-1.8-1.el7.x86_64.rpm
 ----
 
 初始化单机数据库
 [source,]
 ----
-cd /usr/local/ivorysql/ivorysql-2/bin
-./initdb -D ../data
+/opt/IvorySQL-1.8/bin/initdb -D data/
 ----
 
 ===== 集群安装（一主一备）
@@ -199,28 +192,23 @@ cd /usr/local/ivorysql/ivorysql-2/bin
 
 安装包：rpm
 
-下载YUM源:在Centos7上使用wget下载
+下载RPM包:在Centos7上使用wget下载
 
-wget https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-1.0-2.noarch.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_8/ivorysql1-1.8-1.el7.x86_64.rpm
 
-安装源
+安装IvorySQL
 [source,]
 ----
-yum install ivorysql-release-1.0-2.noarch.rpm
+yum install ivorysql1-1.8-1.el7.x86_64.rpm
 ----
 
-安装库
-[source,]
-----
-yum install -y ivorysql2-server
-----
 
 **主节点**
 
 初始化主节点
 [source,]
 ----
-cd /usr/local/ivorysql/ivorysql-2/bin
+/opt/IvorySQL-1.8/bin/initdb -D data/
 ./initdb ../data-primary -U postgres
 ----
 
@@ -247,7 +235,7 @@ host    replication     all             0.0.0.0/0            trust
 1、 基础备份
 [source,shell]
 ----
-cd /usr/local/ivorysql/ivorysql-2/bin
+cd /opt/IvorySQL-1.8/bin
 ./pg_basebackup -h 127.0.0.1 -p 5333 -U repl -W -Fp -Xs -Pv -R -D ../data-standby01
 ----
 
@@ -270,29 +258,20 @@ vi ../data-standby01/postgresql.conf
 
 安装包：rpm
 
-下载YUM源:在Centos7上使用wget下载
+下载RPM包:在Centos7上使用wget下载
 
-wget https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-1.0-2.noarch.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_8/ivorysql1-1.8-1.el7.x86_64.rpm
 
-
-安装源
+安装IvorySQL
 [source,]
 ----
-yum install ivorysql-release-1.0-2.noarch.rpm
-----
-
-
-安装库
-[source,]
-----
-yum install -y ivorysql2-server
+yum install ivorysql1-1.8-1.el7.x86_64.rpm
 ----
 
 初始化主节点
 [source,]
 ----
-cd /usr/local/ivorysql/ivorysql-2/bin
-./initdb ../data-primary -U postgres
+/opt/IvorySQL-1.8/bin/initdb -D data/
 ----
 
 启动服务，创建用户
@@ -332,22 +311,18 @@ host    replication     all             0.0.0.0/0            trust
 
 安装包：rpm
 
-下载YUM源:在Centos7上使用wget下载
+下载RPM包:在Centos7上使用wget下载
 
-wget https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-1.0-2.noarch.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_8/ivorysql1-1.8-1.el7.x86_64.rpm
 
-安装源
+安装IvorySQL
 
-    yum install ivorysql-release-1.0-2.noarch.rpm
-
-安装库
-
-    yum install -y ivorysql2-server
+    yum install ivorysql1-1.8-1.el7.x86_64.rpm
 
 1、 基础备份
 [source,shell]
 ----
-cd /usr/local/ivorysql/ivorysql-2/bin
+cd /opt/IvorySQL-1.8/bin
 ./pg_basebackup -h 192.168.xx.xx -p 5333 -U repl -W -Fp -Xs -Pv -R -D ../data-standby01
 ----
 
