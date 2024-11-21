@@ -5,7 +5,7 @@
 
 == Version Introduction
 
-[**Release date: November 20, 2024**]
+[**Release date: November 21, 2024**]
 
 IvorySQL 1.8 is based on PostgreSQL 14.8 and includes various fixes from PostgreSQL 14.8, for more detailed updates and bug fixes in PostgreSQL 14.8, see the official https://www.postgresql.org/docs/release/14.8/[PostgreSQL 14.8 Release Notes].
 
