@@ -1,0 +1,147 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+= **Quick Start**
+
+== Environmental requirements
+
+** Hardware 
+|====
+|Parameter|Minimum|Recommended
+|CPU|4 cores|16 cores
+|RAM|4GB|64GB
+|Storage|800MB,HDD|5GB+,SSD or NvMe
+|Network|Gigabit network|10G network
+|====
+
+** Software
+
++
+
+Currently, IvorySQL supports but is not limited to linux(CentOS 8.X/CentOS Stream 9/Ubuntu). 
+
+[[quick-installation]]
+== Quick installation 
+....
+  The operating system used for the quick start is CentOS Stream 9.
+....
+=== yum installation
+
+** Pre-requirements
+
++
+
+Before getting started, please create an user and grant it root privileges. All the installation steps will be performed by this user. Here we just name it 'ivorysql'.
+https://www.ionos.com/help/server-cloud-infrastructure/server-administration/creating-a-sudo-enabled-user[How to create a sudo user]
+
+** installation
+
++
+
+Run the following commands to perform yum installation:
+```
+$ sudo dnf install -y https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-4.0-1.noarch.rpm
+
+$ sudo dnf install -y ivorysql4 ivorysql4-server ivorysql4-contrib ivorysql4-test --skip-broken
+```
+IvorySQL will be installed in a folder named 'ivorysql-version', such as 'ivorysql-4', within the /usr/local/ivorysql directory.
+
+Grant ivorysql privileges:
+```
+$ sudo chown -R ivorysql:ivorysql /usr/local/ivorysql
+```
+
+[[setting-environment-variables]]
+** Setting environment variables
+
++
+
+Add below contents in ~/.bash_profile file and source to make it effective:
+```
+PATH=/usr/local/ivorysql/ivorysql-4/bin:$PATH
+export PATH
+LD_LIBRARY_PATH=/usr/local/ivorysql/ivorysql-4/lib
+export LD_LIBRARY_PATH
+PGDATA=/usr/local/ivorysql/ivorysql-4/data
+export PGDATA
+```
+```
+$ source ~/.bash_profile
+```
+
+** Initializing database
+
+```
+$ initdb -D /usr/local/ivorysql/ivorysql-4/data
+```
+....
+  The -D option specifies the directory where the database cluster should be stored. This is the only information required by initdb, but you can avoid writing it by setting the PGDATA environment variable, which can be convenient since the database server can find the database directory later by the same variable. 
+
+  For more options, refer to initdb --help.
+....
+
+** Starting IvorySQL service
+
+```
+$ pg_ctl -D /usr/local/ivorysql/ivorysql-4/data -l ivory.log start 
+```
+
+  The -D option specifies the file system location of the database configuration files. If this option is omitted, the environment variable PGDATA in <<setting-environment-variables>> is used. -l option appends the server log output to filename. If the file does not exist, it is created.
+
+  For more options, refer to pg_ctl --help.
+
+
+Confirm it’s successfully started:
+```
+$ ps -ef | grep postgres
+ivorysql  3214     1  0 20:35 ?        00:00:00 /usr/local/ivorysql/ivorysql-4/bin/postgres -D /usr/local/ivorysql/ivorysql-4/data
+ivorysql  3215  3214  0 20:35 ?        00:00:00 postgres: checkpointer 
+ivorysql  3216  3214  0 20:35 ?        00:00:00 postgres: background writer 
+ivorysql  3218  3214  0 20:35 ?        00:00:00 postgres: walwriter 
+ivorysql  3219  3214  0 20:35 ?        00:00:00 postgres: autovacuum launcher 
+ivorysql  3220  3214  0 20:35 ?        00:00:00 postgres: logical replication launcher 
+ivorysql  3238  1551  0 20:35 pts/0    00:00:00 grep --color=auto postgres
+```
+
+=== Running IvorySQL in docker
+
+** Get IvorySQL image from Docker Hub
+```
+$ docker pull ivorysql/ivorysql:4.0-ubi8
+```
+
+** Running IvorySQL
+```
+$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:4.0-ubi8
+```
+
+** Check if the IvorySQL container is running successfully
+```
+$ docker ps | grep ivorysql
+CONTAINER ID   IMAGE               COMMAND                   CREATED          STATUS          PORTS                              NAMES
+6faa2d0ed705   ivorysql:4.0-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
+```
+
+== Connecting to IvorySQL
+
+Connect to IovrySQL via psql:
+```
+$ psql -d <database>
+psql (17.0)
+Type "help" for help.
+
+ivorysql=#
+```
+....
+  The -d option specifies the name of the database to connect to. ivorysql is the default database of IvorySQL. However,IvorySQL of lower versions need the users themselves to connect to postgres database at the first connection and then create the ivorysql database.The latest IvorySQL can do all these for users.
+
+  For more options, refer to psql --help.
+....
+
+TIP: When running IvorySQL in Docker, additional parameters need to be added, like: psql -d ivorysql -U ivorysql -h 127.0.0.1 -p 5434
+
+Now you can start your journey of IvorySQL! Enjoy! 
+
+To explore additional installation methods, please refer to the xref:v4.0/6.adoc[Installation].

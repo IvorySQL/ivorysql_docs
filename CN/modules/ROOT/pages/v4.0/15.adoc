@@ -1,0 +1,126 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= GUC框架
+
+== 新增GUC变量
+
+为了兼容Oracle，需要在原有的GUC变量基础之上增加一些用于控制数据库执行结果的变量，以达到和Oracle行为一致的目的。
+
+为了以后更好的添加兼容的guc参数，以及为了更少的改动pg内核源码，我们需要设计一个框架将guc添加到一个统一的地方。
+
+
+=== 实现
+
+添加兼容版本的guc参数时，我们需统一在 *ivy_guc.c* 文件中添加。其中 `Ivy_ConfigureNamesBool`、`Ivy_ConfigureNamesInt`、`Ivy_ConfigureNamesString`、`Ivy_ConfigureNamesReal` 和 `Ivy_ConfigureNamesEnum` 分别表示5种不同类型的guc参数，添加guc参数时，将guc的值添加到对应数组中即可。
+
+
+=== 新增变量（目前）
+
+[cols="^1,^2"]
+|====
+| 变量名 | 描述
+| ivorysql.compatible_mode | 表示当前兼容哪种数据库（pg/oracle），可以通过show命令查看，set命令更改该变量，reset命令重置为连接时的数据库模式，reset all会影响该变量
+| ivorysql.database_mode | 表示当前数据库的模式（pg/oracle），可以通过show命令查看，set/reset/reset all命令不影响该变量
+| ivorysql.datetime_ignore_nls_mask | 表示日期格式是否会受NLS参数影响，默认为0，可以通过set命令设置，reset 命令重置，reset all命令会重置该变量
+| ivorysql.enable_emptystring_to_NULL | 取值为（on/off）,该变量为on时，会将插入的空字符串转成NULL值存储
+| ivorysql.identifier_case_switch | 设置字符大小写转换模式
+| ivorysql.listen_address | 表示兼容模式监听的地址，在初始化数据库时，从ivorysql.conf文件中读取该配置，在配置文件中修改该值，需要重启数据库生效，可以通过show命令查看
+| ivorysql.port | 表示兼容模式下连接的端口号，在初始化数据库时，从ivorysql.conf文件中读取该配置，在配置文件中修改该值，需要重启数据库生效，可以通过show命令查看
+| nls_date_format | 表示默认的日期格式，可以通过show命令查看，默认为‘YYYY-MM-DD’，可以通过set命令设置，可以通过reset命令重置回默认值，reset all 命令会重置该变量
+| nls_length_semantics | 兼容Oracle的同名参数，控制一个字符所占内存的大小
+| nls_timestamp_format | 兼容Oracle的同名参数，控制带时间的日期格式
+| nls_timestamp_tz_format | 兼容Oracle的同名参数，控制带时区的日期格式
+| shared_preload_libraries | 在初始话数据库时，从ivorysql.conf文件中读取，可以通过show命令查看，在配置文件中修改该值，重启数据库生效。
+|====
+
+=== 部分变量使用示例
+
+==== ivorysql.datetime_ignore_nls_mask
+该GUC变量的可选值为0-15
+|====
+| 可选值 | 不经过nls格式化的类型
+| 0 | 不屏蔽任何类型，所有时间格式均由nls格式化
+| 1 | date
+| 2 | timestamp
+| 3 | date、timestamp
+| 4 | timestamptz
+| 5 | date、timestamptz
+| 6 | timestamp、timestamptz
+| 7 | date、timestamp、timestamptz
+| 8 | timestampltz
+| 9 | date、timestampltz
+| 10 | timestamp、timestampltz
+| 11 | date、timestamp、timestampltz
+| 12 | timestamptz、timestampltz
+| 13 | date、timestamptz、timestampltz
+| 14 | timestamp、timestamptz、timestampltz
+| 15 | date、timestamp、timestamptz、timestampltz
+|====
+
+** 使用方法(以date为例)
+
+查看nls date 的格式及datetime_ignore_nls_mask值
+```
+ivorysql=# set ivorysql.compatible_mode to oracle;
+SET
+ivorysql=# show nls_date_format;
+ nls_date_format
+-----------------
+ YYYY-MM-DD
+(1 row)
+ivorysql=# show ivorysql.datetime_ignore_nls_mask;
+ ivorysql.datetime_ignore_nls_mask
+-----------------------------------
+ 0
+(1 row)
+```
+创建测试表
+```
+ivorysql=# create table test_nls_date(a int, created_at date);
+CREATE TABLE
+```
+插入数据
+```
+ivorysql=# insert into test_nls_date values(1, '2024/04/05');
+INSERT 0 1
+ivorysql=# select * from test_nls_date;
+ a | created_at
+---+------------
+ 1 | 2024-04-05
+(1 row)
+```
+修改nls_date_format
+```
+ivorysql=# set nls_date_format to 'yy-mm-dd';
+SET
+```
+插入nls格式数据并查看，插入成功
+```
+ivorysql=# insert into test_nls_date values(2, '24/04/15');
+INSERT 0 1
+ivorysql=# select * from test_nls_date;
+ a | created_at
+---+------------
+ 1 | 24-04-05
+ 2 | 24-04-15
+(2 rows)
+```
+将date类型改为不经过nls处理，插入相同格式数据，如改成 1 (3,5,7等都可以)，插入数据将报错，nls格式化将不对date的查询结果起效。
+```
+ivorysql=# set ivorysql.datetime_ignore_nls_mask to 1;
+SET
+ivorysql=# insert into test_nls_date values(3, '24/05/15');
+ERROR:  date/time field value out of range: "24/05/15"
+LINE 1: insert into test_nls_date values(3, '24/05/15');
+                                            ^
+HINT:  Perhaps you need a different "datestyle" setting.
+ivorysql=#  select * from test_nls_date;
+ a | created_at
+---+------------
+ 1 | 2024-04-05
+ 2 | 2024-04-15
+(2 rows)
+```

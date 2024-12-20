@@ -1,0 +1,68 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+
+== Version Overview
+
+[**Release date: December 26, 2024**]
+
+IvorySQL 4.0, based on PostgreSQL 17.0, and Fixed a series of bugs. For a comprehensive list of updates, please visit our https://docs.ivorysql.org/[documentation site].
+
+== Enhancements
+
+- PostgreSQL 17.0 Enhancements
+
+1. New memory management system for VACUUM, which reduces memory consumption and can improve overall vacuuming performance.
+2. New SQL/JSON capabilities, including constructors, identity functions, and the JSON_TABLE() function, which converts JSON data into a table representation.
+3. Various query performance improvements, including for sequential reads using streaming I/O, write throughput under high concurrency, and searches over multiple values in a btree index. 
+4. Logical replication enhancements.
+5. New client-side connection option, sslnegotiation=direct, that performs a direct TLS handshake to avoid a round-trip negotiation.
+6. pg_basebackup now supports incremental backup.
+7. COPY adds a new option, ON_ERROR ignore, that allows a copy operation to continue in the event of an error.
+
++
+
+For further details, visit https://www.postgresql.org/docs/release/17.0/[PostgreSQL’s release notes].
+
+== Fixed Issue
+
+- 
+- 
+- 
+- 
+- 
+
+== Source Code
+
+IvorySQL's development is maintained across two main repositories:
+
+* IvorySQL database source code: https://github.com/IvorySQL/IvorySQL
+* IvorySQL official website: https://github.com/IvorySQL/Ivory-www
+
+== Contributors
+
+The following individuals (in alphabetical order) have contributed to this release as patch authors, committers, reviewers, testers, or reporters of issues.
+
+- Cary Huang
+- Chase Wu
+- Chong Peng
+- Grant Zhou
+- Hope Gao
+- Håkan Arpfors
+- Imran Zaheer
+- Jiajie Zhou
+- Jiao Ren
+- Lei Feng
+- Lei Shang
+- Leo X.M. Zeng
+- Lily Wang
+- ShanInfo
+- Shawn Yan
+- Shiji Niu
+- Shoubo Wang
+- Shuntian Jiao
+- Xiangyu Liang
+- Xinjie Lv
+- Xinyuan Guo
+- Yi Wen
