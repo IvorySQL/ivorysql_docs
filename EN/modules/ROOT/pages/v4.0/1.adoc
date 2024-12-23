@@ -28,15 +28,26 @@ For further details, visit https://www.postgresql.org/docs/release/17.0/[Postgre
 - IvorySQL 4.0
 
 1. Oracle invisible columns compatibility: https://github.com/IvorySQL/IvorySQL/issues/608[#608]
+
++
+
 Add support for invisible columns and describe invisible columns in psql extended describe (\d+) in oracle mode only. Any general access to a table will not display invisible columns. Invisible columns must be explicitly referenced by their column name for queries and other operations to access them.
 
 2. Oracle package compatibility: https://github.com/IvorySQL/IvorySQL/issues/589[#589]
+
++
+
 Support PL/SQL package management, including creating, altering, and describing packages and package bodies. The PostgreSQL interactive terminal (psql) has been enhanced with a new \k command for package-related operations. Additionally, advanced privilege management is enabled through new ACL functions, and package caching has been implemented to boost performance.
 
 3. Function pg_get_functiondef support multiple OIDs and function names: https://github.com/IvorySQL/IvorySQL/issues/696[#696]
+
++
+
 Enhance function pg_get_functiondef() to support multiple function OIDs in parameter list. It also can export function definition with same name but different parameters now. 
 
 4. Add 'ivorysql' as default database: https://github.com/IvorySQL/IvorySQL/issues/575[#575]
+
++
 
 5. Provide Ubuntu installation package: https://github.com/IvorySQL/IvorySQL/issues/703[#703]
 
