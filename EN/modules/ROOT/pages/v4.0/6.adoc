@@ -1,0 +1,306 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= **Installation**
+
+== Introduction
+
+The installation methods for IvorySQL include the following five:
+
+- <<Yum-installation>>
+- <<Docker-installation>>
+- <<Rpm-installation>>
+- <<Source-code-installation>>
+- <<deb-installation>>
+
+
+This chapter will provide detailed instructions on the installation, execution, and uninstallation processes for each method. For a quicker access to IvorySQL, please refer to xref:v4.0/3.adoc#quick-installation[Quick installation].
+
+Before getting started, please create an user and grant it root privileges. All the installation steps will be performed by this user. Here we just name it 'ivorysql'.
+
+[[Yum-installation]]
+== Yum installation
+
+** Run dnf install commands
+```
+$ sudo dnf install -y https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-4.0-1.noarch.rpm
+
+$ sudo dnf install -y ivorysql4 ivorysql4-server ivorysql4-contrib ivorysql4-test --skip-broken --nogpgcheck
+```
+IvorySQL then will be installed in the /usr/local/ivorysql directory.
+
+Yum configuration file /etc/yum.repos.d/ivorysql.repo will be created after the successful installation.
+
+** Checking installation results
+```
+dnf search ivorysql
+```
+Details:
+|====
+| id | Package name  | Description
+| 1 | ivorysql4.x86_64 |  IvorySQL client programs and lib files
+| 2 | ivorysql4-contrib.x86_64 | Contributed source code and binary files released with IvorySQL
+| 3 | Ivorysql4-devel.x86_64 | IvorySQL development header files and libraries
+| 4 | Ivorysql4-docs.x86_64 | Additional docs for IvorySQL
+| 5 | ivorysql4-libs.x86_64 | Shared libraries required by all IvorySQL clients
+| 6 | Ivorysql4-llvmjit.x86_64 | Instant compilation support for IvorySQL
+| 7 | Ivorysql4-plperl.x86_64 | Perl, a procedural language for IvorySQL
+| 8 | Ivorysql4-plpython3.x86_64 | Python3, a procedural language for IvorySQL
+| 9 | Ivorysql4-pltcl.x86_64 | Tcl, a procedural language for IvorySQL
+| 10 | ivorysql4-server.x86_64 | The programs required to create and run an IvorySQL server
+| 11 | Ivorysql4-test.x86_64 | Test suite released with IvorySQL
+| 12 | ivorysql-release.noarch | Yum Source Configuration RPM Package of HighGo
+|====
+
+[[Docker-installation]]
+== Docker installation
+
+** Get IvorySQL image from Docker Hub
+```
+$ docker pull ivorysql/ivorysql:4.0-ubi8
+```
+
+** Run IvorySQL
+```
+$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:4.0-ubi8
+```
+-e Parameter Explanation
+|====
+| Parameter Name | Required | Description
+| IVORYSQL_USER | No | Database user, default is ivorysql
+| IVORYSQL_PASSWORD | yes | Database password
+| IVORYSQL_DB | no | Database name,default is ivorysql
+| POSTGRES_HOST_AUTH_METHOD | no | Modify host authentication method,reference value:md5
+| POSTGRES_INITDB_ARGS | no | Add additional parameters to initdb,reference value:"--data-checksums"
+| PGDATA | no | Define the data directory to be located in another path or folder (e.g., subdirectory), defaulting to /var/lib/ivorysql/data
+| POSTGRES_INITDB_WALDIR | no | Define the IvorySQL transaction folder path, which defaults to a subdirectory within the data directory (PGDATA)
+|====
+
+[TIP]
+====
+. It is not recommended to set the POSTGRES_HOST_AUTH_METHOD parameter to trust, as this will make the IVORYSQL_PASSWORD setting ineffective.
+. If the POSTGRES_HOST_AUTH_METHOD parameter is set to scram-sha-256, it is also necessary to set POSTGRES_INITDB_ARGS to --auth-host=scram-sha-256 to ensure proper initialization of the database.
+====
+
+[[Rpm-installation]]
+== rpm installation
+** Installing dependencies
+```
+$ sudo dnf install -y lz4 libicu libxslt python3
+```
+** Getting rpms
+```
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql4-4.0-1.rhel8.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql4-contrib-4.0-1.rhel8.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql4-devel-4.0-1.rhel8.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql4-docs-4.0-1.rhel8.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql4-libs-4.0-1.rhel8.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql4-llvmjit-4.0-1.rhel8.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql4-plperl-4.0-1.rhel8.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql4-plpython3-4.0-1.rhel8.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql4-pltcl-4.0-1.rhel8.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql4-server-4.0-1.rhel8.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql4-test-4.0-1.rhel8.x86_64.rpm
+```
+** Installing rpms
+
++ 
+
+Use the following command to install all the rpms:
+```
+$ sudo yum --disablerepo=* localinstall *.rpm 
+```
+IvorySQL then will be installed in the /usr/local/ivorysql directory.
+
+[[Source-code-installation]]
+== Source code installation
+** Installing dependencies
+```
+$ sudo dnf install -y bison readline-devel zlib-devel openssl-devel
+$ sudo dnf groupinstall -y 'Development Tools'
+```
+** Getting source code
+```
+$ git clone https://github.com/IvorySQL/IvorySQL.git
+$ cd IvorySQL
+$ git checkout -b IVORY_REL_4_STABLE origin/IVORY_REL_4_STABLE
+```
+** Configuring
+
++
+
+In the IvorySQL directory run the following command with --prefix to specify the directory where you want the database to be installed:
+```
+$ ./configure --prefix=/usr/local/ivorysql/ivorysql-4
+```
+** Compiling
+
++
+
+Run the following command to compile the source code:
+```
+$ make
+```
+
+[TIP]
+====
+When the compilation is completed, you can test the result with 'make check' or 'make all-check-world' before your installation.
+====
+
+** Installing
+
++
+
+Run the following command to install the database system, IvorySQL then will be installed in the directory specified by --prefix:
+```
+$ sudo make install
+```
+
+[[deb-installation]]
+== deb installation
+** Installing dependencies
+```
+$ sudo apt -y install pkg-config libreadline-dev libicu-dev libldap2-dev uuid-dev tcl-dev libperl-dev python3-dev bison flex openssl libssl-dev libpam-dev libxml2-dev libxslt-dev libossp-uuid-dev libselinux-dev gettext
+```
+
+** Getting deb
+```
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql-4.0.x86_64.deb
+```
+
+** Installing deb
+```
+$ sudo dpkg -i ivorysql-4.0.x86_64.deb
+```
+IvorySQL will then be installed in the /usr/local/ivorysql directory.
+
+== Start Database
+Users following the instructions in <<Yum-installation>>, <<Rpm-installation>>, <<Source-code-installation>> and <<deb-installation>> need to manually start the database.
+
+** Granting permissions
+
+Execute the following command to grant permissions to the installation user. The example user is ivorysql, and the installation directory is /usr/local/ivorysql.:
+```
+$ sudo chown -R ivorysql:ivorysql /usr/local/ivorysql
+```
+[[setting-environment-variables]]
+** Setting environment variables
+
++
+
+Add below contents in ~/.bash_profile file and source to make it effective:
+```
+PATH=/usr/local/ivorysql/ivorysql-4/bin:$PATH
+export PATH
+LD_LIBRARY_PATH=/usr/local/ivorysql/ivorysql-4/lib
+export LD_LIBRARY_PATH
+PGDATA=/usr/local/ivorysql/ivorysql-4/data
+export PGDATA
+```
+```
+$ source ~/.bash_profile
+```
+
+** Initializing database
+
+```
+$ mkdir /usr/local/ivorysql/ivorysql-4/data
+$ initdb -D /usr/local/ivorysql/ivorysql-4/data
+```
+....
+  The -D option specifies the directory where the database cluster should be stored. This is the only information required by initdb, but you can avoid writing it by setting the PGDATA environment variable, which can be convenient since the database server can find the database directory later by the same variable. 
+
+  For more options, refer to initdb --help.
+....
+
+** Starting IvorySQL service
+
+```
+$ pg_ctl -D /usr/local/ivorysql/ivorysql-4/data -l ivory.log start 
+```
+
+The -D option specifies the file system location of the database configuration files. If this option is omitted, the environment variable PGDATA in <<setting-environment-variables>> is used. -l option appends the server log output to filename. If the file does not exist, it is created.
+
+For more options, refer to pg_ctl --help.
+
+
+Confirm it's successfully started:
+```
+$ ps -ef | grep postgres
+ivorysql  130427       1  0 02:45 ?        00:00:00 /usr/local/ivorysql/ivorysql-4/bin/postgres -D /usr/local/ivorysql/ivorysql-4/data
+ivorysql  130428  130427  0 02:45 ?        00:00:00 postgres: checkpointer 
+ivorysql  130429  130427  0 02:45 ?        00:00:00 postgres: background writer 
+ivorysql  130431  130427  0 02:45 ?        00:00:00 postgres: walwriter 
+ivorysql  130432  130427  0 02:45 ?        00:00:00 postgres: autovacuum launcher 
+ivorysql  130433  130427  0 02:45 ?        00:00:00 postgres: logical replication launcher 
+ivorysql  130445  130274  0 02:45 pts/1    00:00:00 grep --color=auto postgres
+```
+
+== Connecting to IvorySQL
+
+Connect to IovrySQL via psql:
+```
+$ psql -d <database>
+psql (17.0)
+Type "help" for help.
+
+ivorysql=#
+```
+....
+  The -d option specifies the name of the database to connect to. ivorysql is the default database of IvorySQL. However,IvorySQL of lower versions need the users themselves to connect to postgres database at the first connection and then create the ivorysql database.The latest IvorySQL can do all these for users.
+
+  For more options, refer to psql --help.
+....
+
+TIP: When running IvorySQL in Docker, additional parameters need to be added, like: psql -d ivorysql -U ivorysql -h 127.0.0.1 -p 5434
+
+== Uninstallation
+
+[CAUTION]
+====
+No matter which method is used for the uninstallation, make sure the service has been stopped cleanly and your data has been backed up safely.
+====
+
+=== Uninstallation for yum installation
+
+Run the following commands in turn and clean the residual folders:
+```
+$ sudo dnf remove -y ivorysql4 ivorysql4-server ivorysql4-contrib ivorysql4-test
+$ sudo rpm -e ivorysql-release-4.0-1.noarch
+$ sudo rm -rf /usr/local/ivorysql
+```
+
+=== Uninstallation for docker installation
+
+Stop IvorySQL container and remove IvorySQL image:
+```
+$ docker stop ivorysql
+$ docker rm ivorysql
+$ docker rmi ivorysql/ivorysql:4.0-ubi8
+```
+
+=== Uninstallation for rpm installation
+
+Uninstall the rpms and clear the residual folders:
+```
+$ sudo yum remove --disablerepo=* ivorysql4\* 
+$ sudo rm -rf /usr/local/ivorysql
+```
+
+=== Uninstallation for source code installation
+
+Uninstall the database system, then clear the residual folders:
+```
+$ sudo make uninstall
+$ make clean
+$ sudo rm -rf /usr/local/ivorysql
+```
+
+=== Uninstallation for deb installation
+
+Uninstall the database system, then clear the residual folders:
+```
+$ sudo dpkg -P ivorysql4.0
+$ sudo rm -rf /usr/local/ivorysql
+```

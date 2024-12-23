@@ -1,0 +1,39 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= 双模式设计
+
+== 目的
+
+- 为了满足PG模式和兼容Oracle模式， IvorySQL在initdb时，可以指定-m参数，来获取PG模式数据库或Oracle兼容模式数据库。
+
+[TIP]
+====
+. 不指定-m参数时，默认为Oracle兼容模式
+. 指定-m参数为pg时，数据库将不再兼容Oracle语法
+====
+
+== 功能
+
+- Initdb -m 初始化，需要判断不同的模式，其中Oracle模式下，需要执行postgres_oracle.bki的SQL语句;
+- 启动时会根据初始化模式，判断是否为oracle兼容模式。
+
+```
+database_mode：用于表示初始化模式；
+database_mode=DB_PG，PG模式，且不可切换；
+database_mode=DB_ORACLE，Oracle兼容模式；
+```
+
+== 测试用例
+
+```
+初始化PG模式：
+./initdb -D ../data -m pg
+
+初始化oracle兼容模式：
+./initdb -D ../data -m oracle
+或
+./initdb -D ../data
+```

@@ -1,0 +1,118 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= PostGIS
+
+== Overview
+IvorySQL is fully compatible with PostgreSQL, allowing for seamless integration with PostGIS.
+
+== Installation
+Users can select the installation method for PostGIS that best suits their development environment from the https://postgis.net/documentation/getting_started/#installing-postgis[PostGIS installation page].
+
+=== Source Code Installation
+Apart from the installation methods provided by the PostGIS community, the IvorySQL community also offers a source code installation method, with CentOS Stream 9 (x86_64) as the environment for source code installation.
+
+[NOTE]
+Please make sure that IvorySQL version 3.0 or newer is installed in the environment.
+
+** Install dependencies
+```
+dnf install -y gcc gcc-c++ libtiff libtiff-devel.x86_64 libcurl-devel.x86_64 libtool libxml2-devel redhat-rpm-config clang llvm geos311 automake protobuf-c-devel
+```
+
+** Install SQLITE
+```
+$ wget https://www.sqlite.org/2022/sqlite-autoconf-3400000.tar.gz
+$ tar -xvf sqlite-autoconf-3400000.tar.gz
+$ cd sqlite-autoconf-3400000
+$ sed -n '1i\#define SQLITE_ENABLE_COLUMN_METADATA 1' sqlite3.c
+$ ./configure --prefix=/usr/local/sqlite
+$ make && make install
+$ rm usr/bin/sqlite3 && ln -s /usr/local/sqlite/bin/sqlite3 /usr/bin/sqlite3
+$ sqlite3 -version
+$ export PKG_CONFIG_PATH=/usr/local/sqlite/lib/pkgconfig:$PKG_CONFIG_PATH
+```
+
+** Install PROJ
+```
+$ wget https://download.osgeo.org/proj/proj-8.2.1.tar.gz
+$ tar -xvf proj-8.2.1.tar.gz
+$ cd proj-8.2.1
+$ ./configure --prefix=/usr/local/proj-8.2.1
+$ make && make install
+```
+
+** Install GDAL
+```
+$ wget https://github.com/OSGeo/gdal/releases/download/v3.4.3/gdal-3.4.3.tar.gz
+$ tar -xvf gdal-3.4.3.tar.gz
+$ cd gdal-3.4.3
+$ sh autogen.sh
+$ ./configure --prefix=/usr/local/gdal-3.4.3 --with-proj=/usr/local/proj-8.2.1
+$ make && make install
+```
+
+** Install GEOS
+```
+$ wget https://download.osgeo.org/geos/geos-3.9.2.tar.bz2
+$ tar -xvf geos-3.9.2.tar.bz2
+$ cd geos-3.9.2
+$ ./configure --prefix=/usr/local/geos-3.9.2
+$ make && make install
+```
+
+** Install Protobuf
+```
+$ wget https://plug-neomirror.rcac.purdue.edu/adelie/source/archive/protobuf-3.20.1/protobuf-3.20.1.tar.gz
+$ tar -xvf protobuf-3.20.1.tar.gz
+$ cd protobuf-3.20.1
+$ sh autogen.sh
+$ ./configure --prefix=/usr/local/protobuf-3.20.1
+$ make && make install
+$ export PROTOBUF_HOME=/usr/local/protobuf-3.20.1
+$ export PATH=$PROTOBUF_HOME/bin:$PATH
+$ export PKG_CONFIG_PATH=$PROTOBUF_HOME/lib/pkgconfig:$PKG_CONFIG_PATH
+```
+
+** Install Protobuf-c
+```
+$ wget --no-check-certificate https://sources.buildroot.net/protobuf-c/protobuf-c-1.4.1.tar.gz
+$ tar -xvf protobuf-c-1.4.1.tar.gz
+$ cd protobuf-c-1.4.1
+$ ./configure --prefix=/usr/local/protobuf-c-1.4.1
+$ make && make install
+$ export PROTOBUFC_HOME=/usr/local/protobuf-c-1.4.1
+$ export PATH=$PROTOBUF_HOME/bin:$PROTOBUFC_HOME/bin:$PATH
+$ export PKG_CONFIG_PATH=$PROTOBUFC_HOME/lib:$PKG_CONFIG_PATH
+```
+
+** Install PostGIS
+```
+$ wget https://download.osgeo.org/postgis/source/postgis-3.4.0.tar.gz
+$ tar -xvf postgis-3.4.0.tar.gz
+$ cd postgis-3.4.0
+$ sh autogen.sh
+$ ./configure  --with-geosconfig=/usr/local/geos-3.9.2/bin/geos-config --with-projdir=/usr/local/proj-8.2.1 --with-gdalconfig=/usr/local/gdal-3.4.3/bin/gdal-config --with-protobufdir=/usr/local/protobuf-c-1.4.1 --with-pgconfig=/usr/local/ivorysql/ivorysql-4/bin/pg_config
+$ make && make install
+```
+[TIP]
+If configure reports PGXS error, please change --with-pgconfig parameter value and confirm the parameter value based on the installation path of IvorySQL in the environment.
+
+== Create the extension and verify the PostGIS version.
+
+Connect to the database with psql and execute the following command:
+
+```
+ivorysql=# CREATE extension postgis;
+CREATE EXTENSION
+
+ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'postgis';
+  name   | default_version | installed_version |                          comment
+---------+-----------------+-------------------+------------------------------------------------------------
+ postgis | 3.4.0           | 3.4.0             | PostGIS geometry and geography spatial types and functions
+(1 row)
+```
+
+== Using
+To learn more about using PostGIS, please consult the official https://postgis.net/docs/manual-3.4[documentation for PostGIS 3.4].
