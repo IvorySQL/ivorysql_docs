@@ -34,6 +34,7 @@ Add support for invisible columns and describe invisible columns in psql extende
 Support PL/SQL package management, including creating, altering, and describing packages and package bodies. The PostgreSQL interactive terminal (psql) has been enhanced with a new \k command for package-related operations. Additionally, advanced privilege management is enabled through new ACL functions, and package caching has been implemented to boost performance.
 
 3. Function pg_get_functiondef support multiple OIDs and function names: #696
+Enhance function pg_get_functiondef() to support multiple function OIDs in parameter list. It also can export function definition with same name but different parameters now. 
 
 4. Add 'ivorysql' as default database: #575
 

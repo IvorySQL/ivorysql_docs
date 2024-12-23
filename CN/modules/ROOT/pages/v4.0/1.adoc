@@ -37,6 +37,7 @@ IvorySQL 4.0基于PostgreSQL 17.0，并修复了多个问题。更多信息请�
 此外，通过新的 ACL 函数实现了高级权限管理，并引入了包缓存机制以提升性能。
 
 3. 函数 pg_get_functiondef 支持多个 OID 和函数名：https://github.com/IvorySQL/IvorySQL/issues/696[#696]
+增强函数 pg_get_functiondef() 以支持在参数列表中传入多个函数 OID。现在，它还可以导出具有相同名称但不同参数的函数定义。
 
 4. 将 'ivorysql' 添加为默认数据库：https://github.com/IvorySQL/IvorySQL/issues/575[#575]
 
@@ -67,8 +68,8 @@ IvorySQL主要包含2个代码仓库:
 - 任娇
 - 王丽
 - 王守波
-- 许振伟
 - 文一
+- 许振伟
 - 严少安
 - 赵法威
 - 周家杰
