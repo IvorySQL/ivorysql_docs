@@ -15,7 +15,7 @@ Invisible columns are also useful during application migration. Making new colum
 
 The invisible columns allowing users to conceal specific columns during operations like SELECT *. You can use invisible column to make changes to a table without disrupting applications that use the table.Any generic access of a table does not show the invisible columns in the table.Invisible columns must be explicitly referenced by column names in order to be accessed in queries and other operations.
 
-Support for invisible columns in psql extended describle (\d+) is added,in oracle mode only.
+Support for invisible columns in psql extended describe (\d+) is added,in oracle mode only.
 
 == Test cases
 
@@ -51,7 +51,7 @@ ivorysql=# select a,b,c from mytable;
  1 | 2 | 3
 (1 row)
 ```
-=== Support for invisible columns in psql extended describle (\d+) in Oracle mode
+=== Support for invisible columns in psql extended describe (\d+) in Oracle mode
 ```
 ivorysql=# \d+ mytable
                                                    Table "public.mytable"

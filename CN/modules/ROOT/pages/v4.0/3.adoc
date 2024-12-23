@@ -41,11 +41,18 @@ https://www.ionos.com/help/server-cloud-infrastructure/server-administration/cre
 
 +
 
-执行以下命令安装：
+创建或编辑IvorySQL yum源配置文件/etc/yum.repos.d/ivorysql.repo
 ```
-$ sudo dnf install -y https://yum.highgo.ca/dists/ivorysql-rpms/repo/ivorysql-release-4.0-1.noarch.rpm
-
-$ sudo dnf install -y ivorysql4 ivorysql4-server ivorysql4-contrib ivorysql4-test --skip-broken --nogpgcheck
+vim /etc/yum.repos.d/ivorysql.repo
+[ivorysql4]
+name=IvorySQL Server 4 $releasever - $basearch
+baseurl=https://yum.highgo.com/dists/ivorysql-rpms/4/redhat/rhel-$releasever-$basearch
+enabled=1
+gpgcheck=0
+```
+保存退出后，安装IvorySQL4
+```
+$ sudo dnf install -y ivorysql4 ivorysql4-server ivorysql4-contrib ivorysql4-test
 ```
 ....
 
