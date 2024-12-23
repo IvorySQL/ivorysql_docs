@@ -28,18 +28,29 @@ IvorySQL 4.0基于PostgreSQL 17.0，并修复了多个问题。更多信息请�
 - IvorySQL 4.0
 
 1. Oracle 不可见列的兼容: https://github.com/IvorySQL/IvorySQL/issues/608[#608]
+
++
+
 在 Oracle 模式下新增对不可见列的支持，并在 psql 的扩展描述命令（\d+）中显示不可见列的信息。
 对表的常规访问将不会显示不可见列。不可见列必须通过其列名显式引用，查询和其他操作才能访问这些列。
 
 2. Oracle 包兼容性: https://github.com/IvorySQL/IvorySQL/issues/589[#589]
+
++
+
 支持 PL/SQL 包管理功能，包括创建、修改和描述包及包体。
 增强了 PostgreSQL 交互式终端（psql），新增 \k 命令，用于与包相关的操作。
 此外，通过新的 ACL 函数实现了高级权限管理，并引入了包缓存机制以提升性能。
 
 3. 函数 pg_get_functiondef 支持多个 OID 和函数名: https://github.com/IvorySQL/IvorySQL/issues/696[#696]
+
++
+
 增强函数 pg_get_functiondef() 以支持在参数列表中传入多个函数 OID。现在，它还可以导出具有相同名称但不同参数的函数定义。
 
 4. 将 'ivorysql' 添加为默认数据库: https://github.com/IvorySQL/IvorySQL/issues/575[#575]
+
++
 
 5. 提供Ubuntu安装包: https://github.com/IvorySQL/IvorySQL/issues/703[#703]
 
