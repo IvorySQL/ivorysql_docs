@@ -13,9 +13,9 @@ Invisible columns are also useful during application migration. Making new colum
 
 == Function descriptions
 
-The invisible columns allowing users to conceal specific columns during operations like SELECT *. You can use invisible column to make changes to a table without disrupting applications that use the table.Any generic access of a table does not show the invisible columns in the table.Invisible columns must be explicitly referenced by column names in order to be accessed in queries and other operations.
+Invisible columns allow users to conceal specific columns during operations like SELECT *. You can use invisible column to make changes to a table without disrupting applications that use the table.  Any generic access of a table does not show the invisible columns in the table. Invisible columns must be explicitly referenced by column names in order to be accessed in queries and other operations.
 
-Support for invisible columns in psql extended describe (\d+) is added,in oracle mode only.
+Support for invisible columns in psql extended describe (\d+) is added, in oracle mode only.
 
 == Test cases
 
@@ -26,7 +26,7 @@ CREATE TABLE
 ```
 === Insert values into invisible columns
 
-You can insert a value into an invisible column only if you explicitly specify the invisible column in the column list for the INSERT statement. Omitting the column list in the INSERT statement is not allowed if you insert values into a table with invisible columns. Errors will be reported.
+You can insert a value into an invisible column only if you explicitly specify the invisible column in the column list for the INSERT statement. Omitting the column list in the INSERT statement is not allowed. Errors will be reported.
 ```
 ivorysql=# INSERT INTO mytable (a, b, c) VALUES (1,2,3);
 INSERT 0 1
@@ -65,5 +65,5 @@ Access method: heap
 
 == Limitations
 
-- Modify column is not supported currently.Will be enhanced in later version;
-- In Oracle, there are special considerations for invisible columns and column ordering. When a table contains one or more invisible columns, the invisible columns are not included in the column order for the table.We have not yet addressed this part.
+- Modify column is not supported currently. Will be enhanced in later version;
+- In Oracle, there are special considerations for invisible columns and column ordering. When a table contains one or more invisible columns, the invisible columns are not included in the column order for the table. We have not yet addressed this part.
