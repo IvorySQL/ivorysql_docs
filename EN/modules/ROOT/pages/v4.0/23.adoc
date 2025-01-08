@@ -15,7 +15,7 @@ IvorySQL is maintained by a core development team, which has commit access to th
 
 === Principles of Conduct
 
-Evry member, contributor and leader should read our *principles of conduct*. We promise that everyone can participate in community and pay equal attention to everyone, no matter who.
+Every member, contributor and leader should read our *principles of conduct*. We promise that everyone can participate in community and pay equal attention to everyone, no matter who.
 
 We are committed to acting and interacting in a way that contributes to the establishment of an open, enthusiastic, diverse, inclusive and healthy community.
 
