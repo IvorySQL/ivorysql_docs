@@ -7,13 +7,13 @@
 
 == Objective
 
-IvorySQL provides compatibility for Oracle custom packages.A package is an encapsulated collection of related program objects stored together in the database. Program objects are procedures, functions, variables, constants, cursors, and exceptions.
+IvorySQL provides compatibility for Oracle packages.  A package is an encapsulated collection of related program objects stored together in the database. Program objects are procedures, functions, variables, constants, cursors, and exceptions.
 
-This document aims to provide a comprehensive understanding of the process of implementing custom packages for the users.
+This document aims to provide a comprehensive understanding of the process of implementing custom packages.
 
 == Function descriptions
 
-IvorySQL provides compatibility for Oracle custom packages,including creation,alteration,and description of packages and package bodies,adds support for package-related commands in the PostgreSQL interactive terminal (psql) with the new \dk command.
+IvorySQL provides compatibility for Oracle custom packages, including creation, alteration, and deletion of packages and package bodies.  We also add support for package-related commands in the PostgreSQL interactive terminal (psql) with the new \dk command.
 
 === Create the specification of a package
 
@@ -23,7 +23,7 @@ To create or replace the specification of a package in your own schema, you must
 
 === Create package body
 
-The CREATE OR REPLACE PACKAGE BODY statement is used to create or replace a package body.To create a package body requires the same privileges as creating the specification of a package, and it is required that the package body and package specification be in the same schema, with the package specification already existing. This statement defines the objects declared in the package specification.
+The CREATE OR REPLACE PACKAGE BODY statement is used to create or replace a package body. To create a package body requires the same privileges as creating the specification of a package, and it is required that the package body and package specification be in the same schema, with the package specification already existing. This statement defines the objects declared in the package specification.
 
 When the package specification contains cursors or subprograms, a package body must be present to define them. Otherwise, the package body is optional.
 
@@ -33,7 +33,7 @@ The ALTER PACKAGE statement is used to modify the properties of a package.The pr
 
 === Drop package and package body
 
-The DROP PACKAGE statement deletes a stored package in the database. This statement will remove both the package body and the package specification.The DROP PACKAGE BODY statement only deletes the package body.
+The DROP PACKAGE statement deletes a package in the database. This statement will remove both the package body and the package specification.The DROP PACKAGE BODY statement only deletes the package body.
 
 It is not possible to delete a single object within the package using this statement. The privileges required:the package must be in the user's schema, or the user must have the DROP ANY PROCEDURE system privilege.
 
