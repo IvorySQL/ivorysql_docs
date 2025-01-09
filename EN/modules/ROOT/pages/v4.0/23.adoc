@@ -9,19 +9,19 @@
 
 === Illustration
 
-IvorySQL is maintained by a core development team, which has commit access to the main repository of IvorySQL on GitHub.Meanwhile，we are eager to get contributions from members of the wider IvorySQL community. If you want to see your changes to code or documents added to  IvorySQL and appear in future versions, you need to know the content of this section.
+IvorySQL is maintained by a core development team, which has commit access to the main repository of IvorySQL on GitHub. We are eager to get contributions from members of the wider IvorySQL community. If you want to see your changes to code or documents added to  IvorySQL and appear in future versions, you need to understand the content of this section.
 
-​IvorySQL community welcomes and appreciates all types of contributions, looking forward to your participation!
+​IvorySQL community welcomes and appreciates all types of contributions and we are looking forward to your participation!
 
 === Principles of Conduct
 
-For each member, contributor and leader, everyone should read our *principles of conduct* . We promise that everyone can participate in community and pay equal attention to everyone, no matter who.
+Every member, contributor and leader should read our *principles of conduct*. We promise that everyone can participate in community and pay equal attention to everyone, no matter who.
 
 We are committed to acting and interacting in a way that contributes to the establishment of an open, enthusiastic, diverse, inclusive and healthy community.
 
 === Description of Community Governance
 
-Our team is a continuously open team, focusing on a part of the IvorySQL.In our team, there are reviewers, submitters and maintainers, and we have one or more repositories. The decision of the team is made by the maintainer.   The typical promotion path for IvorySQL developers is from user to reviewer, then submitter and maintainer. But getting more roles doesn't mean you have any privileges to other community members. Everyone in the IvorySQL community is equal and has the responsibility to cooperate constructively with other contributors to build a friendly community. These roles are natural rewards for your significant contributions to the development of IvorySQL, and provide you with more rights in the development workflow to improve your efficiency. At the same time，this requires you to undertake some additional duty: 
+Our team is a continuously open team, focusing on parts of IvorySQL. In our team, there are reviewers, submitters and maintainers, and we have one or more repositories. The decision for the team is made by the maintainer.   The typical promotion path for IvorySQL developers is from user to reviewer, then submitter and maintainer. But getting more roles doesn't mean you have any privileges to other community members. Everyone in the IvorySQL community is equal and has the responsibility to cooperate constructively with other contributors to build a friendly community. These roles are natural rewards for your significant contributions to the development of IvorySQL, and provide you with more rights in the development workflow to improve your efficiency. At the same time，this requires you to undertake some additional duty: 
 
 ​Team honor: now you are already one of the team reviewers/submitters/maintainers, it means that you represent the project and your team members. So, please be Mr.Nice Guy to defend the reputation of the team.
 
@@ -36,7 +36,7 @@ Before contributing, we need to know the current version of IvorySQL and the ver
 
 ==== Getting started
 
-IvorySQL is developed on GtiHub. Anyone who wishes to contribute to it must have a Github account and be familiar with Git tools and workflow. It is also recommended that you follow the developer's mailing list since some of the contributions may generate more detailed discussions there.
+IvorySQL is developed on GitHub. Anyone who wishes to contribute to it must have a Github account and be familiar with Git tools and workflow. It is also recommended that you follow the developer's mailing list since some of the contributions may generate more detailed discussions there.
 
 Once you have your GitHub account, fork this repository so that you can have your private copy to start hacking on and to use as a source of pull requests.
 
@@ -49,7 +49,7 @@ If the contribution you're submitting is NOT original work you have to indicate 
 Finally, keep in mind that it is NEVER a good idea to remove licensing headers from the work that is not your original one. Even if you are using parts of the file that originally had a licensing header at the top you should err on the side of preserving it. As always, if you are not quite sure about the licensing implications of your contributions, feel free to reach out to us on the developer mailing list.
 
 
-=== What Contribution can You Make
+=== What Contribution Can You Make
 
 ==== Code Contribution
 
@@ -84,7 +84,7 @@ You can submit your article to the blog in the IvorySQL-WWW code warehouse, or s
 
 Your chances of getting feedback and seeing your code merged into the project greatly depend on how granular your changes are. If you happen to have a bigger change in mind, we highly recommend engaging on the developer's mailing list first and sharing your proposal with us before you spend a lot of time writing code. Even when your proposal gets validated by the community, we still recommend doing the actual work as a series of small, self-contained commits. This makes the reviewer's job much easier and increases the timeliness of feedback.
 
-When it comes to C and C++ parts of IvorySQL, we try to follow PostgreSQL Coding Conventions. In addition to that:
+When it comes to C and C++ parts of IvorySQL, we follow PostgreSQL Coding Conventions. In addition to that:
 
 For C and Perl code, please run pgindent if necessary. We recommend using git diff --color when reviewing your changes so that you don't have any spurious whitespace issues in the code that you submit.
 

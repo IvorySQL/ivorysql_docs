@@ -4,7 +4,7 @@
 *IvorySQL* is the only Oracle compatible open source PostgreSQL.
 
 == Getting Started
-Get started by https://github.com/IvorySQL/IvorySQL[Downloading the code from Github].
+Get started by https://github.com/IvorySQL/IvorySQL[downloading the code from Github].
 
 == Releases
 Go to https://www.ivorysql.org/releases-page[IvorySQL Release Page].
@@ -12,7 +12,7 @@ Go to https://www.ivorysql.org/releases-page[IvorySQL Release Page].
 == About IvorySQL
 IvorySQL project is an open source project proposed by Highgo Software to add the Oracle compatibility features into the popular PostgreSQL database.
 
-It is open source and free to use, any comments please contact support@ivorysql.org
+It is Apache licensed Open Source and always free to use. Any comments please contact support@ivorysql.org
 
 == Docs Download
 https://docs.ivorysql.org/en/ivorysql-doc/v4.0/ivorysql.pdf[IvorySQL v4.0 pdf documentation]

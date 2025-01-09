@@ -13,7 +13,7 @@ Since IvorySQL is based on PostgreSQL, it is recommended that when reading and u
 
 The IvorySQL version number consists of a major version and a minor version. For example, 3 in IvorySQL 3.2 is the major version and 2 is the minor version.
 
-Releasing a minor version is not going to change the in-memory storage format, so it is always compatible with the same major version. For example, IvorySQL 3.4 is compatible with Ivory SQL 3.0 and the subsequent Ivory SQL 3.x. Upgrading for these compatible versions is as simple as shutting down the database service, installing a replacement binary executable, and restarting the service.
+Releasing a minor version is not going to change the internal storage format, so it is always compatible with the same major version. For example, IvorySQL 3.4 is compatible with Ivory SQL 3.0 and the subsequent Ivory SQL 3.x. Upgrading for these compatible versions is as simple as shutting down the database service, installing a replacement binary executable, and restarting the service.
 
 ​    Next, we focus on cross-version upgrades of IvorySQL, for example, from IvorySQL 2.3 to IvorySQL 3.2. Major version upgrades may modify the internal data storage format and therefore require additional operations to be performed. The common cross-version upgrade methods and applicable scenarios are as follows.
 
@@ -29,9 +29,9 @@ Releasing a minor version is not going to change the in-memory storage format, s
 
 === Upgrade data via pg_dumpall
 
-The traditional cross-version upgrade method uses pg_dump/pg_dumpall to logically backup the database everywhere and then restore it in the new version via pg_restore. It is recommended to use the new version of pg_dump/pg_dumpall tool when exporting the old version of the database.You can take advantage of its latest parallel export and restore features, while reducing database bloat problems.
+The traditional cross-version upgrade method uses pg_dump/pg_dumpall to logically backup the database and then restore it in the new version via pg_restore. It is recommended to use the new version of pg_dump/pg_dumpall tool when exporting the old version of the database. You can take advantage of its latest parallel export and restore features, while reducing database bloat problems.
 
-Logical backup and restore is very simple but slow, downtime depends on the size of the database, so it is suitable for small to medium sized database upgrades.
+Logical backup and restore is very simple but slow.  Downtime depends on the size of the database, so it is suitable for small to medium sized database upgrades.
 
 ​The following describes how this upgrade method works. If the current IvorySQL software installation directory is located in /usr/local/pgsql and the data directory is located in /usr/local/pgsql/data, we do the upgrade on the same server.
 
@@ -197,7 +197,7 @@ The idea behind this dump method is to generate a file with SQL commands that, w
 
 As you see, pg_dump writes its result to the standard output. We will see below how this can be useful. While the above command creates a text file, pg_dump can create files in other formats that allow for parallelism and more fine-grained control of object restoration.
 
-pg_dump is a regular IvorySQL client application (albeit a particularly clever one). This means that you can perform this backup procedure from any remote host that has access to the database. But remember that pg_dump does not operate with special permissions. In particular, it must have read access to all tables that you want to back up, so in order to back up the entire database you almost always have to run it as a database superuser. (If you do not have sufficient privileges to back up the entire database, you can still back up portions of the database to which you do have access using options such as `-n *`schema`*` or `-t *`table`*`.)
+pg_dump is a regular IvorySQL client application (albeit a particularly clever one). This means that you can perform this backup procedure from any remote host that has access to the database. pg_dump must have read access to all tables that you want to back up, so in order to back up the entire database you almost always have to run it as a database superuser. (If you do not have sufficient privileges to back up the entire database, you can still back up portions of the database to which you do have access using options such as `-n *`schema`*` or `-t *`table`*`.)
 
 ​To specify which database server pg_dump should contact, use the command line options `-h *`host`*` and `-p *`port`*`. The default host is the local host or whatever your `HOST` environment variable specifies. Similarly, the default port is indicated by the `PORT` environment variable or, failing that, by the compiled-in default. (Conveniently, the server will normally have the same compiled-in default.)
 
