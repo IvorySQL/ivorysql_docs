@@ -87,7 +87,7 @@ This upgrade method can be used with built-in logical replication tools and exte
 
 == Managing IvorySQL Versions
 
-IvorySQL is based on PostgreSQL and is updated at the same frequency as PostgreSQL, with one major release per year and one minor release per quarter. IvorySQL 4.0 is based on PostgreSQL 17.0, and all versions of IvorySQL are backward compatible.The relevant version features can be viewed by looking at https://deploy-preview-83--ivorysql.netlify.app/zh-CN/releases-page[Official Website]。
+IvorySQL is based on PostgreSQL and is updated at the same frequency as PostgreSQL, with one major release per year and one minor release per quarter. IvorySQL 4.2 is based on PostgreSQL 17.2, and all versions of IvorySQL are backward compatible.The relevant version features can be viewed by looking at https://deploy-preview-83--ivorysql.netlify.app/zh-CN/releases-page[Official Website]。
 
 
 == Managing IvorySQL database access

@@ -4,55 +4,40 @@
 
 == 版本概览
 
-[**发行日期：2024年12月23日**]
+[**发行日期：2025年01月16日**]
 
 
-IvorySQL 4.0基于PostgreSQL 17.0，并修复了多个问题。更多信息请参考 https://docs.ivorysql.org/[文档网站] 。
+IvorySQL 4.2，基于PostgreSQL 17.2，并修复了多个问题。有关更新的完整列表，请访问我们的 https://docs.ivorysql.org/[文档网站] 。
 
 == 增强功能及问题修复
 
-- PostgreSQL 17.0
+- PostgreSQL 17.1
 
-1. 新的 VACUUM 内存管理系统，可减少内存消耗并提升整体 VACUUM 性能。
-2. 新增 SQL/JSON 功能，包括构造函数、标识函数以及 JSON_TABLE() 函数，可将 JSON 数据转换为表格表示。
-3. 各种查询性能改进，包括基于流式 I/O 的顺序读取、在高并发下的写入吞吐量，以及在 B-tree 索引中对多个值的搜索优化。
-4. 增强逻辑复制功能。
-5. 新的客户端连接选项 sslnegotiation=direct，通过直接 TLS 握手避免额外的往返协商。
-6. pg_basebackup 现在支持增量备份。
-7. COPY 增加了新选项 ON_ERROR ignore，允许在出现错误时继续执行复制操作。
+1. 确保在行级安全性 (RLS) 适用于非顶层表引用时，将缓存的计划标记为依赖于调用角色。
+2. 使 libpq 丢弃在 SSL 或 GSS 协议协商期间接收到的错误消息。
+3. 修复 SET SESSION AUTHORIZATION 和 SET ROLE 之间的非预期交互。
+4. 防止受信任的 PL/Perl 代码更改环境变量。
+5. 修复在附加或分离表分区时，外键约束的目录状态更新问题。
 
-+
+- PostgreSQL 17.2
 
-更多细节, 请参阅 https://www.postgresql.org/docs/release/17.0/[PostgreSQL发布说明].
-
-- IvorySQL 4.0
-
-1. Oracle 不可见列的兼容: https://github.com/IvorySQL/IvorySQL/issues/608[#608]
+1. 修复与结构体 ResultRelInfo 一起工作的扩展的 ABI 兼容性问题。
+2. 恢复 ALTER {ROLE|DATABASE} SET role 的功能。
+3. 修复逻辑复制槽的 restart_lsn 可能倒退的情况。
+4. 避免在执行 pg_rewind 时删除仍然需要的 WAL 文件。
+5. 修复与删除共享统计信息条目相关的竞态条件问题。
 
 +
 
-在 Oracle 模式下新增对不可见列的支持，并在 psql 的扩展描述命令（\d+）中显示不可见列的信息。
-对表的常规访问将不会显示不可见列。不可见列必须通过其列名显式引用，查询和其他操作才能访问这些列。
+更多细节, 请参阅 https://www.postgresql.org/docs/release/17.2/[PostgreSQL发布说明].
 
-2. Oracle 包兼容性: https://github.com/IvorySQL/IvorySQL/issues/589[#589]
+- IvorySQL 4.2
 
-+
+1. 修复了 pg_upgrade: https://github.com/IvorySQL/IvorySQL/issues/721[#721]
 
-支持 PL/SQL 包管理功能，包括创建、修改和描述包及包体。
-增强了 PostgreSQL 交互式终端（psql），新增 \k 命令，用于与包相关的操作。
-此外，通过新的 ACL 函数实现了高级权限管理，并引入了包缓存机制以提升性能。
+2. 提供了 Rocky9 安装包: https://github.com/IvorySQL/IvorySQL/issues/724[#724]
 
-3. 函数 pg_get_functiondef 支持多个 OID 和函数名: https://github.com/IvorySQL/IvorySQL/issues/696[#696]
-
-+
-
-增强函数 pg_get_functiondef() 以支持在参数列表中传入多个函数 OID。现在，它还可以导出具有相同名称但不同参数的函数定义。
-
-4. 将 'ivorysql' 添加为默认数据库: https://github.com/IvorySQL/IvorySQL/issues/575[#575]
-
-+
-
-5. 提供Ubuntu安装包: https://github.com/IvorySQL/IvorySQL/issues/703[#703]
+3. 修复了 IvorySQL 文档中的英文语法错误: https://github.com/IvorySQL/ivorysql_docs/pull/95[#95]
 
 
 == 源代码
@@ -66,21 +51,15 @@ IvorySQL主要包含2个代码仓库:
 以下个人（按姓氏排序）作为补丁作者、提交者、审查者、测试者或问题报告者为此版本做出了贡献。
 
 - Cary Huang
+- Denis Lussier
 - Grant Zhou
-- Imran Zaheer
-- jerome-peng
-- 冯若航
-- 付贝
 - 高雪玉
 - 矫顺田
 - 梁翔宇
 - 吕新杰
 - 牛世继
-- 任娇
 - 王丽
 - 王守波
-- 文一
-- 许振伟
+- 王志斌
 - 严少安
 - 赵法威
-- 周家杰

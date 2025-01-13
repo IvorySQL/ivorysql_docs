@@ -45,7 +45,7 @@ Ora2Pg 由一个 Perl 脚本（ora2pg）以及一个 Perl 模块（ https://gith
 
 |===
 | linux环境 | Oracle版本 | IvorySQL版本
-| Centos Stream 9 | 19.0.0.0 | 4.0
+| Centos Stream 9 | 19.0.0.0 | 4.2
 |===
 
 === 依赖环境安装
@@ -449,7 +449,7 @@ $ createdb orcl
 
 $ psql
 
-psql (17.0)
+psql (17.2)
 
 Type "help" for help.
 
@@ -478,7 +478,7 @@ ivorysql=#
 ```
 $ psql orcl
 
-psql (17.0)
+psql (17.2)
 
 Type "help" for help.
 

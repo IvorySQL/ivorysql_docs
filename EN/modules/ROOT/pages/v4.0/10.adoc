@@ -44,7 +44,7 @@ By default, Ora2Pg exports an SQL file, which can be executed through the IvoryS
 
 |===
 | linux | Oracle Version | IvorySQL Version
-| Centos Stream 9 | 19.0.0.0 | 4.0 
+| Centos Stream 9 | 19.0.0.0 | 4.2 
 |===
 
 === Environment-dependent installation
@@ -460,7 +460,7 @@ $ createdb orcl
 
 $ psql
 
-psql (17.0)
+psql (17.2)
 
 Type "help" for help.
 
@@ -489,7 +489,7 @@ Create SH, HR, SCOTT users:
 ```
 $ psql orcl
 
-psql (17.0)
+psql (17.2)
 
 Type "help" for help.
 
