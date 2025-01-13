@@ -5,7 +5,7 @@
 
 == Version Overview
 
-[**Release date: January 16, 2025**]
+[**Release date: January 13, 2025**]
 
 IvorySQL 4.2, based on PostgreSQL 17.2 and includes a variety of bug fixes. For a comprehensive list of updates, please visit our https://docs.ivorysql.org/[documentation site].
 
