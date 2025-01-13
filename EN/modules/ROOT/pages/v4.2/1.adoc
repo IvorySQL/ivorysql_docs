@@ -1,0 +1,69 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+
+== Version Overview
+
+[**Release date: January 16, 2025**]
+
+IvorySQL 4.2, based on PostgreSQL 17.2 and includes a variety of bug fixes. For a comprehensive list of updates, please visit our https://docs.ivorysql.org/[documentation site].
+
+== Enhancements & Fixed Issue
+
+- PostgreSQL 17.1 Enhancements
+
+1. Ensure cached plans are marked as dependent on the calling role when RLS applies to a non-top-level table reference.
+2. Make libpq discard error messages received during SSL or GSS protocol negotiation.
+3. Fix unintended interactions between SET SESSION AUTHORIZATION and SET ROLE.
+4. Prevent trusted PL/Perl code from changing environment variables.
+5. Fix updates of catalog state for foreign-key constraints when attaching or detaching table partitions.
+
++
+
+For further details, visit https://www.postgresql.org/docs/release/17.1/[PostgreSQL’s release notes].
+
+- PostgreSQL 17.2 Enhancements
+
+1. Repair ABI break for extensions that work with struct ResultRelInfo.
+2. Restore functionality of ALTER {ROLE|DATABASE} SET role.
+3. Fix cases where a logical replication slot's restart_lsn could go backwards.
+4. Avoid deleting still-needed WAL files during pg_rewind.
+5. Fix race conditions associated with dropping shared statistics entries.
+
++
+
+For further details, visit https://www.postgresql.org/docs/release/17.2/[PostgreSQL’s release notes].
+
+- IvorySQL 4.2
+
+1. Fix issue for pg_upgrade: Issue https://github.com/IvorySQL/IvorySQL/issues/721[#721]
+
+2. Provide Rocky9 installation package: Issue https://github.com/IvorySQL/IvorySQL/issues/724[#724]
+
+3. EN grammatical fixes in ivorysql_docs: Issue https://github.com/IvorySQL/ivorysql_docs/pull/95[#95]
+
+== Source Code
+
+IvorySQL's development is maintained across two main repositories:
+
+* IvorySQL database source code: https://github.com/IvorySQL/IvorySQL
+* IvorySQL official website: https://github.com/IvorySQL/Ivory-www
+
+== Contributors
+
+The following individuals (in alphabetical order) have contributed to this release as patch authors, committers, reviewers, testers, or reporters of issues.
+
+- Cary Huang
+- Denis Lussier
+- Fawei Zhao
+- Grant Zhou
+- Hope Gao
+- Lily Wang
+- Shawn Yan
+- Shiji Niu
+- Shoubo Wang
+- Shuntian Jiao
+- Xiangyu Liang
+- Xinjie Lv
+- Zhibin Wang
