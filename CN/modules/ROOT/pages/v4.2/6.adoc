@@ -14,7 +14,7 @@ IvorySQL安装方式包括以下5种：
 - <<源码安装>>
 - <<deb安装>>
 
-本章将详细介绍每种方式的安装、运行及卸载过程。想要更快获得IvorySQL，请参阅xref:v4.0/3.adoc#快速开始[快速开始]。
+本章将详细介绍每种方式的安装、运行及卸载过程。想要更快获得IvorySQL，请参阅xref:v4.2/3.adoc#快速开始[快速开始]。
 
 同样，安装前请先创建一个用户，并赋予其root权限，安装、使用和卸载均以该用户执行。这里以ivorysql用户为例。
 
@@ -94,17 +94,17 @@ $ sudo dnf install -y lz4 libicu libxslt python3
 ```
 ** 获取rpm包
 ```
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql4-4.2-1.rhel8.x86_64.rpm
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql4-contrib-4.2-1.rhel8.x86_64.rpm
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql4-devel-4.2-1.rhel8.x86_64.rpm
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql4-docs-4.2-1.rhel8.x86_64.rpm
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql4-libs-4.2-1.rhel8.x86_64.rpm
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql4-llvmjit-4.2-1.rhel8.x86_64.rpm
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql4-plperl-4.2-1.rhel8.x86_64.rpm
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql4-plpython3-4.2-1.rhel8.x86_64.rpm
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql4-pltcl-4.2-1.rhel8.x86_64.rpm
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql4-server-4.2-1.rhel8.x86_64.rpm
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql4-test-4.2-1.rhel8.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.2/ivorysql4-4.2-1.rhel8.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.2/ivorysql4-contrib-4.2-1.rhel8.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.2/ivorysql4-devel-4.2-1.rhel8.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.2/ivorysql4-docs-4.2-1.rhel8.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.2/ivorysql4-libs-4.2-1.rhel8.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.2/ivorysql4-llvmjit-4.2-1.rhel8.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.2/ivorysql4-plperl-4.2-1.rhel8.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.2/ivorysql4-plpython3-4.2-1.rhel8.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.2/ivorysql4-pltcl-4.2-1.rhel8.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.2/ivorysql4-server-4.2-1.rhel8.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.2/ivorysql4-test-4.2-1.rhel8.x86_64.rpm
 ```
 ** 安装rpm包
 
@@ -169,7 +169,7 @@ $ sudo apt -y install pkg-config libreadline-dev libicu-dev libldap2-dev uuid-de
 
 ** 获取deb包
 ```
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.0/ivorysql-4.2.x86_64.deb
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.2/ivorysql-4.2.x86_64.deb
 ```
 
 ** 安装deb包
@@ -300,6 +300,6 @@ $ sudo rm -rf /usr/local/ivorysql
 
 执行以下命令卸载数据库并清理文件夹：
 ```
-$ sudo dpkg -P ivorysql4.0
+$ sudo dpkg -P ivorysql4.2
 $ sudo rm -rf /usr/local/ivorysql
 ```

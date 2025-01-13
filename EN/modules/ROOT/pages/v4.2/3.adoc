@@ -145,4 +145,4 @@ TIP: When running IvorySQL in Docker, additional parameters need to be added, li
 
 Now you can start your journey of IvorySQL! Enjoy! 
 
-To explore additional installation methods, please refer to the xref:v4.0/6.adoc[Installation].
+To explore additional installation methods, please refer to the xref:v4.2/6.adoc[Installation].
