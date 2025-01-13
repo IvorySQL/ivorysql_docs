@@ -89,9 +89,9 @@ $ export PKG_CONFIG_PATH=$PROTOBUFC_HOME/lib:$PKG_CONFIG_PATH
 
 ** Install PostGIS
 ```
-$ wget https://download.osgeo.org/postgis/source/postgis-3.4.2.tar.gz
-$ tar -xvf postgis-3.4.2.tar.gz
-$ cd postgis-3.4.2
+$ wget https://download.osgeo.org/postgis/source/postgis-3.4.0.tar.gz
+$ tar -xvf postgis-3.4.0.tar.gz
+$ cd postgis-3.4.0
 $ sh autogen.sh
 $ ./configure  --with-geosconfig=/usr/local/geos-3.9.2/bin/geos-config --with-projdir=/usr/local/proj-8.2.1 --with-gdalconfig=/usr/local/gdal-3.4.3/bin/gdal-config --with-protobufdir=/usr/local/protobuf-c-1.4.1 --with-pgconfig=/usr/local/ivorysql/ivorysql-4/bin/pg_config
 $ make && make install
@@ -110,7 +110,7 @@ CREATE EXTENSION
 ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'postgis';
   name   | default_version | installed_version |                          comment
 ---------+-----------------+-------------------+------------------------------------------------------------
- postgis | 3.4.2           | 3.4.2             | PostGIS geometry and geography spatial types and functions
+ postgis | 3.4.0           | 3.4.0             | PostGIS geometry and geography spatial types and functions
 (1 row)
 ```
 
