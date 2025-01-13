@@ -19,6 +19,8 @@ IvorySQL 4.2, based on PostgreSQL 17.2 and includes a variety of bug fixes. For 
 4. Prevent trusted PL/Perl code from changing environment variables.
 5. Fix updates of catalog state for foreign-key constraints when attaching or detaching table partitions.
 
++
+
 For further details, visit https://www.postgresql.org/docs/release/17.1/[PostgreSQL’s release notes].
 
 - PostgreSQL 17.2 Enhancements
@@ -28,6 +30,8 @@ For further details, visit https://www.postgresql.org/docs/release/17.1/[Postgre
 3. Fix cases where a logical replication slot's restart_lsn could go backwards.
 4. Avoid deleting still-needed WAL files during pg_rewind.
 5. Fix race conditions associated with dropping shared statistics entries.
+
++
 
 For further details, visit https://www.postgresql.org/docs/release/17.2/[PostgreSQL’s release notes].
 

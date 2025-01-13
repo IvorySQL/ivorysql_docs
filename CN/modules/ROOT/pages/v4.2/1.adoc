@@ -19,6 +19,10 @@ IvorySQL 4.2，基于PostgreSQL 17.2，并修复了多个问题。有关更新�
 4. 防止受信任的 PL/Perl 代码更改环境变量。
 5. 修复在附加或分离表分区时，外键约束的目录状态更新问题。
 
++
+
+更多细节, 请参阅 https://www.postgresql.org/docs/release/17.1/[PostgreSQL发布说明].
+
 - PostgreSQL 17.2
 
 1. 修复与结构体 ResultRelInfo 一起工作的扩展的 ABI 兼容性问题。
