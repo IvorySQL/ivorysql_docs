@@ -14,7 +14,7 @@ XML (eXtended Markup Language) is a text-based format language used to structure
 ====
 
 == Implementation Principle
-When IvorySQL achieves compatibility with 11 commonly used XML SQL functions in Oracle 12c, it maintains consistency with PostgreSQL by utilizing the same underlying processing functions, which are provided by the libxml2 library interface. These XML functions are provided as a sub-plugin of the ivorysql_ora plugin, ensuring compatibility and consistency with PostgreSQL databases in terms of XML processing.
+IvorySQL achieves compatibility with commonly used XML SQL functions. It maintains consistency with PostgreSQL by utilizing the same underlying processing functions, which are provided by the libxml2 library interface. These XML functions are provided as a sub-plugin of the ivorysql_ora plugin, ensuring compatibility and consistency with PostgreSQL databases in terms of XML processing.
 
 Due to Oracle's XML functions requiring certain parameter types to be XMLType, such as the existsnode() function below:
 
@@ -28,7 +28,7 @@ Therefore, for compatibility purposes, an XMLType data type has been added. Its 
 
 Additionally, to avoid confusion with the existing keyword "extract" in PostgreSQL, IvorySQL has renamed the original keyword to "PGEXTRACT" to ensure clarity and accuracy in function calls.
 
-When implementing these 11 Oracle-compatible XML functions, IvorySQL adopted two different approaches. Among them, besides the UPDATEXML function, the other 10 functions are implemented using SQL functions. Since the number of parameters for the UPDATEXML function is uncertain, an expression-based approach was used for its implementation. This required writing specialized syntax parsing and executor code to ensure the correctness and flexibility of its functionality.
+When implementing these Oracle-compatible XML functions, IvorySQL adopted two different approaches. Among them, besides the UPDATEXML function, the other functions are implemented using SQL functions. Since the number of parameters for the UPDATEXML function is uncertain, an expression-based approach was used for its implementation. This required writing specialized syntax parsing and executor code to ensure the correctness and flexibility of its functionality.
 
 == Compatible Function
 |====
