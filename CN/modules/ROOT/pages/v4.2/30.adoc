@@ -1,0 +1,95 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+
+= **initdb过程**
+
+IvorySQL 在初始化过程中支持两种数据库模式：
+
+** PG 模式：保持与原生 PostgreSQL 的兼容性
+** Oracle 模式（默认）：提供 Oracle 语法兼容及增强功能
+
+用户可通过 initdb 命令参数指定初始化模式，实现不同场景下的兼容性需求。
+
+== 参数解析处理
+
+initdb在开始阶段会解析输入的命令行参数。
+|====
+| 参数	| 功能描述	| 可选值	| 默认值 
+| -m	| 指定数据库模式	| oracle/pg	| oracle
+| -C	| 设置 Oracle 兼容的大小写转换模式	| interchange/normal/lowercase|  interchange
+|====
+参数解析流程：
+
+1.继承 PostgreSQL 原有参数处理机制
+
+2.新增模式选择参数 -m 的解析逻辑
+
+3.增加大小写转换参数 -C 的处理模块
+
+
+== 文件路径初始化
+
+执行 setup_data_file_paths() 函数完成关键文件路径配置：
+```
+	if (DB_PG == database_mode)
+		set_input(&bki_file, "postgres.bki");
+	else
+		set_input(&bki_file, "postgres_oracle.bki");
+```
+路径检查机制：
+
+1.验证 BKI 文件的存在性（postgres_oracle.bki / postgres.bki）
+
+2.确认配置文件模板的可用性
+
+3.建立与数据库模式对应的系统目录结构
+
+== 数据目录初始化流程
+
+通过 initialize_data_directory() 函数完成核心初始化操作：
+
+=== 目录结构创建
+调用 create_data_directory() 创建主数据目录（PGDATA）。
+
+通过 create_xlog_or_symlink() 建立 WAL 日志目录。
+
+循环创建 base, global 等标准子目录。
+
+=== 配置文件初始化
+
+调用set_null_conf()创建空的postgresql.conf。
+
+Oracle 模式下额外创建 ivorysql.conf 配置文件。
+
+调用setup_config()将配置信息写入postgresql.conf。在写入配置时，如果是oracle模式，则会额外向ivorysql.conf中写入配置信息。
+
+=== 模板数据库引导
+
+执行 bootstrap_template1() 加载对应模式的 BKI 文件初始化template1模板数据库，
+
+IvorySQL会额外设置template1模板数据库的数据库模式(oracle/pg)和大小写转换模式以。
+
+load_plisql()：安装兼容 Oracle PL/SQL 的 PL/iSQL 过程语言
+
+load_ivorysql_ora()：加载核心Oracle兼容层扩展
+
+make_ivorysql()：创建默认的 ivorysql 数据库
+
+=== Oracle兼容用户名处理
+
+当数据库模式是oracle时，会对用户名进行强制小写转换
+
+.提示
+****
+在 PostgreSQL 中，"bki" 是 "Bootstrap Kit" 的简写。Bootstrap Kit 是 PostgreSQL 内部用于引导（bootstrap）数据库系统的一组工具和文件集合。
+
+Bootstrap Kit 主要用于初始化 PostgreSQL 数据库系统的基础结构，包括系统目录（system catalog）、系统表（system table）以及其他必要的系统对象。这些系统目录和表存储了 PostgreSQL 数据库系统的元数据信息，如数据库对象、表结构、索引信息等。
+
+genbki.pl 处理系统表文件如pg_class.h,pg_namespace.h,pg_proc.h等，并生成postgres.bki供initdb加载，主要是加载初始化数据，如创建系统表，系统函数和预定义类型等。
+
+在initdb前的编译阶段，会通过genbki.pl生成postgres.bki 和 postgres_ora.bki，postgres.bki保持PG原样，postgres_ora.bki在pg的基础上增加oracle 兼容的系统对象。
+****
+
+image::p20.jpg[]

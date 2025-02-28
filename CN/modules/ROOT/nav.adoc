@@ -14,6 +14,14 @@
 * IvorySQL生态
 ** xref:v4.2/11.adoc[PostGIS]
 ** xref:v4.2/12.adoc[pgvector]
+* IvorySQL架构设计
+** 查询处理
+*** xref:v4.2/31.adoc[双parser]
+** 兼容框架
+*** xref:v4.2/30.adoc[initdb过程]
+** 过程语言
+** 插件
+** 兼容特性
 * Oracle兼容功能列表
 ** xref:v4.2/14.adoc[1、框架设计]
 ** xref:v4.2/15.adoc[2、GUC框架]
