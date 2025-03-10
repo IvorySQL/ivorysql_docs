@@ -52,16 +52,16 @@ gpgcheck=0
 ```
 保存退出后，安装IvorySQL4
 ```
-$ sudo dnf install -y ivorysql4 ivorysql4-server ivorysql4-contrib ivorysql4-test
+$ sudo dnf install -y IvorySQL-4.4
 ```
 ....
 
-  正确安装后，数据库将被安装在/usr/local/ivorysql路径下的ivorysql-version(如:ivorysql-4)文件夹内
+  正确安装后，数据库将被安装在/opt/IvorySQL-4.4/路径下的IvorySQL-version(如:IvorySQL-4.4)文件夹内
 ....
 
 执行以下命令为ivorysql用户赋权：
 ```
-$ sudo chown -R ivorysql:ivorysql /usr/local/ivorysql
+$ sudo chown -R ivorysql:ivorysql /opt/IvorySQL-4.4
 ```
 [[配置环境变量]]
 ** 配置环境变量
@@ -70,11 +70,11 @@ $ sudo chown -R ivorysql:ivorysql /usr/local/ivorysql
 
 将以下配置写入~/.bash_profile文件并使用source命令该文件使环境变量生效：
 ```
-PATH=/usr/local/ivorysql/ivorysql-4/bin:$PATH
+PATH=/opt/IvorySQL-4.4/bin:$PATH
 export PATH
-LD_LIBRARY_PATH=/usr/local/ivorysql/ivorysql-4/lib
+LD_LIBRARY_PATH=/opt/IvorySQL-4.4/lib
 export LD_LIBRARY_PATH
-PGDATA=/usr/local/ivorysql/ivorysql-4/data
+PGDATA=/opt/IvorySQL-4.4/data
 export PGDATA
 ```
 ```
@@ -84,7 +84,7 @@ $ source ~/.bash_profile
 ** 数据库初始化
 
 ```
-$ initdb -D /usr/local/ivorysql/ivorysql-4/data
+$ initdb -D /opt/IvorySQL-4.4/data
 ```
 ....
   其中-D参数用来指定数据库的数据目录。更多参数使用方法，请使用initdb --help命令获取。
@@ -93,7 +93,7 @@ $ initdb -D /usr/local/ivorysql/ivorysql-4/data
 ** 启动数据库服务
 
 ```
-$ pg_ctl -D /usr/local/ivorysql/ivorysql-4/data -l ivory.log start 
+$ pg_ctl -D /opt/IvorySQL-4.4/data -l ivory.log start 
 ```
 
 其中-D参数用来指定数据库的数据目录，如果<<配置环境变量>> 配置了PGDATA，则该参数可以省略。-l参数用来指定日志目录。更多参数使用方法，请使用pg_ctl --help命令获取。
@@ -102,7 +102,7 @@ $ pg_ctl -D /usr/local/ivorysql/ivorysql-4/data -l ivory.log start
 查看确认数据库启动成功：
 ```
 $ ps -ef | grep postgres
-ivorysql  3214     1  0 20:35 ?        00:00:00 /usr/local/ivorysql/ivorysql-4/bin/postgres -D /usr/local/ivorysql/ivorysql-4/data
+ivorysql  3214     1  0 20:35 ?        00:00:00 /opt/IvorySQL-4.4/bin/postgres -D /opt/IvorySQL-4.4/data
 ivorysql  3215  3214  0 20:35 ?        00:00:00 postgres: checkpointer 
 ivorysql  3216  3214  0 20:35 ?        00:00:00 postgres: background writer 
 ivorysql  3218  3214  0 20:35 ?        00:00:00 postgres: walwriter 
@@ -115,19 +115,19 @@ ivorysql  3238  1551  0 20:35 pts/0    00:00:00 grep --color=auto postgres
 
 ** 从Docker Hub上获取IvorySQL镜像
 ```
-$ docker pull ivorysql/ivorysql:4.2-ubi8
+$ docker pull ivorysql/ivorysql:4.4-ubi8
 ```
 
 ** 运行IvorySQL
 ```
-$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:4.2-ubi8
+$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:4.4-ubi8
 ```
 
 ** 查看IvorySQL容器运行是否成功
 ```
 $ docker ps | grep ivorysql
 CONTAINER ID   IMAGE               COMMAND                   CREATED          STATUS          PORTS                              NAMES
-6faa2d0ed705   ivorysql:4.2-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
+6faa2d0ed705   ivorysql:4.4-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
 ```
 
 == 数据库连接
@@ -135,7 +135,7 @@ CONTAINER ID   IMAGE               COMMAND                   CREATED          ST
 psql连接数据库：
 ```
 $ psql -d <database>
-psql (17.2)
+psql (17.4)
 Type "help" for help.
 
 ivorysql=#
