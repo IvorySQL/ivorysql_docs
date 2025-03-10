@@ -4,44 +4,61 @@
 
 == 版本概览
 
-[**发行日期：2025年01月13日**]
+[**发行日期：2025年03月10日**]
 
 
-IvorySQL 4.2，基于PostgreSQL 17.2，并修复了多个问题。有关更新的完整列表，请访问我们的 https://docs.ivorysql.org/[文档网站] 。
+IvorySQL 4.4，基于PostgreSQL 17.4，并修复了多个问题。有关更新的完整列表，请访问我们的 https://docs.ivorysql.org/[文档网站] 。
 
 == 增强功能及问题修复
 
-- PostgreSQL 17.1
+- PostgreSQL 17.3
 
-1. 确保在行级安全性 (RLS) 适用于非顶层表引用时，将缓存的计划标记为依赖于调用角色。
-2. 使 libpq 丢弃在 SSL 或 GSS 协议协商期间接收到的错误消息。
-3. 修复 SET SESSION AUTHORIZATION 和 SET ROLE 之间的非预期交互。
-4. 防止受信任的 PL/Perl 代码更改环境变量。
-5. 修复在附加或分离表分区时，外键约束的目录状态更新问题。
-
-+
-
-更多细节, 请参阅 https://www.postgresql.org/docs/release/17.1/[PostgreSQL发布说明].
-
-- PostgreSQL 17.2
-
-1. 修复与结构体 ResultRelInfo 一起工作的扩展的 ABI 兼容性问题。
-2. 恢复 ALTER {ROLE|DATABASE} SET role 的功能。
-3. 修复逻辑复制槽的 restart_lsn 可能倒退的情况。
-4. 避免在执行 pg_rewind 时删除仍然需要的 WAL 文件。
-5. 修复与删除共享统计信息条目相关的竞态条件问题。
+1. 增强 PQescapeString 及相关函数对无效编码输入字符串的防护能力。
+2. 恢复连接请求中数据库名和用户名的自动截断功能。
+3. 将并行工作进程排除在连接权限检查及连接数限制之外。
+4. 从 LWLock 等待事件名称中移除 "Lock" 后缀。
+5. 修复窗口聚合函数中可能重用陈旧结果的问题。
+6. 防止在关系表截断操作期间触发检查点（Checkpoint）。
 
 +
 
-更多细节, 请参阅 https://www.postgresql.org/docs/release/17.2/[PostgreSQL发布说明].
+更多细节, 请参阅 https://www.postgresql.org/docs/release/17.3/[PostgreSQL发布说明].
 
-- IvorySQL 4.2
+- PostgreSQL 17.4
 
-1. 修复了 pg_upgrade: https://github.com/IvorySQL/IvorySQL/issues/721[#721]
+1. 改进 libpq 引用函数（quoting functions）的行为。
+2. 修复 pg_createsubscriber 中的轻微内存泄漏问题。
+3. 修复 meson 构建系统，使其能正确检测系统头文件 bsd_auth.h 的可用性。
 
-2. 提供了 Rocky9 安装包: https://github.com/IvorySQL/IvorySQL/issues/724[#724]
++
 
-3. 修复了 IvorySQL 文档中的英文语法错误: https://github.com/IvorySQL/ivorysql_docs/pull/95[#95]
+更多细节, 请参阅 https://www.postgresql.org/docs/release/17.4/[PostgreSQL发布说明].
+
+- IvorySQL 4.4
+
+1. ARM64 全平台打包支持：特性 https://github.com/IvorySQL/IvorySQL/issues/729[#729]
++
+为 ARM 架构提供多平台介质包，支持国内外主流操作系统，包括 Red Hat、Debian、麒麟、UOS、凝思等。
+
+2. X86 全平台打包支持：特性 https://github.com/IvorySQL/IvorySQL/issues/735[#735]
++
+为 X86 架构提供多平台介质包，支持国内外主流操作系统，包括 Red Hat、Debian、麒麟、UOS、凝思等。
+
+3. 新增内核架构设计文档框架：特性 https://github.com/IvorySQL/IvorySQL/issues/739[#739]
++
+新增内核架构设计系列文档，首篇聚焦 Oracle 兼容性。该系列深入解析各模块的框架、设计与实现原理，帮助用户深度理解 Oracle 兼容框架。
+
+4. Oracle 兼容框架之双解析器架构原理分析：特性  https://github.com/IvorySQL/IvorySQL/issues/740[#740]
++
+详细介绍 Oracle 兼容框架中双解析器架构的设计与实现原理。
+
+5. Oracle 兼容框架之 initdb 过程原理分析：特性 https://github.com/IvorySQL/IvorySQL/issues/741[#741]
++
+详细介绍 Oracle 兼容框架中 initdb 过程的设计与实现原理。
+
+6. IvorySQL 官网新增聊天室功能：特性 https://github.com/IvorySQL/Ivory-www/pull/133[#133]
++
+在官网集成聊天室功能，实现与 IvorySQL 相关的智能交互与问答交流。
 
 
 == 源代码
