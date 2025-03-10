@@ -19,9 +19,6 @@
 *** xref:v4.4/31.adoc[Dual Parser]
 ** Compatibility Framework
 *** xref:v4.4/30.adoc[initdb Process]
-** Procedural Language
-** Extension
-** Compatibility Features
 * List of Oracle compatible features
 ** xref:v4.4/14.adoc[1、Ivorysql frame design]
 ** xref:v4.4/15.adoc[2、GUC Framework]
