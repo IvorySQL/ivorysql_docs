@@ -1,0 +1,96 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+
+= **initdb Process**
+
+IvorySQL supports two database modes during the initialization process:
+
+** PG Mode: Maintains compatibility with native PostgreSQL.
+** Oracle Mode (default): Provides Oracle syntax compatibility and enhanced features.
+
+Users can specify the initialization mode using the initdb command parameters to meet compatibility requirements for different scenarios.
+
+== Parameter Parsing and Processing
+
+During the initial phase, initdb parses the input command-line parameters.
+|====
+| Parameter 	| Description 	| Options 	| Default Value 
+| -m	| Specifies the database mode	| oracle/pg	| oracle
+| -C	| Sets the case conversion mode for Oracle compatibility	| interchange/normal/lowercase|  interchange
+|====
+Parameter Parsing Workflow:
+
+1.Inherits PostgreSQL's existing parameter processing mechanism.
+
+2.Adds parsing logic for the mode selection parameter -m.
+
+3.Introduces a processing module for the case conversion parameter -C.
+
+
+== File Path Initialization
+
+The setup_data_file_paths() function is executed to configure critical file paths:
+```
+	if (DB_PG == database_mode)
+		set_input(&bki_file, "postgres.bki");
+	else
+		set_input(&bki_file, "postgres_oracle.bki");
+```
+Path Verification Mechanism:
+
+1.Verifies the existence of the BKI files (postgres_oracle.bki / postgres.bki).
+
+2.Confirms the availability of the configuration file templates.
+
+3.Establishes the system directory structure corresponding to the database mode.
+
+== Data Directory Initialization Process
+
+The core initialization operations are performed by the initialize_data_directory() function:
+
+=== Directory Structure Creation
+
+Calls create_data_directory() to create the main data directory (PGDATA).
+
+Uses create_xlog_or_symlink() to establish the WAL log directory.
+
+Iteratively creates standard subdirectories such as base and global.
+
+=== Configuration File Initialization
+
+Calls set_null_conf() to create an empty postgresql.conf file.
+
+In Oracle mode, additionally creates the ivorysql.conf configuration file.
+
+Calls setup_config() to write configuration information to postgresql.conf. In Oracle mode, additional configuration information is written to ivorysql.conf.
+
+=== Template Database Bootstrapping
+
+Executes bootstrap_template1() to load the corresponding BKI file and initialize the template1 template database.
+
+IvorySQL additionally sets the database mode (oracle/pg) and case conversion mode for the template1 template database.
+
+load_plisql(): Installs the PL/iSQL procedural language for Oracle PL/SQL compatibility.
+
+load_ivorysql_ora(): Loads the core Oracle compatibility layer extension.
+
+make_ivorysql(): Creates the default ivorysql database.
+
+=== Oracle-Compatible Username Handling
+
+When the database mode is Oracle, usernames are forcibly converted to lowercase.
+
+.Note
+****
+In PostgreSQL, "bki" stands for "Bootstrap Kit." The Bootstrap Kit is a collection of tools and files used internally by PostgreSQL to bootstrap the database system.
+
+The Bootstrap Kit is primarily used to initialize the foundational structure of the PostgreSQL database system, including the system catalog, system tables, and other necessary system objects. These system catalogs and tables store metadata information about the PostgreSQL database system, such as database objects, table structures, and index information.
+
+The genbki.pl script processes system table files like pg_class.h, pg_namespace.h, and pg_proc.h, and generates postgres.bki for initdb to load. This primarily involves loading initialization data, such as creating system tables, system functions, and predefined types.
+
+During the compilation phase before initdb, genbki.pl generates both postgres.bki and postgres_ora.bki. While postgres.bki remains unchanged from PostgreSQL, postgres_ora.bki includes additional system objects for Oracle compatibility.
+****
+
+image::p20.jpg[]

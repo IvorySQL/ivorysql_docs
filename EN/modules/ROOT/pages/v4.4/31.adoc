@@ -1,0 +1,64 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+
+= **Dual Parser Framework for Oracle Compatibility**
+
+The dual parser framework is divided into two main parts: the SQL side and the server-side programming language.
+
+== Lexical and Syntax Separation on the SQL Side
+
+The basic approach is to introduce a new set of Oracle-compatible syntax and lexical rules. When Oracle compatibility is enabled, the parser follows Oracle-style syntax analysis to generate the corresponding syntax tree.
+
+Implementation Details:
+Under src/backend/, create a new directory named oracle_parser.
+Copy scan.l and gram.y from src/backend/parser/ to the oracle_parser directory, renaming them to ora_gram.y and ora_scan.l.
+Add Oracle-style syntax and lexical analysis code to these files.
+Copy keywords.c to the oracle_parser directory to store Oracle-specific keywords.
+Compile the oracle_parser directory into a dynamic library named libparser_oracle.so.
+When Oracle compatibility is enabled, the ivorysql.conf file is appended to the end of the postgresql.conf file.
+Add liboracle_parser to the shared_preload_libraries parameter in ivorysql.conf to ensure the dynamic library is loaded automatically when the database starts.
+
+A new function pointer ora_raw_parser is introduced. When the libparser_oracle.so library is loaded, the _PG_init() function assigns the address of oracle_raw_parser() to ora_raw_parser. The _PG_fini() function resets ora_raw_parser to NULL when the compatibility mode is switched.
+
+Each backend process calls the BackendInitialize() function, which sets port->connmode based on the port number the backend process is connected to. If the port is an Oracle-compatible port, connmode is set to 'o'; otherwise, it is set to 'p'.
+
+After this, PostgresMain() calls InitIvorysql(). If port->connmode is 'o', the function SetConfigOption("ivorysql.compatible_mode", "oracle", PGC_USERSET, PGC_S_OVERRIDE) is called. Since this parameter has an assign_hook, executing assign_hook() within SetConfigOption() is equivalent to calling assign_compatible_mode(), which sets sql_raw_parser = ora_raw_parser.
+
+During SQL statement analysis, the function pg_parse_query()->raw_parser() calls either standard_parser() or ora_raw_parser() through the function pointer sql_raw_parser.
+
+The diagram below illustrates what happens during SQL statement analysis.
+
+image::p21.jpg[]
+== Lexical and Syntax Separation for Server-Side Programming Language
+
+A new language, pliSQL, is added to the system table pg_language.
+
+Implementation Details:
+Copy the plpgsql directory from the PostgreSQL source code and rename it to plisql.
+Rename all files in the plisql directory to start with plisql.
+Since plpgsql is a language, the registration functions for plpgsql (e.g., plpgsql_validator, plpgsql_call_handler, plpgsql_inline_handler) are renamed to start with plisql.
+All other functions in the directory are also renamed to start with plisql.
+
+The plisql directory is built as a plugin. If the database mode is Oracle during initdb, this plugin is created. The plugin registers the pliSQL language in the database system tables.
+
+The pliSQL side does not have its own lexical rules; it relies on the lexical rules of the SQL side. Therefore, for pliSQL, Oracle-compatible lexical rules are enforced. The main modification is in the plisql_scanner_init function, which calls ora_scanner_init(). The internal_yylex() function in the plisql directory calls ora_core_yylex.
+
+The syntax rules for pliSQL are defined in plisql/src/pl_gram.y, where the syntax rules for Oracle-compatible PL/SQL blocks are implemented.
+
+When creating a function on the SQL side, if no language is specified:
+
+** In Oracle compatibility mode, the default language is plisql.
+** In PostgreSQL compatibility mode, the default language is plpgsql.
+
+In oracle_parser, ora_gram.y defaults to plisql, while in the PostgreSQL parser, gram.y defaults to plpgsql.
+
+For anonymous blocks, if no language is specified:
+
+** In Oracle compatibility mode, the default language is plisql.
+** In PostgreSQL compatibility mode, the default language is plpgsql.
+
+The ExecuteDoStmt function also determines the default language based on the compatibility mode.
+
+image::p22.jpg[]
