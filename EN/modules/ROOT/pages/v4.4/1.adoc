@@ -71,22 +71,22 @@ IvorySQL's development is maintained across two main repositories:
 
 The following individuals (in alphabetical order) have contributed to this release as patch authors, committers, reviewers, testers, or reporters of issues.
 
+- Alex Guo
 - Cary Huang
 - Denis Lussier
+- Fawei Zhao
 - Flyingbeecd
 - Grant Zhou
 - Imran Zaheer
-- 冯明冉
-- 冯若航
-- 高雪玉
-- 郭恒臣
-- 矫顺田
-- 梁翔宇
-- 吕新杰
-- 牛世继
-- 潘振浩
-- 王康
-- 王丽
-- 王守波
-- 严少安
-- 赵法威
+- Kang Wang
+- Lily Wang
+- Mingran Feng
+- Ruohang Feng
+- Shawn Yan
+- Shiji Niu
+- Shoubo Wang
+- Shuntian Jiao
+- Xiangyu Liang
+- Xinjie Lv
+- Xueyu Gao
+- Zhenhao Pan
