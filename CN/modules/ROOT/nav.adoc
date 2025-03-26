@@ -19,9 +19,6 @@
 *** xref:v4.4/31.adoc[双parser]
 ** 兼容框架
 *** xref:v4.4/30.adoc[initdb过程]
-** 过程语言
-** 插件
-** 兼容特性
 * Oracle兼容功能列表
 ** xref:v4.4/14.adoc[1、框架设计]
 ** xref:v4.4/15.adoc[2、GUC框架]
