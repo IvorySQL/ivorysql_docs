@@ -51,7 +51,7 @@ To compile the IvorySQL from the source code, you have to ensure that prerequisi
 * libreadline - The GNU Readline library is used by default.
 * zlib - zlib compression library is used by default.
 * Flex - (Flex 2.5.31 or later)
-* Bison - (Bison 1.875 or later)
+* Bison - (Bison 1.1775 or later)
 
 **Install**
 
@@ -99,7 +99,7 @@ image::p19.png[]
 **Connection**
 ----
     [highgo@ivorysql ~]$ psql -d postgres
-    psql (14.8)
+    psql (14.17)
     Type "help" for help.
 
     postgres=#
@@ -123,7 +123,7 @@ undefined
 [root@localhost ~]# su - ivorysql 
 Last login: Wed Feb 24 10:47:32 CST 2023 on pts/0
 -bash-4.2$ psql
-psql (14.8)
+psql (14.17)
 Type "help" for help.
 
 ivorysql=#
@@ -156,17 +156,17 @@ Installation package：rpm
 
 Download RPM source: Use wget to download on Centos7
 
-wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_8/ivorysql1-1.8-1.el7.x86_64.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_17/IvorySQL-1.17-fde5539-20250326.x86_64.rpm
 
 
 
 installation library
 
-    yum install ivorysql1-1.8-1.el7.x86_64.rpm
+    yum install IvorySQL-1.17-fde5539-20250326.x86_64.rpm
 
 Initialize the database
 
-    /opt/IvorySQL-1.8/bin/initdb -D data/
+    /opt/IvorySQL-1.17/bin/initdb -D data/
 
 === cluster installation
 
@@ -176,17 +176,17 @@ Installation package：rpm
 
 Download RPM source: Use wget to download on Centos7
 
-wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_8/ivorysql1-1.8-1.el7.x86_64.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_17/IvorySQL-1.17-fde5539-20250326.x86_64.rpm
 
 installation library
 
-    yum install ivorysql1-1.8-1.el7.x86_64.rpm
+    yum install IvorySQL-1.17-fde5539-20250326.x86_64.rpm
 
 **master node**
 
 Initialize the database
 
-    /opt/IvorySQL-1.8/bin/initdb -D data/
+    /opt/IvorySQL-1.17/bin/initdb -D data/
     ./initdb ../data-primary -U postgres
 
 Start the service and create a user
@@ -211,7 +211,7 @@ restart service
 
 ----
 shell
-cd /opt/IvorySQL-1.8/bin
+cd /opt/IvorySQL-1.17/bin
 ./pg_basebackup -h 127.0.0.1 -p 5333 -U repl -W -Fp -Xs -Pv -R -D ../data-standby01
 ----
 
@@ -234,18 +234,18 @@ Installation package：rpm
 
 Download RPM source: Use wget to download on Centos7
 
-wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_8/ivorysql1-1.8-1.el7.x86_64.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_17/IvorySQL-1.17-fde5539-20250326.x86_64.rpm
 
 
 
 install library
 ----
-yum install ivorysql1-1.8-1.el7.x86_64.rpm
+yum install IvorySQL-1.17-fde5539-20250326.x86_64.rpm
 ----
 
 Initialize the master node
 
-    /opt/IvorySQL-1.8/bin/initdb -D data/
+    /opt/IvorySQL-1.17/bin/initdb -D data/
 
 Start the service and create a user
 ----
@@ -280,18 +280,18 @@ Installation package：rpm
 
 Download RPM source: Use wget to download on Centos7
 
-wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_8/ivorysql1-1.8-1.el7.x86_64.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_17/IvorySQL-1.17-fde5539-20250326.x86_64.rpm
 
 
 
 install library
 
-    yum install ivorysql1-1.8-1.el7.x86_64.rpm
+    yum install IvorySQL-1.17-fde5539-20250326.x86_64.rpm
 
 1、basic backup
 ----
 shell
-cd /opt/IvorySQL-1.8/bin
+cd /opt/IvorySQL-1.17/bin
 ./pg_basebackup -h 192.168.xx.xx -p 5333 -U repl -W -Fp -Xs -Pv -R -D ../data-standby01
 ----
 

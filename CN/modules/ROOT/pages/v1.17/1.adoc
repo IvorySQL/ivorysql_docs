@@ -1,0 +1,53 @@
+:sectnums:
+:sectnumlevels: 5
+
+
+== 版本介绍
+
+[**发行日期：2025年3月26日**]
+
+IvorySQL 1.17 基于 PostgreSQL 14.17 ，包含来自 PostgreSQL 14.17 的各种修复。有关更新的完整内容，请访问我们的 https://docs.ivorysql.org/[文档网站] 。
+
+== 已知问题
+
+* 暂无
+
+== 增强功能
+
+* PostgreSQL 14.17
+1. 禁止在扩展脚本中替换包含引号、反斜杠或美元符号的 schema 名称或所有者名称。
+2. 修复 DISTINCT "any" 聚合函数对未知类型参数的处理问题。
+3. 加强 REFRESH MATERIALIZED VIEW CONCURRENTLY 的安全限制。
+4. 限制 pg_stats_ext 和 pg_stats_ext_exprs 条目仅对表所有者可见。
+5. 防止 pg_dump 过程中未经授权的代码执行。
+6. 当行级安全策略（RLS）应用于非顶级表引用时，确保缓存计划标记为依赖于调用角色。
+7. 修复与 struct ResultRelInfo 交互的扩展的 ABI 兼容性问题。
+8. 增强 PQescapeString 及相关函数对非法编码输入字符串的防护能力。
+9. 优化 libpq 引用函数的行为。
+
+* IvorySQL 1.17
+1. 全平台ARM64打包支持: +  
+提供ARM架构的多平台介质包，兼容国内外主流操作系统，包括Red Hat、Debian、麒麟、统信UOS和凝思NSAR OS等。
+2. 全平台X86打包支持 +  
+提供X86架构的多平台介质包，兼容国内外主流操作系统，包括Red Hat、Debian、麒麟、统信UOS和凝思NSAR OS等。
+3. 支持更多开源插件 +  
+包括ddlx0.20、pgvector v0.8.0、PGroonga 3.0.0、PostGIS 3.4.0及pgRouting 3.5.1等。
+
+== 源代码
+
+IvorySQL 的研发工作主要通过以下两个核心代码库进行维护：
+
+* IvorySQL 数据库源代码库： https://github.com/IvorySQL/IvorySQL[https://github.com/IvorySQL/IvorySQL]
+* IvorySQL 官方网站代码库： https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
+
+== 贡献人员
+以下个人作为补丁作者、提交者、审阅者、测试者或问题报告者为本版本做出了贡献。
+
+- Grant Zhou
+- 高雪玉
+- 矫顺田
+- 吕新杰
+- 牛世继
+- 潘振浩
+- 陶郑
+- 王大鹏

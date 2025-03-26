@@ -6,7 +6,7 @@
 
 == Objective
 
-- This version is adapted to work with plugins such as pgddl, pgvector, pgroonga, and others, to meet the users' needs for diverse database plugin usage.
+- This version is adapted to work with plugins such as pgddl, pgvector, pgroonga, postgis, and others, to meet the users' needs for diverse database plugin usage.
 
 
 == illustrate
@@ -19,6 +19,7 @@ For detailed usage instructions, please refer to the corresponding project websi
 |pgddl | https://github.com/lacanoid/pgddl 
 |pgvector | https://github.com/pgvector/pgvector
 |pgroonga | https://github.com/pgroonga/pgroonga
+|postgis | https://postgis.net
 |====
 
 

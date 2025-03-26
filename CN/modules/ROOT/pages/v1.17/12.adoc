@@ -6,7 +6,7 @@
 
 == 目的
 
-- 本版本与pgddl、pgvector、pgroonga等插件进行了适配，以满足用户对于用户使用多样化数据库插件的需求。
+- 本版本与pgddl、pgvector、pgroonga、postgis等插件进行了适配，以满足用户对于用户使用多样化数据库插件的需求。
 
 
 == 说明
@@ -19,6 +19,7 @@
 |pgddl | https://github.com/lacanoid/pgddl 
 |pgvector | https://github.com/pgvector/pgvector
 |pgroonga | https://github.com/pgroonga/pgroonga
+|postgis | https://postgis.net
 |====
 
 
