@@ -82,8 +82,8 @@ sudo yum groupinstall -y 'Development Tools'
 
 3.1 配置：Root用户执行以下命令进行配置：
 ----
-git checkout tags/Ivory_REL_1_8
-./configure --prefix=/usr/local/ivorysql/ivorysql-1.8
+git checkout tags/Ivory_REL_1_17
+./configure --prefix=/usr/local/ivorysql/ivorysql-1.17
 ----
 > 说明： 由于没有提供 `--prefix`，默认安装在 `/usr/local/ivorysql`，故需要指定路径。
 >
@@ -109,7 +109,7 @@ make all-check-world
 
 1. 运行以下命令，下载 IvorySQL 安装包。
 ----
-wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_8/ivorysql1-1.8-1.el7.x86_64.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_17/IvorySQL-1.17-fde5539-20250326.x86_64.rpm
 ----
 
 > 注意：示例中的安装包可能不是最新版本，建议您下载最新的安装包。
@@ -118,7 +118,7 @@ wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_8/ivorys
 ----
 -- 先安装依赖
 yum install -y libicu libxslt python3
-rpm -ivh ivorysql1-1.8-1.el7.x86_64.rpm
+rpm -ivh IvorySQL-1.17-fde5539-20250326.x86_64.rpm
 ----
 
 === 初始化数据库服务
@@ -128,7 +128,7 @@ rpm -ivh ivorysql1-1.8-1.el7.x86_64.rpm
 1. 创建操作系统用户：用户root会话下，新建用户 ivorysql：
 ----
 /usr/sbin/groupadd ivorysql
-/usr/sbin/useradd -g ivorysql ivorysql -c "IvorySQL1.8"
+/usr/sbin/useradd -g ivorysql ivorysql -c "IvorySQL1.17"
 passwd ivorysql
 ----
 
@@ -136,8 +136,8 @@ passwd ivorysql
 2.环境变量：切换到用户ivorysql，修改文件 `/home/ivorysql/.bash_profile`，配置环境变量：
 ----
 umask 022
-export LD_LIBRARY_PATH=/opt/IvorySQL-1.8/lib:$LD_LIBRARY_PATH
-export PATH=/opt/IvorySQL-1.8/bin:$PATH
+export LD_LIBRARY_PATH=/opt/IvorySQL-1.17/lib:$LD_LIBRARY_PATH
+export PATH=/opt/IvorySQL-1.17/bin:$PATH
 export PGDATA=/home/ivorysql/data
 ----
 
@@ -204,7 +204,7 @@ firewall-cmd --reload
 编辑内容如下：
 ----
 [Unit]
-Description=IvorySQL 1.8 database server
+Description=IvorySQL 1.17 database server
 Documentation=https://www.ivorysql.org
 Requires=network.target local-fs.target
 After=network.target local-fs.target
@@ -219,9 +219,9 @@ Environment=PGDATA=/home/ivorysql/data
 
 OOMScoreAdjust=-1000
 
-ExecStart=/opt/IvorySQL-1.8/bin/pg_ctl start -D ${PGDATA}
-ExecStop=/opt/IvorySQL-1.8/bin/pg_ctl stop -D ${PGDATA}
-ExecReload=/opt/IvorySQL-1.8/bin/pg_ctl reload -D ${PGDATA}
+ExecStart=/opt/IvorySQL-1.17/bin/pg_ctl start -D ${PGDATA}
+ExecStop=/opt/IvorySQL-1.17/bin/pg_ctl stop -D ${PGDATA}
+ExecReload=/opt/IvorySQL-1.17/bin/pg_ctl reload -D ${PGDATA}
 
 TimeoutSec=0
 
@@ -267,7 +267,7 @@ make clean
 ```
 systemctl disable ivorysql.servicemake                  --禁用服务
 mv /usr/lib/systemd/system/ivorysql.service /tmp/       --服务文件移到/tmp，删除也可以
-rm -fr /opt/IvorySQL-1.8                                --删除残留安装目录
+rm -fr /opt/IvorySQL-1.17                                --删除残留安装目录
 ```
 
 > 说明：还有用户ivorysql以及对应的环境变量，可以根据情况是否清理。剩下的就是数据目录了，请务必做好备份再做处理。还有安装的依赖包，可根据情况决定是否卸载。

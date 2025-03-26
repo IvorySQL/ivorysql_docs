@@ -86,8 +86,8 @@ sudo yum groupinstall -y 'Development Tools'
 Configuration: Root users execute the following commands to configure:
 
 ```
-    git checkout tags/Ivory_REL_1_8
-    ./configure --prefix=/usr/local/ivorysql/ivorysql-1.8
+    git checkout tags/Ivory_REL_1_17
+    ./configure --prefix=/usr/local/ivorysql/ivorysql-1.17
 ```
 
 > Note: Because -- prefix is not provided, it is installed in/usr/local/pgsql by default, so you need to specify the path
@@ -118,7 +118,7 @@ make install
 1. Run the following command to download the IvorySQL installation package.
 
 ```
-wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_8/ivorysql1-1.8-1.el7.x86_64.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_17/IvorySQL-1.17-fde5539-20250326.x86_64.rpm
 ```
 
 > Note: The installation package in the example may not be the latest version. It is recommended that you download the latest installation package.
@@ -127,7 +127,7 @@ wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_8/ivorys
 
 ```
 yum install -y libicu libxslt python3                   --Install dependencies first
-rpm -ivh ivorysql1-1.8-1.el7.x86_64.rpm
+rpm -ivh IvorySQL-1.17-fde5539-20250326.x86_64.rpm
 ```
 
 
@@ -140,7 +140,7 @@ rpm -ivh ivorysql1-1.8-1.el7.x86_64.rpm
 
 ```
 /usr/sbin/groupadd ivorysql
-/usr/sbin/useradd -g ivorysql ivorysql -c "IvorySQL1.8"
+/usr/sbin/useradd -g ivorysql ivorysql -c "IvorySQL1.17"
 passwd ivorysql
 ```
 
@@ -148,8 +148,8 @@ passwd ivorysql
 
 ```
 umask 022
-export LD_LIBRARY_PATH=/opt/IvorySQL-1.8/lib:$LD_LIBRARY_PATH
-export PATH=/opt/IvorySQL-1.8/bin:$PATH
+export LD_LIBRARY_PATH=/opt/IvorySQL-1.17/lib:$LD_LIBRARY_PATH
+export PATH=/opt/IvorySQL-1.17/bin:$PATH
 export PGDATA=/home/ivorysql/data
 ```
 
@@ -234,7 +234,7 @@ The editing contents are as follows:
 
 ```
 [Unit]
-Description=IvorySQL 1.8 database server
+Description=IvorySQL 1.17 database server
 Documentation=https://www.ivorysql.org
 Requires=network.target local-fs.target
 After=network.target local-fs.target
@@ -249,9 +249,9 @@ Environment=PGDATA=/home/ivorysql/data
 
 OOMScoreAdjust=-1000
 
-ExecStart=/opt/IvorySQL-1.8/bin/pg_ctl start -D ${PGDATA}
-ExecStop=/opt/IvorySQL-1.8/bin/pg_ctl stop -D ${PGDATA}
-ExecReload=/opt/IvorySQL-1.8/bin/pg_ctl reload -D ${PGDATA}
+ExecStart=/opt/IvorySQL-1.17/bin/pg_ctl start -D ${PGDATA}
+ExecStop=/opt/IvorySQL-1.17/bin/pg_ctl stop -D ${PGDATA}
+ExecReload=/opt/IvorySQL-1.17/bin/pg_ctl reload -D ${PGDATA}
 A}
 
 TimeoutSec=0
@@ -300,7 +300,7 @@ make clean
 ```
 systemctl disable ivorysql.servicemake                  --disable Service
 mv /usr/lib/systemd/system/ivorysql.service /tmp/       --the service file can be moved                                                             to/tmp or deleted
-rm -fr /opt/IvorySQL-1.8                             --remove residual installation                                                             directory
+rm -fr /opt/IvorySQL-1.17                             --remove residual installation                                                             directory
 ```
 
 > Note: There are also user ivorysql and corresponding environment variables, which can be cleaned according to the situation. Please make sure to make a backup before processing. There are also installed dependent packages, which can be uninstalled according to the situation.

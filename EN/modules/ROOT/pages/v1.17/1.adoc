@@ -1,0 +1,57 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+
+== Version Introduction
+
+[**Release date: Mar 26, 2025**]
+
+IvorySQL 1.17, based on PostgreSQL 14.17 and includes a variety of bug fixes. For a comprehensive list of updates, please https://docs.ivorysql.org/[visit our documentation site].
+
+== Known Issues
+
+* None
+
+== Enhancements
+
+* PostgreSQL 14.17
+1. Disallow substituting a schema or owner name into an extension script if the name contains a quote, backslash, or dollar sign.
+2. Fix handling of unknown-type arguments in DISTINCT "any" aggregate functions.
+3. Tighten security restrictions within REFRESH MATERIALIZED VIEW CONCURRENTLY.
+4. Restrict visibility of pg_stats_ext and pg_stats_ext_exprs entries to the table owner.
+5. Prevent unauthorized code execution during pg_dump.
+6. Ensure cached plans are marked as dependent on the calling role when RLS applies to a non-top-level table reference.
+7. Repair ABI break for extensions that work with struct ResultRelInfo.
+8. Harden PQescapeString and allied functions against invalidly-encoded input strings.
+9. Improve behavior of libpq's quoting functions.
+
+For further details, please visit PostgreSQL's release notes.
+
+* IvorySQL 1.17
+1. ARM64 Packaging for All Platforms: +
+Provides multi-platform media packages for ARM architecture, supporting both domestic and international mainstream operating systems, including Red Hat, Debian, Kylin, UOS, and NSAR OS, etc.
+2. X86 Packaging for All Platforms +
+Provides multi-platform media packages for X86 architecture, supporting both domestic and international mainstream operating systems, including Red Hat, Debian, Kylin, UOS, and NSAR OS, etc.
+3. Support for more open source plugins +
+Such as ddlx0.20, pgvector v0.8.0, PGroonga 3.0.0, PostGIS 3.4.0 and pgRouting3.5.1.
+
+== Source Code
+
+IvorySQL's development is maintained across two main repositories:
+
+* IvorySQL database source code: https://github.com/IvorySQL/IvorySQL[https://github.com/IvorySQL/IvorySQL]
+* IvorySQL official website: https://github.com/IvorySQL/Ivory-www[https://github.com/IvorySQL/Ivory-www]
+
+== Contributors
+
+The following individuals (in alphabetical order) have contributed to this release as patch authors, committers, reviewers, testers, or reporters of issues.
+
+- Dapeng Wang
+- Grant Zhou
+- Shiji Niu
+- Shuntian Jiao
+- Xinjie Lv
+- Xueyu Gao
+- Zhenhao Pan
+- Zheng Tao
