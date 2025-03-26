@@ -22,4 +22,4 @@ image::p18.png[]
 
 === Added PL/iSQL procedural language
 
--Similarly, in order to reduce the conflict between Oracle compatibility and PostgreSQL syntax, a separate set of Oracle-specific test cases is designed,This set of test cases is a copy of PostgreSQL' original test framework.
+- Similarly, in order to reduce the conflict between Oracle compatibility and PostgreSQL syntax, a separate set of Oracle-specific test cases is designed,This set of test cases is a copy of PostgreSQL' original test framework.
