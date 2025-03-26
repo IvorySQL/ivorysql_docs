@@ -71,16 +71,23 @@ IvorySQL主要包含2个代码仓库:
 == 贡献人员
 以下个人（按姓氏排序）作为补丁作者、提交者、审查者、测试者或问题报告者为此版本做出了贡献。
 
+- Alex Guo
 - Cary Huang
 - Denis Lussier
+- Flyingbeecd
 - Grant Zhou
+- Imran Zaheer
 - 高雪玉
+- 冯明冉
+- 冯若航
 - 矫顺田
 - 梁翔宇
 - 吕新杰
 - 牛世继
+- 潘振浩
+- 王康
 - 王丽
 - 王守波
-- 王志斌
 - 严少安
 - 赵法威
+- 邹仁利

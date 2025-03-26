@@ -81,6 +81,7 @@ The following individuals (in alphabetical order) have contributed to this relea
 - Kang Wang
 - Lily Wang
 - Mingran Feng
+- Renli Zou
 - Ruohang Feng
 - Shawn Yan
 - Shiji Niu
