@@ -86,8 +86,6 @@ Add below contents in ~/.bash_profile file:
 ```
 PATH=/usr/local/ivorysql/ivorysql-4/bin:$PATH
 export PATH
-LD_LIBRARY_PATH=/usr/local/ivorysql/ivorysql-4/lib
-export LD_LIBRARY_PATH
 PGDATA=/usr/local/ivorysql/ivorysql-4/data
 export PGDATA
 ```

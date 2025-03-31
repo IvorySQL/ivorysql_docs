@@ -93,7 +93,6 @@ Download address：https://sourceforge.net/projects/ora2pg/
 Set environment variables; Load environment variables; Because ORACLE must be defined_ HOME environment variable; This example configures environment variables under the ivorysql user
 
 ```
-export LD_LIBRARY_PATH=/usr/lib/oracle/18.3/client64/lib:$LD_LIBRARY_PATH
 export ORACLE_HOME=/usr/lib/oracle/18.3/client64
 # tar -zxvf DBD-Oracle-1.76.tar.gz # source /home/postgres/.bashrc
 # cd DBD-Oracle-1.76

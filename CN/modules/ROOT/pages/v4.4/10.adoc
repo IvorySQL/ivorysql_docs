@@ -93,7 +93,6 @@ DBI，Database Independent Interface，是 Perl 语言连接数据库的接口
 设置环境变量; 加载环境变量;因为必须定义ORACLE_HOME环境变量;本例在ivorysql用户下配置环境变量
 
 ```
-export LD_LIBRARY_PATH=/opt/oracle/product/19c/dbhome_1/lib:$LD_LIBRARY_PATH
 export ORACLE_HOME=/opt/oracle/product/19c/dbhome_1
 # tar -zxvf DBD-Oracle-1.76.tar.gz # source /home/postgres/.bashrc
 # cd DBD-Oracle-1.76
