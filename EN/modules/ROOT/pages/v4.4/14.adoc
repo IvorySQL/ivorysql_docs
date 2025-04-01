@@ -14,7 +14,7 @@ image::p18.png[]
 
 === Dual-port design
 
-- The Ivorysql port 5432 is kept compatible with the original PostgreSQL situation, so Ivorysql uses another separate port to log in, which defaults to 1521. Log in from this port, and the Oracle compatibility mode is used by default. If you need to log in from port 5432 and also enter compatibility mode, you need to set it through the ivorysql.compatible_mode parameters.
+- The Ivorysql port 5432 is kept compatible with the original PostgreSQL situation, so Ivorysql uses another separate port to log in, which defaults to 1521. Log in from this port, and the Oracle compatibility mode is used by default. If you need to log in from port 5432 and also enter compatibility mode, you must configure it using ``SET ivorysql.compatible_mode=oracle``.
 
 === Parser module design
 
@@ -22,4 +22,4 @@ image::p18.png[]
 
 === Added PL/iSQL procedural language
 
-- Similarly, in order to reduce the conflict between Oracle compatibility and PostgreSQL syntax, a separate set of Oracle-specific test cases is designed,This set of test cases is a copy of PostgreSQL' original test framework.
+- Added PL/iSQL procedural language compatible with Oracle's PL/SQL procedural language.

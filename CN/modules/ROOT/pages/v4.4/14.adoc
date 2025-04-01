@@ -13,7 +13,7 @@ image::p18.png[]
 
 === 双端口设计
 
-- 保持了Ivorysql 5432端口兼容原有postgres情况，因此 Ivorysql采用另一个独立的端口登录，默认为1521。从该端口登录，默认采用Oracle兼容模式。如果需要从5432端口登录且还要进入兼容模式，则需要通过Ivorysql.compatible_mode参数进行设置。
+- 保持了Ivorysql 5432端口兼容原有postgres情况，因此 Ivorysql采用另一个独立的端口登录，默认为1521。从该端口登录，默认采用Oracle兼容模式。如果需要从5432端口登录且还要进入兼容模式，则需要通过``SET ivorysql.compatible_mode=oracle``进行设置。
 
 === parser模块设计
 
@@ -21,4 +21,4 @@ image::p18.png[]
 
 === 新增PL/iSQL过程语言
 
-- 同样为了减少Oracle兼容与PostgreSQL语法不同而导致测试用例冲突的情况，因此单独设计了一套Oracle专用的测试用例。该套测试用例由PostgreSQL原有测试框架拷贝修改而来。
+- 新增PL/iSQL过程语言兼容Oracle的PL/SQL过程语言。

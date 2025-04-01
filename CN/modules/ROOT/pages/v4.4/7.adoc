@@ -87,8 +87,6 @@ $ sudo pg_basebackup -F p -P -X fetch -R -h <primary_ip> -p <primary_port> -U iv
 ```
 PATH=/usr/local/ivorysql/ivorysql-4/bin:$PATH
 export PATH
-LD_LIBRARY_PATH=/usr/local/ivorysql/ivorysql-4/lib
-export LD_LIBRARY_PATH
 PGDATA=/usr/local/ivorysql/ivorysql-4/data
 export PGDATA
 ```

@@ -187,8 +187,6 @@ Add below contents in ~/.bash_profile file and source to make it effective:
 ```
 PATH=/opt/IvorySQL-4.4/bin:$PATH
 export PATH
-LD_LIBRARY_PATH=/opt/IvorySQL-4.4/lib
-export LD_LIBRARY_PATH
 PGDATA=/opt/IvorySQL-4.4/data
 export PGDATA
 ```
