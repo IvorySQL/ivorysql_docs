@@ -19,6 +19,8 @@
 *** xref:v5.0/31.adoc[Dual Parser]
 ** Compatibility Framework
 *** xref:v5.0/30.adoc[initdb Process]
+** RowID
+*** xref:v5.0/32.adoc[RowID]
 * List of Oracle compatible features
 ** xref:v5.0/14.adoc[1、Ivorysql frame design]
 ** xref:v5.0/15.adoc[2、GUC Framework]
@@ -33,7 +35,6 @@
 ** xref:v5.0/27.adoc[11、Compatible with Oracle sequence]
 ** xref:v5.0/28.adoc[12、Package]
 ** xref:v5.0/29.adoc[13、Invisible Columns]
-** xref:v5.0/32.adoc[14、RowID Column]
 * xref:v5.0/23.adoc[Community contribution]
 * xref:v5.0/24.adoc[Tool Reference]
 * xref:v5.0/25.adoc[FAQ]
