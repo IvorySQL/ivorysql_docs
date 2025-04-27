@@ -9,8 +9,6 @@
 
 ==== Beginners
 
-If you are new to IvorySQL, you can click https://deploy-preview-83--ivorysql.netlify.app/zh-CN/[here] to learn about features of IvorySQL in the beginning.Also, you can download our source code through [Github](https://github.com/IvorySQL/IvorySQL).By the way, don't forget to give our IvorySQL community a star.
-
 You can refer to the following contents to install IvorySQL quickly.
 
 OS version of the demo:
@@ -30,7 +28,9 @@ Linux version 3.10.0-1160.el7.x86_64 (mockbuild@kbuilder.bsys.centos.org) (gcc v
 **Getting the source**
 [source,]
 ----
-[highgo@ivorysql ~]$ ls
+[highgo@ivorysql ~]$ wget https://github.com/IvorySQL/IvorySQL/archive/refs/tags/IvorySQL_1.17.tar.gz
+[highgo@ivorysql ~]$ tar -zxvf  IvorySQL_1.17.tar.gz 
+[highgo@ivorysql ~]$ mv IvorySQL-IvorySQL_1.17 IvorySQL; ls
 IvorySQL
 [highgo@ivorysql ~]$ cd IvorySQL/
 ----

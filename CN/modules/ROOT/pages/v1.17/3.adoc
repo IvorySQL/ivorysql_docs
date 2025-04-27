@@ -9,8 +9,6 @@
 
 ==== 新用户指南
 
-如果您刚开始接触IvorySQL，您可以访问我们的 https://docs.ivorysql.org/cn/ivorysql-doc/beta/beta/1[地址]来初步了解IvorySQL的各项特性。您同样可以前往我们的 https://github.com/IvorySQL/IvorySQL[Github]将我们的项目源代码下载到您的终端中。
-
 如果您想快速安装IvorySQL并且进行一些数据库体验，您可以参考如下：
 
 笔者的OS版本如下
@@ -28,18 +26,19 @@ Linux version 3.10.0-1160.el7.x86_64 (mockbuild@kbuilder.bsys.centos.org) (gcc v
 [highgo@ivorysql /]$ cd /home/highgo
 ----
 
-**使用git命令下载项目源代码**
+**使用wget命令下载项目源代码**
 
 [source,]
 ----
-[highgo@ivorysql ~]$ git clone https://github.com/IvorySQL/IvorySQL.git
+[highgo@ivorysql ~]$ wget https://github.com/IvorySQL/IvorySQL/archive/refs/tags/IvorySQL_1.17.tar.gz
+[highgo@ivorysql ~]$ tar -zxvf  IvorySQL_1.17.tar.gz 
 ----
 
 **进入下载好的项目目录中**
 
 [source,]
 ----
-[highgo@ivorysql ~]$ ls
+[highgo@ivorysql ~]$ mv IvorySQL-IvorySQL_1.17 IvorySQL; ls
 IvorySQL
 [highgo@ivorysql ~]$ cd IvorySQL/
 ----
