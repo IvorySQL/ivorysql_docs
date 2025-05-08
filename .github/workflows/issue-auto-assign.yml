@@ -14,7 +14,7 @@ jobs:
       - name: Assign to user on /assign command
         uses: actions/github-script@v6
         with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
+          github-token: ${{secrets.IVORY_TOKEN}}
           script: |
             const commentBody = context.payload.comment.body.trim().toLowerCase();
             const commenter = context.payload.comment.user.login;
