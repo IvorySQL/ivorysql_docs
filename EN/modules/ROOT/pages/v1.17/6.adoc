@@ -7,7 +7,7 @@
 
 ## CentOS Installation overview
 
-This article introduces the installation process and precautions of Ivorysql on Linux platform. This article mainly demonstrates rpm package installation steps, and source code installation steps of the database under the Centos 7 environment.
+This article introduces the installation process and precautions of IvorySQL on Linux platform. This article mainly demonstrates rpm package installation steps, and source code installation steps of the database under the Centos 7 environment.
 
 
 === Software and hardware requirements
@@ -90,7 +90,7 @@ Configuration: Root users execute the following commands to configure:
     ./configure --prefix=/usr/local/ivorysql/ivorysql-1.17
 ```
 
-> Note: Because -- prefix is not provided, it is installed in/usr/local/pgsql by default, so you need to specify the path
+> Note: If the `--prefix` option is not provided, the default installation path will be `/usr/local/ivorysql`.
 
 > Note: We should remember the specified directory, because the system cannot find out where the compiled and installed programs are. More configure parameters can be viewed through "./configure -- help". You can also view the PostgreSQL manual
 
@@ -306,7 +306,7 @@ rm -fr /opt/IvorySQL-1.17                             --remove residual installa
 
 ## Ubuntu Installation overview
 
-This article introduces the installation process and precautions of Ivorysql on Linux platform. This article mainly demonstrates rpm package installation steps, and source code installation steps of the database under the Ubuntu 2404 environment.
+This article introduces the installation process and precautions of IvorySQL on Linux platform. This article mainly demonstrates rpm package installation steps, and source code installation steps of the database under the Ubuntu 2404 environment.
 
 
 === Software and hardware requirements
@@ -376,14 +376,10 @@ Configuration: Root users execute the following commands to configure:
 
 ```
 git checkout tags/Ivory_REL_1_17
-./configure \
---prefix=/usr/local/ivorysql/ivorysql-1.17 \
---enable-debug \
---enable-cassert \
---enable-depend
+./configure --prefix=/usr/local/ivorysql/ivorysql-1.17
 ```
 
-> Note: Because -- prefix is not provided, it is installed in/usr/local/pgsql by default, so you need to specify the path
+> Note: If the `--prefix` option is not provided, the default installation path will be `/usr/local/ivorysql`.
 
 > Note: We should remember the specified directory, because the system cannot find out where the compiled and installed programs are. More configure parameters can be viewed through "./configure -- help". You can also view the PostgreSQL manual
 
@@ -406,7 +402,7 @@ Installation:
 make install
 ```
 
-==== Install the IvorySql database using the DEB package
+==== Install the IvorySQL database using the DEB package
 
 1. Run the following command to download the IvorySQL installation package.
 
@@ -465,7 +461,7 @@ firewall-cmd --zone=public --add-port=1521/tcp --permanent
 firewall-cmd --reload
 ```
 
-> Note: The default port is 1521. If the port is not opened, the external client will fail to connect via IP.
+> Note: The default port is 1521. If the port is not opened, the external client will fail to connect via port.
 
 4.Initialization: Under user ivorysql, simply execute initdb to complete initialization:
 
@@ -478,13 +474,14 @@ initdb -D $PGDATA
 5.Start database: use pg_ Ctl starts the database service:
 
 ```
-pg_ctl -D /home/ivorysql/data -l logfile start
+pg_ctl -D $PGDATA -l logfile start
 ```
 
 View the status and start successfully:
 
 ```
-pg_ctl status
+pg_ctl -D $PGDATA status
+pg_ctl: server is running (PID: 2273)
 ```
 
 === Configure service
@@ -596,7 +593,7 @@ make clean
 3.Delete residual directories and files:
 
 ```
-systemctl disable ivorysql.servicemake                  --disable Service
+systemctl disable ivorysql.service                      --disable Service
 mv /usr/lib/systemd/system/ivorysql.service /tmp/       --the service file can be moved                                                             to/tmp or deleted
 rm -fr /usr/local/ivorysql/ivorysql-1.17                --remove residual installation                                                             directory
 ```

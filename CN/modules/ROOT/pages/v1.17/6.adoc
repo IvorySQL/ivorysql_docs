@@ -7,7 +7,7 @@
 
 == CentOS安装概述
 
-本文介绍 Ivorysql 在Linux平台（以CentOS 7为例）的安装过程及注意事项。本文主要演示数据库在Centos 7环境下rpm包安装步骤、源码安装步骤。
+本文介绍 IvorySQL 在Linux平台（以CentOS 7为例）的安装过程及注意事项。本文主要演示数据库在Centos 7环境下rpm包安装步骤、源码安装步骤。
 
 === 软硬件要求
 
@@ -85,7 +85,7 @@ sudo yum groupinstall -y 'Development Tools'
 git checkout tags/Ivory_REL_1_17
 ./configure --prefix=/usr/local/ivorysql/ivorysql-1.17
 ----
-> 说明： 由于没有提供 `--prefix`，默认安装在 `/usr/local/ivorysql`，故需要指定路径。
+> 说明： 如果没有提供 `--prefix`，默认将安装在 `/usr/local/ivorysql`。
 >
 > 注意：我们要记住指定的目录，因为系统查不出已经编译安装的程序在哪。更多 configure 参数通过 `./configure --help` 查看。还可以查看 PostgreSQL 手册。
 
@@ -177,7 +177,7 @@ firewall-cmd --reload
     host    all             all             0.0.0.0/0               trust
 
 
-> 注意：这里是trust，就是说可以免密登录。
+> 注意：trust，设置免密登录。
 
 执行以下命令加载配置：
 
@@ -274,7 +274,7 @@ rm -fr /opt/IvorySQL-1.17                                --删除残留安装目
 
 == Ubuntu安装概述
 
-本文介绍 Ivorysql 在Linux平台Ubuntu（以Ubuntu2404为例）的安装过程及注意事项。本文主要演示数据库在Ubuntu 2404环境下deb包安装步骤、源码安装步骤。
+本文介绍 IvorySQL 在Linux平台Ubuntu（以Ubuntu2404为例）的安装过程及注意事项。演示数据库在Ubuntu 2404环境下deb包安装步骤、源码安装步骤。
 
 === 软硬件要求
 
@@ -318,7 +318,7 @@ IvorySQL 数据库支持Ubuntu24.x操作系统。详细信息，参考<<#_软硬
 
 === 获取安装包
 
-您可以通过 源码安装 IvorySQL 数据库或 DEB 包安装。
+您可以通过源码安装IvorySQL数据库或DEB包安装。
 
 ==== 使用源码构建IvorySQL数据库
 
@@ -341,14 +341,10 @@ sudo apt install -y gcc make flex bison
 3.1 配置：Root用户执行以下命令进行配置：
 ----
 git checkout tags/Ivory_REL_1_17
-./configure \
---prefix=/usr/local/ivorysql/ivorysql-1.17 \
---enable-debug \
---enable-cassert \
---enable-depend
+./configure --prefix=/usr/local/ivorysql/ivorysql-1.17
 
 ----
-> 说明： 由于没有提供 `--prefix`，默认安装在 `/usr/local/ivorysql`，故需要指定路径。
+> 说明： 如果没有提供 `--prefix`，默认将安装在 `/usr/local/ivorysql`。
 >
 > 注意：我们要记住指定的目录，因为系统查不出已经编译安装的程序在哪。更多 configure 参数通过 `./configure --help` 查看。还可以查看 PostgreSQL 手册。
 
@@ -356,7 +352,7 @@ git checkout tags/Ivory_REL_1_17
 
     make
 
-要在安装新编译的服务之前使用回归测试测试一下，以下命令均可：
+在安装新编译的服务之前，建议先进行回归测试以确保稳定性，可以使用以下任意命令执行测试：
 
 ----
 make check
@@ -368,7 +364,7 @@ make all-check-world
     sudo make install
 
 
-==== 使用 DEB 包安装 IvorySql 数据库
+==== 使用 DEB 包安装 IvorySQL 数据库
 
 1. 运行以下命令，下载 IvorySQL 安装包。
 ----
@@ -419,7 +415,7 @@ firewall-cmd --zone=public --add-port=1521/tcp --permanent
 firewall-cmd --reload
 ----
 
-> 说明：默认端口是1521，如果不开放该端口，外部客户端通过ip连接会失败。
+> 说明：默认端口是1521，外部客户端若想通过此端口连接需开放该端口。
 
 4.初始化：在用户ivorysql下，简单执行initdb就可以完成初始化：
 
@@ -430,23 +426,24 @@ firewall-cmd --reload
 
 5.启动数据库：使用pg_ctl启动数据库服务：
 
-    pg_ctl -D /home/ivorysql/data -l logfile start
+    pg_ctl -D $PGDATA -l logfile start
 
-查看状态，启动成功：
+查看状态：
 
-    pg_ctl status
+    pg_ctl -D $PGDATA status
+
+启动成功会有如下输出：
+
+    pg_ctl: server is running (PID: 2273)
 
 === 配置服务
 
-修改配置文件权限为可读写：
-chmod 755 $PGDATA/*
-
-1. 客户端验证：修改 /home/ivorysql/data/pg_hba.conf，追加以下内容：
+1. 客户端验证：修改 $PGDATA/pg_hba.conf，追加以下内容：
 
     host    all             all             0.0.0.0/0               trust
 
 
-> 注意：这里是trust，就是说可以免密登录。
+> 注意：trust，设置免密登录。
 
 监听地址：修改$PGDATA/postgresql.conf ，追加以下内容：
 
@@ -534,9 +531,9 @@ make clean
 3.删除残余目录和文件：
 
 ```
-systemctl disable ivorysql.servicemake                  --禁用服务
-mv /usr/lib/systemd/system/ivorysql.service /tmp/       --服务文件移到/tmp，删除也可以
-rm -fr /usr/local/ivorysql/ivorysql-1.17                              --删除残留安装目录
+systemctl disable ivorysql.service                      --禁用服务
+mv /usr/lib/systemd/system/ivorysql.service /tmp/       --服务文件移到/tmp
+rm -fr /usr/local/ivorysql/ivorysql-1.17                --删除残留安装目录
 ```
 
 > 说明：还有用户ivorysql以及对应的环境变量，可以根据情况是否清理。剩下的就是数据目录了，请务必做好备份再做处理。还有安装的依赖包，可根据情况决定是否卸载。
