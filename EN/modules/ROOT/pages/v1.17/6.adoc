@@ -5,9 +5,9 @@
 
 # **Installation Deployment**
 
-## Installation overview
+## CentOS Installation overview
 
-This article introduces the installation process and precautions of Ivorysql on Linux platform. This article mainly demonstrates rpm package installation steps, and source code installation steps of the database under the Centos 7 environment.
+This article introduces the installation process and precautions of IvorySQL on Linux platform. This article mainly demonstrates rpm package installation steps, and source code installation steps of the database under the Centos 7 environment.
 
 
 === Software and hardware requirements
@@ -90,7 +90,7 @@ Configuration: Root users execute the following commands to configure:
     ./configure --prefix=/usr/local/ivorysql/ivorysql-1.17
 ```
 
-> Note: Because -- prefix is not provided, it is installed in/usr/local/pgsql by default, so you need to specify the path
+> Note: If the `--prefix` option is not provided, the default installation path will be `/usr/local/ivorysql`.
 
 > Note: We should remember the specified directory, because the system cannot find out where the compiled and installed programs are. More configure parameters can be viewed through "./configure -- help". You can also view the PostgreSQL manual
 
@@ -144,7 +144,7 @@ rpm -ivh IvorySQL-1.17-fde5539-20250326.x86_64.rpm
 passwd ivorysql
 ```
 
-2.Environment variable: switch to user ivorysql, modify the file "/home/ivorysql/. bash_profile", and configure the environment variable：
+2.Environment variable: switch to user ivorysql, modify the file "/home/ivorysql/.bash_profile", and configure the environment variable：
 
 ```
 umask 022
@@ -252,7 +252,6 @@ OOMScoreAdjust=-1000
 ExecStart=/opt/IvorySQL-1.17/bin/pg_ctl start -D ${PGDATA}
 ExecStop=/opt/IvorySQL-1.17/bin/pg_ctl stop -D ${PGDATA}
 ExecReload=/opt/IvorySQL-1.17/bin/pg_ctl reload -D ${PGDATA}
-A}
 
 TimeoutSec=0
 
@@ -285,7 +284,7 @@ systemctl reload ivorysql.service
 1.Backup data: we can protect the directory. It is better to stop the database service and make a backup.
 
 ```
-systemctl stop ivorysql-1.service
+systemctl stop ivorysql.service
 ```
 
 2.Compile and uninstall: switch the root session to the source directory and execute the following commands respectively:
@@ -301,6 +300,302 @@ make clean
 systemctl disable ivorysql.servicemake                  --disable Service
 mv /usr/lib/systemd/system/ivorysql.service /tmp/       --the service file can be moved                                                             to/tmp or deleted
 rm -fr /opt/IvorySQL-1.17                             --remove residual installation                                                             directory
+```
+
+> Note: There are also user ivorysql and corresponding environment variables, which can be cleaned according to the situation. Please make sure to make a backup before processing. There are also installed dependent packages, which can be uninstalled according to the situation.
+
+## Ubuntu Installation overview
+
+This article introduces the installation process and precautions of IvorySQL on Linux platform. This article mainly demonstrates rpm package installation steps, and source code installation steps of the database under the Ubuntu 2404 environment.
+
+
+=== Software and hardware requirements
+
+==== Introduction to software resources
+|====
+| operating system | Yum source download address
+|Ubuntu 2404|https://github.com/IvorySQL/IvorySQL/releases
+|====
+
+==== Hardware resource preparation
+
+|====
+| Configuration parameters | **Minimum configuration** | **Recommended configuration**
+| **CPU** | 4 cores | 16 cores
+| **Memory** | 4GB | 64GB
+| **Storage** | 800MB，mechanical hard disk | Above 5GB，SSD or NvMe
+| **Network** | gigabit lan | 10 Gigabit network
+|====
+
+=== Environment and configuration check
+
+Before deploying the IvorySQL database, you need to check the system environment and configuration
+
+==== View resources
+
+The IvorySQL database supports CentOS 7. X, operating systems. For details, refer to <<#_software_and_hardware_requirements>>.
+
+==== View the operating system
+
+Run the following command to view the operating system information：
+
+```
+cat /etc/os-release
+```
+
+==== View kernel parameters
+
+```
+uname -r 
+```
+
+=== Get installation package
+
+You can install the IvorySql database or DEB package through the source code.
+
+==== Use source code to build IvorySQL database
+
+1.Get the source code: Run the following command to clone the source code of the IvorySQL database to your build machine:
+
+```
+git clone https://github.com/IvorySQL/IvorySQL.git
+```
+
+> Note: To clone code, you need to install and configure Git first. For details, refer to https://git-scm.com/doc[Git doc].
+
+2.Install dependent packages: To compile IvorySQL from source code, you must ensure that prerequisite packages are available on the system. Execute the following command to install related packages：
+
+```
+sudo yum install -y bison-devel readline-devel zlib-devel openssl-devel wget
+sudo apt install -y gcc make flex bison
+```
+
+3.Self-compilation and installation: The source code obtained previously is in the folder IvorySQL. Next, we will enter this folder for operation.
+
+Configuration: Root users execute the following commands to configure:
+
+```
+git checkout tags/Ivory_REL_1_17
+./configure --prefix=/usr/local/ivorysql/ivorysql-1.17
+```
+
+> Note: If the `--prefix` option is not provided, the default installation path will be `/usr/local/ivorysql`.
+
+> Note: We should remember the specified directory, because the system cannot find out where the compiled and installed programs are. More configure parameters can be viewed through "./configure -- help". You can also view the PostgreSQL manual
+
+Compile and install: After the configuration is completed, execute make to compile:
+
+```
+make
+```
+
+Perform a regression test before installing the newly compiled service (the following commands can be used):
+
+```
+make check
+make all-check-world
+```
+
+Installation:
+
+```
+make install
+```
+
+==== Install the IvorySQL database using the DEB package
+
+1. Run the following command to download the IvorySQL installation package.
+
+```
+wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_1.17/IvorySQL-1.17-fde5539-20250326.amd64.deb
+```
+
+> Note: The installation package in the example may not be the latest version. It is recommended that you download the latest installation package.
+
+2.Run the following command to install IvorySQL.
+
+```
+sudo apt install ./IvorySQL-1.17-fde5539-20250326.amd64.deb
+```
+
+
+
+=== Initialize database service
+
+==== Initialize database
+
+1.Create an operating system user: under the user root session, create a new user ivorysql:
+
+```
+/usr/sbin/groupadd ivorysql
+/usr/sbin/useradd -m -g ivorysql -s /bin/bash  -c "IvorySQL1.17" ivorysql
+usermod -a -G sudo ivorysql
+passwd ivorysql
+
+mkdir /home/ivorysql
+chown -R ivorysql:ivorysql /home/ivorysql
+chmod 755 /home/ivorysql
+```
+
+2.Environment variable: switch to user ivorysql, modify the file "/home/ivorysql/.bashrc", and configure the environment variable：
+
+```
+umask 022
+export LD_LIBRARY_PATH=/opt/IvorySQL-1.17/lib:$LD_LIBRARY_PATH
+export PATH=/opt/IvorySQL-1.17/bin:/usr/local/ivorysql/ivorysql-1.17/bin:$PATH #depend on your install path
+export PGDATA=/home/ivorysql/data
+```
+
+Make the environment variable effective in the current ivorysql user session:
+
+```
+source .bashrc
+```
+
+You can also log in again or open a new user ivorysql session.
+
+3.Set the firewall: If the firewall is enabled, port 1521 needs to be opened:
+
+```
+firewall-cmd --zone=public --add-port=1521/tcp --permanent
+firewall-cmd --reload
+```
+
+> Note: The default port is 1521. If the port is not opened, the external client will fail to connect via port.
+
+4.Initialization: Under user ivorysql, simply execute initdb to complete initialization:
+
+```
+initdb -D $PGDATA
+```
+
+> Note: The initdb operation is the same as PostgreSQL. It can be initialized according to the habits of PG.
+
+5.Start database: use pg_ Ctl starts the database service:
+
+```
+pg_ctl -D $PGDATA -l logfile start
+```
+
+View the status and start successfully:
+
+```
+pg_ctl -D $PGDATA status
+pg_ctl: server is running (PID: 2273)
+```
+
+=== Configure service
+
+1.Client authentication: modify /home/ivorysql/data/pg_hba.conf, add the following:
+
+```
+host    all             all             0.0.0.0/0               trust
+```
+
+> Note: This is trust, which means that you can log in without password.
+
+Modify listening address:
+
+modify /home/ivorysql/data/postgresql.conf, add the following:
+
+```
+listen_addresses = '*'
+```
+> Note: The default is listening at 127.0.0.1. The service cannot be connected outside the host.
+
+Execute the following command to load the configuration:
+
+```
+pg_ctl reload
+```
+
+2.Basic parameters
+
+Connect to the database through psql:
+
+```
+psql
+```
+
+3.Guard service
+
+Create a service file:
+
+```
+sudo vi /etc/systemd/system/ivorysql.service
+```
+
+The editing contents are as follows:
+
+```
+[Unit]
+Description=IvorySQL 1.17 database server
+Documentation=https://www.ivorysql.org
+Requires=network.target local-fs.target
+After=network.target local-fs.target
+
+[Service]
+Type=forking
+
+User=ivorysql
+Group=ivorysql
+
+Environment=PGDATA=/home/ivorysql/data
+
+OOMScoreAdjust=-1000
+
+ExecStart=/usr/local/ivorysql/ivorysql-1.17/bin/pg_ctl start -D ${PGDATA}
+ExecStop=/usr/local/ivorysql/ivorysql-1.17/bin/pg_ctl stop -D ${PGDATA}
+ExecReload=/usr/local/ivorysql/ivorysql-1.17/bin/pg_ctl reload -D ${PGDATA}
+
+TimeoutSec=0
+
+[Install]
+WantedBy=multi-user.target
+
+```
+
+> Note: There are many ways to write a service. Be careful when using it in a production environment. Please repeat the test several times.
+
+Stop pg_ The database service started by ctl enables the systemd service and starts:
+
+```
+systemctl enable --now ivorysql.service
+```
+
+IvorSQL database service operation command:
+
+```
+systemctl start ivorysql.service           
+systemctl stop ivorysql.service            
+systemctl restart ivorysql.service         
+systemctl status ivorysql.service          
+systemctl reload ivorysql.service           
+```
+
+=== Uninstall the IvorySQL database
+
+==== Compile Uninstall
+
+1.Backup data: we can protect the directory. It is better to stop the database service and make a backup.
+
+```
+systemctl stop ivorysql.service
+```
+
+2.Compile and uninstall: switch the root session to the source directory and execute the following commands respectively:
+
+```
+make uninstall
+make clean
+```
+
+3.Delete residual directories and files:
+
+```
+systemctl disable ivorysql.service                      --disable Service
+mv /usr/lib/systemd/system/ivorysql.service /tmp/       --the service file can be moved                                                             to/tmp or deleted
+rm -fr /usr/local/ivorysql/ivorysql-1.17                --remove residual installation                                                             directory
 ```
 
 > Note: There are also user ivorysql and corresponding environment variables, which can be cleaned according to the situation. Please make sure to make a backup before processing. There are also installed dependent packages, which can be uninstalled according to the situation.
