@@ -21,21 +21,26 @@ jobs:
             const issueNumber = context.issue.number;
             const repoOwner = context.repo.owner;
             const repoName = context.repo.repo;
+
             if (commentBody === '/assign') {
               console.log(`User @${commenter} commented "/assign" on issue #${issueNumber}. Attempting to assign.`);
+
               if (commenter.endsWith('[bot]') || commenter === 'github-actions[bot]') {
                 console.log(`Skipping assignment for bot user: ${commenter}`);
                 return;
               }
+
               const { data: issue } = await github.rest.issues.get({
                 owner: repoOwner,
                 repo: repoName,
                 issue_number: issueNumber
               });
+
               if (issue.assignees && issue.assignees.some(a => a.login === commenter)) {
                 console.log(`Issue #${issueNumber} is already assigned to @${commenter}. No action needed.`);
                 return;
               }
+
               if (issue.state === 'closed') {
                 console.log(`Issue #${issueNumber} is closed. No assignment will be made.`);
                 await github.rest.issues.createComment({
@@ -46,6 +51,7 @@ jobs:
                 });
                 return;
               }
+
               try {
                 await github.rest.issues.addAssignees({
                   owner: repoOwner,
