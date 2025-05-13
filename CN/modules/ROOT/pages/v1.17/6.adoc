@@ -3,7 +3,7 @@
 :sectnumlevels: 5
 
 
-= **安装部署**
+= **安装指南**
 
 == CentOS安装概述
 

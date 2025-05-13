@@ -1,33 +1,285 @@
+
 :sectnums:
 :sectnumlevels: 5
 
-:imagesdir: ./_images
-
-= 双模式设计
+= 引用标识符的大小写转换设计
 
 == 目的
 
-- 为了满足PG模式和兼容Oracle模式，Ivorysql设计了pg和oracle两种模式。并且可以在initdb时指定模式;
+- 为了满足PG和Oracle的引用标识符大小写兼容，ivorysql设计了三种引用标识符的大小写转换模式。通过guc参数“identifier_case_switch”选择转换模式;
 
 == 功能
 
-- Initdb -m 初始化，需要判断不同的模式，其中Oracle模式下，需要执行postgres_oracle.bki的SQL语句;
-- 启动时会根据初始化模式，判断是否为oracle兼容模式。
+=== 大小写转换的三种模式（默认为interchange）
 
+- 如果 guc参数“identifier_case_switch”值为“normal”
+
+   1). 保持双引号所引用的标识符中的字母大小写不变。
+
+- 如果 guc参数“identifier_case_switch”值为“interchange”：
+
+   1). 如果双引号所引用的标识符中的字母全部为大写，则将大写转换为小写。
+
+   2). 如果双引号所引用的标识符中的字母全部为小写，则将小写转换为大写。
+
+   3). 如果用双引号引起来的标识符中的字母是大小写混合的，则保持标识符不变。
+
+- 如果 guc参数“identifier_case_switch”值为“lowercase”
+
+   1). 如果双引号所引用的标识符中的字母全部为大写，则将大写转换为小写。
+
+   2). 如果用双引号引起来的标识符中的字母是大小写混合的，则保持标识符不变。
+
+=== 初始化数据库集簇时
+
+- 在initdb程序中加入 -C选项设置大小写转换模式，-C对应的值为：
+
+  "normal"   ------ "0"同义
+
+  "interchange" ------ "1"同义
+
+  "lowercase"  ------ "2"同义
+
+  在初始化数据库集簇的过程中，将大小写转换模式保存到data目录的global/pg_control文件中。
+  
+=== 经典用例
+
+**normal**
 ```
-database_mode：用于表示初始化模式；
-database_mode=DB_PG，PG模式，且不可切换；
-database_mode=DB_ORACLE，Oracle兼容模式；
+ivorysql=# SET ivorysql.compatible_mode to oracle;
+SET
+
+ivorysql=# SET ivorysql.enable_case_switch = true;
+SET
+
+ivorysql=# SET ivorysql.identifier_case_switch = normal;
+SET
+
+ivorysql=# CREATE TABLE "NORMAL_1"(c1 int, c2 int);
+CREATE TABLE
+
+ivorysql=# CREATE TABLE "Normal_2"(c1 int, c2 int);
+CREATE TABLE
+
+ivorysql=# CREATE TABLE "normal_3"(c1 int, c2 int);
+CREATE TABLE
+
+ivorysql=# select * from "NORMAL_1";
+ c1 | c2
+----+----
+(0 rows)
+
+ivorysql=# select * from "Normal_1";
+ERROR:  relation "Normal_1" does not exist
+LINE 1: select * from "Normal_1";
+
+ivorysql=# select * from "normal_1";
+ERROR:  relation "normal" does not exist
+LINE 1: select * from "normal";
+
+ivorysql=# select * from NORMAL_1;
+ERROR:  relation "normal_1" does not exist
+LINE 1: select * from NORMAL_1;
+
+ivorysql=# select * from "Normal_2";
+ c1 | c2
+----+----
+(0 rows)
+
+ivorysql=# select * from "NORMAL_2";
+ERROR:  relation "NORMAL_2" does not exist
+LINE 1: select * from "NORMAL_2";
+
+ivorysql=# select * from "normal_2";
+ERROR:  relation "normal_2" does not exist
+LINE 1: select * from "normal_2";
+
+ivorysql=# select * from Normal_2;
+ERROR:  relation "normal_2" does not exist
+LINE 1: select * from Normal_2;
+
+ivorysql=# select * from "normal_3";
+ c1 | c2
+----+----
+(0 rows)
+
+ivorysql=# select * from "NORMAL_3";
+ERROR:  relation "NORMAL_3" does not exist
+LINE 1: select * from "NORMAL_3";
+
+ivorysql=# select * from "Normal_3";
+ERROR:  relation "Normal_3" does not exist
+LINE 1: select * from "Normal_3";
+
+ivorysql=# drop table "NORMAL_1";
+DROP TABLE
+ivorysql=# drop table "Normal_2";
+DROP TABLE
+ivorysql=# drop table "normal_3";
+DROP TABLE
 ```
 
-== 测试用例
-
+**interchange**
 ```
-初始化PG模式：
-./initdb -D ../data -m pg
+ivorysql=# SET ivorysql.compatible_mode to oracle;
+SET
 
-初始化oracle兼容模式：
-./initdb -D ../data -m oracle
-或
-./initdb -D ../data
+ivorysql=# SET ivorysql.enable_case_switch = true;
+SET
+
+ivorysql=# SET ivorysql.identifier_case_switch = interchange;
+SET
+
+ivorysql=# CREATE TABLE "INTER_CHANGE_1"(c1 int, c2 int);
+CREATE TABLE
+
+ivorysql=# CREATE TABLE "Inter_Change_2"(c1 int, c2 int);
+CREATE TABLE
+
+ivorysql=# CREATE TABLE "inter_change_3"(c1 int, c2 int);
+CREATE TABLE
+
+ivorysql=# select * from "INTER_CHANGE_1";
+ c1 | c2
+----+----
+(0 rows)
+
+ivorysql=# select * from "Inter_Change_1";
+ERROR:  relation "Inter_Change_1" does not exist
+LINE 1: select * from "Inter_Change_1";
+
+ivorysql=# select * from "inter_change_1";
+ERROR:  relation "INTER_CHANGE_1" does not exist
+LINE 1: select * from "inter_change_1";
+
+ivorysql=# select * from INTER_CHANGE_1;
+ c1 | c2
+----+----
+(0 rows)
+
+ivorysql=# select * from "Inter_Change_2";
+ c1 | c2
+----+----
+(0 rows)
+
+ivorysql=# select * from "INTER_CHANGE_2";
+ERROR:  relation "inter_change_2" does not exist
+LINE 1: select * from "INTER_CHANGE_2";
+
+ivorysql=# select * from "inter_change_2";
+ERROR:  relation "INTER_CHANGE_2" does not exist
+LINE 1: select * from "inter_change_2";
+
+ivorysql=# select * from Inter_Change_2;
+ERROR:  relation "inter_change_2" does not exist
+LINE 1: select * from Inter_Change_2;
+
+ivorysql=# select * from "inter_change_3";
+ c1 | c2
+----+----
+(0 rows)
+
+ivorysql=# select * from "INTER_CHANGE_3";
+ERROR:  relation "inter_change_3" does not exist
+LINE 1: select * from "INTER_CHANGE_3";
+
+ivorysql=# select * from "Inter_Change_3";
+ERROR:  relation "Inter_Change_3" does not exist
+LINE 1: select * from "Inter_Change_3";
+
+ivorysql=# select * from inter_change_3;
+ERROR:  relation "inter_change_3" does not exist
+LINE 1: select * from "INTER_CHANGE_3";
+
+ivorysql=# drop table "INTER_CHANGE_1";
+DROP TABLE
+ivorysql=# drop table "Inter_Change_2";
+DROP TABLE
+ivorysql=# drop table "inter_change_3";
+DROP TABLE
+```
+
+**lowercase**
+```
+ivorysql=# SET ivorysql.compatible_mode to oracle;
+SET
+
+ivorysql=# SET ivorysql.enable_case_switch = true;
+SET
+
+ivorysql=# SET ivorysql.identifier_case_switch = lowercase;
+SET
+
+ivorysql=# CREATE TABLE "LOWER_CASE_1"(c1 int, c2 int);
+CREATE TABLE
+
+ivorysql=# CREATE TABLE "Lower_Case_2"(c1 int, c2 int);
+CREATE TABLE
+
+ivorysql=# CREATE TABLE "lower_case_3"(c1 int, c2 int);
+CREATE TABLE
+
+ivorysql=# select * from "LOWER_CASE_1";
+ c1 | c2
+----+----
+(0 rows)
+
+ivorysql=# select * from "Lower_Case_1";
+ERROR:  relation "Lower_Case_1" does not exist
+LINE 1: select * from "Lower_Case_1";
+
+ivorysql=# select * from "lower_case_1";
+ c1 | c2
+----+----
+(0 行记录)
+
+
+ivorysql=# select * from LOWER_CASE_1;
+ c1 | c2
+----+----
+(0 行记录)
+
+
+ivorysql=# select * from "Lower_Case_2";
+ c1 | c2
+----+----
+(0 rows)
+
+ivorysql=# select * from "LOWER_CASE_2";
+ERROR:  relation "lower_case_2" does not exist
+LINE 1: select * from "LOWER_CASE_2";
+
+ivorysql=# select * from "lower_case_2";
+ERROR:  relation "lower_case_2" does not exist
+LINE 1: select * from "lower_case_2";
+
+ivorysql=# select * from Lower_Case_2;
+ERROR:  relation "lower_case_2" does not exist
+LINE 1: select * from Lower_Case_2;
+
+ivorysql=# select * from "lower_case_3";
+ c1 | c2
+----+----
+(0 rows)
+
+ivorysql=# select * from "LOWER_CASE_3";
+ c1 | c2
+----+----
+(0 rows)
+
+ivorysql=# select * from "Lower_Case_3";
+ERROR:  relation "Lower_Case_3" does not exist
+LINE 1: select * from "Lower_Case_3";
+
+ivorysql=# select * from LOWER_CASE_3;
+ c1 | c2
+----+----
+(0 行记录)
+
+ivorysql=# drop table "NORMAL_1";
+DROP TABLE
+ivorysql=# drop table "Normal_2";
+DROP TABLE
+ivorysql=# drop table "normal_3";
+DROP TABLE
 ```
