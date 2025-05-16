@@ -29,7 +29,7 @@ Our team is a continuously open team, focusing on parts of IvorySQL. In our team
 
 == **Contributor's Guide**
 
-Before contributing, we need to know the current version of IvorySQL and the version of the document.At present, we maintain versions after version *4.2*. Our version follows the update pace of PG. Please update to the latest version before contributing. After that, we need to read the format requirements carefully and be familiar with code format, code comment format, issue format, pull PR title format, document contribution format, and article contribution format. These can help you become a contributor of IvorySQL as soon as possible.
+Before contributing, we need to know the current version of IvorySQL and the version of the document.At present, we maintain versions after version *4.4*. Our version follows the update pace of PG. Please update to the latest version before contributing. After that, we need to read the format requirements carefully and be familiar with code format, code comment format, issue format, pull PR title format, document contribution format, and article contribution format. These can help you become a contributor of IvorySQL as soon as possible.
 
 
 === Preparation before Contribution
@@ -56,27 +56,27 @@ Finally, keep in mind that it is NEVER a good idea to remove licensing headers f
 You can upload your modified bugs, new functions and other codes to your personal warehouse, and finally submit PR requests to merge them on the official website: https://github.com/IvorySQL/IvorySQL.
 
 
-==== Document Contribution(https://www.ivorysql.org/zh-CN/docs/intro)
+==== Document Contribution(https://www.ivorysql.org/en/docs/intro/)
 
 The IvorySQL community provides Chinese and English documents. English documents are saved in ... document repository, Chinese documents are saved in i18n document repository. You can contribute to one of them or both.
 
 ==== Test IvorySQL and Report Bugs
 
-GitHub:  https://github.com/IvorySQL/IvorySQL 
+GitHub: https://github.com/IvorySQL/IvorySQL 
 
-Gitee:https://gitee.com/IvorySQL/
+Gitee: https://gitee.com/IvorySQL/
 
 ==== Participate in the Construction of IvorySQL Website
 
-IvorySQL official website:https://github.com/IvorySQL/Ivory-www
+IvorySQL official website: https://github.com/IvorySQL/Ivory-www
 
 ==== Answer Questions on the Mailing List
 
-Mailing List website:https://lists.ivorysql.org/
+Mailing List website: https://lists.ivorysql.org/
 
 ==== Contribute Article
 
-You can submit your article to the blog in the IvorySQL-WWW code warehouse, or send it to the mailbox renjiao@highgo.com.
+You can submit your article to the blog in the IvorySQL-WWW code warehouse, or send it to the mailbox ivorysql@highgo.com.
 
 === How to Contribute
 
@@ -118,7 +118,7 @@ On occasion, you will see core team members committing directly to the repositor
 
 === First: Get into New issue page:
 
-1 Enter IvorySQL official website:https://github.com/IvorySQL/IvorySQL 
+1 Enter IvorySQL official website: https://github.com/IvorySQL/IvorySQL 
 
 2 Click New issue
 
@@ -281,7 +281,7 @@ git merge upstream/main
 git push
 ```
 
-(3) Familiar with format <<#_pecification>>.
+(3) Familiar with format <<#pecification>>.
 
 === Where to Contribute
 
@@ -815,7 +815,7 @@ git clone https://github.com/IvorySQL/Ivory-www.git
 git pull
 ```
 
-3 Familiar with format (<<#_specification_2>>) 
+3 Familiar with format (<<#specification-2>>) 
 
 === Where to Congtribute
 

@@ -29,7 +29,7 @@ IvorySQL由一个核心开发团队维护，该团队拥有对GitHub上的IvoryS
 
 == **贡献者指南**
 
-在贡献之前，我们需要了解下IvorySQL目前的版本以及文档的版本。目前，我们维护着4.2等版本，我们的版本紧跟PG的更新步伐，贡献之前请更新至最新版本。之后我们需要细心浏览一下贡献的样式风格，熟悉代码贡献风格、提Issue样式、拉取PR标题样式、代码注释样式、文档贡献样式、文章贡献样式，这可以帮助您尽快成为IvorySQL的贡献者奥~。
+在贡献之前，我们需要了解下IvorySQL目前的版本以及文档的版本。目前，我们维护着4.4等版本，我们的版本紧跟PG的更新步伐，贡献之前请更新至最新版本。之后我们需要细心浏览一下贡献的样式风格，熟悉代码贡献风格、提Issue样式、拉取PR标题样式、代码注释样式、文档贡献样式、文章贡献样式，这可以帮助您尽快成为IvorySQL的贡献者奥~。
 
 === 贡献前的准备
 
@@ -60,7 +60,7 @@ IvorySQL是在GitHub上开发的，任何希望对其作出贡献的人都必须
 
 ==== 贡献代码
 
-可以将自己修改的bug、新增的功能等代码上传至个人仓库，最后提交PR请求合并至官网：https://github.com/IvorySQL/IvorySQL 。
+可以将自己修改的bug、新增的功能等代码上传至个人仓库，最后提交PR请求合并至官网: https://github.com/IvorySQL/IvorySQL 。
 
 ==== 文档贡献
 
@@ -70,21 +70,21 @@ IvorySQL社区提供的是中英文文档。英文文档保存在...文档存储
 
 GitHub:  https://github.com/IvorySQL/IvorySQL 
 
-​码云：https://gitee.com/IvorySQL/
+​码云: https://gitee.com/IvorySQL/
 
 
 ==== 参与IvorySQL网站建设
 
-IvorySQL官网下载：https://github.com/IvorySQL/Ivory-www
+IvorySQL官网下载: https://github.com/IvorySQL/Ivory-www
 
 
 ==== 回答邮件列表问题
 
-邮件列表位于 官网下：https://lists.ivorysql.org/
+邮件列表位于 官网下: https://lists.ivorysql.org/
 
 ==== 贡献文章
 
-您可以在IvorySQL-WWW代码仓库自己提交至blog贡献，也可以联系我们IvorySQL小助理发送至邮箱ivorysql@highgo.com 。
+您可以在IvorySQL-WWW代码仓库自己提交至blog贡献，也可以联系我们IvorySQL小助理发送至邮箱 ivorysql@highgo.com 。
 
 === 如何做出贡献
 
@@ -126,7 +126,7 @@ IvorySQL官网下载：https://github.com/IvorySQL/Ivory-www
 
 === 第1步 进入New issue 页面：
 
-1、进入 IvorySql官网：https://github.com/IvorySQL/IvorySQL 
+1、进入 IvorySql官网： https://github.com/IvorySQL/IvorySQL 
 
 ​2、点击New issue
 
@@ -801,7 +801,7 @@ image::14.png[]
 
 image::15.png[]
 
-中英文的网页ui模板基本一致，因此修改时应该尽量保证同时修改两个模板，将修改过后的ui再上传至个人Github上，完成了这些，就可以考虑在本地生成您修改过后的网页了。
+中英文的网页ui模板基本一致，因此修改时应该尽量保证同时修改两个模板，将修改过后的ui再上传至个人Github上，完成这些，就可以考虑在本地生成您修改过后的网页了。
 
 文档中心是由 `Antora` 进行搭建的，在运行 `Antora` 之前，记得修改对应 `playbook.yml` 文件
 
@@ -818,7 +818,7 @@ image::17.png[]
 
 1、下载 https://markdown.com.cn/tools.html#%E7%BC%96%E8%BE%91%E5%99%A8[Markdown]或者 https://typoraio.cn/[Typora]文档编辑器。
 
-​	2、先下载博客源码到本地，检查源仓库(https://github.com/IvorySQL/Ivory-www)是否有更新，		  如果有更新请先更新并同步到自己的仓库。请参阅以下步骤，更新至最新版本：
+​	2、先下载博客源码到本地，检查源仓库(https://github.com/IvorySQL/Ivory-www) 是否有更新，		  如果有更新请先更新并同步到自己的仓库。请参阅以下步骤，更新至最新版本：
 
 ``` bash
 # 拉取网站源码
@@ -827,7 +827,7 @@ git clone https://github.com/IvorySQL/Ivory-www.git
 git pull
 ```
 
-​	3、熟悉样式风格 (<<#_规范说明_2>>)
+​	3、熟悉样式风格 (<<#规范说明-2>>)
 
 === 贡献地方
 
@@ -849,7 +849,7 @@ git clone https://github.com/IvorySQL/Ivory-www.git
 git checkout -b <branch-name>
 ```
 
-​	（3）在博客目录中创建自己文章的目录，目录名字规则参照 (<<#_规范说明_2>>)。
+​	（3）在博客目录中创建自己文章的目录，目录名字规则参照 (<<#规范说明-2>>)。
 
 ```bash
 # 生成英文博客目录及文件
@@ -1000,7 +1000,7 @@ image::13.png[]
 
 如果您不满足于简单的在网页端进行提交或者仅修改网页内容，又或者您想要修改网页ui，本小节内容将会帮助到您。
 
-在阅读本小节内容之前，您需要确认您的Github个人仓库是否已经 `fork` 了网页模板文件仓库和静态网页文件仓库，如果没有请参考<<#_如何贡献>>。
+在阅读本小节内容之前，您需要确认您的Github个人仓库是否已经 `fork` 了网页模板文件仓库和静态网页文件仓库，如果没有请参考<<#如何贡献-2>>。
 
 === 部署网页
 
