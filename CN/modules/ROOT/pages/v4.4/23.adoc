@@ -31,6 +31,10 @@ IvorySQL由一个核心开发团队维护，该团队拥有对GitHub上的IvoryS
 
 在贡献之前，我们需要了解下IvorySQL目前的版本以及文档的版本。目前，我们维护着4.4等版本，我们的版本紧跟PG的更新步伐，贡献之前请更新至最新版本。之后我们需要细心浏览一下贡献的样式风格，熟悉代码贡献风格、提Issue样式、拉取PR标题样式、代码注释样式、文档贡献样式、文章贡献样式，这可以帮助您尽快成为IvorySQL的贡献者奥~。
 
+=== 贡献攻略
+
+image::0.png[]
+
 === 贡献前的准备
 
 ==== 开始
@@ -58,13 +62,13 @@ IvorySQL是在GitHub上开发的，任何希望对其作出贡献的人都必须
 
 === 您可以做什么贡献
 
-==== 贡献代码
+==== 代码贡献
 
 可以将自己修改的bug、新增的功能等代码上传至个人仓库，最后提交PR请求合并至官网: https://github.com/IvorySQL/IvorySQL 。
 
 ==== 文档贡献
 
-IvorySQL社区提供的是中英文文档。英文文档保存在...文档存储库中，中文文档保存在i18n文档存储库中。您可以为任一文档存储库做出贡献。
+IvorySQL社区提供的是中英文文档。英文文档保存在docs/中，中文文档保存在i18n/zh-CN中。您可以为任一文档存储库做出贡献，并提交PR请求合并至： https://github.com/IvorySQL/Ivory-www。
 
 ==== 测试IvorySQL和报告问题
 
@@ -77,10 +81,13 @@ GitHub:  https://github.com/IvorySQL/IvorySQL
 
 IvorySQL官网下载: https://github.com/IvorySQL/Ivory-www
 
+==== 参与社区的文档中心建设
+
+IvorySQL 文档存储库: git@github.com:IvorySQL/ivorysql_docs.git
 
 ==== 回答邮件列表问题
 
-邮件列表位于 官网下: https://lists.ivorysql.org/
+邮件列表位于 官网下: https://lists.ivorysql.org/postorius/lists/
 
 ==== 贡献文章
 
@@ -90,13 +97,13 @@ IvorySQL官网下载: https://github.com/IvorySQL/Ivory-www
 
 ==== 编码指南
 
-您获得反馈和看到代码合并到项目中的机会在很大程度上取决于更改的粒度。如果您的想法发生了更大的变化，我们强烈建议您在花大量时间编写代码之前，先加入开发人员的邮件列表，并与我们分享您的建议。即使您的建议得到社区的验证，我们仍然建议您将实际工作作为一系列小型的、独立的提交来完成。这使得评审员的工作更加容易，并提高了反馈的及时性。
+您获得反馈和看到代码合并到项目中的机会在很大程度上取决于更改的粒度。如果您的想法发生了更大的变化，我们强烈建议您在花大量时间编写代码之前，先加入 hackers@ivorysql.org邮件列表，并与我们分享您的建议。即使您的建议得到社区的验证，我们仍然建议您将实际工作作为一系列小型的、独立的提交来完成。这使得评审员的工作更加容易，并提高了反馈的及时性。
 
 ​    当谈到IvorySQL的C和C++部分时，我们尝试遵循PostgreSQL编码约定。除此之外：
 
 ​    对于C和Perl代码，如果需要，请运行pgindent。我们建议在查看更改时使用git diff--color，这样您提交的代码中就不会出现任何虚假的空白问题。
 
-​    所有贡献给IvorySQL的新功能都应该有与其一起贡献的回归测试覆盖。如果您不确定如何测试或记录您的工作，请在ivorysql-hackers邮件列表中提出问题，社区的开发人员将尽力帮助您。
+​    所有贡献给IvorySQL的新功能都应该有与其一起贡献的回归测试覆盖。如果您不确定如何测试或记录您的工作，请在hackers@ivorysql.org	邮件列表中提出问题，社区的开发人员将尽力帮助您。
 
 ​    至少，您应该始终运行make install check world，以确保您没有破坏任何东西。
 
@@ -128,7 +135,7 @@ IvorySQL官网下载: https://github.com/IvorySQL/Ivory-www
 
 1、进入 IvorySql官网： https://github.com/IvorySQL/IvorySQL 
 
-​2、点击New issue
+2、点击New issue
 
 image::p3.png[]
 
@@ -146,25 +153,25 @@ Title: 标题
 对bug进行描述
 
 
-\### IvorySQL Version
+### IvorySQL Version
 在IvorySQL哪个版本发现的问题
 
-\### OS Version (uname -a)
+### OS Version (uname -a)
 系统版本
 
-\### Configuration options  ( config.status --config )
+### Configuration options  ( config.status --config )
 配置参数
 
-\### Current Behavior
+### Current Behavior
 当前的结果
 
-\### Expected behavior/code
+### Expected behavior/code
 期望的结果
 
-\### Step to reproduce
+### Step to reproduce
 复现步骤
 
-\### Additional context that can be helpful for identifying the problem
+### Additional context that can be helpful for identifying the problem
 有助于识别问题的其它信息
 ```
 
@@ -293,7 +300,7 @@ git push
 
 === 贡献地方
 
-IvorySQL社区提供双语文档。英文文档保存在IvorySQL/文档存储库（文档存储库）中，中文文档保存在 IvorySQL/文档-i18n存储库（文档-i18n 存储库）中。您可以为任何一方文档做出贡献，当然您也可以为两方同时做出贡献。
+IvorySQL社区提供双语文档。英文文档保存在docs/中，中文文档保存在i18n/zh-CN中。您可以为任何一方文档做出贡献，当然您也可以为两方同时做出贡献。
 
 ​    您可以从以下任何一项开始，以帮助改进IvorySQL网站（英文和 -i18n）上的 IvorySQL文档：
 
@@ -783,19 +790,32 @@ More text.
 
 为了测试您所做的修改是否修改，您需要准备以下环境
 
-* `Node.js` 安装
-* `Antora` 安装
-
-环境安装请参考 https://docs.antora.org/antora/latest/[Antora docs]。
-
+** 安装Node.js
+```
+sudo yum install -y nodejs
+sudo npm install -g serve@14.2.4
+```
+** 安装Antora
+```
+npm install  antora@3.1.7
+npm install @antora/pdf-extension
+npm install @antora/lunr-extension
+npm install nodejieba
+npm install @asciidoctor/core asciidoctor-pdf
+npx antora -v
+alias antora='npx antora' #将npx antora更名为antora
+antora -v
+```
 安装成功后，在终端上显示如下即为成功安装。
 
 image::14.png[]
 
 
-=== 网页生成
+=== 本地网页生成
 
 通过阅读之前内容，相信您已经有了充足的准备，包括 `fork` 我们文档中心相关的三个仓库到个人仓库中，`Antora` 工具的安装准备等环境的搭建。
+
+==== UI
 
 * 首先，您要知道网页对应的ui的位置，如下图：
 
@@ -803,14 +823,22 @@ image::15.png[]
 
 中英文的网页ui模板基本一致，因此修改时应该尽量保证同时修改两个模板，将修改过后的ui再上传至个人Github上，完成这些，就可以考虑在本地生成您修改过后的网页了。
 
-文档中心是由 `Antora` 进行搭建的，在运行 `Antora` 之前，记得修改对应 `playbook.yml` 文件
+==== 文档中心
+
+是由 `Antora` 进行搭建的，在运行 `Antora` 之前，记得修改对应 `playbook.yml` 文件
 
 image::16.png[]
 image::17.png[]
 
-完成上述流程之后，请在终端运行命令 `antora antora-playbook.yml --stacktrace`，然后耐心等待，当成功运行结束后，你就可以查看自己生成的网页了。
+完成上述流程之后，请在终端运行命令 `antora generate --to-dir ../demo antora-playbook-CN.yml --stacktrace`，然后耐心等待，当成功运行结束后，你就可以到../demo 中查看自己生成的网页了。
 
-在检查之后，你就可以开始着手上传至我们的 *ivorysql_web* 仓库中，提交PR的流程和之前的流程相同，感谢您对社区的贡献^_^，我们会在审核过后，考虑是否更新网站。
+检查之后，你就可以开始提交PR，和之前的流程相同，感谢您对社区的贡献^ _ ^，我们会在审核过后，考虑是否更新网站。
+
+=== 网页预览
+
+（1）在IvorySQL-www的仓库中提交的每一个PR, 被成功merge后，PR会话中将产生一个Deploy Preview链接，点击链接即可预览网页。
+
+（2）如果是在文档中心的仓库（ivorysql_docs.git）提交的PR, github的workflows会自动在IvorySQL-www仓库中产生一个对应的PR，剩下的和上面（1）流程相同。
 
 == 提交blog
 
