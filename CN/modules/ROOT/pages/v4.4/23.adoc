@@ -81,6 +81,7 @@ GitHub:  https://github.com/IvorySQL/IvorySQL
 
 IvorySQL官网下载: https://github.com/IvorySQL/Ivory-www
 
+
 ==== 参与社区的文档中心建设
 
 IvorySQL 文档存储库: git@github.com:IvorySQL/ivorysql_docs.git
@@ -91,7 +92,7 @@ IvorySQL 文档存储库: git@github.com:IvorySQL/ivorysql_docs.git
 
 ==== 贡献文章
 
-您可以在IvorySQL-WWW代码仓库自己提交至blog贡献，也可以联系我们IvorySQL小助理发送至邮箱 ivorysql@highgo.com 。
+您可以在IvorySQL-WWW代码仓库自己提交至blog贡献，也可以联系我们IvorySQL小助理发送至邮箱 	ivorysql-www@ivorysql.org 。
 
 === 如何做出贡献
 

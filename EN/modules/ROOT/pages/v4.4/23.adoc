@@ -76,7 +76,7 @@ Mailing List website: https://lists.ivorysql.org/
 
 ==== Contribute Article
 
-You can submit your article to the blog in the IvorySQL-WWW code warehouse, or send it to the mailbox ivorysql@highgo.com.
+You can submit your article to the blog in the IvorySQL-WWW code warehouse, or send it to the mailbox 	ivorysql-www@ivorysql.org.
 
 === How to Contribute
 
@@ -774,8 +774,22 @@ More text.
 
 In order to test your modifications, you need to prepare the following environment. 
 
-* `Node.js` install
-* `Antora` install
+** Node.js install
+```
+sudo yum install -y nodejs
+sudo npm install -g serve@14.2.4
+```
+** Antora install
+```
+npm install  antora@3.1.7
+npm install @antora/pdf-extension
+npm install @antora/lunr-extension
+npm install nodejieba
+npm install @asciidoctor/core asciidoctor-pdf
+npx antora -v
+alias antora='npx antora' 
+antora -v
+```
 
 Please refer to https://docs.antora.org/antora/latest/[Antora docs]。
 
