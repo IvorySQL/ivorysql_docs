@@ -90,8 +90,6 @@ To compile the IvorySQL from the source code, you have to ensure that prerequisi
 
 Please enter detailed parameter information initdb --help
 
-image::p19.png[]
-
 **Start server**
 
     [highgo@ivorysql ~]$ pg_ctl -D data -l logfile start
