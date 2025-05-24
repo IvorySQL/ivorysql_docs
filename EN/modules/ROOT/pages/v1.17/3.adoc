@@ -3,7 +3,7 @@
 :sectnumlevels: 5
 
 :imagesdir: ./_images
-== User manual
+== **Quick Start**
 
 === getting started guide
 

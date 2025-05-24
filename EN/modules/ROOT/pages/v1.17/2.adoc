@@ -59,3 +59,13 @@ Ivory database's main application scenarios.
 == Main, Basic Features
 
 IvorySQL is a powerful open source object-relational database management system (ORDBMS). Used to store data securely, support best practices, and allow them to be retrieved when requests are processed. In addition, it is also compatible with Oracle's syntax, which is suitable for scenarios where Oracle is used.
+
+* https://docs.ivorysql.org/en/ivorysql-doc/v1.17/v1.17/11[1. Ivorysql frame design]
+* https://docs.ivorysql.org/en/ivorysql-doc/v1.17/v1.17/12[2. GUC Framework]
+* https://docs.ivorysql.org/en/ivorysql-doc/v1.17/v1.17/13[3. Case conversion]
+* https://docs.ivorysql.org/en/ivorysql-doc/v1.17/v1.17/14[4. Dual-mode design]
+* https://docs.ivorysql.org/en/ivorysql-doc/v1.17/v1.17/15[5. Compatible with Oracle like]
+* https://docs.ivorysql.org/en/ivorysql-doc/v1.17/v1.17/16[6. Compatible with Oracle anonymous block]
+* https://docs.ivorysql.org/en/ivorysql-doc/v1.17/v1.17/17[7. Compatible with Oracle functions and stored procedures]
+* https://docs.ivorysql.org/en/ivorysql-doc/v1.17/v1.17/18[8. Built-in data types and built-in functions]
+* https://docs.ivorysql.org/en/ivorysql-doc/v1.17/v1.17/19[9. Added Oracle compatibility mode ports and IP]

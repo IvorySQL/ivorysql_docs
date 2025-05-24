@@ -1,0 +1,1012 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+= **IvorySQL社区贡献指南**
+
+== **概述**
+
+=== 说明
+
+IvorySQL由一个核心开发团队维护，该团队拥有对GitHub上的IvorySQL主存储库的提交权限。同时，我们非常渴望从更广泛的IvorySQL社区中的成员那里获得贡献。如果您希望看到您的代码或文档更改被添加到IvorySQL并出现在将来的版本中，本节的内容介绍是您需要知道的。
+
+​IvorySQL社区欢迎并赞赏所有类型的贡献，期待您的加入！
+
+=== 行为准则
+
+作为成员，贡献者和领导者，我们每个人都应阅读我们的 *行为准则*。我们承诺让每个人都能参与社区，成为一种无骚扰的体验，无论年龄、体型、有形或无形的残疾、种族、性特征、性别认同和表达、经验水平、教育、社会经济地位、国籍、个人外表、种族、宗教或性身份和取向如何。
+
+​    我们承诺以有助于建立一个开放，热情，多样化，包容和健康社区的方式采取行动和互动。
+
+=== 管理说明
+
+团队是持续开放的团队，专注于IvorySQL项目的一部分。一个团队有其审查者、提交者和维护者，并拥有一个或多个存储库。团队级别的决策来自其维护者。IvorySQL开发人员的典型提升路径是从用户到审查者，然后是提交者和维护者。但获得更多的角色并不意味着你对其他社区成员拥有任何特权。IvorySQL社区中的每个人都是平等的，都有责任与其他贡献者进行建设性合作，建立一个友好的社区。这些角色是对您在IvorySQL开发中做出重大贡献的自然奖励，并为您在开发工作流中提供更多权利，以提高您的效率。同时，他们要求你承担一些额外的责任：
+
+​    团队荣誉：现在您已经是团队评审员/提交者/维护者的成员，意味着您代表着项目和您的团队成员。所以，请做一个好人来捍卫球队的声誉。
+
+​    责任：提交者/维护者有权合并拉取请求，因此承担额外的责任来处理接受代码库或文档更改的后果。这包括在它导致问题时恢复或修复它，以及帮助发布经理解决发布前测试周期中发现的任何问题。
+
+== **贡献者指南**
+
+在贡献之前，我们需要了解下IvorySQL目前的版本以及文档的版本。目前，我们维护着1.3、1.4、1.5、2.1等版本，我们的版本紧跟PG的更新步伐，贡献之前请更新至最新版本。之后我们需要细心浏览一下贡献的样式风格，熟悉代码贡献风格、提Issue样式、拉取PR标题样式、代码注释样式、文档贡献样式、文章贡献样式，这可以帮助您尽快成为IvorySQL的贡献者奥~。
+
+=== 贡献前的准备
+
+==== 开始
+
+IvorySQL是在GitHub上开发的，任何希望对其作出贡献的人都必须拥有GitHub帐户，并熟悉Git工具和工作流。还建议您遵循开发人员的邮件列表，因为一些贡献可能会在那里产生更详细的讨论。
+
+如果您有GitHub帐户，fork这个存储库至您的个人仓库中，这样您就可以拥有您的私人副本来开始hacking，并将其用作拉取请求的来源。
+
+==== IvorySQL贡献的许可
+
+如果您提交的贡献是原创作品，那么您可以假设IvorySQL将作为整个IvorySQL版本的一部分发布给下游用户，该版本将遵循**Apache许可证2.0版本**。
+
+​    如果您提交的内容不是原创作品，同样鼓励代码共享和尊重原作者的著作权，同样允许代码修改，再发布。***\*请注意需要满足如下条件\****：
+
+（1）需要给代码的用户一份Apache许可证。
+
+（2）如果您修改了代码，需要在被修改的文件中说明。
+
+（3）在延伸的代码中（修改和有源代码衍生的代码中）需要带有原来代码中的协议、商标、专利声明和其他原来作者规定需要包含的说明。
+
+（4）如果再发布的产品中包含一个Notice文件，则在Notice文件中需要带有Apache许可证。您可以在Notice中增加自己的许可，但不可以表现为对Apache许可证构成更改。
+
+​    最后，请记住，从非原始的工作中删除许可标头从来都不是一个好主意。即使您使用的文件部分最初在顶部有许可标头，您也应该保留它。与往常一样，如果您不太确定您的贡献所涉及的许可问题，请随时在开发人员邮件列表中联系我们。
+
+
+=== 您可以做什么贡献
+
+==== 贡献代码
+
+可以将自己修改的bug、新增的功能等代码上传至个人仓库，最后提交PR请求合并至官网：https://github.com/IvorySQL/IvorySQL 。
+
+==== 文档贡献
+
+IvorySQL社区提供的是中英文文档。英文文档保存在...文档存储库中，中文文档保存在i18n文档存储库中。您可以为任一文档存储库做出贡献。
+
+==== 测试IvorySQL和报告问题
+
+GitHub:  https://github.com/IvorySQL/IvorySQL 
+
+​码云：https://gitee.com/IvorySQL/
+
+
+==== 参与IvorySQL网站建设
+
+IvorySQL官网下载：https://github.com/IvorySQL/Ivory-www
+
+
+==== 回答邮件列表问题
+
+邮件列表位于 官网下：https://lists.ivorysql.org/
+
+==== 贡献文章
+
+您可以在IvorySQL-WWW代码仓库自己提交至blog贡献，也可以联系我们IvorySQL小助理发送至邮箱ivorysql@highgo.com 。
+
+=== 如何做出贡献
+
+==== 编码指南
+
+您获得反馈和看到代码合并到项目中的机会在很大程度上取决于更改的粒度。如果您的想法发生了更大的变化，我们强烈建议您在花大量时间编写代码之前，先加入开发人员的邮件列表，并与我们分享您的建议。即使您的建议得到社区的验证，我们仍然建议您将实际工作作为一系列小型的、独立的提交来完成。这使得评审员的工作更加容易，并提高了反馈的及时性。
+
+​    当谈到IvorySQL的C和C++部分时，我们尝试遵循PostgreSQL编码约定。除此之外：
+
+​    对于C和Perl代码，如果需要，请运行pgindent。我们建议在查看更改时使用git diff--color，这样您提交的代码中就不会出现任何虚假的空白问题。
+
+​    所有贡献给IvorySQL的新功能都应该有与其一起贡献的回归测试覆盖。如果您不确定如何测试或记录您的工作，请在ivorysql-hackers邮件列表中提出问题，社区的开发人员将尽力帮助您。
+
+​    至少，您应该始终运行make install check world，以确保您没有破坏任何东西。
+
+==== 适用于上游PostgreSQL的更改
+
+如果您正在进行的更改涉及PostgreSQL和IvorySQL之间的通用功能，则可能会要求您将其转发到PostgreSQL。这不仅是为了我们不断减少两个项目之间的差异，而且是为了让与PostgreSQL相关的任何变化都能从对上游PostgreSQL社区更广泛的审查中受益。一般来说，将这两个代码库都放在手边是个好主意，这样您就可以确定您的更改是否需要前移。
+
+==== 补丁提交 
+
+一旦您准备好与IvorySQL核心团队和IvorySQL社区的其他成员共享您的工作，您应该将所有提交推送到从官方IvorySQL派生的您自己的存储库中，并向我们发送请求。
+
+==== 补丁审查 
+
+假定提交的拉取请求通过验证检查，可供同行审查。同行审查是确保对IvorySQL的贡献具有高质量并与路线图和社区期望保持一致的过程。我们鼓励IvorySQL社区的每个成员审查请求并提供反馈。由于您不必成为核心团队成员就可以做到这一点，因此我们建议您向有兴趣成为IvorySQL长期贡献者的任何人提供一系列拉动式评论。
+
+​    同行评审的一个结果可能是达成共识，即您需要以某些方式修改pull请求。GitHub允许您将其他提交推送到从中发送请求的分支中。这些额外的提交将对所有审阅者可见。
+
+​    当同行评议收到参与者至少+1张+1和no-1张的选票时，同行评议会趋于一致。在这一点上，您应该期望核心团队成员之一将您的更改引入到项目中。
+
+在补丁审查期间的任何时候，您都可能会因审查人员和核心团队成员的工作效率而遇到延迟。请耐心点，也不要气馁。如果您在几天内没有收到预期的反馈，请添加一条评论，要求更新pull请求本身，或者向邮件列表发送一封电子邮件。
+
+==== 直接提交到存储库
+
+有时，您会看到核心团队成员直接提交到存储库，而无需执行pull请求工作流。这仅适用于小的更改，我们使用的经验法则是：如果更改涉及任何可能导致测试失败的功能，那么它必须通过pull请求工作流。另一方面，如果更改发生在代码库的非功能部分（例如在注释块中修复打字错误），则核心团队成员可以决定直接提交到存储库。
+
+== **提Issue**
+
+=== 第1步 进入New issue 页面：
+
+1、进入 IvorySql官网：https://github.com/IvorySQL/IvorySQL 
+
+​2、点击New issue
+
+image::p3.png[]
+
+
+=== 第2步：选择需要填写的issue类型
+
+**1、bug report**
+
+```
+Title: 标题
+```
+
+```
+## Bug Report
+对bug进行描述
+
+
+\### IvorySQL Version
+在IvorySQL哪个版本发现的问题
+
+\### OS Version (uname -a)
+系统版本
+
+\### Configuration options  ( config.status --config )
+配置参数
+
+\### Current Behavior
+当前的结果
+
+\### Expected behavior/code
+期望的结果
+
+\### Step to reproduce
+复现步骤
+
+\### Additional context that can be helpful for identifying the problem
+有助于识别问题的其它信息
+```
+
+
+**2、Enhancement**
+
+```
+Title: 标题
+```
+
+```
+## Enhancement
+对于期望强化的功能作一个描述
+```
+
+**3、Feature Request**
+
+```
+Title: 标题
+```
+
+```
+## Feature Request
+描述你期望实现的一个功能
+```
+
+
+=== 第3步：提交
+
+点击 submit new issue 按钮, 提交即可
+
+== **贡献代码**
+
+=== 第1步: Fork https://ivorysql.org/[ivorysql.org]仓库
+
+1、打开ivorysql仓库 https://github.com/IvorySQL/IvorySQL 
+
+2、点击右上角fork按钮，等待fork完成
+
+=== 第2步:将fork的仓库克隆至本地
+
+```
+cd $working_dir # 将 $working_dir 替换为你想放置 repo 的目录。例如，`cd ~/Documents/GitHub`
+
+git clone git@github.com:$user/IvorySQL.git # 将 `$user` 替换为你的 GitHub ID
+```
+
+=== 第3步：创建一个新的Branch
+
+```
+cd $working_dir/IvorySQL
+
+git checkout -b new-branch-name
+```
+
+=== 第4步：编辑文档或修改代码
+
+在新建的new-branch-name中修改代码。
+
+=== 第5步：生成commit
+
+```
+Git add <file>
+
+Git commit -m “commit-message”
+```
+
+=== 第6步：将修改推送至远端
+
+```
+Git push -u origin new-branch-name
+```
+
+=== 第7步：创建一个Pull Request
+
+1、打开你 Fork 的仓库： https://github.com/$user/docs-cn[https://github.com/$user/IvorySQL]（将 $user 替换为你的 GitHub ID）。
+
+2、点击 Compare & pull request 按钮即可创建 PR。
+
+== **提交PR**
+
+对于提交一个PR应该保持一个功能，或者一个bug提交一次。禁止多个功能一次提交。
+
+
+=== 第1步：创建一个Pull Request
+
+1、打开你 Fork 的仓库： https://github.com/$user/docs-cn[https://github.com/$user/IvorySQL]（将 $user 替换为你的 GitHub ID）。
+
+​    2、点击 Compare & pull request 按钮
+
+=== 第2步：填写PR信息
+
+```
+Fix test
+功能描述
+```
+
+```
+leave a comment
+对该提交功能进行比较详细的描述
+```
+
+=== 第3步：提交PR
+
+点击Create pull request 按钮即可提交。
+
+== **编写文档**
+
+=== 准备工作
+
+（1）下载Markdown或者Typora文档编辑器。
+
+（2）检查源仓库是否有更新，如果有更新请先更新并同步到自己的仓库。如有更新请参阅以下步骤，更新至最新版本：
+
+```
+git remote
+
+git fetch upstream
+
+git merge upstream/main
+
+git push
+```
+
+（3）熟悉样式风格（规范说明）
+
+=== 贡献地方
+
+IvorySQL社区提供双语文档。英文文档保存在IvorySQL/文档存储库（文档存储库）中，中文文档保存在 IvorySQL/文档-i18n存储库（文档-i18n 存储库）中。您可以为任何一方文档做出贡献，当然您也可以为两方同时做出贡献。
+
+​    您可以从以下任何一项开始，以帮助改进IvorySQL网站（英文和 -i18n）上的 IvorySQL文档：
+
+​        (1) 编写完善文档
+
+​        (2) 修复拼写错误或格式（标点符号、空格、缩进、代码块等）
+
+​        (3) 修正或更新不当或过时的说明
+
+​        (4) 添加缺少的内容（句子、段落或新文档）
+
+​        (5) 将文档更改从英文翻译成中文，或从中文翻译成英文。
+
+​        (6) 提交、回复和解决文档问题或文档-i18n问题
+
+​        (7) （高级）查看其他人创建的拉取请求
+
+=== 规范说明
+
+IvorySQL文档是用“markdown”编写的。为确保格式的质量和一致性，在修改更新文档时应遵循某些 Markdown 规则。
+
+​    **Markdown规范**
+
+​    1、标题从一级开始递增使用，禁止跳级使用。例如：一级标题下面不能直接使用三级标题；二级标题下面不能直接使用四级标题。
+
+​    2、标题必须统一使用 ATX 风格，即在标题前加 # 号来表示标题级别。
+
+​    3、标题的引导符号 # 后必须空一格再接标题内容。
+
+​    4、标题的引导符号“#”后只能空一格后再接标题内容，不能有多个空格。
+
+​    5、标题必须出现在一行行首，即标题的 # 号前不能有任何空格。
+
+​    6、标题末尾仅能出现中英文问号、反引号、中英文单双引号等符号。其余如冒号、逗号、句号、感叹号等符号均不能在标题末尾使用。
+
+​    7、标题上面须空一行。
+
+​    8、文档中不能连续出现内容重复的标题，如一级标题为 # IvorySQL 架构，紧接着的二级标题就不能是 ## IvorySQL 架构。如果不是连续的标题，则标题内容可重复。
+
+​    9、文档中只能出现一个一级标题。
+
+​    10、一般来说，除 TOC.md 文件可缩进 2 个空格外，其余所有 .md 文件每缩进一级，默认须缩进 4 个空格。
+
+​    11、文档中（包括代码块内）禁止出现 Tab 制表符，如需缩进，必须统一用空格代替
+
+​    12、禁止出现连续的空行。
+
+​    13、块引用符号 > 后禁止出现多个空格，只能使用一个空格，后接引用内容。
+
+​    14、使用有序列表时，必须从 1 开始，按顺序递增。
+
+​    15、使用列表时，每一列表项的标识符（+、-、* 或数字）后只能空一格，后接列表内容。
+
+​    16、列表（包括有序和无序列表）前后必须各空一行。
+
+​    17、代码块前后必须各空一行。
+
+​    18、文档中禁止出现裸露的 URL。如果希望用户能直接点击并打开该 URL，则使用一对尖括号 (<URL>) 包裹该 URL。如果由于特殊情况必须使用裸露的 URL，不需要用户通过点击打开，则使用一对反引号 (`URL`) 包裹该 URL。
+
+​    19、使用加粗、斜体等强调效果时，在强调标识符内禁止出现多余的空格。如不能出现 `** 加粗文本 **`。
+
+​    20、单个反引号包裹的代码块内禁止出现多余的空格。如不能出现 ` 示例文本 `。
+
+​    21、链接文本两边禁止出现多余的空格。如不能出现 [  某链接  ](https://www.example.com/)。
+
+​    22、链接必须有链接路径。如不能出现[空链接]()或[空链接](#)等情况。
+
+=== 示例
+
+1、标题从一级开始递增使用，禁止跳级使用。
+
+```
+# Heading 1
+### Heading 3
+
+We skipped out a 2nd level heading in this document
+```
+
+
+
+2、标题必须统一使用 ATX 风格，即在标题前加 # 号来表示标题级别。
+
+```
+# Heading 1
+## Heading 2
+### Heading 3
+#### Heading 4
+## Another Heading 2
+### Another Heading 3
+```
+
+
+
+3、标题的引导符号 # 后必须空一格再接标题内容。禁止#后多个空格，禁止#前出现空格
+
+错误示范：
+
+```
+# Heading 1
+## Heading 2
+```
+
+正确示范：
+
+```
+# Heading 1
+## Heading 2
+```
+
+
+
+4、标题末尾仅能出现中英文问号、反引号、中英文单双引号等符号。 
+
+错误示范
+
+```
+# This is a heading.
+```
+
+正确示范
+
+```
+# This is a heading
+```
+
+
+
+5、标题上面空一行
+
+错误示范
+
+```
+# Heading 1
+Some text
+Some more text## Heading 2
+```
+
+正确示范
+
+```
+# Heading 1
+Some text
+Some more text
+
+## Heading 2
+```
+
+
+
+6、文档中不能连续出现内容重复的标题，如一级标题为 # IvorySQL  描述，紧接着的二级标题就不能是 ## IvorySQL 描述。如果不是连续的标题，则标题内容可重复。
+
+错误示范
+
+```
+# Some text
+
+## Some text
+```
+
+正确示范
+
+```
+# Some text
+
+## Some more text
+```
+
+
+
+7、文档中只能出现一个一级标题。
+
+错误示范
+
+```
+# Top level heading
+
+# Another top-level heading
+```
+
+正确释放
+
+```
+# Title
+
+## Heading
+
+## Another heading
+```
+
+
+
+8、一般来说，除 TOC.md 文件可缩进 2 个空格外，其余所有 .md 文件每缩进一级，默认须缩进 4 个空格。
+
+错误示范
+
+```
+* List item
+  * Nested list item indented by 3 spaces
+```
+
+正确示范:
+
+```
+* List item
+    * Nested list item indented by 4 spaces
+```
+
+
+
+9、文档中（包括代码块内）禁止出现 Tab 制表符，如需缩进，必须统一用空格代替
+
+错误示范：
+
+```
+Some text
+	* hard tab character used to indent the list item
+```
+
+正确示范:
+
+```
+Some text
+  * Spaces used to indent the list item instead
+```
+
+
+
+10、禁止出现连续的空行
+
+错误示范
+
+```
+Some text here
+
+
+Some more text here
+```
+
+正确释放:
+
+```
+Some text here
+
+Some more text here
+```
+
+
+
+11、块引用符号 > 后禁止出现多个空格，只能使用一个空格，后接引用内容。
+
+错误示范
+
+```
+>  This is a blockquote with bad indentation>  there should only be one.
+```
+
+正确示范
+
+```
+> This is a blockquote with correct> indentation.
+```
+
+
+
+12、使用有序列表时，必须从 1 开始，按顺序递增。
+
+错误示范:
+
+```
+1. Do this.
+1. Do that.
+1. Done.
+```
+
+```
+0. Do this.
+1. Do that.
+2. Done.
+```
+
+ 正确示范:
+
+```
+1. Do this.
+2. Do that.
+3. Done.
+```
+
+
+
+13、使用列表时，每一列表项的标识符（+、-、* 或数字）后只能空一格，后接列表内容。
+
+正确示范
+
+```
+* Foo
+* Bar
+* Baz
+
+1. Foo
+  * Bar
+1. Baz
+```
+
+
+
+14、列表（包括有序和无序列表）前后必须各空一行。
+
+错误示范
+
+```
+Some text* Some* List
+
+1. Some2. List
+
+Some text
+```
+
+正确示范
+
+```
+Some text
+
+* Some
+* List
+
+1. Some
+2. List
+
+Some text
+```
+
+
+
+15、代码块前后必须各空一行。
+
+错误示范
+
+```
+Some text
+​```
+Code block
+​```
+​```
+Another code block
+​```
+Some more text
+```
+
+正确示范
+
+```
+Some text
+
+​```
+Code block
+​```
+
+​```
+Another code block
+​```
+
+Some more text
+```
+
+
+
+16、文档中禁止出现裸露的 URL。如果希望用户能直接点击并打开该 URL，则使用一对尖括号 (<URL>) 包裹该 URL。如果由于特殊情况必须使用裸露的 URL，不需要用户通过点击打开，则使用一对反引号 (`URL`) 包裹该 URL。
+
+错误示范
+
+```
+For more information, see https://www.example.com/.
+```
+
+正确示范
+
+```
+For more information, see <https://www.example.com/>.
+```
+
+
+
+17、使用加粗、斜体等强调效果时，在强调标识符内禁止出现多余的空格。如不能出现 `** 加粗文本 **`。
+
+错误示范
+
+```
+Here is some ** bold ** text.
+
+Here is some * italic * text.
+
+Here is some more __ bold __ text.
+
+Here is some more _ italic _ text.
+```
+
+正确示范:
+
+```
+Here is some **bold** text.
+
+Here is some *italic* text.
+
+Here is some more __bold__ text.
+
+Here is some more _italic_ text.
+```
+
+
+
+18、单个反引号包裹的代码块内禁止出现多余的空格。如不能出现 ` 示例文本 `。
+
+错误示范：
+
+```
+some text 
+ some text
+```
+
+正确示范:
+
+```
+some text
+```
+
+
+
+19、链接文本两边禁止出现多余的空格。如不能出现 [ 某链接 ](https://www.example.com/)。
+
+错误示范
+
+```
+[ a link ](https://www.example.com/)
+```
+
+正确示范:
+
+```
+[a link](https://www.example.com/)
+```
+
+
+
+20、链接必须有链接路径。如不能出现[空链接]()或[空链接](#)等情况。
+
+错误示范
+
+```
+[an empty link]()
+
+[an empty fragment](#)
+```
+
+正确示范:
+
+```
+[a valid link](https://example.com/)
+
+[a valid fragment](#fragment)
+```
+
+
+
+21文档中的代码块统一使用三个反引号进行包裹，禁止使用缩进四格风格的代码块。
+
+错误示范：
+
+```
+Some text.
+
+  # Indented code
+
+More text.
+```
+
+正确示范
+
+```
+```ruby
+# Fenced code
+​```
+More text.
+```
+
+=== 环境准备
+
+为了测试您所做的修改是否修改，您需要准备以下环境
+
+* `Node.js` 安装
+* `Antora` 安装
+
+环境安装请参考 https://docs.antora.org/antora/latest/[Antora docs]。
+
+安装成功后，在终端上显示如下即为成功安装。
+
+image::14.png[]
+
+
+=== 网页生成
+
+通过阅读之前内容，相信您已经有了充足的准备，包括 `fork` 我们文档中心相关的三个仓库到个人仓库中，`Antora` 工具的安装准备等环境的搭建。
+
+* 首先，您要知道网页对应的ui的位置，如下图：
+
+image::15.png[]
+
+中英文的网页ui模板基本一致，因此修改时应该尽量保证同时修改两个模板，将修改过后的ui再上传至个人Github上，完成了这些，就可以考虑在本地生成您修改过后的网页了。
+
+文档中心是由 `Antora` 进行搭建的，在运行 `Antora` 之前，记得修改对应 `playbook.yml` 文件
+
+image::16.png[]
+image::17.png[]
+
+完成上述流程之后，请在终端运行命令 `antora antora-playbook.yml --stacktrace`，然后耐心等待，当成功运行结束后，你就可以查看自己生成的网页了。
+
+在检查之后，你就可以开始着手上传至我们的 *ivorysql_web* 仓库中，提交PR的流程和之前的流程相同，感谢您对社区的贡献^_^，我们会在审核过后，考虑是否更新网站。
+
+== 提交blog
+
+=== 准备工作
+
+1、下载 https://markdown.com.cn/tools.html#%E7%BC%96%E8%BE%91%E5%99%A8[Markdown]或者 https://typoraio.cn/[Typora]文档编辑器。
+
+​	2、先下载博客源码到本地，检查源仓库(https://github.com/IvorySQL/Ivory-www)是否有更新，		  如果有更新请先更新并同步到自己的仓库。请参阅以下步骤，更新至最新版本：
+
+``` bash
+# 拉取网站源码
+git clone https://github.com/IvorySQL/Ivory-www.git
+# 同步更新仓库
+git pull
+```
+
+​	3、熟悉样式风格 (<<#_规范说明_2>>)
+
+=== 贡献地方
+
+IvorySQL社区提供双语文档。英文博客保存在源码目录<u>**Ivory-www/blog**</u>中，中文博客保存在源码目录<u>**Ivory-www/i18n/zh-CN/docusaurus-plugin-content-blog**</u>中。您可以为任何一方博客做出贡献，当然您也可以为两方同时做出贡献。
+
+=== 如何贡献
+
+在贡献之前，让我们快速浏览一下有关IvorySQL博客维护的信息。这可以帮助您尽快成功的提交blog成为贡献者。blog提交规范
+
+​	（1）将代码克隆到本地仓库
+
+``` bash
+git clone https://github.com/IvorySQL/Ivory-www.git
+```
+
+​	（2）创建一个分支
+
+```bash
+git checkout -b <branch-name>
+```
+
+​	（3）在博客目录中创建自己文章的目录，目录名字规则参照 (<<#_规范说明_2>>)。
+
+```bash
+# 生成英文博客目录及文件
+cd Ivory-www/blog
+mkdir <YEAR-MONTH-DAY-title>
+cd <YEAR-MONTH-DAY-title>
+touch index.md
+# 生成中文博客目录及文件
+cd Ivory-www/i18n/zh-CN/docusaurus-plugin-content-blog
+mkdir <YEAR-MONTH-DAY-title>
+cd <YEAR-MONTH-DAY-title>
+touch index.md
+```
+
+​	（4）在index.md编写要发布的博文，将博客中需要的图片放到和index.md同级目录。
+
+​	（5）提交发布博客
+
+```bash
+git add <file-path>
+git commit -m "<message>"
+git push origin <branch-name>:<branch-name>
+```
+
+=== 规范说明
+
+==== blog提交规范
+
+（1）文件夹命名格式：**年-月-日-名称**
+
+   		示例：2022-1-28-ivorysql-arrived
+
+​	（2）文件属性统一为**index.md**
+
+​	（3）图片属性统一为 **.png**形式，并将需要上传的图片提前放到要提交的文件夹中。
+
+​			**注意：**图片名字唯一，不可重复奥~。
+
+​			示例：po-one.png
+
+==== blog编写规范
+
+博客是用markdown或者Typora来编写，您可以阅读 https://docusaurus.io/zh-CN/docs/blog[博客 | Docusaurus]来了解博客的设计方式。
+
+（1）文章头部部署包括以下信息
+
+```vim
+---
+slug: IvorySQL
+title: 欢迎来到IvorySQL社区
+authors: [official]
+authorTwitter: IvorySql
+tags: [IvorySQL, Welcome, Database, Join Us]
+---
+```
+
+​	**提示：**您可以将以上模板复制到您的文件夹中并进行编辑。
+
+​	**注意：**1）slug、title、authors、tags后添加文字均空一格。
+
+​     		  2）slug每篇名字唯一且不可重复，相同文章中英文版可以相同。
+
+（2）文本格式
+
+​		正文段落标题统一用**h2**/“**二级标题**”；
+
+​		正文使用默认字体字号。
+
+（3）插入照片命名形式
+
+​		[Hello](Hello-banner.png)
+
+（4）插入超链接命名形式
+
+​		[名称]（链接）
+
+​		[Github page](https://github.com/IvorySQL/) 下载源代码或发布的软件包。
+
+
+== 网站贡献指南
+
+https://docs.ivorysql.org[IvorySQL的文档中心] 采用开源工具 https://antora.org/[`Antora`] 进行搭建，同样的，我们的文档中心也是开源的。文档中心由三部分组成，分别是 https://github.com/IvorySQL/ivorysql_docs[文档文件], https://github.com/IvorySQL/ivorysql_web[静态网页文件] 以及生成网页所用到的 https://github.com/IvorySQL/ivory-doc-builder[网页模板文件] 。
+
+我们的文档中心同样欢迎每一位愿意参与到开源工作中的小伙伴的加入，记得遵守我们的行为准则^_^。
+
+=== 如何贡献
+
+由于我们的文档中心全部托管于Github上，这使得任何用户都可以将我们的文档仓库 `fork` 到个人仓库中，然后对其进行修改，之后提交PR，由我们的开源团队的人员审核过后就可以将修改更新到我们的文档中心中。
+
+为了更加便捷地使您达到纠正文档错误的目的，首先需要您按照想要更新的大小来建立个人仓库，如下：
+
+* 如果您想修改原有的内容或者添加新的页面，仅需要 `fork` https://github.com/IvorySQL/ivorysql_docs[文档文件] 到个人仓库中。
+
+image::7.png[]
+
+* 如果您想更深度地参与到文档中心的建设工作中来，除了文档文件外，还需要 `fork` https://github.com/IvorySQL/ivorysql_web[静态网页文件] 和 https://github.com/IvorySQL/ivory-doc-builder[网页模板文件] 到个人仓库中。
+
+image::8.png[]
+image::9.png[]
+
+=== 修改内容
+
+本小节将会介绍发现网页内容不适宜之后，对网页内容进行修改的流程。
+
+* 在有错误内容的网页的右上角，有一个 `edit this page` 的按钮，点击按钮。如图：
+
+image::10.png[]
+
+* 点击之后，就会跳转到我们存放当前页面源 `.adoc` 文件的编辑页面，请按照 `Asciidoc` 格式对内容进行修改。如图：
+
+image::11.png[]
+
+* 编辑完成后，如图：
+
+image::12.png[]
+
+* 确认更新后，如图：
+
+image::13.png[]
+
+* 接下来会由开源团队的相关人员负责审核您提交的内容，审核完成后您所提交的更新就会出现在对应页面上。
+
+=== 添加页面
+
+本小节会介绍如何在网站上添加新的页面组件，添加新页面涉及的修改主要包括以下几种：
+
+* `CN/modules/ROOT/pages/vX.X` 目录下的 `.adoc` 文件添加
+* `CN/modules/ROOT/nav.adoc` 的修改，如果修改涉及到图片的修改或者添加，请修改 `images` 中的图片
+* `EN/modules/ROOT/pages/vX.X` 目录下的 `.adoc` 文件添加
+* `EN/modules/ROOT/nav.adoc` 的修改，如果修改涉及到图片的修改或者添加，请修改 `images` 中的图片
+
+1. 首先，您需要把您 `fork` 的仓库，clone到本地
+
+    git clone https://github.com/$username$/ivorysql_docs.git
+
+2. 然后，将要添加的 `.adoc` 文件放至正确目录下，切记中英文的都应该准备（*中英文文件应该同名*），并且各自放至正确目录下，同时，修改对应的 `nav.adoc` 文件（修改方式可以参照文件已有内容进行修改）。
+3. 上述修改完成后，先提交至个人仓库
+
+    git add .
+    git commit -m "$describe your change$"
+    git push
+
+4. 之后按照如下提交PR即可
+
+image::13.png[]
+
+=== 测试
+
+如果您不满足于简单的在网页端进行提交或者仅修改网页内容，又或者您想要修改网页ui，本小节内容将会帮助到您。
+
+在阅读本小节内容之前，您需要确认您的Github个人仓库是否已经 `fork` 了网页模板文件仓库和静态网页文件仓库，如果没有请参考<<#_如何贡献>>。
+
+=== 部署网页
+
+部署网页这部分工作，暂时还是由开源团队的人员负责，我们重视每一次提交和每一个issue，所以请不要担心自己对于社区的贡献被埋没^_^
+
+=== Tip
+
+本章节主要介绍了如何自己主动去更新我们的文档中心，但是我们明确地知道山高路远，时不我待。因此对于没有太多时间的小伙伴来说，可以发邮件到我们的 **ivorysql-docs@ivorysql.org**，我们会有专门的工作人员进行处理您的每一封来信，期待您的邮件。
+

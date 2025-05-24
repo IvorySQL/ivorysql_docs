@@ -3,26 +3,50 @@
 
 :imagesdir: ./_images
 
-= Added Oracle compatibility mode ports and IP
+= Dual-mode design
 
 == Objective
 
-- In order to distinguish the Oracle port, IP and PG port IP. THERE IS NOW A NEED TO INCREASE THE PROCESSING OF ORAPORT AND ORAHOST;
+- In order to meet the PG mode and the compatible Oracle mode, IVORYSQL designed two modes: PG and Oracle. And the schema can be specified at initdb time;
 
 == Function
 
-- Add ivoryhost: You need to add the parameter ivoryhost when connecting, and its function is similar to host;
-
-- New ivoryport: Compared to host, the function of port is relatively complex. It involves specifying ports in the configure phase and connection phase;
-
-== Test method:
-```
-   ./configure --with-oraport=5555
-   ./initdb ....
-   ./pg_ctl -D ../data start
-    
-   ./pg_ctl -o “-p 5433 -o 1522” -D ../data
-```
+- Initdb -m initialization requires judgment of different modes, among which oracle mode requires the execution of SQL statements postgres_oracle.bki. The default is Oracle compatibility mode, and the process is as follows:
  
+- Startup: When starting, it determines whether it is an Oracle compatibility mode based on the initialization mode;
 
-​      
+```
+Description:
+database_mode: Used to indicate initialization mode;
+database_mode=DB_PG，PG mode, and cannot be switched;
+database_mode=DB_ORACLE， oracle compatibility mode;
+```
+
+== Test cases
+
+```
+Initialize the PG mode:
+./initdb -D ../data -m pg
+
+Initialize the Oracle compatibility mode:
+./initdb -D ../data -m oracle
+
+or
+./initdb -D ../data
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,47 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= Compatible with Oracle anonymous block
+
+== Objective
+
+- This document is a design document for the PLSQL anonymous block compatible Oracle syntax function, in order to be compatible with Oracle's anonymous block statements in IvorySQL.
+
+== Function description
+
+- Anonymous blocks are PLSQL structures that dynamically create and execute procedural code without the need to persistently store the code as database objects in the system directory. In this implementation, IvorySQL is mainly compatible with the syntax format of PLSQL anonymous blocks, and the parts we mainly deal with include client tool psql, master server and PSQL side support.
+
+== Test cases
+
+```
+
+declare
+i integer := 10;
+begin
+ raise notice '%', i;
+end;
+/
+NOTICE:  10
+
+```
+
+```
+
+DECLARE
+  grade CHAR(1);
+BEGIN
+  grade := 'B';
+  CASE grade
+    WHEN 'A' THEN raise notice 'Excellent';
+    WHEN 'B' THEN raise notice 'Very Good';
+  END CASE;
+EXCEPTION
+  WHEN CASE_NOT_FOUND THEN
+    raise notice 'No such grade';
+END;
+/
+NOTICE:  Very Good
+
+```

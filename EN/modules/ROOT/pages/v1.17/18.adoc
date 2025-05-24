@@ -1,0 +1,1031 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= Built-in data types and built-in functions
+
+== Built-in data types
+
+|====
+|char
+|varchar
+|varchar2
+|number
+|binary_float
+|binary_double
+|date
+|timestamp
+|timestamp with time zone
+|timestamp with local time zone
+|interval year to month
+|interval day to second
+|raw
+|long
+|====
+
+== Built-in functions
+
+|====
+|sysdate
+|systimestamp
+|add_months
+|last_day
+|next_day
+|months_between
+|current_date
+|current_timestamp
+|new_time
+|tz_offset
+|trunc
+|instrb
+|substr
+|substrb
+|trim
+|ltrim
+|rtrim
+|length
+|lengthb
+|replace
+|regexp_replace
+|regexp_substr
+|regexp_instr
+|regexp_like
+|to_number
+|to_char
+|to_date
+|to_timestamp
+|to_timestamp_tz
+|to_yminterval
+|to_dsinterval
+|numtodsinterval
+|numtoyminterval
+|localtimestamp
+|from_tz
+|sys_extract_utc
+|sessiontimezone
+|hextoraw
+|uid
+|USERENV
+|asciistr
+|to_multi_byte
+|to_single_byte
+|compose
+|decompose
+|====
+
+== Built-in function descriptions
+
+1、Compatible with sysdate function, function: view the corresponding date and time, the test cases are as follows:
+Query the date of the current system:
+
+```
+select sysdate() from dual;
+  sysdate
+------------
+ 2023-07-06
+(1 row)
+```
+
+Check the date pushed forward by 1 day:
+
+```
+select sysdate()-1 from dual;
+  ?column?
+------------
+ 2023-07-05
+(1 row)
+```
+
+2、Compatible with the systimestamp function, function: return the current system date and time (including microseconds and time zone) on the local database, the test cases are as follows:
+Date and time to query the current date:
+
+```
+select systimestamp() from dual;
+  systimestamp
+-----------------------------------
+ 2023-07-06 10:18:31.674322 +08:00
+(1 row)
+```
+
+3、Compatible with add_months functions, function: the function adds a date to the number of months (n), and returns the same day that is n months apart, supporting parameters: date, number; The test cases are as follows:
+Check the same day of the following month on the current date (July 6):
+
+```
+select add_months(sysdate(),1) from dual;
+ add_months
+------------
+ 2023-08-06
+(1 row)
+```
+
+Query the same day of the previous month for the current date:
+
+```
+select add_months(sysdate(),-1) from dual;
+ add_months
+------------
+ 2023-06-06
+(1 row)
+```
+
+4、Compatible with last_day functions, function: return the last day of the month where the specified date is located, support parameters: date, the test cases are as follows:
+Check the last day of the month in which the day is located:
+
+```
+select last_day(sysdate())from dual;
+  last_day
+------------
+ 2023-07-31
+(1 row)
+```
+
+Query the last day of the month on which a day falls:
+
+```
+select last_day(to_date('2019-09-01'))from dual;
+  last_day
+------------
+ 2019-09-30
+(1 row)
+```
+
+5、 Compatible with next_day functions, function: return the next date of the specified date. Supported parameters: date, integer /date, text, Note: When the second parameter in the function passes the number of weeks more hours than the existing week, the date of the next week will be returned; When the date passed by the second parameter in the function is greater than the existing number of weeks, the corresponding day of the week of the week is returned. The test cases are as follows:
+Query the next day of the current date:
+
+```
+select next_day(sysdate(),1) from dual;
+ next_day
+------------
+ 2023-07-07
+(1 row)
+```
+
+Next Friday for the current date:
+
+```
+select next_day(sysdate(),'FRIDAY') from dual;
+  next_day
+------------
+ 2023-07-07
+(1 row)
+```
+
+6、Compatible with months_between functions, function: return the month of difference between date1 and date2 of date type, support parameters: date, date, description: if date1 is later than date2, return a positive number; If date1 is earlier than date2, a negative number is returned; If date1 and date2 are the same day of a month, the return result is an integer; If not the same day, results with decimal parts are returned on a monthly basis of 31 days. The test cases are as follows:
+To find the month that differs between the same day in different months:
+
+```
+select months_between(to_date('2023-07-06'),to_date('2023-08-06')) from dual;
+ months_between
+----------------
+             -1
+(1 row)
+```
+
+Query the month that differs between different days of different months:
+
+```
+select months_between(to_date('2023-07-06'),to_date('2023-08-05')) from dual;
+   months_between
+--------------------
+ -0.967741935483871
+(1 row)
+```
+
+7、Compatible with current_date functions, functions: return the current date of the current time zone, the test cases are as follows:
+To query the current date in the current time zone:
+
+```
+select current_date from dual;
+ current_date
+--------------
+ 2023-07-06
+(1 row)
+```
+
+8、Compatible with current_timestamp functions, function: return the current date and current time of the current time zone, including the current time zone information. Support parameters: integer, Note: The returned time can be adjusted with precision. The test cases are as follows:
+To query the current date and time in the current time zone:
+
+```
+select current_timestamp from dual;
+      current_timestamp
+-----------------------------------
+ 2023-07-06 10:27:01.440600 +08:00
+(1 row)
+```
+
+Query the current date and time in the current time zone (the precision is adjusted to the first three decimal places):
+
+```
+select current_timestamp(3) from dual;
+      current_timestamp
+-----------------------------------
+ 2023-07-06 10:27:14.182000 +08:00
+(1 row)
+```
+
+9、Compatible with new_time functions, function: return the date in another time zone corresponding to a certain time zone, support parameters: date, text, text, the test case is as follows:
+Returns the date for the current date in another time zone:
+
+```
+select sysdate() bj_time,new_time(sysdate(),'PDT','GMT')los_angles from dual;
+  bj_time   | los_angles
+------------+------------
+ 2023-07-06 | 2023-07-06
+(1 row)
+```
+
+10、Compatible with tz_offset functions, function: return the offset of the given time zone and the standard time zone, support parameters: text, the test case is as follows:
+Returns the offset of a given time zone from the standard time zone:
+
+```
+select tz_offset('US/Eastern') from dual;
+ tz_offset
+-----------
+ -04:00
+(1 row)
+```
+
+11、Compatible with trunc function, function: you can intercept the date to get the desired value, such as year, month, day, hour, minute, support parameters: date/date, text, the test case is as follows:
+Intercept the current date:
+
+```
+select trunc(sysdate()) from dual;
+ trunc
+------------
+ 2023-07-06
+(1 row)
+```
+
+Truncating the year, only the year is correct, and the month and day are not accurate values:
+
+```
+select trunc(sysdate(),'yyyy') from dual;
+   trunc
+------------
+ 2023-01-01
+(1 row)
+```
+
+Intercept the month, the return value only the month is correct, the year and day are not accurate values:
+
+```
+select trunc(sysdate(),'mm') from dual;
+   trunc
+------------
+ 2023-07-01
+(1 row)
+```
+
+12、Compatible with instrb function, function: string lookup function, return the position of the string, support parameters: varchar2, text, number DEFAULT 1, number DEFAULT 1, the following are test cases:
+RETURNS THE POSITION OF THE STRING IN CORPORATE FLOOR WHEN THE FIRST OR OCCURS BY DEFAULT:
+
+```
+SELECT INSTRB('CORPORATE FLOOR','OR') "Instring in bytes" FROM DUAL;
+ Instring in bytes
+-------------------
+                 2
+(1 row)
+```
+
+Returns the position of the string in the corporate floor where the query starts with the fifth character and the second occurrence of or:
+
+```
+SELECT INSTRB('CORPORATE FLOOR','OR',5,2) "Instring in bytes" FROM DUAL;
+ Instring in bytes
+-------------------
+                14
+(1 row)
+```
+
+13、Compatible with substr function, function: intercept string function, truncated in characters, support parameters: text, integer, test cases are as follows:
+Intercept the string from the fifth character in 'It is nice today', followed by:
+
+```
+SELECT SUBSTR('It is nice today',5) "Substring with bytes" FROM DUAL;
+
+ Substring with bytes
+----------------------
+  s nice today
+(1 row)
+```
+
+14、Compatible with substrb function, function: intercept string function, intercept in bytes, support parameters: varchar2, number/varchar2, number, number, the test cases are as follows:
+Intercept the string starting with the fifth byte in 'It's nice today' and then onwards:
+
+```
+SELECT SUBSTRB('It is nice today',5) "Substring with bytes" FROM DUAL;
+ Substring with bytes
+----------------------
+ s nice today
+(1 row)
+```
+
+Intercept the string in 'It is nice today' starting with the fifth byte and ending with the eighth byte:
+
+```
+SELECT SUBSTRB('It is nice today',5,8) "Substring with bytes" FROM DUAL;
+ Substring with bytes
+----------------------
+ s nice t
+
+(1 row)
+```
+
+15、Compatible with trim function, function: remove the left and right spaces or corresponding data of the specified string, support parameters: varchar2 / varchar2, varchar2, the test cases are as follows:
+Remove the left and right spaces of '   aaa bbb ccc   ':
+```
+select trim('   aaa bbb ccc   ')trim from dual;
+  trim
+-------------
+ aaa bbb ccc
+(1 row)
+```
+
+Remove aaa from 'aaa bbb ccc':
+
+```
+select trim('aaa bbb ccc','aaa')trim from dual;
+  trim
+----------
+  bbb ccc
+(1 row)
+```
+
+16、Compatible with ltrim function, function: remove the left space or corresponding data of the specified string, support parameters: varchar2 / varchar2, varchar2, the test cases are as follows:
+Remove the space to the left of '   abcdefg   ':
+
+```
+select ltrim('   abcdefg   ')ltrim from dual;
+    ltrim
+------------
+ abcdefg
+(1 row)
+```
+
+Traverse from the left side of 'abcdefg', remove it as soon as a character appears in 'fegab', and return the result if it is absent:
+
+```
+select ltrim('abcdefg','fegab')ltrim from dual;
+ ltrim
+-------
+ cdefg
+(1 row)
+```
+
+17、Compatible with rtrim function, function: remove the space on the right side of the specified string, the test case is as follows:
+Remove the space to the right of '   abcdefg   ':
+
+```
+select rtrim('   abcdefg   ')rtrim from dual;
+     rtrim
+----------------
+    abcdefg
+(1 row)
+```
+
+Traverse from the right side of 'abcdefg', remove it as soon as a character appears in 'fegab', and return the result if it is absent:
+
+```
+select rtrim('abcdefg','fegab')rtrim from dual;
+ rtrim
+-------
+ abcd
+(1 row)
+```
+
+18、Compatible with the length function, function: find the length of the specified string character, support parameters: char/integer/varchar2 The test cases are as follows:
+Query the character length of 223:
+
+```
+select length(223) from dual;
+ length
+--------
+      3
+(1 row)
+```
+
+Query the character length of '223':
+
+```
+select length('223') from dual;
+ length
+--------
+      3
+(1 row)
+```
+
+To query the character length of 'ivorysql database' :
+
+```
+select length('ivorysql database') from dual;
+ length
+--------
+     17
+(1 row)
+```
+
+19、Compatible with lengthb function: find the length of the specified string byte, support parameters: char/bytea/varchar2 test cases are as follows:
+Query the byte lengthb of 'ivorysql':
+
+
+```
+select lengthb('ivorysq'::char) from dual;
+ lengthb
+---------
+       1
+(1 row)
+```
+
+Query the byte lengthb of '0x2C':
+
+```
+select lengthb('0x2C'::bytea) from dual;
+ lengthb
+---------
+       4
+(1 row)
+```
+
+Query the byte lengthb of the 'ivorysql database':
+
+```
+select lengthb('ivorysql database') from dual;
+ lengthb
+---------
+      17
+(1 row)
+```
+
+20、compatible with replace function, function: replace the character in the specified string or delete the character, support parameters: text, text, text/varchar2, varchar2, varchar2 DEFAULT NULL::varchar2, test for example:
+Replace 'j' in 'jack and jue' with 'bl' :
+
+```
+select replace('jack and jue','j','bl') from dual;
+    replace
+----------------
+ black and blue
+(1 row)
+```
+
+Remove the 'j' in 'jack and jue' :
+
+```
+select replace('jack and jue','j') from dual;
+  replace
+------------
+ ack and ue
+(1 row)
+```
+
+21、compatible with the regexp_replace function, which is an extension of the replace function. Function: Used to perform matching and replacement through regular expressions. Supported parameters: text, text, text /text, text, text, integer/varchar2, varchar2/varchar2, varchar2 varchar2, varchar2 varchar2, for example:
+Replace the matched number with *#:
+
+```
+select regexp_replace('01234abcd56789','[0-9]','*#')from  dual;
+      regexp_replace
+--------------------------
+ *#*#*#*#*#abcd*#*#*#*#*#
+(1 row)
+```
+
+Start with the second number by replacing the matched number with *#:
+
+```
+select regexp_replace('01234abcd56789','[0-9]','*#',2)from  dual;
+    regexp_replace
+-------------------------
+ 0*#*#*#*#abcd*#*#*#*#*#
+```
+
+Delete '01' from '01234abcd56789':
+
+```
+select regexp_replace('01234abcd56789','01')from dual;
+ regexp_replace
+----------------
+ 234abcd56789
+(1 row)
+```
+
+Replace 01234abcd56789' with 'xxx':
+
+```
+select regexp_replace('01234abcd56789','012','xxx')from dual;
+ regexp_replace
+----------------
+ xxx34abcd56789
+(1 row)
+```
+
+22、Compatible with regexp_substr functions, function: pick up the character substring described by the regular expression, support parameters: text, text, integer /text, text, integer, integer / text, text, integer, integer, text /varchar2, varchar2, the test cases are as follows:
+Query the 012 string starting with the first number in '012ab34':
+
+```
+select regexp_substr('012ab34', '012',1) from dual;
+ regexp_substr
+---------------
+ 012
+(1 row)
+```
+
+Query the 012 string in '012ab34' starting from the first number of the first group:
+```
+select regexp_substr('012ab34', '012',1,1) from  dual;
+ regexp_substr
+---------------
+ 012
+(1 row)
+```
+
+Query '012a012Ab34' for case-insensitive 012 strings starting from the first number of the first group:
+
+```
+select regexp_substr('012a012Ab34', '012A',1,1,'i') from dual;
+ regexp_substr
+---------------
+ 012a
+(1 row)
+```
+
+Query '012a012Ab34' for case-sensitive 012 strings starting from the first group of numbers:
+
+```
+select regexp_substr('012a012Ab34', '012A',1,1,'c') from dual;
+ regexp_substr
+---------------
+ 012A
+(1 row)
+```
+
+Query the 'Database' substring in 'Data':
+
+```
+select regexp_substr('Database' , 'Data') from dual;
+ regexp_substr
+---------------
+ Data
+(1 row)s
+```
+
+23、Compatible with regexp_instr functions, function: used to calibrate the start position of the character substring that conforms to the regular expression, support parameters: text, text, integer /text, text, integer, integer / text, text, integer, integer, text, integer / varchar2, varchar2, the test case is as follows:
+Query 'abcaBcabc' for the position of the abc substring starting from the first character:
+
+```
+SELECT regexp_instr('abcaBcabc', 'abc', 1);
+ regexp_instr
+--------------
+ 1
+(1 row)
+```
+
+Query 'abcaBcabc' starting from the first character, where the abc substring appears for the third time:
+
+```
+SELECT regexp_instr('abcaBcabc', 'abc', 1, 3);
+ regexp_instr
+--------------
+ 7
+(1 row)
+```
+
+Query 'abcabcabc' starting from the first character and occurring after the second occurrence of the abc substring:
+
+```
+SELECT regexp_instr('abcaBcabc', 'abc', 1, 2,1);
+ regexp_instr
+--------------
+ 7
+(1 row)
+```
+
+Query 'abcaBcabc' from the first character, where it occurs after the first occurrence of the abc substring (case sensitive):
+
+```
+SELECT regexp_instr('abcaBcabc', 'abc',1,2,1,'c');
+ regexp_instr
+--------------
+ 7
+(1 row)
+```
+
+Query the 'Database' substring in 'Data':
+
+```
+SELECT regexp_instr('Database', 'Data');
+ regexp_instr
+--------------
+            1
+(1 row)
+```
+
+24、Compatible with regexp_like functions, function: similar to like, used for fuzzy queries. Supported parameters: varchar2, varchar2 /varchar2, varchar2 varchar2,
+First create a regexp_like table for the test case query:
+
+```
+create table t_regexp_like
+(
+  id varchar(4),
+  value varchar(10)
+
+);
+insert into t_regexp_like values ('1','1234560');
+insert into t_regexp_like values ('2','1234560');
+insert into t_regexp_like values ('3','1b3b560');
+insert into t_regexp_like values ('4','abc');
+insert into t_regexp_like values ('5','abcde');
+insert into t_regexp_like values ('6','ADREasx');
+insert into t_regexp_like values ('7','123  45');
+insert into t_regexp_like values ('8','adc  de');
+insert into t_regexp_like values ('9','adc,.de');
+insert into t_regexp_like values ('10','abcbvbnb');
+insert into t_regexp_like values ('11','11114560');
+```
+
+The test cases are as follows:
+Query t_regexp_like columns with abc in the table:
+
+```
+select * from t_regexp_like where regexp_like(value,'abc');
+ id |  value
+----+----------
+ 4  | abc
+ 5  | abcde
+ 10 | abcbvbnb
+(3 rows)
+
+```
+ 
+Query t_regexp_like columns with ABC in the table (not case sensitive):
+
+```
+select * from t_regexp_like where regexp_like(value,'ABC','i');
+ id |  value
+----+----------
+ 4  | abc
+ 5  | abcde
+ 10 | abcbvbnb
+(3 rows)
+
+```
+
+25、Compatible with to_number functions, function: is to change some processed strings arranged in a certain format back to a numeric format, support parameters: text/text, text test cases are as follows:
+Convert the string '-34,338,492' to numeric format:
+
+```
+SELECT to_number('-34,338,492', '99,999,999') from dual;
+ to_number
+-----------
+ -34338492
+(1 row)
+```
+
+Convert the string '5.01-' to numeric format:
+
+```
+SELECT to_number('5.01-', '9.99S');
+
+ to_number
+-----------
+ -5.01
+(1 row)
+```
+
+26、Compatible with to_char functions, functions: convert numbers or dates to character types, support parameters: date/date, text/timestamp/timestamp, text test cases are as follows:
+To convert the current system date to character format:
+
+```
+select to_char(sysdate()) from dual;
+  to_char
+------------
+ 2023-07-10
+(1 row)
+```
+
+Convert current system date to month/day/year character format:
+
+```
+select to_char(sysdate(),'mm/dd/yyyy') from dual;
+  to_char
+------------
+ 07/10/2023
+(1 row)
+```
+
+Converts the timestamp format of the current date to character format
+
+```
+SELECT to_char(sysdate()::timestamp);
+         to_char
+----------------------------
+ 2023-07-10 09:46:44.000000
+```
+
+Convert timestamp format of current date to month/date/year character format:
+
+```
+SELECT to_char(sysdate()::timestamp,'MM-YYYY-DD');
+  to_char
+------------
+ 07-2023-10
+(1 row)
+```
+
+27、Compatible with to_date functions, function: convert character type to date type, support parameters: text/text, text test cases are as follows:
+Convert '2023/07/06' to date type:
+
+```
+select to_date('20230706') from dual;
+  to_date
+------------
+ 2023-07-06
+(1 row)
+```
+
+Convert '-44-02-01' to date type:
+
+```
+SELECT to_date('-44,0201','YYYY-MM-DD');
+ to_date
+------------
+ 0044-02-01
+(1 row)
+```
+
+28、Compatible with to_timestamp functions, functions: can store year, month, day, hour, minute, second, and can also store fractional parts of seconds. Supported parameters: text/text, text test cases are as follows:
+Query '2018-11-02 12:34:56.025' output as a date:
+```
+SELECT to_timestamp('20181102.12.34.56.025');
+        to_timestamp
+----------------------------
+ 2018-11-02 12:34:56.025000
+(1 row)
+```
+
+Query '2011,12,18 11:38' output as a date:
+
+```
+SELECT to_timestamp('2011,12,18 11:38 ', 'YYYY-MM-DD HH24:MI:SS');
+       to_timestamp
+----------------------------
+ 2011-12-18 11:38:00.000000
+(1 row)
+```
+
+29、Compatible with to_timestamp_tz functions, functions: according to the time query, the time string has T, Z and milliseconds, time zone. The test cases are as follows:
+Query '2016-10-9 14:10:10.123000' output as a date:
+
+
+```
+ SELECT to_timestamp_tz('2016-10-9 14:10:10.123000') FROM DUAL;
+          to_timestamp_tz
+-----------------------------------
+ 2016-10-09 14:10:10.123000 +08:00
+(1 row)
+```
+
+Query '10-9-2016 14:10:10.123000 +8:30' output as a date:
+
+```
+ SELECT to_timestamp_tz('10-9-2016 14:10:10.123000 +8:30', 'DD-MM-YYYY HH24:MI:SS.FF TZH:TZM') FROM DUAL;
+          to_timestamp_tz
+-----------------------------------
+ 2016-09-10 13:40:10.123000 +08:00
+(1 row)
+```
+
+30、Compatible with to_yminterval functions, function: convert a string type to a year and month time difference type, support parameters: text, The test cases are as follows:
+Query the date after two years and eight months after '20110101':
+```
+select to_date('20110101','yyyymmdd')+to_yminterval('02-08') from dual;
+  ?column?
+------------
+ 2013-09-01
+(1 row)
+```
+
+31、Compatible with to_dsinterval functions, function: add a date plus a certain hour or number of days into another date, support parameters: text, test cases are as follows:
+Query the current system time plus the date in 9 and a half hours (currently 2023-07-06, 18:00):
+
+```
+select sysdate()+to_dsinterval('0 09:30:00')as newdate from dual;
+ newdate
+------------
+ 2023-07-07
+(1 row)
+```
+
+32、compatible with numtodsinterval function, function: convert numbers into time interval type data. The supporting parameters: double precision, text test cases are as follows:
+Convert 100.00 hours to interval type data:
+```
+SELECT NUMTODSINTERVAL(100.00, 'hour');
+        numtodsinterval
+-------------------------------
+ +000000004 04:00:00.000000000
+(1 row)
+```
+
+Convert 100 minutes to interval type data:
+
+```
+SELECT NUMTODSINTERVAL(100, 'minute');
+      numtodsinterval
+-------------------------------
+ +000000000 01:40:00.000000000
+(1 row)
+```
+
+33、Compatible with the numtoyminterval function, function: convert numbers into date interval type data.
+Convert 1, year to date interval: double precision, text, the test case is as follows:
+
+```
+SELECT NUMTOYMINTERVAL(1.00,'year');
+ numtoyminterval
+-----------------
+ +000000001-00
+(1 row)
+```
+
+Convert 1, mouth to date interval:
+
+```
+SELECT NUMTOYMINTERVAL(1,'month');
+ numtoyminterval
+-----------------
+ +000000000-01
+(1 row)
+```
+
+34、Compatible with the localtimestamp function, function: return the date and time in the session, support parameters: integer, add parameters to the function as precision, the test cases are as follows:
+To return the date and time in the current session:
+
+```
+select localtimestamp from dual;
+       localtimestamp
+----------------------------
+ 2023-07-07 09:18:15.896472
+(1 row)
+```
+
+Returns the date and time in the current session with a precision of 1:
+
+```
+select localtimestamp(1) from dual;
+     localtimestamp
+----------------------------
+ 2023-07-07 09:18:16.100000
+(1 row)
+```
+
+35、Compatible with from_tz functions, functions: convert time from one time zone to another, support parameters; timestamp, text, the test case is as follows:
+Convert '2000-03-28 08:00:00', '3:00' to the current time zone:
+
+```
+SELECT FROM_TZ(TIMESTAMP '2000-03-28 08:00:00', '3:00') FROM DUAL;
+              from_tz
+-----------------------------------
+ 2000-03-28 13:00:00.000000 +08:00
+(1 row)
+```
+
+36、Compatible with sys_extract_utc functions, function: convert a timestamptz to UTC time zone time. Supported parameters: timestamp with time zone The test cases are as follows:
+Query conversion timestamp '2000-03-28 11:30:00.00 -8:00' to the time after UTC time zone:
+
+```
+select sys_extract_utc(timestamp '2000-03-28 11:30:00.00 -8:00') from dual;
+      sys_extract_utc
+----------------------------
+ 2000-03-28 19:30:00.000000
+(1 row)
+```
+
+37、Compatible with sessiontimezone function, function: view time zone details, test cases are as follows:
+To view the details of the current time zone:
+```
+select sessiontimezone() from dual;
+ sessiontimezone
+-----------------
+ Asia/Shanghai
+(1 row)
+```
+
+After modifying the timezone, check the time zone belief information:
+
+```
+set timezone = 'Asia/Hong_Kong';
+SET
+select sessiontimezone() from dual;
+ sessiontimezone
+-----------------
+ Asia/Hong_Kong
+(1 row)
+```
+
+38、compatible with hextoraw function, function: convert the binary value represented by the string into a RAW value. Support parameters: text, the test cases are as follows:
+Convert the string 'abcdef' to a raw value:
+
+
+```
+select hextoraw('abcdef')from dual;
+ hextoraw
+----------
+ \xabcdef
+(1 row)
+```
+
+39、Compatible with uid function, function: get the instance name of the database. The test cases are as follows:
+Get the instance name of the current database:
+
+```
+select uid() from dual;
+ uid
+-----
+  10
+(1 row)
+```
+
+40、Compatible with USERENV function, function: return the information of the current user environment, the test cases are as follows:
+Check whether the current user is DBA, and if so, return ture:
+
+```
+select userenv('isdba')from dual;
+ get_isdba
+-----------
+ TRUE
+(1 row)
+```
+
+To view the session flag:
+
+```
+select userenv('sessionid')from dual;
+ get_sessionid
+---------------
+ 1
+(1 row)
+```
+
+41、Compatible with ASCIISTR function, function: input string, return ASCII characters, the test cases are as follows:
+string with only ascii chars:
+```
+ select asciistr('Hello, World!') from dual;
+   asciistr    
+---------------
+ Hello, World!
+(1 row)
+```
+
+string with non-ascii chars:
+```
+ select asciistr('你好') from dual;
+  asciistr  
+------------
+ \4F60\597D
+```
+
+string with mixed ascii and non-ascii:
+```
+ select asciistr('ABÄCDE') from dual;
+  asciistr  
+------------
+ AB\00C4CDE
+(1 row)
+```
+
+42、Compatible with TO_MULTI_BYTE function, function: Convert half-width characters in a string to full-width characters:
+input half-width characters, Convert to full-width characters:
+```
+select to_multi_byte('1.2'::text) ;
+ to_multi_byte 
+---------------
+ １．２
+```
+
+43、Compatible with TO_SINGLE_BYTE function, function: Convert full-width characters in a string to half-width characters:
+input full-width characters, Convert to half-width characters: 输入全角字符，转换为半角字符：
+```
+select to_single_byte('１．２');
+ to_single_byte 
+----------------
+ 1.2
+```
+
+44、Compatible with COMPOSE function,function: Combine base characters and combining marks into a composite Unicode character:
+input base character 'a' with a combining mark '768', return à：
+```
+select compose('a'||chr(768)) from dual;
+ compose 
+---------
+ à
+(1 row)
+```
+
+
+45、ompatible with DECOMPOSE function, function: Decompose composite Unicode characters (like those with accents or special symbols) into their base characters and combining marks.
+input é, return a base character 'e' with a combining mark '301'：
+```
+select asciistr(decompose('é')) from dual;
+ asciistr 
+----------
+ e\0301
+```
