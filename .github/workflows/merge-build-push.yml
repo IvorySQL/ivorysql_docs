@@ -1,0 +1,239 @@
+name: Build , Push to web, Deploy Antora Docs
+
+on:
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: PR was merged
+        run: |
+          echo "PR #${{ github.event.pull_request.number }} was merged into ${{ github.event.pull_request.base.ref }}."
+          echo "Head commit was: ${{ github.event.pull_request.head.sha }}"
+          
+      - name: Checkout Documentation Repository (ivorysql_doc)
+        uses: actions/checkout@v4
+        with:
+          path: ivorysql_doc
+
+      - name: Checkout Doc Builder Repository (doc_builder)
+        uses: actions/checkout@v4
+        with:
+          repository:  ${{ github.repository_owner }}/ivory-doc-builder
+          path: ivory-doc-builder
+
+      - name: Determine Latest Version from ivorysql_docs branches
+        id: latest_version_step
+        shell: bash
+        run: |
+          echo "Detecting latest version from remote branches of IvorySQL/ivorysql_docs..."
+          LATEST_VERSION_NUMBER=$( \
+            git ls-remote --heads --refs "https://github.com/IvorySQL/ivorysql_docs.git" 'refs/heads/v*.*' | \
+            sed 's_^[^\t]*\trefs/heads/v__g' | \
+            grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$' | \
+            sort -V | \
+            tail -n1 \
+          )
+
+          if [[ -z "$LATEST_VERSION_NUMBER" ]]; then
+            echo "::error::Could not determine latest version from branches. Please check git ls-remote command and repo accessibility."
+            exit 1
+          fi
+          
+          echo "Detected latest version number: $LATEST_VERSION_NUMBER"
+          echo "version=$LATEST_VERSION_NUMBER" >> "$GITHUB_OUTPUT"
+          
+      - name: Install yq
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
+          yq --version
+
+      - name: Modify Antora Playbooks
+        working-directory: ./ivory-doc-builder
+        env:
+          DETECTED_VERSION: '${{ steps.latest_version_step.outputs.version }}'
+          START_PAGE_COMPONENT_NAME: "ivorysql-doc"
+          START_PAGE_FILE_PATH: "welcome.adoc"
+        run: |
+          PLAYBOOK_FILES=("antora-playbook-CN.yml" "antora-playbook-EN.yml")
+
+          for PLAYBOOK_FILE in "${PLAYBOOK_FILES[@]}"; do
+            if [ -f "$PLAYBOOK_FILE" ]; then
+              echo "--- Modifying Playbook: $PLAYBOOK_FILE ---"
+              echo "Original content of $PLAYBOOK_FILE:"
+              cat "$PLAYBOOK_FILE"
+              echo # Newline for better readability
+
+              if [[ -n "$DETECTED_VERSION" ]]; then
+                NEW_START_PAGE="${START_PAGE_COMPONENT_NAME}::v${DETECTED_VERSION}/${START_PAGE_FILE_PATH}"
+                yq -i ".site.start_page = \"$NEW_START_PAGE\"" "$PLAYBOOK_FILE"
+                echo "Updated .site.start_page in $PLAYBOOK_FILE to: $NEW_START_PAGE"
+              else
+                echo "WARNING: DETECTED_VERSION is empty. Skipping start_page update for $PLAYBOOK_FILE."
+              fi
+              echo "Modified content of $PLAYBOOK_FILE:"
+              cat "$PLAYBOOK_FILE"
+              echo "--- Finished modification for $PLAYBOOK_FILE ---"
+              echo # Newline
+            else
+              echo "WARNING: Playbook file $PLAYBOOK_FILE not found in $(pwd)."
+            fi
+          done
+
+      - name: Checkout Web Repository (web)
+        uses: actions/checkout@v4
+        with:
+          repository:  ${{ github.repository_owner }}/ivorysql_web
+          path: www_publish_target
+          token: ${{ secrets.IVORY_TOKEN }}
+          
+      - name: Setup Ruby and Bundler
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.0'
+
+      - name: Install Asciidoctor PDF and related Gems
+        run: |
+          echo "Installing Asciidoctor PDF gems..."
+          gem install asciidoctor-pdf --version "~>2.3.19"
+          gem install rouge
+    
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.15'
+
+      - name: Install Antora CLI
+        run: |
+          echo "Installing Antora packages local..."
+          npm install --global antora@3.1.7  @antora/lunr-extension  @antora/pdf-extension  @node-rs/jieba
+
+      - name: Build English Documentation
+        working-directory: ./ivory-doc-builder
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Building English site..."
+          ls ../www_publish_target/
+          npx antora generate --stacktrace --to-dir ../www_publish_target/docs/en antora-playbook-EN.yml
+
+      - name: Build Chinese Documentation
+        working-directory: ./ivory-doc-builder
+        run: |
+          echo "Building Chinese site..."
+          npx antora generate --stacktrace --to-dir ../www_publish_target/docs/cn antora-playbook-CN.yml
+
+      - name: Commit and Push to web Repository new branch , pull request
+        id: commit_push_new_branch
+        working-directory: ./www_publish_target
+        env:
+          OPEN_PUSH_PR: true
+        run: |
+          echo "push_pr=${OPEN_PUSH_PR}" >> $GITHUB_OUTPUT
+          echo "--- Preparing to commit and push changes ---"
+          echo "--- Git status ---"
+          GIT_STATUS_OUTPUT=$(git status --porcelain)
+          echo "${GIT_STATUS_OUTPUT}"
+          echo "--- End of git status --porcelain output ---"
+
+          git config user.name "IvorySQL Actions Bot"
+          git config user.email "actions-bot@users.noreply.github.com"
+          
+          if [ -z "${GIT_STATUS_OUTPUT}" ]; then
+            echo "No changes to commit."
+            echo "changes_detected=false" >> $GITHUB_OUTPUT
+          else
+            echo "Changes detected. Proceeding with add, commit, and push."
+            if [[ "${OPEN_PUSH_PR}" == "true" ]]; then
+              NEW_BRANCH_NAME="docs-update-${{ github.run_attempt }}-$(date +'%Y-%m-%d-%H%M%S')"
+              echo "Generated new branch name: ${NEW_BRANCH_NAME}"
+              echo "new_branch_name=${NEW_BRANCH_NAME}" >> $GITHUB_OUTPUT
+              echo "changes_detected=true" >> $GITHUB_OUTPUT
+              git checkout -b "${NEW_BRANCH_NAME}"
+              git add .
+              COMMIT_MESSAGE="docs: Regenerate Antora site from IvorySQL/ivorysql_docs commit ${{ github.event.head_commit.id || github.sha }}"
+              git commit -m "${COMMIT_MESSAGE}"
+              git push origin "${NEW_BRANCH_NAME}"
+            else
+              echo "Pushing changes to master branch."
+              git add .
+              COMMIT_MESSAGE="docs: Regenerate Antora site from IvorySQL/ivorysql_docs commit ${{ github.event.head_commit.id || github.sha }}"
+              git commit -m "${COMMIT_MESSAGE}"
+              git push origin master
+            fi
+          fi
+
+      - name: Create or Update Pull Request with GitHub CLI
+        id: cpr
+        if: steps.commit_push_new_branch.outputs.push_pr == 'true' && steps.commit_push_new_branch.outputs.changes_detected == 'true' && steps.commit_push_new_branch.outputs.new_branch_name != ''
+        working-directory: ./www_publish_target
+        env:
+          GH_TOKEN: ${{ secrets.IVORY_TOKEN }}
+          PARAM_BASE_BRANCH: master
+          PARAM_HEAD_BRANCH: ${{ steps.commit_push_new_branch.outputs.new_branch_name }}
+          PARAM_TITLE: "Docs: Automated update from IvorySQL/ivorysql_docs commit ${{ github.event.head_commit.id || github.sha }}"
+          PARAM_BODY: |
+            Automated Antora site regeneration based on changes in the IvorySQL/ivorysql_docs repository.
+
+            Source commit: `${{ github.server_url }}/${{ github.repository_owner }}/ivorysql_docs/commit/${{ github.event.head_commit.id || github.sha }}`
+            
+            - Auto-generated by gh pr create
+          PARAM_DRAFT: "false"
+        run: |
+          echo "Attempting to create or update Pull Request for branch '${PARAM_HEAD_BRANCH}' into '${PARAM_BASE_BRANCH}'"
+          
+          DRAFT_FLAG_STRING=""
+          if [[ "${PARAM_DRAFT}" == "true" ]]; then
+            DRAFT_FLAG_STRING="--draft"
+          fi
+
+          echo "Executing: gh pr create --base \"${PARAM_BASE_BRANCH}\" --head \"${PARAM_HEAD_BRANCH}\" --title <title> --body-file <(echo body)  ${DRAFT_FLAG_STRING}"
+          
+          if gh pr create \
+            --base "${PARAM_BASE_BRANCH}" \
+            --head "${PARAM_HEAD_BRANCH}" \
+            --title "${PARAM_TITLE}" \
+            --body-file <(echo "${PARAM_BODY}") \
+            ${DRAFT_FLAG_STRING}; then
+            echo "Pull Request created or already exists and metadata might have been updated."
+          else
+            echo "'gh pr create' command indicated an issue or no action was taken."
+
+            EXISTING_PR_URL=$(gh pr view "${PARAM_HEAD_BRANCH}" --json url -q ".url" 2>/dev/null || echo "")
+            if [[ -n "$EXISTING_PR_URL" ]]; then
+              echo "An existing PR was found for branch '${PARAM_HEAD_BRANCH}': ${EXISTING_PR_URL}"
+              echo "Proceeding to enable auto-merge for this existing PR."
+            else
+              echo "::error::Failed to create PR and no existing PR found for branch '${PARAM_HEAD_BRANCH}'. Cannot enable auto-merge."
+              exit 1
+            fi
+          fi
+
+      - name: Enable Auto-Merge for PR
+        if: steps.cpr.outcome == 'success' && steps.commit_push_new_branch.outputs.push_pr == 'true' && steps.commit_push_new_branch.outputs.changes_detected == 'true' && steps.commit_push_new_branch.outputs.new_branch_name != ''
+        working-directory: ./www_publish_target
+        env:
+          GH_TOKEN: ${{ secrets.IVORY_TOKEN }} 
+          PR_HEAD_BRANCH: ${{ steps.commit_push_new_branch.outputs.new_branch_name }} 
+          PR_BASE_BRANCH: master
+          MERGE_STRATEGY: MERGE 
+        run: |
+          echo "Attempting to enable auto-merge for PR from branch '$PR_HEAD_BRANCH' to '$PR_BASE_BRANCH'"
+          if gh pr merge "$PR_HEAD_BRANCH" \
+            --${MERGE_STRATEGY,,} \
+            --delete-branch; then
+            echo "Auto-merge enabled successfully for PR from branch '$PR_HEAD_BRANCH'."
+          else
+            echo "::warning::Failed to enable auto-merge for PR from branch '$PR_HEAD_BRANCH'."
+            echo "This might be because the PR is not mergeable (e.g., has conflicts, is a draft PR), requires reviews, auto-merge is already enabled, or the PR could not be uniquely identified by branch name."
+          fi
