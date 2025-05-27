@@ -1,7 +1,7 @@
 name: Pr preview
 
 on:
-  pull_request:
+  pull_request_target:
 
 jobs:
   build-and-deploy:
@@ -16,6 +16,8 @@ jobs:
       - name: Checkout Documentation Repository (ivorysql_doc)
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
           path: ivorysql_doc
 
       - name: Fetch All Relevant Branches into Local Docs Repo
