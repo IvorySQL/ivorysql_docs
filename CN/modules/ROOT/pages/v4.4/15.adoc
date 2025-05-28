@@ -120,7 +120,7 @@ HINT:  Perhaps you need a different "datestyle" setting.
 ivorysql=#  select * from test_nls_date;
  a | created_at
 ---+------------
- 1 | 2024-04-05
- 2 | 2024-04-15
+ 1 | 24-04-05
+ 2 | 24-04-15
 (2 rows)
 ```
