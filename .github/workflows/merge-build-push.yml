@@ -1,7 +1,7 @@
 name: Build , Push to web, Deploy Antora Docs
 
 on:
-  pull_request:
+  pull_request_target:
     types:
       - closed
 
@@ -96,7 +96,6 @@ jobs:
         with:
           repository:  ${{ github.repository_owner }}/ivorysql_web
           path: www_publish_target
-          token: ${{ secrets.IVORY_TOKEN }}
           
       - name: Setup Ruby and Bundler
         uses: ruby/setup-ruby@v1
@@ -178,7 +177,7 @@ jobs:
         if: steps.commit_push_new_branch.outputs.push_pr == 'true' && steps.commit_push_new_branch.outputs.changes_detected == 'true' && steps.commit_push_new_branch.outputs.new_branch_name != ''
         working-directory: ./www_publish_target
         env:
-          GH_TOKEN: ${{ secrets.IVORY_TOKEN }}
+          GH_TOKEN: ${{ secrets.WEB_TOKEN }}
           PARAM_BASE_BRANCH: master
           PARAM_HEAD_BRANCH: ${{ steps.commit_push_new_branch.outputs.new_branch_name }}
           PARAM_TITLE: "Docs: Automated update from IvorySQL/ivorysql_docs commit ${{ github.event.head_commit.id || github.sha }}"
@@ -223,7 +222,7 @@ jobs:
         if: steps.cpr.outcome == 'success' && steps.commit_push_new_branch.outputs.push_pr == 'true' && steps.commit_push_new_branch.outputs.changes_detected == 'true' && steps.commit_push_new_branch.outputs.new_branch_name != ''
         working-directory: ./www_publish_target
         env:
-          GH_TOKEN: ${{ secrets.IVORY_TOKEN }} 
+          GH_TOKEN: ${{ secrets.WEB_TOKEN }} 
           PR_HEAD_BRANCH: ${{ steps.commit_push_new_branch.outputs.new_branch_name }} 
           PR_BASE_BRANCH: master
           MERGE_STRATEGY: MERGE 
