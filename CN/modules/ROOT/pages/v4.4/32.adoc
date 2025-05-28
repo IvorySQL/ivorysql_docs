@@ -1,0 +1,83 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+= **IvorySQL社区贡献指南**
+
+IvorySQL由一个核心开发团队维护，该团队拥有对GitHub上的IvorySQL主存储库的提交权限。同时，我们非常渴望从更广泛的IvorySQL社区中的成员那里获得贡献。如果您希望看到您的代码或文档更改被添加到IvorySQL并出现在将来的版本中，本节的内容介绍是您需要知道的。
+
+​IvorySQL社区欢迎并赞赏所有类型的贡献，期待您的加入！
+
+在参与社区贡献前，请先阅读并遵守 https://github.com/IvorySQL/IvorySQL/blob/master/CODE_OF_CONDUCT_CN.md[IvorySQL社区行为准则]。
+
+== 注册Github账号
+
+IvorySQL源码托管在github: <https://github.com/IvorySQL>。
+
+请参考<https://docs.github.com/en/get-started/start-your-journey>注册您的github账号，并熟悉Git工具和工作流。
+
+== 签署CLA
+
+在提交代码或文档贡献之前，个人或企业贡献者需要签署贡献者许可协议(CLA)。签署CLA是IvorySQL社区接受贡献的必要条件，以确保您的贡献被合法分发。请根据下列链接下载CLA进行签署并将签署后的CLA发送至 cla@ivorysql.org。
+
+* https://www.ivorysql.org/zh-CN/assets/files/individual_cla-a81f001209eb5ce0f8ea7c3be4cc69b5.pdf[个人贡献者]
+* https://www.ivorysql.org/zh-CN/assets/files/corporate_cla-76e89b6f17b0bc102cbc1105d438a917.pdf[企业贡献者]
+
+未签署CLA的Pull Request将无法进入评审阶段。
+
+== 找到您感兴趣的项目
+
+您可以从如下列表中找到感兴趣的项目及其代码仓库
+
+[cols="1,1"]
+|===
+|代码仓库 | 描述
+|https://github.com/IvorySQL/IvorySQL[IvorySQL] | 负责社区IvorySQL数据库的开发和维护 
+|https://github.com/IvorySQL/Ivory-www[Ivory-www] | 负责社区的官网开发和维护 
+|https://github.com/IvorySQL/ivory-operator[ivory-operator] | 负责IvorySQL云原生数据库及周边工具开发和维护
+|https://github.com/IvorySQL/docker_library[docker_library] | 负责IvorySQL多架构的镜像构建开发和维护
+|https://github.com/IvorySQL/ivory-cloud[ivory-cloud] | 负责IvorySQL云服务平台及周边生态开发和维护
+|https://github.com/IvorySQL/ivorysql_docs[Ivorysql_docs] | 负责社区的文档中心开发和维护
+|https://github.com/IvorySQL/ivory-doc-builder[ivory-doc-builder] | 负责Ivorysql_docs的编译
+|https://github.com/IvorySQL/ivorysql_web[Ivorysql_web] | 负责社区的文档中心网站维护
+|https://github.com/IvorySQL/ivorysql-wasm[Ivorysql_wasm] | 负责IvorySQL在线易用体验网站的开发和维护
+|=== 
+
+== 开始您的贡献
+
+=== 提交Issue
+如果您准备向社区上报 Bug 或者提交需求，请在 IvorySQL 社区对应的仓库上提交 Issue，并参考Issue xref:./33.adoc[提交指南]。
+
+=== 给自己分配Issue
+您可以将自己创建的Issue或者愿意处理的Issue分配给自己。 只需要在评论框内输入/assign，机器人就会将问题分配给您。 每个 Issue 下面可能已经有参与者的交流和讨论，如果您感兴趣，也可以在评论框中发表自己的意见参与 Issue 讨论。
+
+=== 提交Pull Request
+对于提交一个PR应该保持一个功能，或者一个bug提交一次。禁止多个功能一次提交。
+
+
+==== 第1步：创建一个Pull Request
+
+1、打开你 Fork 的仓库： https://github.com/$user/$repo_addr （将 $user 替换为你的 GitHub ID）。
+
+​2、点击 Compare & pull request 按钮
+
+==== 第2步：填写PR信息
+
+```
+Fix test
+功能描述
+```
+
+```
+leave a comment
+对该提交功能进行比较详细的描述
+```
+
+==== 第3步：提交PR
+
+点击Create pull request 按钮即可提交。
+
+
+== 致谢
+我们欢迎所有人参与 IvorySQL 社区贡献，我们的目标是发展一个由贡献者组成的活跃、健康的社区。

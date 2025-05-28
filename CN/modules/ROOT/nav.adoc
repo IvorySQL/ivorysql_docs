@@ -33,6 +33,6 @@
 ** xref:v4.4/27.adoc[11、兼容Oracle sequence]
 ** xref:v4.4/28.adoc[12、包]
 ** xref:v4.4/29.adoc[13、不可见列]
-* xref:v4.4/23.adoc[社区贡献指南]
+* xref:v4.4/32.adoc[社区贡献指南]
 * xref:v4.4/24.adoc[工具参考]
 * xref:v4.4/25.adoc[FAQ]
