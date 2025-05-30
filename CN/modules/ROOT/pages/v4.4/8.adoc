@@ -149,6 +149,13 @@ CREATE TABLE products (
     name text,
     price numeric
 );
+
+CREATE TABLE new_products (
+    product_no int ,
+    name varchar(255),
+    price DECIMAL(10, 2),
+    release_date DATE 
+);
 ```
 
 一个插入一行的命令将是：
@@ -191,6 +198,11 @@ INSERT INTO products (product_no, name, price) VALUES
     (1, 'Cheese', 9.99),
     (2, 'Bread', 1.99),
     (3, 'Milk', 2.99);
+
+INSERT INTO new_products (product_no, name, price, release_date) VALUES
+    (1, 'A', 100.00, '2025-05-29'),
+    (2, 'B', 150.50, '2024-11-20'),
+    (3, 'C', 200.75, '2025-05-29');
 ```
 
 也可以插入查询的结果（可能没有行、一行或多行）：
@@ -198,7 +210,7 @@ INSERT INTO products (product_no, name, price) VALUES
 ```
 INSERT INTO products (product_no, name, price)
   SELECT product_no, name, price FROM new_products
-    WHERE release_date = 'today';
+    WHERE release_date = '2025-05-29';
 ```
 
 这提供了用于计算要插入的行的SQL查询机制（ http://www.postgresql.org/docs/17/queries.html[第 7 章]）的全部功能。
