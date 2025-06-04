@@ -2024,50 +2024,53 @@ create table tb_test1(id int, flg char(10));
 
 alter table tb_test1 add (name varchar);
 
-alter table tb_test1 add (adress varchar, num int, flg1 char);
+ALTER TABLE tb_test1
+    ADD adress varchar,
+    ADD num int,
+    ADD flg1 char;
 
 \d tb_test1
-                   Table "public.tb_test1"
- Column |       Type        | Collation | Nullable | Default 
---------+-------------------+-----------+----------+---------
- id     | integer           |           |          | 
- flg    | character(10)     |           |          | 
- name   | character varying |           |          | 
- adress | character varying |           |          | 
- num    | integer           |           |          | 
- flg1   | character(1)      |           |          | 
+                  Table "public.tb_test1"
+ Column |      Type       | Collation | Nullable | Default 
+--------+-----------------+-----------+----------+---------
+ id     | pg_catalog.int4 |           |          | 
+ flg    | char(10)        |           |          | 
+ name   | varchar2(4000)  |           |          | 
+ adress | varchar2(4000)  |           |          | 
+ num    | pg_catalog.int4 |           |          | 
+ flg1   | char(1)         |           |          | 
 
 MODIFY:
 create table tb_test2(id int, flg char(10), num varchar);
 
 insert into tb_test2 values('1', 2, '3');
 
-alter table tb_test2 modify(id char);
+ALTER TABLE tb_test2 ALTER COLUMN id TYPE char;
 
 \d tb_test2
-                   Table "public.tb_test2"
- Column |       Type        | Collation | Nullable | Default 
---------+-------------------+-----------+----------+---------
- id     | character(1)      |           |          | 
- flg    | character(10)     |           |          | 
- num    | character varying |           |          | 
+                 Table "public.tb_test2"
+ Column |      Type      | Collation | Nullable | Default 
+--------+----------------+-----------+----------+---------
+ id     | char(1)        |           |          | 
+ flg    | char(10)       |           |          | 
+ num    | varchar2(4000) |           |          | 
 
 DROP:
 create table tb_test3(id int, flg1 char(10), flg2 char(11), flg3 char(12), flg4 char(13),
                         flg5 char(14), flg6 char(15));
 
-alter table tb_test3 drop column(id);
+ALTER TABLE tb_test3 DROP id;
 
 \d tb_test3
-                 Table "public.tb_test3"
- Column |     Type      | Collation | Nullable | Default 
---------+---------------+-----------+----------+---------
- flg1   | character(10) |           |          | 
- flg2   | character(11) |           |          | 
- flg3   | character(12) |           |          | 
- flg4   | character(13) |           |          | 
- flg5   | character(14) |           |          | 
- flg6   | character(15) |           |          | 
+              Table "public.tb_test3"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ flg1   | char(10) |           |          | 
+ flg2   | char(11) |           |          | 
+ flg3   | char(12) |           |          | 
+ flg4   | char(13) |           |          | 
+ flg5   | char(14) |           |          | 
+ flg6   | char(15) |           |          | 
 ```
 
 === 删除表
@@ -2103,11 +2106,9 @@ DELETE [ FROM ] [ ONLY ] table_name [ * ] [ [ AS ] alias ]
 ```undefined
 create table tb_test4(id int, flg char(10));
 
-insert into tb_test4 values(1, '2'), (3, '4'), (5, '6');
+insert into tb_test4 values(1, '2'), (5, '6');
 
 delete from tb_test4 where id = 1;
-
-delete tb_test4 where id = 3;
 
 table tb_test4;
  id |    flg     
@@ -2192,12 +2193,13 @@ ERROR:  column "students.student_name" must appear in the GROUP BY clause or be 
 ==== 示例
 
 ```undefined
-select null union select null union select 1.2;
- ?column?
-----------
-      1.2
-
+SELECT 100 AS value FROM DUAL UNION SELECT 200 AS value FROM DUAL UNION SELECT 100 AS value FROM DUAL;
+ value 
+-------
+   100
+   200
 (2 rows)
+
 ```
 
 === Minus Operator
@@ -2430,12 +2432,6 @@ select next_day('2020-07-01 19:43:51 +8'::timestamptz, 1) from dual;
 ---------------------
  2020-07-05 19:43:51
 (1 row)
-
-select next_day(oracle.date '2020-09-15 12:13:29', 6) from dual;
-      next_day
----------------------
- 2020-09-18 12:13:29
-(1 row)
 ```
 
 ==== last_day
@@ -2465,12 +2461,6 @@ select last_day('2020-11-29 19:20:40 +08'::timestamptz) from dual;
       last_day       
 ---------------------
  2020-11-30 19:20:40
-(1 row)
-
-select last_day('-0004-2-1 13:27:19'::oracle.date) from dual;
-       last_day       
-----------------------
- -0004-02-29 13:27:19
 (1 row)
 ```
 
@@ -2825,31 +2815,19 @@ TO_YMINTERVAL(str) 将输入参数 str 时间间隔转换为年到月范围内�
 select to_yminterval('P1Y-2M2D');
  to_yminterval 
 ---------------
- 10 mons
+ +000000000-10
 (1 row)
 
 select to_yminterval('P1Y2M2D');
  to_yminterval 
 ---------------
- 1 year 2 mons
-(1 row)
-
-select to_yminterval('-P1Y2M2D');
-  to_yminterval   
-------------------
- -1 years -2 mons
-(1 row)
-
-select to_yminterval('-P1Y2M2D');
-  to_yminterval   
-------------------
- -1 years -2 mons
+ +000000001-02
 (1 row)
 
 select to_yminterval('-01-02');
-  to_yminterval   
-------------------
- -1 years -2 mons
+ to_yminterval 
+---------------
+ -000000001-02
 (1 row)
 ```
 
@@ -2867,39 +2845,21 @@ TO_DSINTERVAL(str) 将输入参数 str 的时间间隔转换为天到秒范围�
 
 ```undefined
 select to_dsinterval('100 00 :02 :00');
-   to_dsinterval   
--------------------
- 100 days 00:02:00
+         to_dsinterval         
+-------------------------------
+ +000000100 00:02:00.000000000
 (1 row)
 
 select to_dsinterval('-100 00:02:00');
-    to_dsinterval    
----------------------
- -100 days -00:02:00
+         to_dsinterval         
+-------------------------------
+ -000000100 00:02:00.000000000
 (1 row)
 
 select to_dsinterval(NULL);
  to_dsinterval 
 ---------------
  
-(1 row)
-
-select to_dsinterval('-P100D');
- to_dsinterval 
----------------
- -100 days
-(1 row)
-
-select to_dsinterval('-P100DT20H');
-    to_dsinterval    
----------------------
- -100 days -20:00:00
-(1 row)
-
-select to_dsinterval('-P100DT20S');
-    to_dsinterval    
----------------------
- -100 days -00:00:20
 (1 row)
 ```
 
