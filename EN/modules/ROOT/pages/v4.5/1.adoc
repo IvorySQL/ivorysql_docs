@@ -64,6 +64,7 @@ The following individuals (in alphabetical order) have contributed to this relea
 * Hope Gao
 * Lily Wang
 * Renli Zou
+* Shawn Yan
 * Shihua Yang
 * Shiji Niu
 * Shoubo Wang
@@ -72,3 +73,4 @@ The following individuals (in alphabetical order) have contributed to this relea
 * Xinjie Lv
 * Zheng Tao
 * Zhenhao Pan
+* Zhuoyan Shi
