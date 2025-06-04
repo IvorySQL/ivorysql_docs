@@ -26,7 +26,7 @@ HNSW (Hierarchical Navigating Small World) is a graph-based indexing algorithm c
 == Installation
 [TIP]
 ====
-The IvorySQL 4.2(above version) has been installed in the environment, and the installation path is /usr/local/ivorysql/ivorysql-4
+The IvorySQL 4.5(above version) has been installed in the environment, and the installation path is /usr/local/ivorysql/ivorysql-4
 ====
 
 === Source Code Installation
@@ -52,7 +52,7 @@ sudo --preserve-env=PG_CONFIG make install
 ** Create pgvector extension
 ```
 [ivorysql@localhost ivorysql-4]$ psql
-psql (17.2)
+psql (17.5)
 Type "help" for help.
 
 ivorysql=# create extension vector;

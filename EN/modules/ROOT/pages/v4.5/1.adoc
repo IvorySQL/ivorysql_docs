@@ -1,0 +1,82 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+
+== Version Overview
+
+[**Release date: June 04, 2025**]
+
+IvorySQL 4.5, based on PostgreSQL 17.5 and includes a variety of bug fixes. For a comprehensive list of updates, please visit our https://docs.ivorysql.org/[documentation site].
+
+== Enhancements & Fixed Issue
+
+- PostgreSQL 17.5 Enhancements
+
+1. Avoid one-byte buffer overread when examining invalidly-encoded strings that are claimed to be in GB18030 encoding.
+2. Handle self-referential foreign keys on partitioned tables correctly.
+3. Avoid data loss when merging compressed BRIN summaries in brin_bloom_union().
+4. Correctly process references to outer CTE names that appear within a WITH clause attached to an INSERT/UPDATE/DELETE/MERGE command that's inside WITH.
+5. Fix ALTER TABLE ADD COLUMN to correctly handle the case of a domain type that has a default.
+
++
+
+For further details, visit https://www.postgresql.org/docs/release/17.5/[PostgreSQL’s release notes].
+
+- IvorySQL 4.5
+
+1. MIPS Packaging for All Platforms: Feature https://github.com/IvorySQL/IvorySQL/issues/736[#736]
++
+Provides multi-platform media packages for MIPS architecture, supporting both domestic and international mainstream operating systems, including Red Hat, Debian, Kylin, UOS, and NSAR OS, etc.
+
+2. loongarch Packaging for All Platforms: Feature https://github.com/IvorySQL/IvorySQL/issues/738[#738]
++
+Provides multi-platform media packages for loongarch architecture, supporting both domestic and international mainstream operating systems, including Red Hat, Debian, Kylin, UOS, and NSAR OS, etc.
+
+3. IvorySQL Online trail: Feature https://github.com/IvorySQL/ivorysql-wasm/issues/1[#1]
++
+Provide users with a web-based platform to experience IvorySQL V4.5 in an online environment, enabling database interaction directly through a browser interface.
+
+4. Add code of conduct: Feature https://github.com/IvorySQL/IvorySQL/issues/808[#808]
+
+5. Update the community contribution guide: Feature https://github.com/IvorySQL/ivorysql_docs/pull/121[#121]
+
+6. Automate Documentation Build and Website Update via Pull Requests: Feature https://github.com/IvorySQL/ivorysql_docs/issues/115[#115]
+
+7. Enhanced Contributor Workflow: Self-Assign Issues by using the '/assign' command: Feature https://github.com/IvorySQL/ivorysql_docs/issues/109[#109]
+
+8. IvorySQL Operator V4 has been adapted to support IvorySQL 4.5, with upgrades to system component versions and database extension versions : Feature https://github.com/IvorySQL/ivory-operator/pull/79[#79]
+
+== Source Code
+
+IvorySQL's development is maintained across two main repositories:
+
+* IvorySQL database source code: https://github.com/IvorySQL/IvorySQL
+* IvorySQL official website: https://github.com/IvorySQL/Ivory-www
+
+== Contributors
+
+The following individuals (in alphabetical order) have contributed to this release as patch authors, committers, reviewers, testers, or reporters of issues.
+
+- Alex Guo
+- Cary Huang
+- Denis Lussier
+- Fawei Zhao
+- Flyingbeecd
+- Grant Zhou
+- Imran Zaheer
+- Kang Wang
+- Lily Wang
+- Mingran Feng
+- Renli Zou
+- Ruohang Feng
+- Shawn Yan
+- Shihua Yang
+- Shiji Niu
+- Shoubo Wang
+- Shuntian Jiao
+- Xiangyu Liang
+- Xinjie Lv
+- Xueyu Gao
+- Zheng Tao
+- Zhenhao Pan
