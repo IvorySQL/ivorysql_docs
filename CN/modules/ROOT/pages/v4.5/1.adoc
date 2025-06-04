@@ -21,7 +21,7 @@ IvorySQL 4.5，基于PostgreSQL 17.5，并修复了多个问题。有关更新�
 
 +
 
-更多细节, 请参阅 https://www.postgresql.org/docs/release/17.5/[PostgreSQL发布说明].
+更多细节, 请参阅 https://www.postgresql.org/docs/release/17.5/[PostgreSQL发布说明]。
 
 - IvorySQL 4.5
 
