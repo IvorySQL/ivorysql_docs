@@ -34,27 +34,6 @@ jobs:
         with:
           repository: ${{ github.repository_owner }}/ivory-doc-builder
           path: ivory-doc-builder
-
-      - name: Determine Latest Version from ivorysql_docs branches
-        id: latest_version_step
-        shell: bash
-        run: |
-          echo "Detecting latest version from remote branches of ${{ github.repository_owner }}/ivorysql_docs..."
-          LATEST_VERSION_NUMBER=$( \
-            git ls-remote --heads --refs "https://github.com/${{ github.repository_owner }}/ivorysql_docs.git" 'refs/heads/v*.*' | \
-            sed 's_^[^\t]*\trefs/heads/v__g' | \
-            grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$' | \
-            sort -V | \
-            tail -n1 \
-          )
-
-          if [[ -z "$LATEST_VERSION_NUMBER" ]]; then
-            echo "::error::Could not determine latest version from branches. Please check git ls-remote command and repo accessibility."
-            exit 1
-          fi
-          
-          echo "Detected latest version number: $LATEST_VERSION_NUMBER"
-          echo "version=$LATEST_VERSION_NUMBER" >> "$GITHUB_OUTPUT"
           
       - name: Install yq
         run: |
@@ -67,7 +46,7 @@ jobs:
       - name: Modify Antora Playbooks for Local PR Build
         working-directory: ./ivory-doc-builder
         env:
-          DETECTED_VERSION: '${{ steps.latest_version_step.outputs.version }}'
+          DETECTED_VERSION: 'master'
           START_PAGE_COMPONENT_NAME: "ivorysql-doc"
           START_PAGE_FILE_PATH: "welcome.adoc"
         run: |
