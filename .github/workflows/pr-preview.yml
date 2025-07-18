@@ -66,7 +66,7 @@ jobs:
               
               yq -i ".content.sources[0].edit_url = false" "$PLAYBOOK_FILE"
               if [[ -n "$DETECTED_VERSION" ]]; then
-                NEW_START_PAGE="${START_PAGE_COMPONENT_NAME}::v${DETECTED_VERSION}/${START_PAGE_FILE_PATH}"
+                NEW_START_PAGE="${START_PAGE_COMPONENT_NAME}::${DETECTED_VERSION}/${START_PAGE_FILE_PATH}"
                 yq -i ".site.start_page = \"$NEW_START_PAGE\"" "$PLAYBOOK_FILE"
                 echo "Updated .site.start_page in $PLAYBOOK_FILE to: $NEW_START_PAGE"
               else
