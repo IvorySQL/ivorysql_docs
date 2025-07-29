@@ -1,0 +1,54 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+
+= **Functional Overview**
+
+The LIKE syntax in Oracle and IvorySQL is identical. Their difference lies in the expression types: Oracle supports using the LIKE keyword with wildcards for fuzzy queries on columns of numeric, date, and string types. Native PostgreSQL only supports string types, not date or numeric types. IvorySQL achieves Oracle-compatible LIKE operator functionality by extending data type support and operator overloading.
+
+== Implementation Principle
+
+In PostgreSQL, the fundamental string type is text, so LIKE is text-based. Other PostgreSQL types implicitly convert to text, enabling automatic conversion without creating operators. In IvorySQL, the Oracle-compatible string type is varchar2. Therefore, a LIKE operator for varchar2 is created, and other Oracle types also utilize the LIKE operator by implicitly converting to varchar2 without requiring additional operator creation.
+
+In the previous implementation of Oracle-compatible data types, IvorySQL established implicit conversions from certain data types (such as integer, float8, float4) to varchar2, but not directly to text.
+
+To achieve LIKE operator compatibility for these types, there are two approaches:
+
+1、Add a separate LIKE operator for each individual type.
+
+2、Implement a base LIKE operator for varchar2.
+
+In the second approach, since IvorySQL already supports implicit conversions from float8, integer, number, etc., to varchar2, these data types can share the same operator. Thus, only a single LIKE operator for varchar2 needs to be created.
+
+=== Type Conversion
+
+You can use the following SQL statement to check existing implicit type conversions.
+```
+-- Check existing implicit conversion paths (where 9503 is the OID of varchar2)
+SELECT t1.typname AS source_type, t2.typname AS target_type 
+FROM pg_cast C
+JOIN pg_type t1 ON C.castsource = t1.OID 
+JOIN pg_type t2 ON C.casttarget = t2.OID 
+WHERE C.casttarget = 9503;
+```
+After reviewing, it can be observed that all the types requiring compatibility have implicit conversions defined in this table. Therefore, these types can be directly converted to the text type for fuzzy query operations.
+
+=== Core Function Implementation
+```sql
+CREATE OR REPLACE FUNCTION sys.varchar2like(varchar2, varchar2)
+RETURNS bool AS $$
+SELECT $1::text LIKE $2::text;
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+
+CREATE OPERATOR ~~ (
+  PROCEDURE = sys.varchar2like,
+  LEFTARG   = varchar2,
+  RIGHTARG  = varchar2
+);
+```
+The first code segment defines a function named sys.varchar2like, which accepts two parameters of type varchar2. By converting them to PostgreSQL's native text type, it performs standard LIKE pattern matching and ultimately returns a boolean value indicating whether the match is successful.
+
+The second code segment creates an operator named ~~, which uses the previously defined varchar2like function as its implementation. It specifies that both the left and right operands of this operator must be of type varchar2.
+
+This establishes an Oracle-compatible LIKE operator in IvorySQL. When users employ the ~~ operator, it essentially invokes PostgreSQL's native LIKE functionality after type conversion, thereby achieving semantic compatibility with Oracle's LIKE behavior.

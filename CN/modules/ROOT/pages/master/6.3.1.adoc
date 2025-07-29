@@ -1,0 +1,44 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+
+= **功能概述**
+
+Oracle和IvorySQL中的 LIKE 语法是相同的，他们的区别在于表达式的类型，Oracle支持对数字、日期、字符串类型的列用 LIKE 关键字配合通配符来实现模糊查询。原生PostgreSQL只支持字符串类型，不支持日期、数字类型，IvorySQL通过扩展数据类型支持和操作符重载，实现了与 Oracle 兼容的 LIKE 操作符功能。
+
+== 实现原理
+
+PostgreSQL的字符串基本类型是text，所以 LIKE 是以text为基础，其他PostgreSQL类型隐式转换成text，不用创建opeartor就能自动转换；IvorySQL中oracle兼容的字符串类型是varchar2，因此创建一个varchar2的 LIKE 操作符，其他oracle的类型也通过隐式转换成varchar2实现不用创建操作符，也能使用 LIKE 操作符。
+
+在之前实现oracle兼容数据类型时，IvorySQL做了integer，float8，float4 等一些数据类型到varchar2的隐式转换，没有直接到text的。因此实现这些兼容类型的 LIKE 操作符兼容，有两种方式。一种需要针对每个类型添加一个 LIKE 操作符，另一种是做一个基本的varchar2的 LIKE 操作符。在第二种实现方式中，IvorySQL针对float8，integer，number等已经做了向varchar2类型的隐式转换，这些数据类型可以和varchar2用同一个操作符，这样在创建操作符的时候只需要创建varchar2类型的 LIKE 操作符就可以。
+
+=== 类型转换
+
+可以通过以下SQL语句查看已经存在的类型隐式转换
+```
+-- 查询已存在的隐式转换路径(9503为varchar2的OID)
+SELECT t1.typname AS source_type, t2.typname AS target_type 
+FROM pg_cast C
+JOIN pg_type t1 ON C.castsource = t1.OID 
+JOIN pg_type t2 ON C.casttarget = t2.OID 
+WHERE C.casttarget = 9503;
+```
+经过查看可得，需要进行兼容的类型全部都在该表中做了隐式转换，所以可以直接将这些类型转换为text类型然后进行模糊查询。
+
+=== 核心函数实现
+```sql
+CREATE OR REPLACE FUNCTION sys.varchar2like(varchar2, varchar2)
+RETURNS bool AS $$
+SELECT $1::text LIKE $2::text;
+$$ LANGUAGE SQL IMMUTABLE STRICT;
+
+CREATE OPERATOR ~~ (
+  PROCEDURE = sys.varchar2like,
+  LEFTARG   = varchar2,
+  RIGHTARG  = varchar2
+);
+```
+第一段代码定义了一个名为sys.varchar2like的函数，它接收两个varchar2类型的参数，通过将它们转换为PostgreSQL原生的text类型后执行标准的LIKE模式匹配，最终返回布尔值表示是否匹配。
+第二段代码创建了一个名为~~的操作符，它将使用前面定义的varchar2like函数作为实现，并指定该操作符左右两边的参数都必须是varchar2类型。
+这样就在IvorySQL中建立了一个与Oracle兼容的LIKE操作符，当用户使用~~操作符时，实际上是通过类型转换后调用PostgreSQL原生的LIKE功能来完成模式匹配，从而实现了Oracle的LIKE语义兼容。

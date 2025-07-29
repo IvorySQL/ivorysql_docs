@@ -19,6 +19,8 @@
 *** xref:master/6.1.1.adoc[Dual Parser]
 ** Compatibility Framework
 *** xref:master/6.2.1.adoc[initdb Process]
+** Compatibility Features
+*** xref:master/6.3.1.adoc[like]
 * List of Oracle compatible features
 ** xref:master/7.1.adoc[1、Ivorysql frame design]
 ** xref:master/7.2.adoc[2、GUC Framework]
