@@ -19,6 +19,8 @@
 *** xref:master/6.1.1.adoc[双parser]
 ** 兼容框架
 *** xref:master/6.2.1.adoc[initdb过程]
+** 兼容特性
+*** xref:master/6.3.1.adoc[like]
 * Oracle兼容功能列表
 ** xref:master/7.1.adoc[1、框架设计]
 ** xref:master/7.2.adoc[2、GUC框架]
