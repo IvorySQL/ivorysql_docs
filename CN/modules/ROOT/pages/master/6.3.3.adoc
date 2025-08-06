@@ -1,0 +1,88 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= RowID
+
+== 目的
+
+IvorySQL提供了兼容Oracle RowID的功能。RowID是一种伪列，在创建表时由数据库自动生成，对于数据库中的每一行，RowID 伪列返回该行的地址。
+
+RowID 应当具备以下特性：
+
+|====
+| 1. 逻辑的标识每一行，且值唯一 
+| 2. 可以通过ROWID快速查询和修改表的其他列，自身不能被插入和修改 
+| 3. 用户可以控制是否开启此功能 
+|====
+
+== 实现说明
+
+在IvorySQL中系统列 ctid 字段代表了数据行在表中的物理位置，也就是行标识（tuple identifier），由一对数值组成（块编号和行索引），可以通过ctid快速的查找表中的数据行，这样和Oracle的RowID行为很相似，但是ctid值有可能会改变（例如当update/ vacuum full时），因此ctid不适合作为一个长期的行标识。
+
+我们选择了表的oid加一个序列值组成的复合类型来做为RowID值，其中的序列是系统列。如果RowID功能被开启，则在建表的同时创建一个名为table-id_rowid_seq 的序列。同时在heap_form_tuple构造函数中，为 HeapTupleHeaderData 的长度增加8个字节，并标识td->t_infomask = HEAP_HASROWID 位来表示rowid的存在。
+
+在开启了ROWID的GUC参数或建表时带上 WITH ROWID 选项，或对普通表执行 ALTER TABLE … SET WITH ROWID 时会通过增加序列创建命令来创建一个序列。
+```
+/*
+		 * Build a CREATE SEQUENCE command to create the sequence object,
+		 * and add it to the list of things to be done before this CREATE/ALTER TABLE 
+		 */
+		seqstmt = makeNode(CreateSeqStmt);
+		seqstmt->with_rowid = true;
+		seqstmt->sequence = makeRangeVar(snamespace, sname, -1);
+		seqstmt->options = lcons(makeDefElem("as",
+							 (Node *) makeTypeNameFromOid(INT8OID, -1),
+							 -1),
+						 seqstmt->options);
+		seqstmt->options = lcons(makeDefElem("nocache",
+							 NULL,
+							 -1),
+						 seqstmt->options);
+```
+
+同时为了快速通过RowID伪列查询到一行数据，默认会在表的RowID列上创建一个UNIQUE索引，以提供快速查询功能。
+
+RowID列做为系统属性列其实现是通过在 heap.c 中新增一个系统列来实现的。
+```
+/*
+ * Compatible Oracle ROWID pseudo column.
+ */
+static const FormData_pg_attribute a7 = {
+	.attname = {"rowid"},
+	.atttypid = ROWIDOID,
+	.attlen = -1,
+	.attnum = RowIdAttributeNumber,
+	.attcacheoff = -1,
+	.atttypmod = -1,
+	.attbyval = false,
+	.attalign = TYPALIGN_SHORT,
+	.attstorage = TYPSTORAGE_PLAIN,
+	.attnotnull = true,
+	.attislocal = true,
+};
+```
+
+在pg_class系统表中增加一个 bool 类型的字段 relhasrowid，用于标识建表时的 WITH ROWID选项，如果建表时带了WITH ROWID选项，则 relhasrowid为 t，否则为f。
+用户在执行 ALTER table … SET WITH ROWID/ WITHOUT ROWID 命令时，也会修改这个值。
+
+```
+       /* T if we generate ROWIDs for rows of rel */
+	bool		relhasrowid BKI_DEFAULT(f);
+```
+
+在RowID的存储方面，如果启用了RowID 伪列功能，则在插入表之前 heap_form_tuple函数会根据参数TupleDesc 中tdhasrowid 是否为true 在 HeapTupleHeaderData 中增加8个字节来存储序列值。
+在heap_prepare_insert 函数中获取序列的nextval值，存在HeapTupleHeader 相应的位置。
+
+```
+       if (relation->rd_rel->relhasrowid)
+	{
+		//  Get the sequence next value
+		seqnum = nextval_internal(relation->rd_rowdSeqid, true);
+		//  Set the HeapTupleHeader
+		HeapTupleSetRowId(tup, seqnum);
+	}
+```
+
+
