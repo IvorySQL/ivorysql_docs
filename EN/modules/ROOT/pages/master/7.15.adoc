@@ -17,7 +17,7 @@ IvorySQL provides Oracle-compatible OUT parameter functionality, including the f
 
 === functions with OUT parameters
 
-Synopsis：
+Syntax：
 ```
 CREATE [ OR REPLACE ] FUNCTION
     name ( [ [ argmode ] [ argname ] argtype [ { DEFAULT | = } default_expr ] [, ...] ] )
