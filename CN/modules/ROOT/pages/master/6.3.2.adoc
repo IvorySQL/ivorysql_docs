@@ -1,0 +1,78 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+
+= **功能概述**
+
+IvorySQL提供了兼容Oracle的out参数功能，包括含有out参数的函数与过程、匿名块支持out参数、libpq支持out参数。
+
+== 实现原理
+
+=== 含有out参数的函数
+
+对于pliSQL函数，在创建函数时，系统表pg_proc中存储函数参数为全部参数个数（包括OUT参数个数）及对应的参数数据类型。
+
+在处理函数参数的interpret_function_parameter_list()函数中，根据参数模式，判断如果是IN OUT，则参数不能有默认值。
+
+在make_return_stmt函数中，去掉如果发现有out参数报错的处理。
+
+通过修改FuncnameGetCandidates函数，在函数查找时匹配包括out参数在内的所有参数。
+
+函数编译时，构造一个row变量来容纳OUT参数变量和返回值变量。修改编译好的函数返回类型（function->fn_rettype）为RECORDOID。
+
+函数执行时，在ExecInitFunc函数中调用新函数ExecInitFuncOutParams， 构造OUT参数计算节点，通过计算函数plisql_out_param将函数返回值和OUT参数值从tuple中分离，并且为OUT参数向外赋值。
+
+=== 匿名块支持out参数
+
+为了支持冒号占位符形式的绑定变量，修改ora_scan.l文件，添加语法，遇到冒号占位符返回ORAPARAM。在ora_gram.y文件中，在c_expr和赋值plassign_target的语法中，添加对ORAPARAM添加处理，构造一个OraParamRef节点。
+
+新增 DO + USING 语法：
+```
+	DO [ LANGUAGE lang_name ] code [USING IN | OUT | IN OUT, ...]
+```
+修改ora_gram.y文件，增加DO+USING语法支持。DoStmt结构体中增加 paramsmode 用于存储匿名块中的绑定变量模式等信息的列表。
+
+对PBE过程的修改包括：exec_parse_message函数中，根据应用接口传过来的参数类型oid，识别出实参的模式；在exec_bind_message函数中，对于匿名块DO+USING，识别出USING后面参数的模式，向执行器传递参数信息。
+
+含OUT参数匿名块的执行
+1. 在PortalStart函数中对匿名块语句，调用CreateTupleDescFromParams函数，增加参数构造描述信息。
+
+2. PLiSQL_function成员fn_prokind增加新值PROKIND_ANONYMOUS_BLOCK用来表示匿名块。
+
+3. 在plisql_exec_function函数中，对有out参数的匿名块做判断，调用plisql_anonymous_return_out_parameter函数完成对OUT参数构造PLiSQL_row类型的变量，最后将row类型的变量求值当作匿名块函数的返回值。
+
+=== libpq中调用含out参数的函数
+
+修改Libpq以支持按位置和按参数名字绑定，涉及SQL端，PLiSQL端，libpq接口端。
+
+1. SQL端：在服务器端实现系统函数 get_parameter_description，该函数根据SQL语句，返回变量名字与位置的关系。这个函数被用在libpq接口函数中。
+返回的第一行name显示SQL类型，后面行依次显示占位符名字、位置信息。
+
+```
+ivorysql=# select * from get_parameter_description('insert into t values(:x, :y);');
+ name  | position 
+-------+----------
+ false |        0
+ :x    |        1
+ :y    |        2
+(3 rows)
+```
+对于匿名块语句，尚不支持。
+
+2. PLiSQL端：主要是PL/iSQL块根据参数位置或参数名称调整参数内部标识。
+执行函数需要从绑定句柄中获取参数的值与类型的信息；
+
+对out参数的返回列名称做一个特殊处理。如果是out参数，那么其列名称为_column_xxx，其中xxx是out参数的位置，从而根据绑定位置与返回的位置从结果集中给out参数赋值；
+
+在PLiSQL执行端，根据参数名字出现的位置，调整名字转换成内部标识的变量，如$number。在返回到客户端的时候，发送描述信息给libpq， 从而达到返回的列名是由参数名字构造，LIBPQ端根据列名来给out参数赋值。
+
+3. libpq接口端：提供准备、绑定、执行函数，这些函数与OCI接口相应函数类似。
+一般调用流程如下：
+使用IvyHandleAlloc分配语句句柄和错误句柄。
+调用IvyStmtPrepare准备语句。
+调用IvyBindByPos或IvyBindByName 绑定参数。
+调用IvyStmtExecute 执行，可重复执行。
+调用IvyFreeHandle 释放语句句柄和错误句柄。
+
+另外还实现了Ivyconnectdb，Ivystatus，Ivyexec，IvyresultStatus，IvyCreatePreparedStatement，IvybindOutParameterByPos，IvyexecPreparedStatement，IvyexecPreparedStatement2，Ivynfields，Ivyntuples，Ivyclear等一系列接口函数。

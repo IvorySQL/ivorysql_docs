@@ -1,0 +1,147 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= out参数
+
+== 目的
+
+IvorySQL提供了兼容Oracle的out参数功能，包括含有out参数的函数与过程、匿名块支持out参数、libpq支持out参数。
+
+本文档旨在为使用人员介绍out参数的功能。
+
+== 功能说明
+
+IvorySQL提供了兼容Oracle的out参数功能，包括如下内容。
+
+=== 含有out参数的函数
+
+创建语法如下：
+```
+CREATE [ OR REPLACE ] FUNCTION
+    name ( [ [ argmode ] [ argname ] argtype [ { DEFAULT | = } default_expr ] [, ...] ] )
+    [ RETURNS rettype
+      | RETURNS TABLE ( column_name column_type [, ...] ) ]
+  { LANGUAGE lang_name
+    | TRANSFORM { FOR TYPE type_name } [, ... ]
+    | WINDOW
+    | { IMMUTABLE | STABLE | VOLATILE }
+    | [ NOT ] LEAKPROOF
+    | { CALLED ON NULL INPUT | RETURNS NULL ON NULL INPUT | STRICT }
+    | { [ EXTERNAL ] SECURITY INVOKER | [ EXTERNAL ] SECURITY DEFINER }
+    | PARALLEL { UNSAFE | RESTRICTED | SAFE }
+    | COST execution_cost
+    | ROWS result_rows
+    | SUPPORT support_function
+    | SET configuration_parameter { TO value | = value | FROM CURRENT }
+    | AS 'definition'
+    | AS 'obj_file', 'link_symbol'
+    | sql_body
+  } ...
+```
+其中argmode可以是IN，OUT，INOUT（IN OUT），VARIADIC。如果不指定默认是IN。argmode也可以写在argname的后面。
+
+不同于原生PG，兼容Oracle的out参数和返回值数据类型没有关联。IN OUT模式和OUT模式都不能有默认值。如果有out参数，则函数体中必须有RETURN语句。
+
+=== 匿名块支持out参数
+
+支持冒号占位符形式的绑定变量，例如: 1，:name。
+
+新增新的DO+USING语法： DO [ LANGUAGE lang_name ] code [USING IN | OUT | IN OUT, ...]
+
+支持在libpq中按位置和按参数名字绑定变量，提供系统函数get_parameter_descr，该函数根据SQL语句，返回变量名字与位置的关系。
+
+=== ibpq中调用含out参数的函数
+
+libpq接口端提供准备、绑定、执行函数，这些函数与OCI相应函数类似。
+
+使用流程为：
+使用IvyHandleAlloc分配语句句柄和错误句柄。
+调用IvyStmtPrepare准备语句。
+调用IvyBindByPos或IvyBindByName 绑定参数。
+调用IvyStmtExecute 执行，可重复执行。
+调用IvyFreeHandle 释放语句句柄和错误句柄。
+
+另外还实现了Ivyconnectdb，Ivystatus，Ivyexec，IvyresultStatus，IvyCreatePreparedStatement，IvybindOutParameterByPos，IvyexecPreparedStatement，IvyexecPreparedStatement2，Ivynfields，Ivyntuples，Ivyclear等一系列接口函数。
+
+在源代码中 src/interfaces/libpq/ivytest 目录里可以找到示例程序。
+
+== 测试用例
+
+=== 含有out参数的函数
+1. out参数和返回值数据类型没有关联
+```
+ivorysql=# create or replace function test_return_out(id integer,price out integer,name out varchar) return varchar 
+ivorysql-# as
+ivorysql-# begin
+ivorysql-#   price := 20000;
+ivorysql-#   name := 'test a char out';
+ivorysql-#   return 'welcome to QingDao';
+ivorysql-# end;
+ivorysql-# /
+CREATE FUNCTION
+```
+
+2. IN OUT模式和OUT模式都不能有默认值
+```
+ivorysql=# create or replace function test_return_inout(id integer,price in out integer default 100,name out varchar) return varchar 
+ivorysql-# as
+ivorysql-# begin
+ivorysql-#   price := 20000 + price;
+ivorysql-#   name := 'this is a test';
+ivorysql-# return 'welcome to QingDao';
+ivorysql-# end;
+ivorysql-# /
+ERROR:  IN OUT formal parameters may have no default expressions
+```
+
+3. 如果有out参数，并且函数返回类型不是void，则函数体中必须有RETURN语句
+```
+--if function's return type is non-void, the function body must has RETURN statement
+--if there is no RETURN statement, the function can be created, but when it is called, 
+--an error is raised
+ivorysql=# create or replace function f2(id integer,price out integer) return varchar 
+ivorysql-# as
+ivorysql-# begin
+ivorysql-#   price := 2;
+ivorysql-# end;
+ivorysql-# /
+CREATE FUNCTION
+ivorysql=# declare
+ivorysql-#   a varchar(20);
+ivorysql-#   b int;  
+ivorysql-# begin
+ivorysql-#   a := f2(1, b);
+ivorysql-# end;
+ivorysql-# /
+ERROR:  Function returned without value
+CONTEXT:  PL/iSQL function f2(pg_catalog.int4,pg_catalog.int4) line 0 at RETURN
+PL/iSQL function inline_code_block line 5 at assignment
+```
+
+=== 匿名块支持out参数
+1. 支持冒号占位符形式的绑定变量，新增DO+USING语法
+```
+ivorysql=# do $$
+ivorysql$# declare
+ivorysql$#   a int; 
+ivorysql$# begin
+ivorysql$#   :x := 1;
+ivorysql$#   :y := 2;
+ivorysql$# end; $$ using out, out;
+ $1 | $2 
+----+----
+  1 |  2
+(1 row)
+```
+2. 系统函数 get_parameter_descr
+```
+ivorysql=# select * from get_parameter_description('insert into t values(:x,:y)');
+ name  | position 
+-------+----------
+ false |        0
+ :x    |        1
+ :y    |        2
+(3 rows)
+```
