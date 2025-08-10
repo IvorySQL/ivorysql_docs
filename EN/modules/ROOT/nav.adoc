@@ -21,6 +21,8 @@
 *** xref:master/6.2.1.adoc[initdb Process]
 ** Compatibility Features
 *** xref:master/6.3.1.adoc[like]
+*** xref:master/6.3.3.adoc[RowID]
+*** xref:master/6.3.2.adoc[OUT Parameter]
 * List of Oracle compatible features
 ** xref:master/7.1.adoc[1、Ivorysql frame design]
 ** xref:master/7.2.adoc[2、GUC Framework]
@@ -36,6 +38,7 @@
 ** xref:master/7.12.adoc[12、Package]
 ** xref:master/7.13.adoc[13、Invisible Columns]
 ** xref:master/7.14.adoc[14、RowID Column]
+** xref:master/7.15.adoc[15、OUT Parameter]
 * xref:master/8.adoc[Community contribution]
 * xref:master/9.adoc[Tool Reference]
 * xref:master/10.adoc[FAQ]
