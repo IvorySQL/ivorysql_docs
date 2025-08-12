@@ -1,0 +1,121 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= GB18030 字符集服务端支持
+
+== 目的
+
+PostgreSQL 服务端提供了对 GB18030 字符集的全面支持。GB18030是中国国家标准，旨在包含所有汉字和多种少数民族文字，实现与Unicode的统一。在PostgreSQL中正确配置和使用GB18030字符集，对于处理和存储需要符合此标准的中文数据至关重要。
+
+服务端 GB18030 支持应当具备以下特性：
+
+|====
+| 1. 支持 GB18030 作为服务端编码：initdb -E GB18030 可用，SHOW server_encoding 显示为 GB18030。
+| 2. 提供 GB18030 <-> UTF8 的双向转换。
+| 3. 支持多字节边界判定。
+|====
+
+== 实现说明
+
+=== initdb时通过-E指定GB18030或GB18030_2022
+
+PostgreSQL已支持GB18030-2000版本作为客户端编码，通过扩展的方式支持GB18030_2022字符集与UTF的转换。
+
+修改pg_enc来实现可指定GB18030作为服务端编码，PostgreSQL编码框架中增加底层函数以供pg内核调用。
+
+设置一个全局变量is_load_gb18030_2022,默认为true,当用户指定-E选项时,在get_encoding_id中判断其设置的是否为gb18030_2022,如果是,将其字符串转为gb18030,然后将is_load_gb18030_2022 设为true,如果-E 选项为Gb18030,将其设为false。
+
+在适当位置判断是否要加载插件,如果是,执行load_gb18030_2022,并将ivorysql.conf中的shared_preload_library添加gb18030_2022。
+
+```
+if (encoding_name && *encoding_name)
+{
+    encoding_name_modify = pg_strdup(encoding_name);
+    if(pg_strcasecmp(encoding_name,"gb18030_2022") == 0)
+    {
+        encoding_name_modify = pg_strdup("gb18030");
+        is_load_gb18030_2022 =  true;
+    }
+    else if(pg_strcasecmp(encoding_name,"gb18030") == 0)
+    is_load_gb18030_2022 = false;
+
+    if ((enc = pg_valid_server_encoding((const char *)encoding_name_modify)) >= 0)
+        return enc;
+}
+```
+
+=== 多字节处理
+
+wchar.c，增加 GB18030 的函数指针：
+	pg_gb180302wchar_with_len(const unsigned char *from, pg_wchar *to, int len) gb18030 -> wchar
+	pg_wchar2gb18030_with_len(const pg_wchar *from, unsigned char *to, int len) wchar -> gb18030
+    pg_gb18030_mblen(const unsigned char *s)：返回 1/2/4。
+    pg_gb18030_dsplen(const unsigned char *s)：ASCII 显示宽度 1；其它按 1 处理（与UTF8一致）。
+    pg_gb18030_verifier(const unsigned char *s, int len)：校验字节范围，拒绝非法序列。
+
+=== 与客户端的交互
+
+接收数据: 如果一个使用 UTF-8 编码的客户端连接上来，服务端在接收到数据后，会调用其内部的 utf8_to_gb18030 函数，将数据转换为 GB18030 格式，然后才进行验证和存储。
+
+发送数据: 当该客户端执行 SELECT 查询时，服务端会从磁盘/内存中读取原生的 GB18030 数据，然后调用 gb18030_to_utf8 函数将其转换为 UTF-8 格式，最后再通过网络协议发送给客户端。
+
+新增GB18030-2022.xml数据文件，通过perl脚本解析为map文件，提供 gb18030_to_utf8() 与 utf8_to_gb18030()，优先表驱动，覆盖不到的区间通过算法映射。
+
+```
+static inline uint32
+unicode_to_utf8word(uint32 c)
+{
+	uint32		word;
+
+	if (c <= 0x7F)
+	{
+		word = c;
+	}
+	else if (c <= 0x7FF)
+	{
+		word = (0xC0 | ((c >> 6) & 0x1F)) << 8;
+		word |= 0x80 | (c & 0x3F);
+	}
+	else if (c <= 0xFFFF)
+	{
+		word = (0xE0 | ((c >> 12) & 0x0F)) << 16;
+		word |= (0x80 | ((c >> 6) & 0x3F)) << 8;
+		word |= 0x80 | (c & 0x3F);
+	}
+	else
+	{
+		word = (0xF0 | ((c >> 18) & 0x07)) << 24;
+		word |= (0x80 | ((c >> 12) & 0x3F)) << 16;
+		word |= (0x80 | ((c >> 6) & 0x3F)) << 8;
+		word |= 0x80 | (c & 0x3F);
+	}
+
+	return word;
+}
+
+static uint32
+conv_18030_2022_to_utf8(uint32 code)
+{
+#define conv18030(minunicode, mincode, maxcode) \
+	if (code >= mincode && code <= maxcode) \
+		return unicode_to_utf8word(gb_linear(code) - gb_linear(mincode) + minunicode)
+
+	conv18030(0x0452, 0x8130D330, 0x8136A531);
+	conv18030(0x2643, 0x8137A839, 0x8138FD38);
+	conv18030(0x361B, 0x8230A633, 0x8230F237);
+	conv18030(0x3CE1, 0x8231D438, 0x8232AF32);
+	conv18030(0x4160, 0x8232C937, 0x8232F837);
+	conv18030(0x44D7, 0x8233A339, 0x8233C931);
+	conv18030(0x478E, 0x8233E838, 0x82349638);
+	conv18030(0x49B8, 0x8234A131, 0x8234E733);
+	conv18030(0x9FA6, 0x82358F33, 0x8336C738);
+	conv18030(0xE865, 0x8336D030, 0x84308534);
+	conv18030(0xFA2A, 0x84309C38, 0x84318537);
+	conv18030(0xFFE6, 0x8431A234, 0x8431A439);
+	conv18030(0x10000, 0x90308130, 0xE3329A35);
+	/* No mapping exists */
+	return 0;
+}
+```
