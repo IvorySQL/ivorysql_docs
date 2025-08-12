@@ -1,0 +1,5063 @@
+:sectnums:
+:sectnumlevels: 16
+
+
+[.text-center]
+== PostgreSQL 函数参考手册
+
+
+=== current_catalog
+
+[cols="145,378"]
+|===
+h| 函数名称 h| current_catalog
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | Name
+| 函数含义 | 获得当前的database 名称。 +
+注意：在SQL标准中，databases被称之为catalogs。
+| 使用举例
+a|
+[source,sql]
+----
+postgres=# select current_catalog;
+ current_catalog 
+-----------------
+ postgres
+(1 row)
+
+postgres=# 
+----
+|===
+
+
+=== current_database()
+
+[cols="145,378"]
+|===
+h| 函数名称 h| current_database()
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | name
+| 函数含义 | 获得当前的database 名称。
+| 使用举例
+a|
+[source,sql]
+----
+postgres=# select current_database();
+ current_database 
+------------------
+ postgres
+(1 row)
+
+postgres=#
+----
+|===
+
+
+=== current_query()
+
+[cols="145,378"]
+|===
+h| 函数名称 h| current_query()
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | text
+| 函数含义 | 获得client端提交的当前执行的SQL语句的文本
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=#   BEGIN;
+BEGIN
+postgres=*# select 1,current_query();
+ ?column? \|       current_query       
+----------+---------------------------
+        1 \| select 1,current_query();
+(1 row)
+
+postgres=*# select 2,current_query();
+ ?column? \|       current_query       
+----------+---------------------------
+        2 \| select 2,current_query();
+(1 row)
+
+postgres=*# ROLLBACK;
+ROLLBACK
+postgres=#
+----
+|===
+
+
+=== current_role
+
+[cols="145,378"]
+|===
+h| 函数名称 h| current_role
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | name
+| 函数含义 | 与current_user作用相同，获得当前执行上下文的username
+| 使用举例
+a|
+[source,sql]
+----
+postgres=# select current_role;
+ current_role 
+--------------
+ pg131
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+
+=== current_schema
+
+[cols="145,378"]
+|===
+h| 函数名称 h| current_schema
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | name
+| 函数含义 | 获得search path中的第一个schema名称（当search path为空时，返回空值）。当表或者其他对象建立不带schema名称时，本函数返回的schema就是该表或者该对象的schema
+| 使用举例
+a|
+[source,sql]
+----
+postgres=# select current_schema;
+ current_schema 
+----------------
+ public
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+=== current_schema()
+
+[cols="145,378"]
+|===
+h| 函数名称 h| current_schema()
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | name
+| 函数含义 | 作用与current_schema函数相同：获得search path中的第一个schema名称（当search path为空时，返回空值）。当表或者其他对象建立不带schema名称时，本函数返回的schema就是该表或者该对象的schema
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select current_schema();
+ current_schema 
+----------------
+ public
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+=== current_schemas(include_implicit boolean)
+
+[cols="145,378"]
+|===
+h| 函数名称 h| current_schemas(include_implicit boolean)
+| 参数数据类型 | bool
+| 函数返回值数据类型 | name
+| 函数含义 | 以优先级顺序返回有效search_path中当前所有模式名称，如果入参为true，那么在函数返回结果中会包括隐式搜索的系统模式pg_catalog
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select current_schemas(false);
+ current_schemas 
+-----------------
+ {public}
+(1 row)
+
+postgres=# select current_schemas(true);
+   current_schemas   
+---------------------
+ {pg_catalog,public}
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+=== current_user
+
+[cols="145,378"]
+|===
+h| 函数名称 h| current_user
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | name
+| 函数含义 | 获得当前执行上下文的username
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select current_user;
+ current_user 
+--------------
+ pg131
+(1 row)
+
+postgres=#
+----
+|===
+
+
+
+
+=== inet_client_addr()
+
+[cols="145,378"]
+|===
+h| 函数名称 h| inet_client_addr()
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | inet
+| 函数含义 | 获得当前client的ip地址。如果返回值为空，表示当前连接是经过Unix-domain socket的
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select inet_client_addr();
+ inet_client_addr 
+------------------
+ 
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+=== inet_client_port()
+
+[cols="145,378"]
+|===
+h| 函数名称 h| inet_client_port()
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | integer
+| 函数含义 | 获得当前client的端口号。如果返回值为空，表示当前连接是经过Unix-domain socket的
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select inet_client_port();
+ inet_client_port 
+------------------
+                 
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+=== inet_server_addr()
+
+[cols="145,378"]
+|===
+h| 函数名称 h| inet_server_addr()
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | inet
+| 函数含义 | 获得当前连接的pg数据库服务器的ip地址。如果返回值为空，表示当前连接是经过Unix-domain socket的。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select inet_server_port();
+ inet_server_port 
+------------------
+                 
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+=== inet_server_port()
+
+[cols="145,378"]
+|===
+h| 函数名称 h| inet_server_port()
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | integer
+| 函数含义 | 获得当前连接的pg数据库服务器的端口号。如果返回值为空，表示当前连接是经过Unix-domain socket的。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select inet_server_port();
+ inet_server_port 
+------------------
+                 
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+
+=== pg_backend_pid()
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_backend_pid()
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | integer
+| 函数含义 | 获得附加到当前session的backend进程的进程ID
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_backend_pid();
+ pg_backend_pid 
+----------------
+           4068
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+=== pg_blocking_pids(integer)
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_blocking_pids(integer)
+| 参数数据类型 | Integer
+| 函数返回值数据类型 | Integer[]
+| 函数含义
+a| 返回入参pid的blocking pid(即:阻塞者pid)若是本函数返回空值，表示不存在阻塞者若是本函数返回值是零，那么表示阻塞者是prepared transacion，见下面的输出： 
+[source,sql]
+----
+postgres=# select pg_blocking_pids(12947); pg_blocking_pids 
+------------------ 
+{0} 
+(1 row) 
+ postgres=# 
+----
+频繁调用本函数会对数据库性能有影响，因为本函数在短时间内对lock manager's shared state进行排他访问(exclusive accesss)
+
+| 使用举例
+a| 
+[source,sql]
+----
+Session1：
+postgres=# SELECT pg_backend_pid();
+ pg_backend_pid 
+----------------
+          32262
+(1 row)
+
+postgres=# CREATE TABLE tbl_students(rno int, name character varying(10));
+CREATE TABLE
+postgres=# BEGIN TRANSACTION;
+BEGIN
+postgres=*# LOCK tbl_students IN ACCESS EXCLUSIVE MODE;
+LOCK TABLE
+postgres=*#
+
+
+session2：
+postgres=# SELECT pg_backend_pid();
+ pg_backend_pid 
+----------------
+          32439
+(1 row)
+
+postgres=# INSERT INTO tbl_students VALUES (1,'Anvesh');
+
+
+session3:
+postgres=# SELECT pg_blocking_pids(32439);
+ pg_blocking_pids 
+------------------
+ {32262}
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+=== pg_conf_load_time()
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_conf_load_time()
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | timestamp with time zone
+| 函数含义 | 返回PG配置参数文件最后一次被reload的时间
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_conf_load_time();
+       pg_conf_load_time       
+-------------------------------
+ 2021-03-22 12:46:18.962643+08
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+=== pg_current_logfile([text]);
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_current_logfile([text]);
+| 参数数据类型 | 无输入参数或者text型输入参数 (csvlog、stderr)
+| 函数返回值数据类型 | Text
+| 函数含义 | 返回正在被logging collector进程使用的log file的path(是log_directory的值)和文件名。当logging collector是被禁用时，本函数返回结果是null。当有不同格式的多种log files存在时，不带任何参数的pg_current_logfile()函数返回有序列表(stderr、csvlog)中找到的第一种格式的文件path和文件名。当没有这两个格式的文件时，本函数返回NULL
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_current_logfile();
+          pg_current_logfile          
+--------------------------------------
+ log/postgresql-2021-03-22_124618.log
+(1 row)
+
+postgres=# select pg_current_logfile('stderr');
+          pg_current_logfile          
+--------------------------------------
+ log/postgresql-2021-03-22_124618.log
+(1 row)
+
+postgres=# select pg_current_logfile('csvlog');
+ pg_current_logfile 
+--------------------
+ 
+(1 row)
+
+postgres=# show log_destination ;
+ log_destination 
+-----------------
+ stderr
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+=== pg_my_temp_schema()
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_my_temp_schema()
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | oid
+| 函数含义 | 返回当前会话的临时schema的OID，如果没有临时schema，本函数返回0（即：数字零）
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_my_temp_schema();
+ pg_my_temp_schema 
+-------------------
+ 0
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+
+=== pg_is_other_temp_schema(oid)
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_is_other_temp_schema(oid)
+| 参数数据类型 | oid
+| 函数返回值数据类型 | boolean
+| 函数含义 | 当入参的oid是其他session中临时schema的oid时，本函数返回true。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_is_other_temp_schema(16426);
+ pg_is_other_temp_schema 
+-------------------------
+ f
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+
+=== pg_jit_available()
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_jit_available()
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | boolean
+| 函数含义 | 如果jit编译器扩展是可用的并且jit配置参数设置为on的话，本函数返回true
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_jit_available();
+ pg_jit_available 
+------------------
+ f
+(1 row)
+
+postgres=# select * from pg_config where name='CONFIGURE' AND SETTING LIKE '%--with-llvm%';
+ name \| setting 
+------+---------
+(0 rows)
+
+postgres=# show jit;
+ jit 
+-----
+ on
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+=== pg_listening_channels()
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_listening_channels()
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | setof text
+| 函数含义 | 当前session正在监听的异步通知通道的名称
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_listening_channels();
+ pg_listening_channels 
+-----------------------
+(0 rows)
+
+postgres=#
+----
+
+|===
+
+
+
+
+=== pg_notification_queue_usage()
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_notification_queue_usage()
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | double precision
+| 函数含义 | 返回被正在等待处理的通知占据的异步通知队列最大大小的比例。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_notification_queue_usage();
+ pg_notification_queue_usage 
+-----------------------------
+                           0
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+
+=== pg_postmaster_start_time()
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_postmaster_start_time()
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | timestamp with time zone
+| 函数含义 | 返回PG intance 启动的时间点
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_postmaster_start_time();
+   pg_postmaster_start_time    
+-------------------------------
+ 2021-03-23 14:01:33.352011+08
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+
+=== pg_safe_snapshot_blocking_pids(integer)
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_safe_snapshot_blocking_pids(integer)
+| 参数数据类型 | Integer
+| 函数返回值数据类型 | integer[]
+| 函数含义 | 返回阻止指定服务器进程ID获取安全快照的进程ID若是没有阻塞，则返回空array。一个运行SERIALIZABLE事务的session阻塞了一个SERIALIZABLE READ ONLY DEFERRABLE事务，防止后者获得snapshot，直到后者确认可以安全的避免获取任何谓词锁。频繁调用本函数会对数据库性能有影响，因为它在短时间内需要访问谓词锁管理器的共享状态(predicate lock manager's shared state)
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_safe_snapshot_blocking_pids(1234);
+ pg_safe_snapshot_blocking_pids 
+--------------------------------
+ {}
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+
+=== pg_trigger_depth()
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_trigger_depth()
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | integer
+| 函数含义 | 返回PostgreSQL触发器的当前嵌套级别(如果没有从触发器内部直接或间接调用，则为返回值为0)
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_trigger_depth();
+ pg_trigger_depth 
+------------------
+                0
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+=== user
+
+[cols="145,378"]
+|===
+h| 函数名称 h| user
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | name
+| 函数含义 | 获得当前执行上下文的username，等同于current_user函数
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select user;
+ user  
+-------
+ pg131
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+=== Version()
+
+[cols="145,378"]
+|===
+h| 函数名称 h| Version()
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | text
+| 函数含义 | 返回带有数据库版本号的字符串，您也可以查询server_version配置参数获得数据库版本号。对于机器可读的版本，请使用server_version_num配置参数。在软件开发过程中应该使用server_version_num配置参数或者PqserverVersion，而不是去解析文本的版本号(见下面的使用举例)
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select version();
+                                                 version      
+---------------------------------------------------------------------------------------------------------
+ PostgreSQL 13.1 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 4.8.5 20150623 (Red Hat 4.8.5-44), 64-bit
+(1 row)
+
+postgres=#
+----
+|===
+
+
+=== has_any_column_privilege(user, table, privilege)
+
+[cols="145,378"]
+|===
+h| 函数名称 h| has_any_column_privilege(user, table, privilege)
+| 参数数据类型 | user, table, privilege或者table, privilege
+| 函数返回值数据类型 | boolean
+| 函数含义 | 确定一个user是否对当前PG database中的某个table任一列有列权限确定当前user是否对当前PG database中的某个table任一列有列权限权限类型是SELECT, INSERT, UPDATE,REFERENCES的组合。
+| 使用举例
+a| 
+[source,sql]
+----
+[pg131@VM-0-8-centos ~]$ psql -d cwbase3 -U lc0039999
+psql (13.1)
+Type "help" for help.
+
+cwbase3=> \d
+         List of relations
+ Schema \| Name  \| Type  \|   Owner   
+--------+-------+-------+-----------
+ public \| test1 \| table \| lc0039999
+(1 row)
+
+cwbase3=> select has_any_column_privilege('lc0039999','test1','select');
+ has_any_column_privilege 
+--------------------------
+ t
+(1 row)
+
+cwbase3=>
+cwbase3=> select has_any_column_privilege('test1','select,insert');
+ has_any_column_privilege 
+--------------------------
+ t
+(1 row)
+
+cwbase3=>
+
+cwbase3=> select has_any_column_privilege('test1','select');
+ has_any_column_privilege 
+--------------------------
+ t
+(1 row)
+
+cwbase3=>
+----
+|===
+
+
+
+
+=== has_column_privilege(user, table, column, privilege)
+
+[cols="145,378"]
+|===
+h| 函数名称 h| has_column_privilege(user, table, column, privilege);
+| 参数数据类型 | user, table, column, privilege或者table, column, privilege
+| 函数返回值数据类型 | boolean
+| 函数含义 | 特定user对特定表的某一列是否具有某种权限当前user对特定表的某一列是否具有某种权限权限类型是SELECT, INSERT, UPDATE,REFERENCES的组合。
+| 使用举例
+a| 
+[source,sql]
+----
+cwbase3=> \d test1
+               Table "public.test1"
+ Column \|  Type   \| Collation \| Nullable \| Default 
+--------+---------+-----------+----------+---------
+ id     \| integer \|           \|          \| 
+
+cwbase3=>
+cwbase3=> select has_column_privilege('lc0039999','test1','id','select');
+ has_column_privilege 
+----------------------
+ t
+(1 row)
+
+cwbase3=>
+cwbase3=> select has_column_privilege('test1','id','select');
+ has_column_privilege 
+----------------------
+ t
+(1 row)
+
+cwbase3=>
+----
+|===
+
+
+
+=== has_database_privilege
+
+[cols="145,378"]
+|===
+h| 函数名称 h| has_database_privilege
+| 参数数据类型 | user, database, privilege或者database, privilege
+| 函数返回值数据类型 | boolean
+| 函数含义 | 特定user是否对特定database有某种权限当前user是否对特定database有某种权限权限类型是CREATE, CONNECT, TEMPORARY, or TEMP的组合。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select has_database_privilege('lc0039999','cwbase3','create,connect,temp');
+ has_database_privilege 
+------------------------
+ t
+(1 row)
+
+postgres=# select has_database_privilege('lc0019999','cwbase3','create,connect,temp');
+ has_database_privilege 
+------------------------
+ t
+(1 row)
+
+postgres=#
+----
+|===
+
+
+
+=== has_foreign_data_wrapper_privilege
+
+[cols="145,378"]
+|===
+h| 函数名称 h| has_foreign_data_wrapper_privilege
+| 参数数据类型 | user, fdw, privilege或者fdw, privilege
+| 函数返回值数据类型 | boolean
+| 函数含义 | 特定user是否对特定fdw有usage权限当前user是否对特定fdw有usage权限此处的权限只能指定usage
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select  has_foreign_data_wrapper_privilege('lc0019999','file_fdw','usage');
+ has_foreign_data_wrapper_privilege 
+------------------------------------
+ f
+(1 row)
+
+postgres=#
+postgres=# select  has_foreign_data_wrapper_privilege('file_fdw','usage');
+ has_foreign_data_wrapper_privilege 
+------------------------------------
+ t
+(1 row)
+
+postgres=#
+----
+|===
+
+
+
+
+=== has_function_privilege
+
+[cols="145,378"]
+|===
+h| 函数名称 h| has_function_privilege
+| 参数数据类型 | user, function, privilege或者function, privilege
+| 函数返回值数据类型 | boolean
+| 函数含义 | 特定user是否对特定function有EXECUTE权限当前user是否对特定function有EXECUTE权限此处的权限只能是EXECUTE
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select has_function_privilege('lc0039999','version()','execute'); 
+has_function_privilege 
+------------------------ 
+t 
+(1 row) 
+ postgres=# postgres=# select has_function_privilege('version()','execute'); 
+ has_function_privilege 
+ ------------------------ 
+ t 
+ (1 row) 
+postgres=#
+----
+|===
+
+
+=== has_language_privilege
+
+[cols="145,378"]
+|===
+h| 函数名称 h| has_language_privilege
+| 参数数据类型 | user, language, privilege或者language, privilege
+| 函数返回值数据类型 | boolean
+| 函数含义 | 特定user是否对特定procedural language有usage权限当前user是否对特定procedural language有usage权限此处的权限必须是usage
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select has_language_privilege('lc0019999','sql','usage'); 
+has_language_privilege 
+------------------------ 
+t 
+(1 row) 
+ postgres=# select has_language_privilege('plpgsql','usage'); 
+ has_language_privilege
+  ------------------------
+   t 
+   (1 row) 
+ postgres=#
+----
+ 注意：此处的language可以从pg_language系统表查询到。
+
+|===
+
+
+
+=== has_schema_privilege
+
+[cols="145,378"]
+|===
+h| 函数名称 h| has_schema_privilege
+| 参数数据类型 | user, schema, privilege或者schema, privilege
+| 函数返回值数据类型 | boolean
+| 函数含义 | 特定user是否对特定schema有usage或者create权限当前user是否对特定schema有usage或者create权限此处的权限必须是create或者usage的组合
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# \dnS
+      List of schemas
+        Name        \| Owner 
+--------------------+-------
+ information_schema \| pg131
+ pg_catalog         \| pg131
+ pg_toast           \| pg131
+ public             \| pg131
+ s_abc              \| pg131
+(5 rows)
+
+postgres=# select has_schema_privilege('lc0019999','s_abc','usage');
+ has_schema_privilege 
+----------------------
+ f
+(1 row)
+
+postgres=# select has_schema_privilege('lc0019999','s_abc','usage,create');
+ has_schema_privilege 
+----------------------
+ f
+(1 row)
+
+postgres=#
+----
+|===
+
+
+
+=== has_sequence_privilege
+
+[cols="145,378"]
+|===
+h| 函数名称 h| has_sequence_privilege
+| 参数数据类型 | user, sequence, privilege或者sequence, privilege
+| 函数返回值数据类型 | boolean
+| 函数含义 | 特定user是否对特定sequence有特定权限当前user是否对特定sequence有特定权限此处的权限是USAGE, SELECT, UPDATE的组合。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# \ds+
+                                 List of relations
+ Schema \|     Name     \|   Type   \| Owner \| Persistence \|    Size    \| Description 
+--------+--------------+----------+-------+-------------+------------+-------------
+ public \| gen_y_c1_seq \| sequence \| pg131 \| permanent   \| 8192 bytes \| 
+(1 row)
+
+postgres=# select has_sequence_privilege('pg131','gen_y_c1_seq','usage');
+ has_sequence_privilege 
+------------------------
+ t
+(1 row)
+
+postgres=# select has_sequence_privilege('lc0039999','gen_y_c1_seq','usage');
+ has_sequence_privilege 
+------------------------
+ f
+(1 row)
+
+postgres=#
+----
+|===
+
+
+=== has_server_privilege
+
+[cols="145,378"]
+|===
+h| 函数名称 h| has_server_privilege
+| 参数数据类型 | user, server, privilege或者server, privilege
+| 函数返回值数据类型 | boolean
+| 函数含义 | 特定user是否对特定foreign server有usage权限特定user是否对特定foreign server有usage权限此处的权限必须是usage
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select has_server_privilege('s1','usage'); 
+has_server_privilege 
+---------------------- 
+t 
+(1 row) 
+postgres=# select has_server_privilege('s1','USAGE'); 
+has_server_privilege 
+---------------------- 
+t 
+(1 row)
+postgres=# select has_server_privilege('pg123','s1','USAGE'); 
+has_server_privilege 
+---------------------- 
+t 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== has_table_privilege
+
+[cols="145,378"]
+|===
+h| 函数名称 h| has_table_privilege
+| 参数数据类型 | user, table, privilege或者table, privilege
+| 函数返回值数据类型 | boolean
+| 函数含义 | 特定user是否对特定table有特定权限当前user是否对特定table有特定权限此处的权限是指如下的组合： SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER，还可以带有WITH GRANT OPTION用来测试privilege是否带有grant option。当权限字符串有多个值(比如'insert, select')时,只要有任何一个权限是满足的，本函数会返回t有关对权限字符串的说明：权限字符串不区分大小写权限字符串的前后可以有一个或者多个空格（权限名字内部不能有空格）
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select has_table_privilege('t1','  select,  insert ');
+ has_table_privilege 
+---------------------
+ t
+(1 row)
+
+postgres=#
+[pg131@VM-0-8-centos ~]$ psql -d cwbase3 -U lc0039999
+psql (13.1)
+Type "help" for help.
+
+cwbase3=>
+cwbase3=> grant select on test1 to lc0019999;
+GRANT
+cwbase3=> exit
+[pg131@VM-0-8-centos ~]$ psql -d cwbase3 -U lc0019999
+psql (13.1)
+Type "help" for help.
+
+cwbase3=> select * from test1;
+ id 
+ ----
+  1
+  2
+  3
+   
+  4
+  5
+(6 rows)
+
+cwbase3=> select has_table_privilege('test1','insert, select ');
+ has_table_privilege 
+---------------------
+ t
+(1 row)
+
+cwbase3=> select has_table_privilege('test1','insert');
+ has_table_privilege 
+---------------------
+ f
+(1 row)
+
+cwbase3=> select has_table_privilege('test1',' insert ');
+ has_table_privilege 
+---------------------
+ f
+(1 row)
+
+cwbase3=> insert into test1 values(6);
+ERROR:  permission denied for table test1
+cwbase3=>
+----
+|===
+
+
+
+=== has_tablespace_privilege
+
+[cols="145,378"]
+|===
+h| 函数名称 h| has_tablespace_privilege
+| 参数数据类型 | user, tablespace, privilege或者tablespace, privilege
+| 函数返回值数据类型 | boolean
+| 函数含义 | 特定user是否对特定tablesapce有特定权限当前user是否对特定tablespace有特定权限此处的权限必须是create
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select has_tablespace_privilege('ts1','create '); 
+has_tablespace_privilege 
+-------------------------- 
+t 
+(1 row) 
+postgres=# select has_tablespace_privilege('lc0019999','ts1','create '); 
+has_tablespace_privilege 
+-------------------------- 
+f 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== has_type_privilege
+
+[cols="145,378"]
+|===
+h| 函数名称 h| has_type_privilege
+| 参数数据类型 | user, type, privilege或者type, privilege
+| 函数返回值数据类型 | boolean
+| 函数含义 | 特定user是否对特定type有特定权限当前user是否对特定type有特定权限特定type可以使用type的name，也可以使用oid::regtype的形式此处的权限必须是USAGE
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select has_type_privilege('bytea','usage'); 
+has_type_privilege 
+-------------------- 
+t 
+(1 row) 
+postgres=# select has_type_privilege('lc0019999','bytea','usage'); 
+has_type_privilege 
+-------------------- 
+t 
+(1 row) 
+postgres=# select has_type_privilege('lc0019999','17:regtype','usage'); 
+ERROR: syntax error at or near "17" 
+CONTEXT: invalid type name "17:regtype" 
+postgres=# select has_type_privilege('lc0019999',17::regtype,'usage'); 
+has_type_privilege 
+-------------------- 
+t 
+(1 row) 
+postgres=# select has_type_privilege('lc0019999','17::regtype','usage'); 
+ERROR: syntax error at or near "17" 
+CONTEXT: invalid type name "17::regtype"
+postgres=#
+----
+|===
+
+
+
+=== pg_has_role
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_has_role
+| 参数数据类型 | user, role, privilege或者role, privilege
+| 函数返回值数据类型 | boolean
+| 函数含义 | 特定user是否对特定role group有特定权限当前user是否对特定role group有特定权限此处的权限必须是member或者usage当权限是member时，表示特定user是否是特定role group的member当权限是usage时，表示在不执行set role时，特定user是否有特定role的权限
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# create role editors;
+CREATE ROLE
+postgres=# create user maxwell;
+CREATE ROLE
+postgres=# create user ernest;
+CREATE ROLE
+postgres=# grant authors to editors; --editors can do what authors can do
+GRANT ROLE
+postgres=# grant editors to maxwell; --maxwell is an editor
+GRANT ROLE
+postgres=# grant authors to ernest; --ernest is an author
+GRANT ROLE
+postgres=# select pg_has_role('maxwll','editors','member');
+ERROR:  role "maxwll" does not exist
+postgres=# select pg_has_role('maxwell','editors','member');
+ pg_has_role 
+-------------
+ t
+(1 row)
+
+postgres=# select pg_has_role('maxwell','editors','usage');
+ pg_has_role 
+-------------
+ t
+(1 row)
+
+postgres=# select pg_has_role('maxwell','ernest','usage');
+ pg_has_role 
+-------------
+ f
+(1 row)
+
+postgres=# select pg_has_role('maxwell','ernest','member');
+ pg_has_role 
+-------------
+ f
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+=== row_security_active
+
+[cols="145,378"]
+|===
+h| 函数名称 h| row_security_active
+| 参数数据类型 | Table，可以是table name，也可以是table的oid
+| 函数返回值数据类型 | boolean
+| 函数含义 | 在current_user的上下文中，特定table是否已开启row security
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select oid from pg_class where relname='test';
+  oid  
+-------
+ 16860
+(1 row)
+
+postgres=# select row_security_active('test');
+ row_security_active 
+---------------------
+ f
+(1 row)
+
+postgres=# select row_security_active(16860);
+ row_security_active 
+---------------------
+ f
+(1 row)
+
+postgres=#
+----
+
+
+|===
+
+
+
+=== acldefault
+
+[cols="145,378"]
+|===
+h| 函数名称 h| acldefault
+| 参数数据类型 | type, ownerId
+| 函数返回值数据类型 | aclitem[]
+| 函数含义 | 返回属于某个user oid对象的默认访问权限。当一个对象的ACL条目为null时这些访问权限是该对象的默认权限Type参数的取值如下：'c' for COLUMN'r' for TABLE 以及类似对象's' for SEQUENCE'd' for DATABASE'f' for FUNCTION 或者PROCEDURE'l' for LANGUAGE'L' for LARGE OBJECT'n' for SCHEMA't' for TABLESPACE'F' for FOREIGN DATA WRAPPER'S' for FOREIGN SERVER'T' for TYPE or DOMAIN
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select acldefault('f',16877); 
+acldefault 
+-------------------------------------- 
+{=X/lc0039999,lc0039999=X/lc0039999} 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== aclexplode
+
+[cols="145,378"]
+|===
+h| 函数名称 h| aclexplode
+| 参数数据类型 | aclitem[]
+| 函数返回值数据类型 | setof record
+| 函数含义 | 解析 acl 权限
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select aclexplode('{=X/lc0039999,lc0039999=X/lc0039999}'); 
+ aclexplode 
+------------------------- 
+ (16877,0,EXECUTE,f)
+ (16877,16877,EXECUTE,f)
+ (2 rows)
+postgres=# postgres=# select \* from aclexplode('{=X/lc0039999,lc0039999=X/lc0039999}'); 
+ grantor \| grantee \| privilege_type \| is_grantable 
+---------+---------+----------------+-------------- 
+ 16877 \| 0 \| EXECUTE \| f
+ 16877 \| 16877 \| EXECUTE \| f 
+(2 rows) 
+postgres=#
+----
+|===
+
+
+
+=== makeaclitem
+
+[cols="145,378"]
+|===
+h| 函数名称 h| makeaclitem
+| 参数数据类型 | grantee, grantor, privilege, grantable
+| 函数返回值数据类型 | aclitem
+| 函数含义 | 构建aclitem
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select \* from makeaclitem(16877,16877,'EXECUTE',false); 
+makeaclitem 
+----------------------- 
+lc0039999=X/lc0039999 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== pg_collation_is_visible
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_collation_is_visible
+| 参数数据类型 | collation_oid
+| 函数返回值数据类型 | boolean
+| 函数含义 | 在当前schema search path中，特定collation是否可见。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select * from pg_collation where collname = 'zh_CN';
+  oid  \| collname \| collnamespace \| collowner \| collprovider \| collisdeterministic \| collencoding \| collcollate \| collctype  \| collversion 
+-------+----------+---------------+-----------+--------------+---------------------+--------------+-------------+------------+-------------
+ 13086 \| zh_CN    \|            11 \|        10 \| c            \| t                   \|            2 \| zh_CN       \| zh_CN      \| 2.17
+ 13243 \| zh_CN    \|            11 \|        10 \| c            \| t                   \|            6 \| zh_CN.utf8  \| zh_CN.utf8 \| 2.17
+(2 rows)
+
+postgres=# select  pg_collation_is_visible(13086);
+ pg_collation_is_visible 
+-------------------------
+ f
+(1 row)
+
+postgres=# select  pg_collation_is_visible(13243);
+ pg_collation_is_visible 
+-------------------------
+ t
+(1 row)
+
+postgres=#
+postgres=# select  pg_collation_is_visible('"zh_CN"'::regcollation);
+ pg_collation_is_visible 
+-------------------------
+ t
+(1 row)
+
+postgres=#
+----
+|===
+
+
+
+=== pg_conversion_is_visible
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_conversion_is_visible
+| 参数数据类型 | conversion_oid
+| 函数返回值数据类型 | boolean
+| 函数含义 | 在当前schema search path中，特定conversion是否可见
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select *  from pg_conversion  where conname like '%cn%';
+ oid  \|    conname     \| connamespace \| conowner \| conforencoding \| contoencoding \|    conproc     \| condefault 
+------+----------------+--------------+----------+----------------+---------------+----------------+------------
+ 4422 \| euc_cn_to_mic  \|           11 \|       10 \|              2 \|             7 \| euc_cn_to_mic  \| t
+ 4423 \| mic_to_euc_cn  \|           11 \|       10 \|              7 \|             2 \| mic_to_euc_cn  \| t
+ 4480 \| euc_cn_to_utf8 \|           11 \|       10 \|              2 \|             6 \| euc_cn_to_utf8 \| t
+ 4481 \| utf8_to_euc_cn \|           11 \|       10 \|              6 \|             2 \| utf8_to_euc_cn \| t
+(4 rows)
+
+postgres=# select pg_conversion_is_visible(4480);
+ pg_conversion_is_visible 
+--------------------------
+ t
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+=== pg_function_is_visible
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_function_is_visible
+| 参数数据类型 | function_oid
+| 函数返回值数据类型 | boolean
+| 函数含义 | 在当前schema search path中，特定function、procedures、aggregates是否可见。对于函数，如果路径前面没有相同名称和参数数据类型的对象，则搜索路径中的对象可见
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select oid from pg_proc where proname='version';
+ oid 
+-----
+  89
+(1 row)
+
+postgres=# select pg_function_is_visible(89);
+ pg_function_is_visible 
+------------------------
+ t
+(1 row)
+
+postgres=#
+postgres=# select pg_function_is_visible('version'::regproc);
+ pg_function_is_visible 
+------------------------
+ t
+(1 row)
+
+postgres=# select pg_function_is_visible('version()'::regprocedure);
+ pg_function_is_visible 
+------------------------
+ t
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+=== pg_opclass_is_visible
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_opclass_is_visible
+| 参数数据类型 | opclass_oid
+| 函数返回值数据类型 | boolean
+| 函数含义 | 在当前schema search path中，特定operator class是否可见考虑因素是operator class name和相关的索引访问方法。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select oid from pg_opclass where opcname='array_ops';
+  oid  
+-------
+ 10000
+ 10001
+ 10063
+(3 rows)
+
+postgres=# select pg_opclass_is_visible(10000);
+ pg_opclass_is_visible 
+-----------------------
+ t
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+=== pg_operator_is_visible
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_operator_is_visible
+| 参数数据类型 | operator_oid
+| 函数返回值数据类型 | boolean
+| 函数含义 | 在当前schema search path中，特定operator 是否可见对于运算符，如果路径前面没有相同名称和参数数据类型的对象，则搜索路径中的对象可见
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select oprname from pg_operator where oid=15;
+ oprname 
+---------
+ =
+(1 row)
+
+postgres=# select pg_operator_is_visible(15);
+ pg_operator_is_visible 
+------------------------
+ t
+(1 row)
+
+postgres=#
+postgres=#  select pg_operator_is_visible('=(integer,integer)'::regoperator);
+ pg_operator_is_visible 
+------------------------
+ t
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+=== pg_opfamily_is_visible
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_opfamily_is_visible
+| 参数数据类型 | opclass_oid
+| 函数返回值数据类型 | boolean
+| 函数含义 | 在当前schema search path中，特定operator family是否可见
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select *  from pg_opfamily where oid='397';
+ oid \| opfmethod \|  opfname  \| opfnamespace \| opfowner 
+-----+-----------+-----------+--------------+----------
+ 397 \|       403 \| array_ops \|           11 \|       10
+(1 row)
+
+postgres=# select pg_opfamily_is_visible(397);
+ pg_opfamily_is_visible 
+------------------------
+ t
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+=== pg_statistics_obj_is_visible
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_statistics_obj_is_visible
+| 参数数据类型 | stat_oid
+| 函数返回值数据类型 | boolean
+| 函数含义 | 在当前schema search path中，特定operator class是否可见
+| 使用举例 |
+|===
+
+
+
+=== pg_table_is_visible
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_table_is_visible
+| 参数数据类型 | table_oid
+| 函数返回值数据类型 | boolean
+| 函数含义 | 在当前schema search path中，特定的table、views、materialized views、 indexes、 sequences、foreign tables是否可见
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select oid from pg_class where relname='data1';
+  oid  
+-------
+ 16384
+(1 row)
+
+postgres=# select pg_table_is_visible(16384);
+ pg_table_is_visible 
+---------------------
+ t
+(1 row)
+
+postgres=#
+postgres=# SELECT pg_table_is_visible('public.data1'::regclass);
+ pg_table_is_visible 
+---------------------
+ t
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+=== pg_ts_config_is_visible
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_ts_config_is_visible
+| 参数数据类型 | config_oid
+| 函数返回值数据类型 | boolean
+| 函数含义 | 在当前schema search path中，特定text search configuration是否可见
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select oid from pg_ts_config where cfgname='greek';
+  oid  
+-------
+ 13861
+(1 row)
+
+postgres=# select pg_ts_config_is_visible(13861);
+ pg_ts_config_is_visible 
+-------------------------
+ t
+(1 row)
+
+postgres=#
+postgres=# select pg_ts_config_is_visible('greek'::regconfig);
+ pg_ts_config_is_visible 
+-------------------------
+ t
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+=== pg_ts_dict_is_visible
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_ts_dict_is_visible
+| 参数数据类型 | _dict_oid_
+| 函数返回值数据类型 | boolean
+| 函数含义 | 在当前schema search path中，特定text search dictionary是否可见
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select oid,dictname,dictinitoption from pg_ts_dict where dictname='greek_stem';
+  oid  \|  dictname  \|   dictinitoption   
+-------+------------+--------------------
+ 13860 \| greek_stem \| language = 'greek'
+(1 row)
+
+postgres=# select pg_ts_dict_is_visible(13860);
+ pg_ts_dict_is_visible 
+-----------------------
+ t
+(1 row)
+
+postgres=#
+postgres=#  select pg_ts_dict_is_visible('greek_stem'::regdictionary);
+ pg_ts_dict_is_visible 
+-----------------------
+ t
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+=== pg_ts_parser_is_visible
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_ts_parser_is_visible
+| 参数数据类型 | parser_oid
+| 函数返回值数据类型 | boolean
+| 函数含义 | 在当前schema search path中，特定text search parser是否可见
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select * from pg_ts_parser ;
+ oid  \| prsname \| prsnamespace \|  prsstart  \|    prstoken    \|  prsend  \|  prsheadline  \|  prslextype  
+------+---------+--------------+------------+----------------+----------+---------------+--------------
+ 3722 \| default \|           11 \| prsd_start \| prsd_nexttoken \| prsd_end \| prsd_headline \| prsd_lextype
+(1 row)
+
+postgres=# select pg_ts_parser_is_visible(3722);
+ pg_ts_parser_is_visible 
+-------------------------
+ t
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+=== pg_ts_template_is_visible
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_ts_template_is_visible
+| 参数数据类型 | template_oid
+| 函数返回值数据类型 | boolean
+| 函数含义 | 在当前schema search path中，特定text search template是否可见
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select * from pg_ts_template ;
+  oid  \| tmplname  \| tmplnamespace \|    tmplinit    \|    tmpllexize    
+-------+-----------+---------------+----------------+------------------
+  3727 \| simple    \|            11 \| dsimple_init   \| dsimple_lexize
+  3730 \| synonym   \|            11 \| dsynonym_init  \| dsynonym_lexize
+  3733 \| ispell    \|            11 \| dispell_init   \| dispell_lexize
+  3742 \| thesaurus \|            11 \| thesaurus_init \| thesaurus_lexize
+ 13845 \| snowball  \|            11 \| dsnowball_init \| dsnowball_lexize
+(5 rows)
+
+postgres=# select pg_ts_temp
+
+postgres=# select pg_ts_template_is_visible(3730);
+ pg_ts_template_is_visible 
+---------------------------
+ t
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+=== pg_type_is_visible
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_type_is_visible
+| 参数数据类型 | type_oid
+| 函数返回值数据类型 | boolean
+| 函数含义 | 在当前schema search path中，特定type、domain是否可见
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select oid,typname from pg_type where typname='bool';
+ oid \| typname 
+-----+---------
+  16 \| bool
+(1 row)
+
+postgres=# select pg_type_is_visible(16);
+ pg_type_is_visible 
+--------------------
+ t
+(1 row)
+
+postgres=#
+postgres=# SELECT pg_type_is_visible('pg_catalog.bool'::regtype);
+ pg_type_is_visible 
+--------------------
+ t
+(1 row)
+
+postgres=#
+----
+
+|===
+
+=== format_type
+
+[cols="145,378"]
+|===
+h| 函数名称 h| format_type
+| 参数数据类型 | type_oid, typemod
+| 函数返回值数据类型 | Text
+| 函数含义 | 得到一个data type的SQL Name
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select * from pg_type where typname='bool';
+-[ RECORD 1 ]--+---------
+oid            \| 16
+typname        \| bool
+typnamespace   \| 11
+typowner       \| 10
+typlen         \| 1
+typbyval       \| t
+typtype        \| b
+typcategory    \| B
+typispreferred \| t
+typisdefined   \| t
+typdelim       \| ,
+typrelid       \| 0
+typelem        \| 0
+typarray       \| 1000
+typinput       \| boolin
+typoutput      \| boolout
+typreceive     \| boolrecv
+typsend        \| boolsend
+typmodin       \| -
+typmodout      \| -
+typanalyze     \| -
+typalign       \| c
+typstorage     \| p
+typnotnull     \| f
+typbasetype    \| 0
+typtypmod      \| -1
+typndims       \| 0
+typcollation   \| 0
+typdefaultbin  \| 
+typdefault     \| 
+typacl         \| 
+
+postgres=#
+postgres=# select format_type(16,0);
+ format_type 
+-------------
+ boolean
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+=== pg_get_constraintdef
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_get_constraintdef
+| 参数数据类型 | constraint_oid或者constraint_oid, pretty_bool
+| 函数返回值数据类型 | text
+| 函数含义 | 得到一个constraint的定义
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_get_constraintdef(16918); 
+pg_get_constraintdef 
+---------------------- 
+PRIMARY KEY (c1) 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== pg_get_expr
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_get_expr
+| 参数数据类型
+a| pg_node_tree, relation_oid,或者 +
+pg_node_tree, relation_oid, pretty_bool
+
+| 函数返回值数据类型 | Text
+| 函数含义 | 反编译指定expression的内部格式，假设：其中的任何变量引用第二个参数指示的relation
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# CREATE TABLE tab1 (a int, b int) PARTITION BY RANGE(a);
+CREATE TABLE
+postgres=# CREATE TABLE tab1_p1 PARTITION OF tab1 FOR VALUES FROM (0) TO (100);
+CREATE TABLE
+postgres=# CREATE TABLE tab1_p2 PARTITION OF tab1 FOR VALUES FROM (100) TO (200);
+CREATE TABLE
+postgres=# select relname, pg_get_expr(relpartbound, oid) from pg_class where relispartition and relname ~ 'tab1' order by relname;
+ relname \|          pg_get_expr           
+---------+--------------------------------
+ tab1_p1 \| FOR VALUES FROM (0) TO (100)
+ tab1_p2 \| FOR VALUES FROM (100) TO (200)
+(2 rows)
+
+postgres=#
+----
+
+|===
+
+
+
+=== pg_get_functiondef
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_get_functiondef
+| 参数数据类型 | func_oid
+| 函数返回值数据类型 | text
+| 函数含义
+a| 获得function或者procedure的定义 +
+ +
+
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_get_functiondef(89); 
+pg_get_functiondef 
+------------------------------------------------- 
+CREATE OR REPLACE FUNCTION pg_catalog.version()+ RETURNS text + LANGUAGE internal + STABLE PARALLEL SAFE STRICT + AS $function$pgsql_version$function$ 
+
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== pg_get_function_arguments
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_get_function_arguments
+| 参数数据类型 | func_oid
+| 函数返回值数据类型 | text
+| 函数含义
+a| 获得function或者procedure的传入参数清单 +
+ +
+
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select oid from pg_proc where proname='has_database_privilege';
+-[ RECORD 1 ]
+oid \| 2250
+-[ RECORD 2 ]
+oid \| 2251
+-[ RECORD 3 ]
+oid \| 2252
+-[ RECORD 4 ]
+oid \| 2253
+-[ RECORD 5 ]
+oid \| 2254
+-[ RECORD 6 ]
+oid \| 2255
+
+postgres=# select pg_get_function_arguments(2250);
+-[ RECORD 1 ]-------------+-----------------
+pg_get_function_arguments \| name, text, text
+
+postgres=# \x
+Expanded display is off.
+postgres=# select pg_get_function_arguments(2250);
+ pg_get_function_arguments 
+---------------------------
+ name, text, text
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+=== pg_get_function_identity_arguments
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_get_function_identity_arguments
+| 参数数据类型 | func_oid
+| 函数返回值数据类型 | text
+| 函数含义
+a| 获得参数清单以标识出function或者procedure +
+ +
+
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_get_function_identity_arguments(2250); 
+pg_get_function_identity_arguments ------------------------------------ 
+name, text, text 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+
+
+=== pg_get_function_result
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_get_function_result
+| 参数数据类型 | func_oid
+| 函数返回值数据类型 | text
+| 函数含义 | 获得function，若是procedure，返回null
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_get_function_result(89); 
+pg_get_function_result 
+------------------------ 
+text 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== pg_get_indexdef
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_get_indexdef
+| 参数数据类型 | index_oid或者index_oid, column_no, pretty_bool
+| 函数返回值数据类型 | text
+| 函数含义 | 获得索引的定义语句获得某个索引上第n个索引列的名称
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select oid from pg_class where relname='idx_2';
+  oid  
+-------
+ 16427
+(1 row)
+
+postgres=# select pg_get_indexdef(16427);
+                     pg_get_indexdef                     
+---------------------------------------------------------
+ CREATE INDEX idx_2 ON public.data1 USING btree (c1, c3)
+(1 row)
+
+postgres=#
+
+postgres=# select pg_get_indexdef(16427,2,true);
+ pg_get_indexdef 
+-----------------
+ c3
+(1 row)
+
+postgres=# select pg_get_indexdef(16427,1,true);
+ pg_get_indexdef 
+-----------------
+ c1
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+=== pg_get_keywords
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_get_keywords
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | setof record
+| 函数含义 | 返回PostgreSQL数据库中的SQL关键字清单返回结果中有3列(以逗号分隔)，第一列是关键字名称，第二列catcode是category code U for unreserved C for column name T for type or function name R for reserved第三列catdesc是描述
+| 使用举例 a| 
+[source,sql]
+----
+postgres=# select pg_get_keywords(); 
+pg_get_keywords 
+------------------------------------------------------------------ 
+ (abort,U,unreserved)
+ (absolute,U,unreserved)
+ (access,U,unreserved)
+ (action,U,unreserved)
+ (add,U,unreserved)
+ (admin,U,unreserved)
+ (after,U,unreserved)
+ (aggregate,U,unreserved)
+ (all,R,reserved)
+ (also,U,unreserved)
+ (alter,U,unreserved)
+ (always,U,unreserved)
+ (analyse,R,reserved)
+ (analyze,R,reserved)
+ (and,R,reserved)
+限于篇幅，本函数的输出仅摘录到此处
+----
+|===
+
+
+
+=== pg_get_ruledef
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_get_ruledef
+| 参数数据类型 | rule_oid或者rule_oid, pretty_bool
+| 函数返回值数据类型 | Text
+| 函数含义 | 获得rule的create rule语句
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select oid ,rulename from pg_rewrite where rulename='pg_settings_u';
+  oid  \|   rulename    
+-------+---------------
+ 12168 \| pg_settings_u
+(1 row)
+
+postgres=# select pg_get_ruledef(12168);
+                                          pg_get_ruledef                                           
+---------------------------------------------------------------------------------------------------
+ CREATE RULE pg_settings_u AS                                                                     +
+     ON UPDATE TO pg_catalog.pg_settings                                                          +
+    WHERE (new.name = old.name) DO  SELECT set_config(old.name, new.setting, false) AS set_config;
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+=== pg_get_serial_sequence
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_get_serial_sequence
+| 参数数据类型 | table_name, column_name
+| 函数返回值数据类型 | text
+| 函数含义 | 获得自增列或者标识列使用的sequence的name
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_get_serial_sequence('gen_y','c1'); 
+pg_get_serial_sequence 
+------------------------ 
+public.gen_y_c1_seq 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== pg_get_statisticsobjdef
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_get_statisticsobjdef
+| 参数数据类型 | statobj_oid
+| 函数返回值数据类型 | text
+| 函数含义 | 获得extended statistics object的CREATE STATISTICS语句。
+| 使用举例 |
+
+|===
+
+
+
+=== pg_get_triggerdef
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_get_triggerdef
+| 参数数据类型 | trigger_oid 或者trigger_oid, pretty_bool
+| 函数返回值数据类型 | text
+| 函数含义 | 获得trigger的create trigger语句
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_get_triggerdef(16992); 
+pg_get_triggerdef 
+------------------------------------------------------------------------------------------------------------ 
+CREATE TRIGGER example_trigger AFTER INSERT ON public.company FOR EACH ROW EXECUTE FUNCTION auditlogfunc() 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+
+
+=== pg_get_userbyid
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_get_userbyid
+| 参数数据类型 | role_oid
+| 函数返回值数据类型 | ~name~
+| 函数含义 | 获得特定role oid的role name
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_get_userbyid(16426); 
+pg_get_userbyid 
+----------------- 
+lc0029999 
+(1 row)
+postgres=#
+----
+|===
+
+
+=== pg_get_viewdef
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_get_viewdef
+| 参数数据类型 | view_name 或者 view_name, pretty_bool或者 view_oid或者 view_oid, pretty_bool或者view_oid, wrap_column_int
+| 函数返回值数据类型 | text
+| 函数含义 | 获得view的定义
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_get_viewdef('company_view'); 
+pg_get_viewdef 
+--------------------- 
+SELECT company.id,+ company.name, + company.age + FROM company; 
+(1 row)
+postgres=#
+----
+|===
+
+
+=== pg_index_column_has_property
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_index_column_has_property
+| 参数数据类型 | index regclass, column integer, property text
+| 函数返回值数据类型 | boolean
+| 函数含义
+a| 测试索引列是否有特定的索引列属性。索引列属性见下： asc 索引列升序 desc 索引列降序 nulls_first null值在前 nulls_last null值在后 orderable 列是否具有任何定义的排序顺序？ distance_orderable 列是否可以被"distance" operator 顺序扫描到, 比如 ORDER BY col <-> constant ? returnable index-only扫描是否可以返回列值 search_array 列是否原生支持 col = ANY(array)搜索 search_nulls 列是否支持IS NULL 和IS NOT NULL 搜索 +
+注意：extension的访问方法可以为它们的indexes定义额外的属性名称。 +
+本函数在如下情况下会返回NULL：属性名称未知(not known)或者不适用于特定的对象Oid或者column number不能标识出一个有效的对象。
+
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_index_column_has_property('idx_2'::regclass,1,'desc'); 
+pg_index_column_has_property 
+------------------------------ 
+f 
+(1 row) 
+postgres=# select pg_index_column_has_property('idx_2'::regclass,1,'asc'); 
+pg_index_column_has_property 
+------------------------------ 
+t 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+
+
+
+=== pg_index_has_property
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_index_has_property
+| 参数数据类型 | index regclass, property text
+| 函数返回值数据类型 | boolean
+| 函数含义
+a| 测试一个index是否具有特定的索引属性。如下是索引属性的清单 clusterable 在cluster命令中是否可以用到index index_scan index 是否支持 plain (non-bitmap) scans? bitmap_scan index 是否支持 bitmap scans? backward_scan Can the scan direction be changed in mid-scan (to support FETCH BACKWARD on a cursor without needing materialization)? +
+注意：extension的访问方法可以为它们的indexes定义额外的属性名称。 +
+本函数在如下情况下会返回NULL：属性名称未知(not known)或者不适用于特定的对象oid不能标识出一个有效的对象。
+
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_index_has_property('idx_2'::regclass,'index_scan'); 
+pg_index_has_property 
+----------------------- 
+t 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== pg_indexam_has_property
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_indexam_has_property
+| 参数数据类型 | am oid, property text
+| 函数返回值数据类型 | boolean
+| 函数含义
+a| 测试一个index访问方法是否具有特定的属性。如下是索引访问方法属性清单： can_order 访问方法是否支持 ASC, DESC 以及CREATE INDEX的related keywords can_unique 访问方法是否支持unique indexes? can_multi_col 访问方法是否支持多列indexes? can_exclude 访问方法是否支持exclusion constraints? can_include 访问方法是否支持CREATE INDEX的 INCLUDE 子句 +
+ +
+本函数在如下情况下会返回NULL：属性名称未知(not known)或者不适用于特定的对象 oid不能标识出一个有效的对象。 +
+
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select * from pg_am;
+ oid  \| amname \|      amhandler       \| amtype 
+------+--------+----------------------+--------
+    2 \| heap   \| heap_tableam_handler \| t
+  403 \| btree  \| bthandler            \| i
+  405 \| hash   \| hashhandler          \| i
+  783 \| gist   \| gisthandler          \| i
+ 2742 \| gin    \| ginhandler           \| i
+ 4000 \| spgist \| spghandler           \| i
+ 3580 \| brin   \| brinhandler          \| i
+(7 rows)
+
+postgres=#
+postgres=# select pg_indexam_has_property(4000,'can_multi_col');
+ pg_indexam_has_property 
+-------------------------
+ f
+(1 row)
+
+postgres=#
+postgres=# select pg_indexam_has_property(403,'can_unique');
+ pg_indexam_has_property 
+-------------------------
+ t
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+
+=== pg_options_to_table
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_options_to_table
+| 参数数据类型 | options_array text[]
+| 函数返回值数据类型 | setof record ( option_name text, option_value text )
+| 函数含义 | 返回pg_class.reloptions或者pg_attribute.attoptions表示的存储选项
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_options_to_table(reloptions) from pg_class where oid='16384'; 
+pg_options_to_table 
+--------------------------------------------- 
+(autovacuum_vacuum_insert_threshold,10000) 
+(autovacuum_vacuum_insert_scale_factor,0.1) 
+(2 rows)
+postgres=# 
+----
+|===
+
+
+
+
+=== pg_tablespace_databases
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_tablespace_databases
+| 参数数据类型 | tablespace oid
+| 函数返回值数据类型 | setof oid
+| 函数含义 | 返回特定tablespace中保存的object的database的oid，如果本函数返回任何值，那么就表示tablespace不为空并且不能被drop掉。若想查出在该表空间内有哪些对象，你需要连接到本函数返回的database中，并查询pg_class获得这些对象。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_tablespace_databases(1663); 
+pg_tablespace_databases 
+------------------------- 
+16424 
+1 
+16878 
+14174 
+14173 
+(5 rows)
+postgres=#
+----
+|===
+
+
+
+
+=== pg_tablespace_location
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_tablespace_location
+| 参数数据类型 | tablespace oid
+| 函数返回值数据类型 | Text
+| 函数含义 | 返回指定tablespace的文件系统路径
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_tablespace_location(16391); 
+pg_tablespace_location 
+------------------------ 
+/home/pg131/ts1 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+
+=== pg_typeof
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_typeof
+| 参数数据类型 | any
+| 函数返回值数据类型 | regtype
+| 函数含义 | 指定值的数据类型的oid
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# SELECT pg_typeof(33.339999);
+-[ RECORD 1 ]------
+pg_typeof \| numeric
+
+postgres=# SELECT typlen FROM pg_type WHERE oid = pg_typeof(33.339999);
+-[ RECORD 1 ]
+typlen \| -1
+
+postgres=#
+----
+
+|===
+
+
+
+
+=== COLLATION FOR
+
+[cols="145,378"]
+|===
+h| 函数名称 h| COLLATION FOR
+| 参数数据类型 | "any"
+| 函数返回值数据类型 | text
+| 函数含义 | 返回指定值的collation的name，本函数的返回值是被双引号引起来的，如果入参表达式不能派生出collation，则返回null如果传入的参数不是可以collatable的data type，则会抛出错误
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select collation for(datname) from pg_database; 
+pg_collation_for 
+------------------ 
+"C" 
+"C" 
+"C" 
+"C" 
+"C" 
+(5 rows)
+postgres=#
+----
+|===
+
+
+
+
+=== to_regclass
+
+[cols="145,378"]
+|===
+h| 函数名称 h| to_regclass
+| 参数数据类型 | text
+| 函数返回值数据类型 | Regclass
+| 函数含义 | 将文本形式的relation name转换为oid，本函数的输入参数不可以是数字形式的oid。如果本函数未找到输入参数指定的name，本函数会返回NULL
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select to_regclass('public.data1');
+-[ RECORD 1 ]------
+to_regclass \| data1
+
+postgres=# \x
+Expanded display is off.
+postgres=# select oid, relname from pg_class where oid=to_regclass('public.data1');
+  oid  \| relname 
+-------+---------
+ 16384 \| data1
+(1 row)
+
+postgres=#
+----
+|===
+
+
+
+
+
+
+
+=== to_regcollation
+
+[cols="145,378"]
+|===
+h| 函数名称 h| to_regcollation
+| 参数数据类型 | Text
+| 函数返回值数据类型 | regcollation
+| 函数含义 | 将文本形式的collation name转换为oid，本函数的输入参数不可以是数字形式的oid。如果本函数未找到输入参数指定的name，本函数会返回NULL
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select to_regcollation('"POSIX"');
+ to_regcollation 
+-----------------
+ "POSIX"
+(1 行记录)
+
+postgres=# select * from pg_collation where oid=to_regcollation('"POSIX"');
+ oid \| collname \| collnamespace \| collowner \| collprovider \| collisdeterministic \| collencoding \| collcollate \| collctype \| collversion 
+-----+----------+---------------+-----------+--------------+---------------------+--------------+-------------+-----------+-------------
+ 951 \| POSIX    \|            11 \|        10 \| c            \| t                   \|           -1 \| POSIX       \| POSIX     \| 
+(1 行记录)
+
+postgres=# select oid,collname from pg_collation where oid=to_regcollation('"POSIX"');
+ oid \| collname 
+-----+----------
+ 951 \| POSIX
+(1 行记录)
+
+postgres=#
+----
+
+|===
+
+
+
+
+=== to_regnamespace
+
+[cols="145,378"]
+|===
+h| 函数名称 h| to_regnamespace
+| 参数数据类型 | text
+| 函数返回值数据类型 | regnamespace
+| 函数含义 | 将文本形式的schema name转换为oid，本函数的输入参数不可以是数字形式的oid。如果本函数未找到输入参数指定的name，本函数会返回NULL
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select to_regnamespace('public'); 
+to_regnamespace 
+----------------- 
+public 
+(1 行记录)
+postgres=#
+----
+|===
+
+
+
+=== to_regoper
+
+[cols="145,378"]
+|===
+h| 函数名称 h| to_regoper
+| 参数数据类型 | text
+| 函数返回值数据类型 | regoper
+| 函数含义 | 将文本形式的operator name转换为oid，本函数的输入参数不可以是数字形式的oid。如果本函数未找到输入参数指定的name或者含义不明确，本函数会返回NULL
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select oid, oprname  from pg_operator where oid=to_regoper('!');
+ oid \| oprname 
+-----+---------
+ 388 \| !
+(1 row)
+
+postgres=# select  to_regoper('!');
+ to_regoper 
+------------
+ !
+(1 row)
+
+postgres=#
+----
+|===
+
+
+
+=== to_regoperator
+
+[cols="145,378"]
+|===
+h| 函数名称 h| to_regoperator
+| 参数数据类型 | text
+| 函数返回值数据类型 | regoperator
+| 函数含义 | 将文本形式的operator name(带参数类型)转换为oid，本函数的输入参数不可以是数字形式的oid。如果本函数未找到输入参数指定的name，本函数会返回NULL.
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select oid, oprname from pg_operator where oid=to_regoperator('+(integer,integer)');
+ oid \| oprname 
+-----+---------
+ 551 \| +
+(1 row)
+
+postgres=#  select  to_regoperator('+(int4,int4)');
+   to_regoperator   
+--------------------
+ +(integer,integer)
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+
+
+=== to_regproc
+
+[cols="145,378"]
+|===
+h| 函数名称 h| to_regproc
+| 参数数据类型 | text
+| 函数返回值数据类型 | regproc
+| 函数含义 | 将文本的function或者procedure转换为其oid。如果本函数未找到输入参数指定的name或者含义不明确，本函数会返回NULL。本函数的输入参数不可以是数字形式的oid。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select to_regproc('pg_stat_statements');
+     to_regproc     
+--------------------
+ pg_stat_statements
+(1 row)
+
+postgres=# select oid,proname from pg_proc where oid=to_regproc('pg_stat_statements');
+  oid  \|      proname       
+-------+--------------------
+ 16401 \| pg_stat_statements
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+=== to_regprocedure
+
+[cols="145,378"]
+|===
+h| 函数名称 h| to_regprocedure
+| 参数数据类型 | text
+| 函数返回值数据类型 | regprocedure
+| 函数含义 | 将文本的function或者procedure(带参数)转换为其oid。如果本函数未找到输入参数指定的name，本函数会返回NULL。本函数的输入参数不可以是数字形式的oid。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select to_regprocedure('pg_get_viewdef(text)');
+   to_regprocedure    
+----------------------
+ pg_get_viewdef(text)
+(1 row)
+
+postgres=# select oid, proname from pg_proc where oid= to_regprocedure('pg_get_viewdef(text)');
+ oid  \|    proname     
+------+----------------
+ 1640 \| pg_get_viewdef
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+=== to_regrole
+
+[cols="145,378"]
+|===
+h| 函数名称 h| to_regrole
+| 参数数据类型 | text
+| 函数返回值数据类型 | regrole
+| 函数含义 | 将文本的role name转换为其oid。如果本函数未找到输入参数指定的name，本函数会返回NULL。本函数的输入参数不可以是数字形式的oid。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select oid,rolname from pg_roles where oid=to_regrole('lc0039999');
+  oid  \|  rolname  
+-------+-----------
+ 16877 \| lc0039999
+(1 row)
+
+postgres=# select to_regrole('lc0039999');
+ to_regrole 
+------------
+ lc0039999
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+=== to_regtype
+
+[cols="145,378"]
+|===
+h| 函数名称 h| to_regtype
+| 参数数据类型 | text
+| 函数返回值数据类型 | regtype
+| 函数含义
+a| 将文本的type name转换为其oid。如果本函数未找到输入参数指定的name，本函数会返回NULL。本函数的输入参数不可以是数字形式的oid。 +
+
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select to_regtype('int4'); 
+to_regtype 
+------------ 
+integer 
+(1 row) 
+postgres=# select oid, typname from pg_type where oid=to_regtype('int4'); 
+oid \| typname 
+-----+--------- 
+23 \| int4 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+
+=== pg_describe_object
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_describe_object
+| 参数数据类型 | classid oid, objid oid, objsubid integer
+| 函数返回值数据类型 | text
+| 函数含义
+a| 用于描述pg_depend系统表中保存的依赖对象。 +
+
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select oid,relname from pg_class where oid in (select distinct classid from pg_depend) order by oid;
+ oid  \|         relname         
+------+-------------------------
+ 1247 \| pg_type
+ 1255 \| pg_proc
+ 1259 \| pg_class
+ 2328 \| pg_foreign_data_wrapper
+ 2602 \| pg_amop
+ 2603 \| pg_amproc
+ 2606 \| pg_constraint
+ 2612 \| pg_language
+ 2616 \| pg_opclass
+ 2617 \| pg_operator
+ 2618 \| pg_rewrite
+ 2620 \| pg_trigger
+ 2753 \| pg_opfamily
+ 3079 \| pg_extension
+ 3600 \| pg_ts_dict
+ 3602 \| pg_ts_config
+ 3764 \| pg_ts_template
+(17 rows)
+
+postgres=# select * from pg_foreign_data_wrapper ;
+  oid  \| fdwname  \| fdwowner \| fdwhandler \| fdwvalidator \| fdwacl \| fdwoptions 
+-------+----------+----------+------------+--------------+--------+------------
+ 16954 \| file_fdw \|       10 \|      16952 \|        16953 \|        \| 
+(1 row)
+
+postgres=# select pg_describe_object(2328,16954,0);
+      pg_describe_object       
+-------------------------------
+ foreign-data wrapper file_fdw
+(1 row)
+
+postgres=#
+----
+
+|===
+
+
+
+=== pg_identify_object
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_identify_object
+| 参数数据类型 | classid oid, objid oid, objsubid integer
+| 函数返回值数据类型 | record ( type text, schema text, name text, identity text )
+| 函数含义
+a| 返回一个数据库对象的详细信息 +
+
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_identify_object(2328,16954,0); 
+pg_identify_object 
+--------------------------------------------- 
+("foreign-data wrapper",,file_fdw,file_fdw) 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== pg_identify_object_as_address
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_identify_object_as_address
+| 参数数据类型 | classid oid, objid oid, objsubid integer
+| 函数返回值数据类型 | record ( type text, object_names text[], object_args text[] )
+| 函数含义
+a| 返回一个数据库对象的足够信息以标识出数据库对象 +
+
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_identify_object_as_address(2328,16954,0); 
+pg_identify_object_as_address 
+---------------------------------------- 
+("foreign-data wrapper",{file_fdw},{}) 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+
+
+=== pg_get_object_address
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_get_object_address
+| 参数数据类型 | type text, object_names text[], object_args text[]
+| 函数返回值数据类型 | record ( classid oid, objid oid, objsubid integer )
+| 函数含义
+a| 本函数是pg_identify_object_as_address的反函数 +
+ +
+
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_get_object_address('foreign-data wrapper','{file_fdw}','{}'); 
+pg_get_object_address 
+----------------------- 
+(2328,16954,0) 
+(1 row)
+postgres=#
+----
+|===
+
+
+=== col_description
+
+[cols="145,378"]
+|===
+h| 函数名称 h| col_description
+| 参数数据类型 | table oid, column integer
+| 函数返回值数据类型 | text
+| 函数含义
+a| 获取某个表的某个列的comment +
+ +
+
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# create table t_comment(c1 int );
+CREATE TABLE
+postgres=# comment on column t_comment.c1 is 'this is c1 comment!';
+COMMENT
+postgres=# select oid from pg_class where oid=to_regclass('t_comment')
+postgres-# ;
+  oid  
+-------
+ 17001
+(1 row)
+postgres=# select col_description(17001,1);
+   col_description   
+---------------------
+ this is c1 comment!
+(1 row)
+postgres=#
+postgres=# select col_description(to_regclass('t_comment'),1);
+   col_description   
+---------------------
+ this is c1 comment!
+(1 row)
+
+postgres=#
+----
+|===
+
+
+
+
+=== obj_description
+
+[cols="145,378"]
+|===
+h| 函数名称 h| obj_description
+| 参数数据类型 | object oid, catalog name 或者object oid
+| 函数返回值数据类型 | text
+| 函数含义
+a| 返回特定数据库对象的注释信息 +
+ +
+
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# comment on table t_comment is  ' table-level test comment';
+COMMENT
+postgres=# \dt+ data1
+                         List of relations
+ Schema \| Name  \| Type  \| Owner \| Persistence \| Size  \| Description 
+--------+-------+-------+-------+-------------+-------+-------------
+ public \| data1 \| table \| pg131 \| permanent   \| 42 MB \| 
+(1 row)
+
+postgres=# \dt+ t_comment;
+                                   List of relations
+ Schema \|   Name    \| Type  \| Owner \| Persistence \|  Size   \|        Description        
+--------+-----------+-------+-------+-------------+---------+---------------------------
+ public \| t_comment \| table \| pg131 \| permanent   \| 0 bytes \|  table-level test comment
+(1 row)
+
+postgres=# select obj_description(17001);
+      obj_description      
+---------------------------
+  table-level test comment
+(1 row)
+
+postgres=#
+----
+|===
+
+
+
+=== shobj_description
+
+[cols="145,378"]
+|===
+h| 函数名称 h| shobj_description
+| 参数数据类型 | object oid, catalog name
+| 函数返回值数据类型 | text
+| 函数含义 | 返回特定共享数据库对象(如databases, roles, and tablespaces)的注释信息.
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select shobj_description(14174,'pg_database'); 
+shobj_description 
+-------------------------------------------- 
+default administrative connection database 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== pg_current_xact_id
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_current_xact_id
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | xid8
+| 函数含义 | 返回当前的事务id，若是没有当前事务id，系统会自动指派一个新的事务id
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_current_xact_id(); 
+pg_current_xact_id 
+-------------------- 
+720 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== pg_current_xact_id_if_assigned()
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_current_xact_id_if_assigned()
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | xid8
+| 函数含义 | 返回当前的current transaction's ID，若是没有transaction's ID被指派，本函数返回NULL。如果事务可能是只读的，最好使用本函数，以避免不必要的XID消耗。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=*# select pg_current_xact_id_if_assigned(); 
+pg_current_xact_id_if_assigned 
+-------------------------------- 
+(1 row) 
+postgres=*# update data1 set c2='data1_1' where c1=1; 
+UPDATE 1 
+postgres=*# select pg_current_xact_id_if_assigned(); 
+pg_current_xact_id_if_assigned 
+-------------------------------- 
+722 
+(1 row) 
+postgres=*#
+----
+|===
+
+
+
+=== pg_xact_status
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_xact_status
+| 参数数据类型 | xid8
+| 函数返回值数据类型 | text
+| 函数含义 | 返回近期事务的提交状态。本函数的执行结果是下面三个中的一个:in progress、commited、aborted。当事务足够老而没有在PostgreSQL中保存下来时，commit status会被丢弃，此时本函数返回结果为NULL。请注意，针对prepared transactions，本函数的返回结果为in progress,应用程序必须检查pg_prepared_xacts以确定一个transaction ID是否属于prepared transaction
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_xact_status(pg_current_xact_id()); 
+pg_xact_status 
+---------------- 
+in progress 
+(1 row) 
+postgres=# postgres=# select pg_xact_status(722::text::xid8); 
+pg_xact_status 
+---------------- 
+committed 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== pg_current_snapshot
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_current_snapshot
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | pg_snapshot
+| 函数含义
+a| 返回当前的snapshot,这是一种显示哪个transaction id是正处于in-progress状态的数据结构。注意：有关pg_snapshot数据类型： pg_snapshot数据类型用于存储在一个特定时间点上的transaction ID visibility信息。 pg_snapshot数据类型的表示方法是xmin:xmax:xip_list这个xmin:xmax:xip_list就是pg_snapshot数据类型组成。见下： xmin:处于active状态的最小的transaction id，所有小于xmin的transaction id要么是committed (visible),要么是rolled back(dead) xmax:大于或者等于本xmax值的transaction id是在snapshot结束时未完成的，因此，xmax是不可见的。 xip_list:在生成snapshot时，处于in progress状态的transactions。在xmin <= X < xmax范围内并且不在本xip_list中的transaction ID 表示在snapshot生成时是已经完成的transaction ID,因此，根据commit status，要么是visible的要么是dead，本列表中不包括subtransactions的transaction IDs +
+
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_current_snapshot(); 
+pg_current_snapshot 
+--------------------- 
+727:727: 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== pg_snapshot_xip
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_snapshot_xip
+| 参数数据类型 | pg_snapshot
+| 函数返回值数据类型 | setof xid8
+| 函数含义 | 返回snapshot中处于in-progress状态的transaction id
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_snapshot_xip('10:20:10,14,15'); 
+pg_snapshot_xip 
+----------------- 
+10 
+14 
+15 
+(3 rows)
+postgres=#
+----
+|===
+
+
+
+=== pg_snapshot_xmax
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_snapshot_xmax
+| 参数数据类型 | pg_snapshot
+| 函数返回值数据类型 | xid8
+| 函数含义 | 返回snapshot的xmax
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_snapshot_xmax('10:20:10,14,15'); 
+pg_snapshot_xmax 
+------------------ 
+20 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== pg_snapshot_xmin
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_snapshot_xmin
+| 参数数据类型 | pg_snapshot
+| 函数返回值数据类型 | xid8
+| 函数含义 | 返回snapshot的xmin
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_snapshot_xmin('10:20:10,14,15'); 
+pg_snapshot_xmin 
+------------------ 
+10 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== pg_visible_in_snapshot
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_visible_in_snapshot
+| 参数数据类型 | xid8, pg_snapshot
+| 函数返回值数据类型 | bool
+| 函数含义 | 给定的事务ID是否对snapshot可见，即：给定的事务ID是否在生成snapshot之前完成。本函数对subtransaction ID不能给出正确的结果。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_visible_in_snapshot(722::text::xid8,'10:20:10,14,15'); 
+pg_visible_in_snapshot 
+------------------------ 
+f 
+(1 row) 
+postgres=# select pg_visible_in_snapshot(12::text::xid8,'10:20:10,14,15'); 
+pg_visible_in_snapshot 
+------------------------ 
+t 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== txid_current
+
+[cols="145,378"]
+|===
+h| 函数名称 h| txid_current
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | bigint
+| 函数含义 | 返回当前的事务id，若是没有当前事务id，系统会自动指派一个新的事务id。本函数（返回值是bigint数据类型）的作用与pg_current_xact_id(返回值是xid8数据类型)的作用是类似的，只是两个函数的返回值数据类型不同。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select txid_current(); 
+txid_current 
+-------------- 
+735 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== txid_current_if_assigned()
+
+[cols="145,378"]
+|===
+h| 函数名称 h| txid_current_if_assigned()
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | bigint
+| 函数含义 | 本函数（注意：返回值是bigint数据类型）的作用与pg_current_xact_id_if_assigned(注意：返回值是xid8数据类型)的作用是类似的，只是两个函数的返回值数据类型不同。
+| 使用举例
+a| 
+[source,sql]
+----
+[pg131@VM-0-8-centos ~]$ psql -d postgres psql (13.1) 
+Type "help" for help. 
+postgres=# select txid_current_if_assigned(); 
+txid_current_if_assigned 
+-------------------------- 
+(1 row) 
+postgres=# begin;
+BEGIN 
+postgres=*# select txid_current_if_assigned(); 
+txid_current_if_assigned 
+-------------------------- 
+(1 row) 
+postgres=*# select txid_current(); 
+txid_current 
+-------------- 
+738 
+(1 row) 
+postgres=*# select txid_current_if_assigned(); 
+txid_current_if_assigned 
+-------------------------- 
+738 
+(1 row) 
+----
+|===
+
+
+
+=== txid_current_snapshot()
+
+[cols="145,378"]
+|===
+h| 函数名称 h| txid_current_snapshot()
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | txid_snapshot
+| 函数含义 | 返回当前的snapshot,这是一种显示哪个transaction id是正处于in-progress状态的数据结构。本函数（注意：返回值是txid_snapshot数据类型）的作用与pg_current_snapshot (注意：返回值是pg_snapshot数据类型)的作用是类似的，只是两个函数的返回值数据类型不同。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select txid_current_snapshot(); 
+txid_current_snapshot 
+----------------------- 
+741:741: 
+(1 row) 
+ postgres=# \gdesc 
+ Column \| Type 
+ -----------------------+--------------- 
+ txid_current_snapshot \| txid_snapshot 
+ (1 row)
+postgres=#
+----
+|===
+
+
+
+=== txid_snapshot_xip(txid_snapshot)
+
+[cols="145,378"]
+|===
+h| 函数名称 h| txid_snapshot_xip(txid_snapshot)
+| 参数数据类型 | txid_snapshot
+| 函数返回值数据类型 | setof bigint
+| 函数含义 | 返回snapshot中处于in-progress状态的transaction id。本函数（注意：返回值是txid_snapshot数据类型）的作用与pg_snapshot_xip (注意：返回值是pg_snapshot数据类型)的作用是类似的，只是两个函数的返回值数据类型不同。
+| 使用举例 
+a|
+[source,sql]
+----
+postgres=# select txid_snapshot_xip('10:20:10,14,15'); 
+txid_snapshot_xip 
+------------------- 
+10 
+14 
+15 
+(3 rows) 
+ postgres=# \gdesc 
+ Column \| Type 
+ -------------------+-------- 
+ txid_snapshot_xip \| bigint
+ (1 row)
+----
+|===
+
+
+
+=== txid_snapshot_xmax
+
+[cols="145,378"]
+|===
+h| 函数名称 h| txid_snapshot_xmax
+| 参数数据类型 | txid_snapshot
+| 函数返回值数据类型 | bigint
+| 函数含义 | 返回snapshot的xmax。本函数（注意：返回值是bigint数据类型）的作用与pg_snapshot_xmax (注意：返回值是pg_snapshot数据类型)的作用是类似的，只是两个函数的返回值数据类型不同。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select txid_snapshot_xmax('10:20:10,14,15'); 
+txid_snapshot_xmax 
+-------------------- 
+20 
+(1 row) 
+ postgres=# \gdesc 
+ Column \| Type 
+ --------------------+-------- 
+ txid_snapshot_xmax \| bigint 
+ (1 row)
+postgres=#
+----
+|===
+
+
+
+=== txid_snapshot_xmin
+
+[cols="145,378"]
+|===
+h| 函数名称 h| txid_snapshot_xmin
+| 参数数据类型 | txid_snapshot
+| 函数返回值数据类型 | bigint
+| 函数含义 | 返回snapshot的xmin。本函数（注意：返回值是bigint数据类型）的作用与pg_snapshot_xmin(注意：返回值是pg_snapshot数据类型)的作用是类似的，只是两个函数的返回值数据类型不同。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select txid_snapshot_xmin('10:20:10,14,15'); 
+txid_snapshot_xmin 
+-------------------- 
+10 
+(1 row) 
+ postgres=# \gdesc 
+ Column \| Type 
+ --------------------+-------- 
+ txid_snapshot_xmin \| bigint 
+ (1 row)
+postgres=#
+----
+|===
+
+
+
+=== txid_visible_in_snapshot
+
+[cols="145,378"]
+|===
+h| 函数名称 h| txid_visible_in_snapshot
+| 参数数据类型 | bigint, txid_snapshot
+| 函数返回值数据类型 | boolean
+| 函数含义 | 给定的事务ID是否对snapshot可见，即：给定的事务ID是否在生成snapshot之前完成。本函数对subtransaction ID不能给出正确的结果。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select txid_visible_in_snapshot(722,'10:20:10,14,15'); 
+txid_visible_in_snapshot 
+-------------------------- 
+f 
+(1 row) 
+ postgres=# select txid_visible_in_snapshot(12,'10:20:10,14,15'); 
+ txid_visible_in_snapshot 
+ -------------------------- 
+ t 
+ (1 row)
+postgres=#
+----
+|===
+
+
+
+=== txid_status
+
+[cols="145,378"]
+|===
+h| 函数名称 h| txid_status
+| 参数数据类型 | bigint
+| 函数返回值数据类型 | text
+| 函数含义 | 返回近期事务的提交状态。本函数的执行结果是下面三个中的一个:in progress、commited、aborted。当事务足够老而没有在PostgreSQL中保存下来时，commit status会被丢弃，此时本函数返回结果为NULL。请注意，针对prepared transactions，本函数的返回结果为in progress,应用程序必须检查pg_prepared_xacts以确定一个transaction ID是否属于prepared transaction.
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select txid_status(txid_current()); 
+txid_status 
+------------- 
+in progress 
+(1 row) 
+ postgres=# select txid_current(); 
+ txid_current 
+ -------------- 
+ 742 
+ (1 row) 
+ postgres=# select txid_status(722); 
+ txid_status 
+ ------------- 
+ committed 
+ (1 row)
+postgres=#
+----
+|===
+
+
+
+
+
+=== pg_xact_commit_timestamp
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_xact_commit_timestamp
+| 参数数据类型 | xid
+| 函数返回值数据类型 | timestamp with time zone
+| 函数含义 a| 返回一个事务的提交时间。本函数能正常使用的前提就是配置参数track_commit_timestamp设置为on，否会有如下提示：
+[source,sql]
+----
+postgres=# select pg_xact_commit_timestamp(722::text::xid); 
+ERROR: could not get commit timestamp data 
+HINT: Make sure the configuration parameter "track_commit_timestamp" is set.
+postgres=#
+----
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select txid_current(); 
+txid_current 
+-------------- 
+743 
+(1 row) 
+ postgres=# select pg_xact_commit_timestamp(743::text::xid); 
+ pg_xact_commit_timestamp 
+ ------------------------------ 
+ 2021-04-29 16:52:37.19133+08 
+ (1 row)
+postgres=#
+----
+|===
+
+
+
+=== pg_last_committed_xact
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_last_committed_xact
+| 参数数据类型 | 无输入数据类型
+| 函数返回值数据类型 | record ( xid xid, timestamp timestamp with time zone )
+| 函数含义 | 返回最后一个提交事务的transaction id和commit timestamp
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_last_committed_xact(); 
+pg_last_committed_xact 
+-------------------------------------- 
+(743,"2021-04-29 16:52:37.19133+08") 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+
+
+=== pg_control_checkpoint
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_control_checkpoint
+| 参数数据类型 | 无输入数据类型
+| 函数返回值数据类型 | record
+| 函数含义 | 本函数是从PostgreSQL控制文件中获取数据。本函数返回当前checkpoint状态的相关信息
+| 使用举例
+a| 
+
+|===
+
+
+
+=== pg_control_system
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_control_system
+| 参数数据类型 | 无输入数据类型
+| 函数返回值数据类型 | record
+| 函数含义 | 本函数是从PostgreSQL控制文件中获取数据。本函数返回当前控制文件状态的相关信息。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_control_system(); 
+pg_control_system 
+--------------------------------------------------------------- 
+(1300,202007201,6908228805274066467,"2021-04-29 16:57:56+08") 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== pg_control_init
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_control_init
+| 参数数据类型 | 无输入数据类型
+| 函数返回值数据类型 | record
+| 函数含义 | 本函数是从PostgreSQL控制文件中获取数据。本函数返回cluster初始化时的相关信息
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_control_init(); 
+pg_control_init 
+--------------------------------------------------- 
+(8,8192,131072,8192,16777216,64,32,1996,2048,t,0) 
+(1 row)
+postgres=#
+----
+|===
+
+
+=== pg_control_recovery
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pg_control_recovery
+| 参数数据类型 | 无输入数据类型
+| 函数返回值数据类型 | record
+| 函数含义 | 本函数是从PostgreSQL控制文件中获取数据。本函数返回恢复状态的信息。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pg_control_recovery(); 
+pg_control_recovery 
+--------------------- 
+(0/0,0,0/0,0/0,f) 
+(1 row)
+postgres=#
+----
+|===
+
+
+=== gen_random_uuid
+
+[cols="145,378"]
+|===
+h| 函数名称 h| gen_random_uuid
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | uuid
+| 函数含义 | 本函数返回version 4版本的uuid
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select gen_random_uuid(); 
+gen_random_uuid 
+-------------------------------------- 
+39158a63-f6d0-4883-8765-8b8e9c9cae62 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== array_to_tsvector
+
+[cols="145,378"]
+|===
+h| 函数名称 h| array_to_tsvector
+| 参数数据类型 | text[]
+| 函数返回值数据类型 | tsvector
+| 函数含义 | 将array of lexemes转换为tsvector
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select array_to_tsvector('{fat,cat,rat}'::text[]); 
+array_to_tsvector 
+------------------- 
+'cat' 'fat' 'rat' 
+(1 row)
+postgres=#
+----
+|===
+
+
+=== get_current_ts_config
+
+[cols="145,378"]
+|===
+h| 函数名称 h| get_current_ts_config
+| 参数数据类型 | 无输入参数
+| 函数返回值数据类型 | regconfig
+| 函数含义 | 返回当前默认的text search配置的oid（参见配置参数default_text_search_config）
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select get_current_ts_config(); 
+get_current_ts_config 
+----------------------- 
+english 
+(1 row)
+postgres=#
+----
+|===
+
+
+=== length
+
+[cols="145,378"]
+|===
+h| 函数名称 h| length
+| 参数数据类型 | tsvector
+| 函数返回值数据类型 | integer
+| 函数含义 | 返回lexemes的数量
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select length('fat:2,4 cat:3 rat:5A'::tsvector); 
+length 
+-------- 
+3 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== numnode
+
+[cols="145,378"]
+|===
+h| 函数名称 h| numnode
+| 参数数据类型 | tsquery
+| 函数返回值数据类型 | integer
+| 函数含义 | 返回lexemes加operator的数量
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select numnode('(fat & rat) \| cat'::tsquery) ; 
+numnode 
+--------- 
+5 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+
+
+=== plainto_tsquery
+
+[cols="145,378"]
+|===
+h| 函数名称 h| plainto_tsquery
+| 参数数据类型 | [config regconfig,] query text
+| 函数返回值数据类型 | tsquery
+| 函数含义 | 将text转换为tsquery。其中，字符串中的任何标点都将被忽略
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select plainto_tsquery('english', 'The Fat Rats'); 
+plainto_tsquery 
+----------------- 
+'fat' & 'rat' 
+(1 row)
+postgres=#
+----
+|===
+
+
+=== phraseto_tsquery
+
+[cols="145,378"]
+|===
+h| 函数名称 h| phraseto_tsquery
+| 参数数据类型 | [config regconfig,] query text
+| 函数返回值数据类型 | tsquery
+| 函数含义 | 将text转换为tsquery。其中，字符串中的任何标点都将被忽略
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select phraseto_tsquery('english', 'The Fat Rats') ; 
+phraseto_tsquery 
+------------------ 
+'fat' <-> 'rat' 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== websearch_to_tsquery
+
+[cols="145,378"]
+|===
+h| 函数名称 h| websearch_to_tsquery
+| 参数数据类型 | [ _config_ regconfig, ] _query_ text
+| 函数返回值数据类型 | tsquery
+| 函数含义 | 将text转换为tsquery。引用的单词序列被转换成短语测试。"or"一词被理解为产生or运算符，破折号产生NOT运算符，忽略其他标点符号
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select websearch_to_tsquery('english', '"fat rat" or cat dog'); 
+websearch_to_tsquery 
+--------------------------------- 
+'fat' <-> 'rat' \| 'cat' & 'dog' 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== querytree
+
+[cols="145,378"]
+|===
+h| 函数名称 h| querytree
+| 参数数据类型 | tsquery
+| 函数返回值数据类型 | text
+| 函数含义 | 返回一个tsquery中的可索引部分。当返回结果为空或者T时，表示这是一个不可索引的query。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select querytree('foo & ! bar'::tsquery); 
+querytree 
+----------- 
+'foo' 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== setweight
+
+[cols="145,378"]
+|===
+h| 函数名称 h| setweight
+| 参数数据类型 | vector tsvector, weight "char"或者vector tsvector, weight "char", lexemes text[]
+| 函数返回值数据类型 | tsvector
+| 函数含义 | 为vector中的每个元素指定权重或者为在lexemes之内的vector中的每个元素指定权重
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select setweight('fat:2,4 cat:3 rat:5B'::tsvector, 'A'); 
+setweight 
+------------------------------- 
+'cat':3A 'fat':2A,4A 'rat':5A 
+(1 row) 
+ postgres=# 
+ postgres=# select setweight('fat:2,4 cat:3 rat:5,6B'::tsvector, 'A', '{cat,rat}'); 
+ setweight 
+ -------------------------------- 
+ 'cat':3A 'fat':2,4 'rat':5A,6A 
+ (1 row)
+postgres=#
+----
+|===
+
+
+
+=== strip
+
+[cols="145,378"]
+|===
+h| 函数名称 h| strip
+| 参数数据类型 | tsvector
+| 函数返回值数据类型 | tsvector
+| 函数含义 | 从tsvector中抹掉position和weight
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select strip('fat:2,4 cat:3 rat:5A'::tsvector); 
+strip 
+------------------- 
+'cat' 'fat' 'rat' 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== to_tsquery
+
+[cols="145,378"]
+|===
+h| 函数名称 h| to_tsquery
+| 参数数据类型 | regconfig, text 或者text
+| 函数返回值数据类型 | tsquery
+| 函数含义 | 将text转换为tsquery，本函数的返回结果必须由有效的tsquery operator进行连接。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select to_tsquery('english', 'The & Fat & Rats'); 
+to_tsquery 
+--------------- 
+'fat' & 'rat' 
+(1 row) 
+ postgres=# select to_tsquery( 'The & Fat & Rats'); 
+ to_tsquery 
+ --------------- 
+ 'fat' & 'rat' 
+ (1 row)
+postgres=# 
+----
+|===
+
+
+
+=== to_tsvector
+
+[cols="145,378"]
+|===
+h| 函数名称 h| to_tsvector
+| 参数数据类型 | regconfig,text
+| 函数返回值数据类型 | tsvector
+| 函数含义 | 将text转换为tsvector ，结果中包括位置信息
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select to_tsvector('english', 'The Fat Rats'); 
+to_tsvector 
+----------------- 
+'fat':2 'rat':3 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+
+=== to_tsvector
+
+[cols="145,378"]
+|===
+h| 函数名称 h| to_tsvector
+| 参数数据类型 | regconfig,json或者regconfig,jsonb
+| 函数返回值数据类型 | tsvector
+| 函数含义 | 将json文档中的每个字符串值转换为tsvector，结果值是按照文档顺序进行连接后输出的，当输入参数数据类型为jsonb时，json对象的字段的文档顺序是与实现相关的
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select to_tsvector('english', '{"aa": "The Fat Rats", "b": "dog"}'::json); 
+to_tsvector ------------------------- 
+'dog':5 'fat':2 'rat':3 
+(1 row) 
+ postgres=# postgres=# select to_tsvector('english', '{"aa": "The Fat Rats", "b": "dog"}'::jsonb); 
+ to_tsvector 
+ ------------------------- 
+ 'dog':1 'fat':4 'rat':5 
+ (1 row)
+postgres=#
+----
+|===
+
+
+=== json_to_tsvector
+
+[cols="145,378"]
+|===
+h| 函数名称 h| json_to_tsvector
+| 参数数据类型 | [config regconfig,] json, jsonb
+| 函数返回值数据类型 | tsvector
+| 函数含义 | 将json文档中满足filter条件的每个item转换为一个tsvector。结果值是按照文档顺序进行连接后输出的，当输入参数数据类型为jsonb时，json对象的字段的文档顺序是与实现相关的。Filter条件必须是一个包括另个或者多个关键字的json 数组：string代表包括所有字符串值numeric代表包括所有数字值boolean代表包括所有boolean值key代表包括所有keyall代表包括上述所有。作为一个简单的例子，filter条件不可以是一个简单的并且是上述关键字之一的json值。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select json_to_tsvector('english', '{"a": "The Fat Rats", "b": 123}'::json, '["string", "numeric"]'); 
+json_to_tsvector 
+------------------------- 
+'123':5 'fat':2 'rat':3 
+(1 row)
+postgres=#
+----
+|===
+
+
+=== jsonb_to_tsvector
+
+[cols="145,378"]
+|===
+h| 函数名称 h| jsonb_to_tsvector
+| 参数数据类型 | [config regconfig,] jsonb,jsonb
+| 函数返回值数据类型 | tsvector
+| 函数含义 | 将json文档中满足filter条件的每个item转换为一个tsvector。结果值是按照文档顺序进行连接后输出的，当输入参数数据类型为jsonb时，json对象的字段的文档顺序是与实现相关的。Filter条件必须是一个包括另个或者多个关键字的json 数组：string代表包括所有字符串值numeric代表包括所有数字值boolean代表包括所有boolean值key代表包括所有keyall代表包括上述所有。作为一个简单的例子，filter条件不可以是一个简单的并且是上述关键字之一的json值。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select jsonb_to_tsvector('english', '{"a": "The Fat Rats", "b": 123}'::jsonb, '["string", "numeric"]'); 
+jsonb_to_tsvector 
+------------------------- 
+'123':5 'fat':2 'rat':3 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== ts_delete
+
+[cols="145,378"]
+|===
+h| 函数名称 h| ts_delete
+| 参数数据类型 | tsvector,text
+| 函数返回值数据类型 | tsvector
+| 函数含义
+a| 从vector中删除掉指定的lexeme +
+
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select ts_delete('fat:2,4 cat:3 rat:5A'::tsvector, 'fat'); 
+ts_delete 
+------------------ 
+'cat':3 'rat':5A 
+(1 row)
+postgres=#
+----
+|===
+
+
+=== ts_delete
+
+[cols="145,378"]
+|===
+h| 函数名称 h| ts_delete
+| 参数数据类型 | tsvector,text[]
+| 函数返回值数据类型 | tsvector
+| 函数含义
+a| 从vector中删除掉指定的lexeme 
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select ts_delete('fat:2,4 cat:3 rat:5A'::tsvector, ARRAY['fat','rat']); 
+ts_delete ----------- 
+'cat':3 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== ts_filter
+
+[cols="145,378"]
+|===
+h| 函数名称 h| ts_filter
+| 参数数据类型 | tsvector, "char"[]
+| 函数返回值数据类型 | tsvector
+| 函数含义 | 从vector中筛选出带有指定weights的元素
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select ts_filter('fat:2,4 cat:3b,7c rat:5A'::tsvector, '{a,b}'); 
+ts_filter 
+------------------- 
+'cat':3B 'rat':5A 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+=== ts_headline
+
+[cols="145,378"]
+|===
+h| 函数名称 h| ts_headline
+| 参数数据类型 | [config regconfig,] document text, query tsquery [, options text]
+| 函数返回值数据类型 | text
+| 函数含义 | 以简写的形式显示在document匹配到的query
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select ts_headline('The fat cat ate the rat.', 'cat'); 
+ts_headline 
+--------------------------------- 
+The fat <b>cat</b> ate the rat. 
+(1 row)
+postgres=#
+----
+|===
+
+
+=== ts_headline
+
+[cols="145,378"]
+|===
+h| 函数名称 h| ts_headline
+| 参数数据类型 | [config regconfig,] document json, query tsquery [, options text]
+| 函数返回值数据类型 | json
+| 函数含义 | 以缩写的形式显示在json document匹配到的query
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select ts_headline('{"cat":"raining cats and dogs"}'::json, 'cat'); 
+ts_headline 
+---------------------------------------- 
+{"cat":"raining <b>cats</b> and dogs"}
+(1 row) 
+----
+|===
+
+
+=== ts_headline
+
+[cols="145,378"]
+|===
+h| 函数名称 h| ts_headline
+| 参数数据类型 | [config regconfig,] document jsonb, query tsquery [, options text]
+| 函数返回值数据类型 | jsonb
+| 函数含义 | 以缩写的形式显示在json document匹配到的query
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select ts_headline('{"cat":"raining cats and dogs"}'::jsonb, 'cat'); 
+ts_headline 
+----------------------------------------- 
+{"cat": "raining <b>cats</b> and dogs"} 
+(1 row) 
+postgres=#
+----
+|===
+
+
+
+=== ts_rank
+
+[cols="145,378"]
+|===
+h| 函数名称 h| ts_rank
+| 参数数据类型 | [weights real[], ] vector tsvector, query tsquery [, normalization integer]
+| 函数返回值数据类型 | real
+| 函数含义 | 计算query与vector的匹配程度
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# SELECT ts_rank(to_tsvector('The quick brown fox jumps over the lazy dog.'),to_tsquery('fox & dog')); ts_rank 
+------------ 
+0.09148999 
+(1 row) 
+postgres=#
+----
+|===
+
+
+
+=== ts_rank_cd
+
+[cols="145,378"]
+|===
+h| 函数名称 h| ts_rank_cd
+| 参数数据类型 | [weights real[], ] vector tsvector, query tsquery [, normalization integer]
+| 函数返回值数据类型 | real
+| 函数含义 | 使用覆盖密度算法来计算query与vector的匹配程度
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# SELECT ts_rank_cd('{0.1, 0.2, 0.4, 1.0}', to_tsvector('PostgreSQL full text search is a wonderful method'),to_tsquery('wonderful')); 
+ts_rank_cd 
+------------ 
+0.1 
+(1 row) 
+postgres=#
+----
+|===
+
+
+=== ts_rewrite
+
+[cols="145,378"]
+|===
+h| 函数名称 h| ts_rewrite
+| 参数数据类型 | query tsquery, target tsquery, substitute tsquery
+| 函数返回值数据类型 | tsquery
+| 函数含义 | 用substitute替换掉query中的target
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# SELECT ts_rewrite('c & b'::tsquery, 'b'::tsquery, 'bad\|bat'::tsquery); 
+ts_rewrite 
+------------------------- 
+( 'bad' \| 'bat' ) & 'c' 
+(1 row) 
+postgres=#
+----
+|===
+
+
+
+=== ts_rewrite
+
+[cols="145,378"]
+|===
+h| 函数名称 h| ts_rewrite
+| 参数数据类型 | query tsquery, select text
+| 函数返回值数据类型 | tsquery
+| 函数含义 |
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# CREATE TABLE test (col1 tsquery PRIMARY KEY, COL2 tsquery); 
+CREATE TABLE 
+postgres=# INSERT INTO test values ('p','q'); 
+INSERT 0 1 
+postgres=# SELECT ts_rewrite('r & q'::tsquery, 'SELECT col1,col2 FROM test'); 
+ts_rewrite 
+------------ 
+'r' & 'q' 
+(1 row) 
+postgres=#
+----
+|===
+
+
+
+=== tsquery_phrase
+
+[cols="145,378"]
+|===
+h| 函数名称 h| tsquery_phrase
+| 参数数据类型 | query1 tsquery, query2 tsquery
+| 函数返回值数据类型 | tsquery
+| 函数含义 | 构造一个phrase query用于在连续的词位匹配query1和query2(同<->操作符)
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select tsquery_phrase(to_tsquery('fat'), to_tsquery('cat')); 
+tsquery_phrase 
+----------------- 
+'fat' <-> 'cat' 
+(1 row) 
+postgres=#
+----
+|===
+
+
+=== tsquery_phrase
+
+[cols="145,378"]
+|===
+h| 函数名称 h| tsquery_phrase
+| 参数数据类型 | query1 tsquery, query2 tsquery, distance integer
+| 函数返回值数据类型 | tsquery
+| 函数含义 | 构造一个词组查询，该词组搜索匹配query1且query2完全distance分开词素的匹配项
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select tsquery_phrase(to_tsquery('fat'), to_tsquery('cat'), 10); 
+tsquery_phrase 
+------------------ 
+'fat' <10> 'cat' 
+(1 row) 
+postgres=#
+----
+|===
+
+
+
+
+=== tsvector_to_array
+
+[cols="145,378"]
+|===
+h| 函数名称 h| tsvector_to_array
+| 参数数据类型 | tsvector
+| 函数返回值数据类型 | text[]
+| 函数含义 | 将tsvector转换为词素数组
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select tsvector_to_array('fat:2,4 cat:3 rat:5A'::tsvector) ; 
+tsvector_to_array 
+------------------- 
+{cat,fat,rat} 
+(1 row) 
+postgres=#
+----
+|===
+
+
+
+=== unnest
+
+[cols="145,378"]
+|===
+h| 函数名称 h| unnest
+| 参数数据类型 | tsvector
+| 函数返回值数据类型 | setof record ( lexeme text, positions smallint[], weights text )
+| 函数含义 | 将tsvector扩展为一行一个词素
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select * from unnest('cat:3 fat:2,4 rat:5A'::tsvector);
+ lexeme \| positions \| weights 
+--------+-----------+---------
+ cat    \| {3}       \| {D}
+ fat    \| {2,4}     \| {D,D}
+ rat    \| {5}       \| {A}
+(3 rows)
+postgres=#
+----
+|===
+
+
+
+=== abbrev
+
+[cols="145,378"]
+|===
+h| 函数名称 h| abbrev
+| 参数数据类型 | inet
+| 函数返回值数据类型 | text
+| 函数含义 | 将inet转换为text的缩写显示格式
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select abbrev(inet '10.1.1.3'); 
+abbrev 
+---------- 
+10.1.1.3 
+(1 row) 
+postgres=#
+----
+|===
+
+
+
+=== abbrev
+
+[cols="145,378"]
+|===
+h| 函数名称 h| abbrev
+| 参数数据类型 | cidr
+| 函数返回值数据类型 | text
+| 函数含义 | 将cidr转换为text的缩写显示格式，返回结果中去掉了netmask中右边的零
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select abbrev(cidr '10.1.0.0/16'); 
+abbrev 
+--------- 
+10.1/16 
+(1 row) 
+postgres=#
+----
+|===
+
+
+
+=== broadcast
+
+[cols="145,378"]
+|===
+h| 函数名称 h| broadcast
+| 参数数据类型 | inet
+| 函数返回值数据类型 | inet
+| 函数含义 | 计算一个ip地址的广播地址
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select broadcast(inet '192.168.1.5/24'); 
+broadcast 
+------------------ 
+192.168.1.255/24 
+(1 row) 
+postgres=#
+----
+|===
+
+
+
+=== family
+
+[cols="145,378"]
+|===
+h| 函数名称 h| family
+| 参数数据类型 | inet
+| 函数返回值数据类型 | integer
+| 函数含义 | 返回一个地址是IPV4（返回4）还是IPV6（返回6）
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select family('fe80::5054:ff:fe99:540c') ; 
+family 
+-------- 
+6 
+(1 row) 
+ postgres=# select family(inet '172.1.0.23') ; 
+ family 
+ -------- 
+ 4 
+ (1 row) 
+postgres=#
+----
+|===
+
+
+
+=== host
+
+[cols="145,378"]
+|===
+h| 函数名称 h| host
+| 参数数据类型 | inet
+| 函数返回值数据类型 | text
+| 函数含义 | 返回IP地址的text形式，且忽略掉netmask
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select host(inet '192.168.1.0/24'); 
+host 
+------------- 
+192.168.1.0 
+(1 row) 
+postgres=#
+----
+|===
+
+
+
+=== hostmask
+
+[cols="145,378"]
+|===
+h| 函数名称 h| hostmask
+| 参数数据类型 | Inet
+| 函数返回值数据类型 | Inet
+| 函数含义 | 返回ip地址的host mask
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select hostmask(inet '192.168.23.20/30') ; 
+hostmask 
+---------- 
+0.0.0.3 
+(1 row) 
+postgres=#
+----
+|===
+
+
+=== inet_merge
+
+[cols="145,378"]
+|===
+h| 函数名称 h| inet_merge
+| 参数数据类型 | inet, inet
+| 函数返回值数据类型 | cidr
+| 函数含义 | 返回包含两个给定网络的最小网络
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select inet_merge(inet '192.168.1.5/24', inet '192.168.2.5/24'); 
+inet_merge 
+---------------- 
+192.168.0.0/22 
+(1 row) 
+postgres=#
+----
+|===
+
+
+=== inet_same_family
+
+[cols="145,378"]
+|===
+h| 函数名称 h| inet_same_family
+| 参数数据类型 | inet，inet
+| 函数返回值数据类型 | bool
+| 函数含义 | 返回两个ip地址是否属于同一个family
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select inet_same_family(inet '192.168.1.5/24', inet '::1'); 
+inet_same_family 
+------------------ 
+f 
+(1 row) 
+postgres=#
+----
+|===
+
+
+
+=== masklen
+
+[cols="145,378"]
+|===
+h| 函数名称 h| masklen
+| 参数数据类型 | inet
+| 函数返回值数据类型 | integer
+| 函数含义 | 返回以位为单位的网络掩码长度
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select masklen(inet '192.168.1.5/24'); 
+masklen 
+--------- 
+24 
+(1 row) 
+postgres=#
+----
+|===
+
+
+=== netmask
+
+[cols="145,378"]
+|===
+h| 函数名称 h| netmask
+| 参数数据类型 | inet
+| 函数返回值数据类型 | inet
+| 函数含义 | 返回网络地址的网络掩码
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select netmask(inet '192.168.1.5/24'); 
+netmask 
+--------------- 
+255.255.255.0 
+(1 row) 
+postgres=#
+----
+|===
+
+
+
+=== network
+
+[cols="145,378"]
+|===
+h| 函数名称 h| network
+| 参数数据类型 | inet
+| 函数返回值数据类型 | inet
+| 函数含义 | 返回地址的网络部分，将网络掩码右边的内容清零
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select network(inet '192.168.1.5/24') ; 
+network 
+---------------- 
+192.168.1.0/24 
+(1 row) 
+postgres=#
+----
+|===
+
+
+
+=== set_masklen
+
+[cols="145,378"]
+|===
+h| 函数名称 h| set_masklen
+| 参数数据类型 | inet, integer 
+| 函数返回值数据类型 | inet
+| 函数含义 | 为inet设置netmask长度，网络地址部分保持不变
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select set_masklen(inet '192.168.1.5/24', 16); 
+set_masklen 
+---------------- 
+192.168.1.5/16 
+(1 row) 
+postgres=#
+----
+|===
+
+
+
+=== set_masklen
+
+[cols="145,378"]
+|===
+h| 函数名称 h| set_masklen
+| 参数数据类型 | cidr, integer
+| 函数返回值数据类型 | cidr
+| 函数含义 | 为cidr设置netmask长度，网络地址右边的设置为零
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select set_masklen(cidr '192.168.1.0/24', 16); 
+set_masklen 
+---------------- 
+192.168.0.0/16 
+(1 row) 
+postgres=#
+----
+|===
+
+
+
+=== text
+
+[cols="145,378"]
+|===
+h| 函数名称 h| text
+| 参数数据类型 | inet
+| 函数返回值数据类型 | text
+| 函数含义 | 返回ip地址及其掩码的text形式
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select text(inet '192.168.1.5'); 
+text 
+---------------- 
+192.168.1.5/32 
+(1 row) 
+postgres=#
+----
+|===
+
+
+=== trunc
+
+[cols="145,378"]
+|===
+h| 函数名称 h| trunc
+| 参数数据类型 | macaddr
+| 函数返回值数据类型 | macaddr
+| 函数含义 | 将mac地址的最后三个字节清零，前缀可以与特定的网卡制造商关联
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select trunc(macaddr '12:34:56:78:90:ab') ; 
+trunc 
+------------------- 
+12:34:56:00:00:00 
+(1 row) 
+postgres=#
+----
+|===
+
+
+=== trunc
+
+[cols="145,378"]
+|===
+h| 函数名称 h| trunc
+| 参数数据类型 | macaddr8
+| 函数返回值数据类型 | macaddr8
+| 函数含义 | 将mac地址的最后五个字节清零，前缀可以与特定的网卡制造商关联
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select trunc(macaddr8 '12:34:56:78:90:ab:cd:ef') ; 
+trunc 
+------------------------- 
+12:34:56:00:00:00:00:00 
+(1 row) 
+postgres=#
+----
+|===
+
+
+=== macaddr8_set7bit
+
+[cols="145,378"]
+|===
+h| 函数名称 h| macaddr8_set7bit
+| 参数数据类型 | macaddr8
+| 函数返回值数据类型 | macaddr8
+| 函数含义 | 将地址的第7位设置为1，从而创建被称为修改后的EUI-64，以包含在IPv6地址中。
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select macaddr8_set7bit(macaddr8 '00:34:56:ab:cd:ef'); 
+macaddr8_set7bit 
+------------------------- 
+02:34:56:ff:fe:ab:cd:ef 
+(1 row) 
+postgres=#
+----
+|===
+
+
+=== area
+
+[cols="145,378"]
+|===
+h| 函数名称 h| area
+| 参数数据类型 | geometric_type
+| 函数返回值数据类型 | double precision
+| 函数含义 | 计算面积，针对box, path, circle适用，path必须是能closed，否则会返回NULL
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select area(box '(2,2),(0,0)'); 
+area 
+------ 
+4 
+(1 row) 
+postgres=#
+----
+|===
+
+
+
+=== center
+
+[cols="145,378"]
+|===
+h| 函数名称 h| center
+| 参数数据类型 | geometric_type
+| 函数返回值数据类型 | point
+| 函数含义 | 计算中点，针对box, circle适用
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select center(box '(1,2),(0,0)') ;
+ center 
+ --------- 
+ (0.5,1) 
+ (1 row) 
+postgres=#
+----
+|===
+
+
+=== diagonal
+
+[cols="145,378"]
+|===
+h| 函数名称 h| diagonal
+| 参数数据类型 | box
+| 函数返回值数据类型 | lseg
+| 函数含义 | 获取box的对角线作为一个line segment，作用与lseg(box)一样
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select diagonal(box '(1,2),(0,0)'); 
+diagonal 
+--------------- 
+[(1,2),(0,0)] 
+(1 row) 
+postgres=#
+----
+|===
+
+
+=== diameter
+
+[cols="145,378"]
+|===
+h| 函数名称 h| diameter
+| 参数数据类型 | circle
+| 函数返回值数据类型 | double precision
+| 函数含义 | 计算circle的直径
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select diameter(circle '<(0,0),2>') ; 
+diameter
+ ----------
+  4
+(1 row) 
+postgres=#
+----
+|===
+
+
+
+=== height
+
+[cols="145,378"]
+|===
+h| 函数名称 h| height
+| 参数数据类型 | box
+| 函数返回值数据类型 | double precision
+| 函数含义 | 计算box的垂直大小
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select height(box '(1,2),(0,0)');
+ height 
+ -------- 
+ 2 
+ (1 row) 
+postgres=#
+----
+|===
+
+
+=== isclosed
+
+[cols="145,378"]
+|===
+h| 函数名称 h| isclosed
+| 参数数据类型 | path
+| 函数返回值数据类型 | bool
+| 函数含义 | path是否是closed的
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select isclosed(path '((0,0),(1,1),(2,0))');
+ isclosed 
+ ----------
+  t
+   (1 row) 
+postgres=#
+----
+|===
+
+
+=== isopen
+
+[cols="145,378"]
+|===
+h| 函数名称 h| isopen
+| 参数数据类型 | path
+| 函数返回值数据类型 | bool
+| 函数含义 | Path是否是open的
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select isopen(path '[(0,0),(1,1),(2,0)]'); 
+isopen
+ --------
+  t 
+(1 row) 
+postgres=#
+----
+|===
+
+
+
+=== length
+
+[cols="145,378"]
+|===
+h| 函数名称 h| length
+| 参数数据类型 | geometric_type
+| 函数返回值数据类型 | double precision
+| 函数含义 | 计算总长度，对lseg以及path适用
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select length(path '((-1,0),(1,0))') ;
+ length 
+ --------
+  4 
+(1 row) 
+postgres=#
+----
+|===
+
+
+
+=== npoints
+
+[cols="145,378"]
+|===
+h| 函数名称 h| npoints
+| 参数数据类型 | geometric_type
+| 函数返回值数据类型 | integer
+| 函数含义 | 返回point的数量，对path以及polygon适用
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select npoints(path '[(0,0),(1,1),(2,0)]'); 
+npoints 
+---------
+ 3
+ (1 row) 
+postgres=#
+----
+|===
+
+
+
+=== pclose
+
+[cols="145,378"]
+|===
+h| 函数名称 h| pclose
+| 参数数据类型 | path
+| 函数返回值数据类型 | path
+| 函数含义 | 将patch转换为closed的形式
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select pclose(path '[(0,0),(1,1),(2,0)]'); 
+pclose 
+--------------------- 
+((0,0),(1,1),(2,0)) 
+(1 row) 
+postgres=#
+----
+|===
+
+
+
+=== popen
+
+[cols="145,378"]
+|===
+h| 函数名称 h| popen
+| 参数数据类型 | path
+| 函数返回值数据类型 | path
+| 函数含义 | 将patch转换为open的形式
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select popen(path '((0,0),(1,1),(2,0))'); 
+popen 
+--------------------- 
+[(0,0),(1,1),(2,0)] 
+(1 row) 
+postgres=#
+----
+|===
+
+
+
+
+
+
+=== radius
+
+[cols="145,378"]
+|===
+h| 函数名称 h| radius
+| 参数数据类型 | circle
+| 函数返回值数据类型 | double precision
+| 函数含义 | 求一个圆形的半径
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select radius(circle '<(0,0),2>');
+ radius 
+ -------- 
+ 2 
+ (1 row)
+postgres=#
+----
+|===
+
+
+
+=== slope
+
+[cols="145,378"]
+|===
+h| 函数名称 h| slope
+| 参数数据类型 | point,point
+| 函数返回值数据类型 | double precision
+| 函数含义 | 计算通过两个点的直线的斜率
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select slope(point '(0,0)', point '(2,1)');
+ slope 
+ -------
+  0.5 
+(1 row)
+postgres=#
+----
+|===
+
+
+
+
+=== width
+
+[cols="145,378"]
+|===
+h| 函数名称 h| width
+| 参数数据类型 | double precision
+| 函数返回值数据类型 | box
+| 函数含义 | 计算box的horizontal size
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select width(box '(1,2),(0,0)') ;
+width 
+------- 
+1 
+(1 row) 
+postgres=#
+----
+|===
+
+
+
+
+=== box
+
+[cols="145,378"]
+|===
+h| 函数名称 h| box
+| 参数数据类型 | circle
+| 函数返回值数据类型 | box
+| 函数含义 | 计算圆内切的box
+| 使用举例
+a| 
+[source,sql]
+----
+postgres=# select box(circle '<(0,0),2>');
+box 
+-------------------------------------------------------------------------------
+(1.414213562373095,1.414213562373095),(-1.414213562373095,-1.414213562373095) 
+(1 row) 
+postgres=#
+----
+|===
+
