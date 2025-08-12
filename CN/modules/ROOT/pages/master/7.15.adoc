@@ -70,7 +70,9 @@ libpq接口端提供准备、绑定、执行函数，这些函数与OCI相应函
 == 测试用例
 
 === 含有out参数的函数
+
 1. out参数和返回值数据类型没有关联
+
 ```
 ivorysql=# create or replace function test_return_out(id integer,price out integer,name out varchar) return varchar 
 ivorysql-# as
@@ -84,6 +86,7 @@ CREATE FUNCTION
 ```
 
 2. IN OUT模式和OUT模式都不能有默认值
+
 ```
 ivorysql=# create or replace function test_return_inout(id integer,price in out integer default 100,name out varchar) return varchar 
 ivorysql-# as
@@ -97,6 +100,7 @@ ERROR:  IN OUT formal parameters may have no default expressions
 ```
 
 3. 如果有out参数，并且函数返回类型不是void，则函数体中必须有RETURN语句
+
 ```
 --if function's return type is non-void, the function body must has RETURN statement
 --if there is no RETURN statement, the function can be created, but when it is called, 
