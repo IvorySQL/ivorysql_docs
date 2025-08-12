@@ -1,0 +1,122 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= Server-Side Support for the GB18030 Character Set
+
+== Objective
+
+PostgreSQL provides comprehensive server-side support for the GB18030 character set. GB18030 is a Chinese national standard designed to include all Chinese characters and various minority scripts, aiming for alignment with Unicode. Proper configuration and use of the GB18030 character set within PostgreSQL are essential for processing and storing Chinese data that must comply with this standard.
+
+Server-side GB18030 support should provide the following features:
+|====
+| 1. Support for GB18030 as a server encoding: initdb -E GB18030 is available, and SHOW server_encoding displays GB18030.
+| 2. Provide bidirectional conversion between GB18030 and UTF8.
+| 3. Support for multibyte character boundary determination.
+|====
+
+== Implementation Details
+
+=== Specifying GB18030 or GB18030_2022 with the -E Option during initdb
+
+PostgreSQL has historically supported the GB18030-2000 standard as a client-side encoding. Support for conversion between the GB18030_2022 character set and UTF-8 is provided via an extension.
+
+To enable GB18030 as a server encoding, modifications are made to pg_enc, and new low-level functions are added to the PostgreSQL encoding framework for invocation by the core system.
+
+A global variable, is_load_gb18030_2022, is introduced with a default value of true. When the -E option is used during initdb, the get_encoding_id function checks the specified encoding name. If the name is gb18030_2022, it is internally mapped to the gb18030 encoding ID, and the is_load_gb18030_2022 flag is set to true. If the -E option is GB18030, the flag is set to false.
+
+At the appropriate stage in the startup process, the system checks this flag to determine if the extension should be loaded. If required, the load_gb18030_2022 function is executed, and the gb18030_2022 extension is added to the shared_preload_libraries parameter in ivorysql.conf.
+```
+if (encoding_name && *encoding_name)
+{
+    encoding_name_modify = pg_strdup(encoding_name);
+    if(pg_strcasecmp(encoding_name,"gb18030_2022") == 0)
+    {
+        encoding_name_modify = pg_strdup("gb18030");
+        is_load_gb18030_2022 =  true;
+    }
+    else if(pg_strcasecmp(encoding_name,"gb18030") == 0)
+    is_load_gb18030_2022 = false;
+
+    if ((enc = pg_valid_server_encoding((const char *)encoding_name_modify)) >= 0)
+        return enc;
+}
+```
+
+=== Multibyte Character Handling
+
+Function pointers for GB18030 are added in wchar.c:
+	pg_gb180302wchar_with_len(const unsigned char *from, pg_wchar *to, int len) gb18030 -> wchar
+	pg_wchar2gb18030_with_len(const pg_wchar *from, unsigned char *to, int len) wchar -> gb18030
+    pg_gb18030_mblen(const unsigned char *s)：Returns 1/2/4.
+    pg_gb18030_dsplen(const unsigned char *s)：Calculates the display width of a character. ASCII characters have a width of 1, while others are also treated as having a width of 1 .
+    pg_gb18030_verifier(const unsigned char *s, int len)：Verifies that a byte sequence is a valid GB18030 character, rejecting illegal sequences.
+
+=== Client-Server Interaction
+
+Receiving Data
+
+When a client using UTF-8 encoding connects to the server, the server, upon receiving data, invokes its internal utf8_to_gb18030 function. This converts the data to the GB18030 format, which is then validated and stored.
+
+Sending Data
+
+When the same client executes a SELECT query, the server reads the native GB18030 data from disk or memory. It then calls the gb18030_to_utf8 function to convert the data to UTF-8 format before sending it to the client via the network protocol.
+
+A new data file, GB18030-2022.xml, is introduced. This file is parsed by a Perl script to generate mapping files that provide the logic for the gb18030_to_utf8() and utf8_to_gb18030() conversion functions. The implementation prioritizes a table-driven approach, falling back to algorithmic mapping for ranges not covered by the tables.
+```
+static inline uint32
+unicode_to_utf8word(uint32 c)
+{
+	uint32		word;
+
+	if (c <= 0x7F)
+	{
+		word = c;
+	}
+	else if (c <= 0x7FF)
+	{
+		word = (0xC0 | ((c >> 6) & 0x1F)) << 8;
+		word |= 0x80 | (c & 0x3F);
+	}
+	else if (c <= 0xFFFF)
+	{
+		word = (0xE0 | ((c >> 12) & 0x0F)) << 16;
+		word |= (0x80 | ((c >> 6) & 0x3F)) << 8;
+		word |= 0x80 | (c & 0x3F);
+	}
+	else
+	{
+		word = (0xF0 | ((c >> 18) & 0x07)) << 24;
+		word |= (0x80 | ((c >> 12) & 0x3F)) << 16;
+		word |= (0x80 | ((c >> 6) & 0x3F)) << 8;
+		word |= 0x80 | (c & 0x3F);
+	}
+
+	return word;
+}
+
+static uint32
+conv_18030_2022_to_utf8(uint32 code)
+{
+#define conv18030(minunicode, mincode, maxcode) \
+	if (code >= mincode && code <= maxcode) \
+		return unicode_to_utf8word(gb_linear(code) - gb_linear(mincode) + minunicode)
+
+	conv18030(0x0452, 0x8130D330, 0x8136A531);
+	conv18030(0x2643, 0x8137A839, 0x8138FD38);
+	conv18030(0x361B, 0x8230A633, 0x8230F237);
+	conv18030(0x3CE1, 0x8231D438, 0x8232AF32);
+	conv18030(0x4160, 0x8232C937, 0x8232F837);
+	conv18030(0x44D7, 0x8233A339, 0x8233C931);
+	conv18030(0x478E, 0x8233E838, 0x82349638);
+	conv18030(0x49B8, 0x8234A131, 0x8234E733);
+	conv18030(0x9FA6, 0x82358F33, 0x8336C738);
+	conv18030(0xE865, 0x8336D030, 0x84308534);
+	conv18030(0xFA2A, 0x84309C38, 0x84318537);
+	conv18030(0xFFE6, 0x8431A234, 0x8431A439);
+	conv18030(0x10000, 0x90308130, 0xE3329A35);
+	/* No mapping exists */
+	return 0;
+}
+```
