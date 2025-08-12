@@ -47,10 +47,15 @@ if (encoding_name && *encoding_name)
 === Multibyte Character Handling
 
 Function pointers for GB18030 are added in wchar.c:
+
 	pg_gb180302wchar_with_len(const unsigned char *from, pg_wchar *to, int len) gb18030 -> wchar
+
 	pg_wchar2gb18030_with_len(const pg_wchar *from, unsigned char *to, int len) wchar -> gb18030
+
     pg_gb18030_mblen(const unsigned char *s)：Returns 1/2/4.
+
     pg_gb18030_dsplen(const unsigned char *s)：Calculates the display width of a character. ASCII characters have a width of 1, while others are also treated as having a width of 1 .
+    
     pg_gb18030_verifier(const unsigned char *s, int len)：Verifies that a byte sequence is a valid GB18030 character, rejecting illegal sequences.
 
 === Client-Server Interaction
