@@ -50,9 +50,13 @@ if (encoding_name && *encoding_name)
 
 wchar.c，增加 GB18030 的函数指针：
 	pg_gb180302wchar_with_len(const unsigned char *from, pg_wchar *to, int len) gb18030 -> wchar
+
 	pg_wchar2gb18030_with_len(const pg_wchar *from, unsigned char *to, int len) wchar -> gb18030
+
     pg_gb18030_mblen(const unsigned char *s)：返回 1/2/4。
+
     pg_gb18030_dsplen(const unsigned char *s)：ASCII 显示宽度 1；其它按 1 处理（与UTF8一致）。
+    
     pg_gb18030_verifier(const unsigned char *s, int len)：校验字节范围，拒绝非法序列。
 
 === 与客户端的交互
