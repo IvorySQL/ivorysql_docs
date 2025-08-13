@@ -1,7 +1,7 @@
 :sectnumlevels: 16
 
 [.text-center]
-== PostgreSQL 13 商用文档之 PG 参数参考手册
+== PostgreSQL 13 参数参考手册
 
 本文参考来源： https://www.postgresql.org/docs/13/runtime-config.html[https://www.postgresql.org/docs/13/runtime-config.html]
 
