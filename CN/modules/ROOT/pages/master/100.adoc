@@ -1,36 +1,13 @@
-= (???)
+:sectnums:
+:sectnumlevels: 5
 
-PostgreSQLCHINA.com © 中国开源软件推进联盟PostgreSQL分会 image::PostgreSQL13%E6%96%87%E6%A1%A3%E4%B9%8BPG%E5%8F%82%E6%95%B0%E5%8F%82%E8%80%83%E6%89%8B%E5%86%8C_html_65203c2570992f5a.png["",107,26]
+[.text-center]
+== PostgreSQL13商用文档之 PG 参数参考手册
 
-+
 
-+
 
-+
+本文参考来源：https://www.postgresql.org/docs/13/runtime-config.html[https://www.postgresql.org/docs/13/runtime-config.html]
 
-*PostgreSQL13***商用文档**
-
-*之*
-
-*PG*参数参考手册
-
-+
-
-+
-
-+
-
-+
-
-+
-
-+
-
-+
-
-本文参考来源：https://www.postgresql.org/docs/13/runtime-config.html
-
-+
 
 本文档贡献单位及贡献者:
 
@@ -38,19 +15,11 @@ PostgreSQLCHINA.com © 中国开源软件推进联盟PostgreSQL分会 image::Pos
 
 中国开源软件推进联盟PostgreSQL分会：魏波
 
-+
 
 本文档错误反馈方式：
 
-请在https://www.pgfans.cn/blogs-tag/49参数参考专栏中提出。
+请在https://www.pgfans.cn/blogs-tag/49[https://www.pgfans.cn/blogs-tag/49]参数参考专栏中提出。
 
-+
-
-+
-
-+
-
-+
 
 1-- Resource Usage / Disk
 
@@ -67,7 +36,6 @@ h| 参数名称 h| temp_file_limit
 
 |===
 
-+
 
 2.-- Replication
 
@@ -86,9 +54,7 @@ a| +
 
 |===
 
-+
 
-+
 
 3.-- Version and Platform Compatibility / Other Platforms and Clients
 
@@ -107,7 +73,6 @@ a| +
 
 |===
 
-+
 
 4-- Resource Usage / Kernel Resources
 
@@ -126,7 +91,6 @@ a| +
 
 |===
 
-+
 
 5-- Process Title
 
@@ -147,11 +111,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 6.--Process Title
 
@@ -170,7 +131,6 @@ a| +
 
 |===
 
-+
 
 7.-- Replication / Master Server
 
@@ -201,7 +161,6 @@ a| Reload即可生效。 +
 
 |===
 
-+
 
 8.-- Replication / Master Server
 
@@ -225,9 +184,7 @@ a| Reload即可生效。 +
 
 |===
 
-+
 
-+
 
 9. Replication / Subscribers
 
@@ -246,7 +203,6 @@ a| +
 
 |===
 
-+
 
 10. Replication / Subscribers
 
@@ -265,7 +221,6 @@ a| +
 
 |===
 
-+
 
 11. Write-Ahead Log / Archive Recovery
 
@@ -290,7 +245,6 @@ a| 恢复时指定archive wal的位置 restore_command = 'cp /mnt/server/archive
 
 |===
 
-+
 
 12. Write-Ahead Log / Archive Recovery
 
@@ -318,11 +272,9 @@ a| Reload即可生效。 +
 
 |===
 
-+
 
 13. Write-Ahead Log / Archive Recovery
 
-+
 
 [cols="136,387"]
 |===
@@ -341,7 +293,6 @@ a| +
 
 |===
 
-+
 
 14. Error Handling
 
@@ -363,9 +314,7 @@ a| 当设置为on时，任何error均会导致session被终止。默认情况下
 
 |===
 
-+
 
-+
 
 15. Error Handling
 
@@ -387,7 +336,6 @@ a| Reload即可生效 +
 
 |===
 
-+
 
 16. Error Handling
 
@@ -406,7 +354,6 @@ a| +
 
 |===
 
-+
 
 17. Write-Ahead Log / Archiving
 
@@ -426,11 +373,8 @@ a| 重启PG instance生效。 +
 
 |===
 
-+
 
-+
 
-+
 
 18. Write-Ahead Log / Archiving
 
@@ -455,7 +399,6 @@ a| Reload即可生效 +
 
 |===
 
-+
 
 19. Write-Ahead Log / Archiving
 
@@ -472,7 +415,6 @@ h| 参数名称 h| archive_timeout
 
 |===
 
-+
 
 20. Resource Usage / Background Writer
 
@@ -489,11 +431,8 @@ h| 参数名称 h| bgwriter_delay
 
 |===
 
-+
 
-+
 
-+
 
 21. Resource Usage / Background Writer
 
@@ -513,7 +452,6 @@ a| Reload即可 +
 
 |===
 
-+
 
 22. Resource Usage / Background Writer
 
@@ -532,15 +470,10 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
-+
 
-+
 
 23. Resource Usage / Background Writer
 
@@ -557,9 +490,7 @@ h| 参数名称 h| bgwriter_flush_after
 
 |===
 
-+
 
-+
 
 24. Statistics / Monitoring
 
@@ -578,9 +509,7 @@ a| +
 
 |===
 
-+
 
-+
 
 25. Statistics / Monitoring
 
@@ -599,9 +528,7 @@ a| +
 
 |===
 
-+
 
-+
 
 26. Statistics / Monitoring
 
@@ -620,9 +547,7 @@ a| +
 
 |===
 
-+
 
-+
 
 27. Statistics / Monitoring
 
@@ -641,9 +566,7 @@ a| +
 
 |===
 
-+
 
-+
 
 28. Client Connection Defaults / Shared Library Preloading
 
@@ -664,9 +587,7 @@ a| +
 
 |===
 
-+
 
-+
 
 29. Client Connection Defaults / Shared Library Preloading
 
@@ -687,9 +608,7 @@ a| +
 
 |===
 
-+
 
-+
 
 30. Client Connection Defaults / Shared Library Preloading
 
@@ -710,9 +629,7 @@ a| +
 
 |===
 
-+
 
-+
 
 31.
 
@@ -733,9 +650,7 @@ a| +
 
 |===
 
-+
 
-+
 
 32. Lock Management
 
@@ -752,11 +667,8 @@ h| 参数名称 h| deadlock_timeout
 
 |===
 
-+
 
-+
 
-+
 
 33. Lock Management
 
@@ -777,13 +689,9 @@ a| 共享锁表(shared lock table)追踪max_locks_per_transaction \* (max_connec
 
 |===
 
-+
 
-+
 
-+
 
-+
 
 34. Lock Management
 
@@ -802,9 +710,7 @@ a| +
 
 |===
 
-+
 
-+
 
 35. Lock Management
 
@@ -823,7 +729,6 @@ a| +
 
 |===
 
-+
 
 36. Lock Management
 
@@ -842,11 +747,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 37. Resource Usage / Cost-Based Vacuum Delay
 
@@ -863,13 +765,9 @@ h| 参数名称 h| vacuum_cost_delay
 
 |===
 
-+
 
-+
 
-+
 
-+
 
 38. Resource Usage / Cost-Based Vacuum Delay
 
@@ -888,9 +786,7 @@ a| +
 
 |===
 
-+
 
-+
 
 39. Resource Usage / Cost-Based Vacuum Delay
 
@@ -909,9 +805,7 @@ a| +
 
 |===
 
-+
 
-+
 
 40. Resource Usage / Cost-Based Vacuum Delay
 
@@ -930,11 +824,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 41. Resource Usage / Cost-Based Vacuum Delay
 
@@ -953,9 +844,7 @@ a| +
 
 |===
 
-+
 
-+
 
 42. Replication / Sending Servers
 
@@ -974,9 +863,7 @@ a| +
 
 |===
 
-+
 
-+
 
 43.Replication / Sending Servers
 
@@ -997,7 +884,6 @@ a| 设置PostgreSQL能支持的复制槽的最大数量，本参数仅能在Post
 
 |===
 
-+
 
 44. Replication / Sending Servers
 
@@ -1014,11 +900,8 @@ h| 参数名称 h| wal_keep_size
 
 |===
 
-+
 
-+
 
-+
 
 45. Replication / Sending Servers
 
@@ -1035,11 +918,8 @@ h| 参数名称 h| max_slot_wal_keep_size
 
 |===
 
-+
 
-+
 
-+
 
 46. Replication / Sending Servers
 
@@ -1056,9 +936,7 @@ h| 参数名称 h| wal_sender_timeout
 
 |===
 
-+
 
-+
 
 47. Connections and Authentication / Authentication
 
@@ -1075,25 +953,15 @@ h| 参数名称 h| authentication_timeout
 
 |===
 
-+
 
-+
 
-+
 
-+
 
-+
 
-+
 
-+
 
-+
 
-+
 
-+
 
 48. Connections and Authentication / Authentication
 
@@ -1112,11 +980,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 49. Connections and Authentication / Authentication
 
@@ -1137,9 +1002,7 @@ a| +
 
 |===
 
-+
 
-+
 
 50. Connections and Authentication / Authentication
 
@@ -1160,9 +1023,7 @@ a| +
 
 |===
 
-+
 
-+
 
 51. Connections and Authentication / Authentication
 
@@ -1185,9 +1046,7 @@ a| 若本参数值设置为on，那么创建的用户名的格式是username@dbn
 
 |===
 
-+
 
-+
 
 52. Statistics / Query and Index Statistics Collector
 
@@ -1206,9 +1065,7 @@ a| +
 
 |===
 
-+
 
-+
 
 53. Statistics / Query and Index Statistics Collector
 
@@ -1225,11 +1082,8 @@ h| 参数名称 h| track_activity_query_size
 
 |===
 
-+
 
-+
 
-+
 
 54. Statistics / Query and Index Statistics Collector
 
@@ -1248,11 +1102,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 55. Statistics / Query and Index Statistics Collector
 
@@ -1271,9 +1122,7 @@ a| +
 
 |===
 
-+
 
-+
 
 56. Statistics / Query and Index Statistics Collector
 
@@ -1292,11 +1141,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 57. Statistics / Query and Index Statistics Collector
 
@@ -1317,11 +1163,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 58. File Locations
 
@@ -1344,9 +1187,7 @@ a| +
 
 |===
 
-+
 
-+
 
 59. File Locations
 
@@ -1367,9 +1208,7 @@ a| +
 
 |===
 
-+
 
-+
 
 60. File Locations
 
@@ -1390,13 +1229,9 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
-+
 
 61. File Locations
 
@@ -1417,11 +1252,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 62 File Locations
 
@@ -1442,9 +1274,7 @@ a| +
 
 |===
 
-+
 
-+
 
 63. Reporting and Logging / When to Log
 
@@ -1463,9 +1293,7 @@ a| +
 
 |===
 
-+
 
-+
 
 64. Reporting and Logging / When to Log
 
@@ -1484,9 +1312,7 @@ a| +
 
 |===
 
-+
 
-+
 
 65. Reporting and Logging / When to Log
 
@@ -1503,11 +1329,8 @@ h| 参数名称 h| log_min_duration_statement
 
 |===
 
-+
 
-+
 
-+
 
 66. Reporting and Logging / When to Log
 
@@ -1524,7 +1347,6 @@ h| 参数名称 h| log_min_duration_sample
 
 |===
 
-+
 
 67. Reporting and Logging / When to Log
 
@@ -1543,7 +1365,6 @@ a| +
 
 |===
 
-+
 
 68. Reporting and Logging / When to Log
 
@@ -1562,9 +1383,7 @@ a| +
 
 |===
 
-+
 
-+
 
 69. Checkpoints
 
@@ -1581,11 +1400,8 @@ h| 参数名称 h| checkpoint_timeout
 
 |===
 
-+
 
-+
 
-+
 
 70 Checkpoints
 
@@ -1604,9 +1420,7 @@ a| +
 
 |===
 
-+
 
-+
 
 71. Checkpoints
 
@@ -1623,9 +1437,7 @@ h| 参数名称 h| checkpoint_flush_after
 
 |===
 
-+
 
-+
 
 72. Checkpoints
 
@@ -1642,21 +1454,13 @@ h| 参数名称 h| checkpoint_warning
 
 |===
 
-+
 
-+
 
-+
 
-+
 
-+
 
-+
 
-+
 
-+
 
 73. Checkpoints
 
@@ -1673,9 +1477,7 @@ h| 参数名称 h| max_wal_size
 
 |===
 
-+
 
-+
 
 74. Checkpoints
 
@@ -1692,9 +1494,7 @@ h| 参数名称 h| min_wal_size
 
 |===
 
-+
 
-+
 
 75.
 
@@ -1715,9 +1515,7 @@ a| +
 
 |===
 
-+
 
-+
 
 76.
 
@@ -1736,9 +1534,7 @@ a| +
 
 |===
 
-+
 
-+
 
 77.
 
@@ -1759,9 +1555,7 @@ a| +
 
 |===
 
-+
 
-+
 
 78.
 
@@ -1778,7 +1572,6 @@ h| 参数名称 h| tcp_keepalives_idle
 
 |===
 
-+
 
 79.
 
@@ -1795,7 +1588,6 @@ h| 参数名称 h| tcp_keepalives_interval
 
 |===
 
-+
 
 80.
 
@@ -1812,11 +1604,8 @@ h| 参数名称 h| tcp_user_timeout
 
 |===
 
-+
 
-+
 
-+
 
 81. Query Tuning / Genetic Query Optimizer
 
@@ -1837,9 +1626,7 @@ a| 启用或者禁用genetic query optimization，生产环境中不应该将本
 
 |===
 
-+
 
-+
 
 82. Query Tuning / Genetic Query Optimizer
 
@@ -1858,9 +1645,7 @@ a| +
 
 |===
 
-+
 
-+
 
 83. Query Tuning / Genetic Query Optimizer
 
@@ -1879,9 +1664,7 @@ a| +
 
 |===
 
-+
 
-+
 
 84. Query Tuning / Genetic Query Optimizer
 
@@ -1900,9 +1683,7 @@ a| +
 
 |===
 
-+
 
-+
 
 85. Query Tuning / Genetic Query Optimizer
 
@@ -1921,9 +1702,7 @@ a| +
 
 |===
 
-+
 
-+
 
 86 Query Tuning / Genetic Query Optimizer
 
@@ -1942,7 +1721,6 @@ a| +
 
 |===
 
-+
 
 87. Query Tuning / Genetic Query Optimizer
 
@@ -1961,9 +1739,7 @@ a| +
 
 |===
 
-+
 
-+
 
 88. Write-Ahead Log / Recovery Target
 
@@ -1982,9 +1758,7 @@ a| +
 
 |===
 
-+
 
-+
 
 89. Write-Ahead Log / Recovery Target
 
@@ -2005,9 +1779,7 @@ a| +
 
 |===
 
-+
 
-+
 
 90. Write-Ahead Log / Recovery Target
 
@@ -2028,9 +1800,7 @@ a| +
 
 |===
 
-+
 
-+
 
 91. Write-Ahead Log / Recovery Target
 
@@ -2053,9 +1823,7 @@ a| +
 
 |===
 
-+
 
-+
 
 92. Write-Ahead Log / Recovery Target
 
@@ -2076,9 +1844,7 @@ a| +
 
 |===
 
-+
 
-+
 
 93. Write-Ahead Log / Recovery Target
 
@@ -2097,9 +1863,7 @@ a| +
 
 |===
 
-+
 
-+
 
 94. Write-Ahead Log / Recovery Target
 
@@ -2120,9 +1884,7 @@ a| +
 
 |===
 
-+
 
-+
 
 95. Write-Ahead Log / Recovery Target
 
@@ -2141,9 +1903,7 @@ a| +
 
 |===
 
-+
 
-+
 
 96. Query Tuning / Other Planner Options
 
@@ -2162,9 +1922,7 @@ a| +
 
 |===
 
-+
 
-+
 
 97. Query Tuning / Other Planner Options
 
@@ -2185,9 +1943,7 @@ a| 控制planner是否使用constraints优化查询,如果表的约束保证没�
 
 |===
 
-+
 
-+
 
 98. Query Tuning / Other Planner Options
 
@@ -2206,9 +1962,7 @@ a| +
 
 |===
 
-+
 
-+
 
 99. Query Tuning / Other Planner Options
 
@@ -2227,7 +1981,6 @@ a| +
 
 |===
 
-+
 
 100. Query Tuning / Other Planner Options
 
@@ -2246,7 +1999,6 @@ a| +
 
 |===
 
-+
 
 101. Query Tuning / Other Planner Options
 
@@ -2265,15 +2017,10 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
-+
 
-+
 
 102. Query Tuning / Other Planner Options
 
@@ -2292,11 +2039,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 103. Query Tuning / Other Planner Options
 
@@ -2315,9 +2059,7 @@ a| +
 
 |===
 
-+
 
-+
 
 104. Query Tuning / Other Planner Options
 
@@ -2336,11 +2078,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 105. Version and Platform Compatibility / Previous PostgreSQL Versions
 
@@ -2359,9 +2098,7 @@ a| +
 
 |===
 
-+
 
-+
 
 106 Version and Platform Compatibility / Previous PostgreSQL Versions
 
@@ -2380,9 +2117,7 @@ a| +
 
 |===
 
-+
 
-+
 
 107. Version and Platform Compatibility / Previous PostgreSQL Versions
 
@@ -2401,9 +2136,7 @@ a| +
 
 |===
 
-+
 
-+
 
 108. Version and Platform Compatibility / Previous PostgreSQL Versions
 
@@ -2424,9 +2157,7 @@ a| +
 
 |===
 
-+
 
-+
 
 109. Version and Platform Compatibility / Previous PostgreSQL Versions
 
@@ -2445,9 +2176,7 @@ a| +
 
 |===
 
-+
 
-+
 
 110. Version and Platform Compatibility / Previous PostgreSQL Versions
 
@@ -2470,9 +2199,7 @@ postgres=#
 
 |===
 
-+
 
-+
 
 111. Version and Platform Compatibility / Previous PostgreSQL Versions
 
@@ -2491,9 +2218,7 @@ a| +
 
 |===
 
-+
 
-+
 
 112. Version and Platform Compatibility / Previous PostgreSQL Versions
 
@@ -2512,9 +2237,7 @@ a| +
 
 |===
 
-+
 
-+
 
 113. Connections and Authentication / Connection Settings
 
@@ -2535,9 +2258,7 @@ a| +
 
 |===
 
-+
 
-+
 
 114. Connections and Authentication / Connection Settings
 
@@ -2556,9 +2277,7 @@ a| +
 
 |===
 
-+
 
-+
 
 115. Connections and Authentication / Connection Settings
 
@@ -2577,13 +2296,9 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
-+
 
 116. Connections and Authentication / Connection Settings
 
@@ -2602,7 +2317,6 @@ a| +
 
 |===
 
-+
 
 117. Connections and Authentication / Connection Settings
 
@@ -2623,13 +2337,9 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
-+
 
 118. Connections and Authentication / Connection Settings
 
@@ -2650,9 +2360,7 @@ a| +
 
 |===
 
-+
 
-+
 
 119. Connections and Authentication / Connection Settings
 
@@ -2671,15 +2379,10 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
-+
 
-+
 
 120. Connections and Authentication / Connection Settings
 
@@ -2698,11 +2401,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 121. Connections and Authentication / Connection Settings
 
@@ -2723,9 +2423,7 @@ a| +
 
 |===
 
-+
 
-+
 
 122. Resource Usage / Asynchronous Behavior
 
@@ -2744,9 +2442,7 @@ a| +
 
 |===
 
-+
 
-+
 
 123. Resource Usage / Asynchronous Behavior
 
@@ -2765,9 +2461,7 @@ a| +
 
 |===
 
-+
 
-+
 
 124. Resource Usage / Asynchronous Behavior
 
@@ -2786,13 +2480,9 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
-+
 
 125. Resource Usage / Asynchronous Behavior
 
@@ -2811,7 +2501,6 @@ a| +
 
 |===
 
-+
 
 126. Resource Usage / Asynchronous Behavior
 
@@ -2830,9 +2519,7 @@ a| +
 
 |===
 
-+
 
-+
 
 127. Resource Usage / Asynchronous Behavior
 
@@ -2851,9 +2538,7 @@ a| +
 
 |===
 
-+
 
-+
 
 128. Resource Usage / Asynchronous Behavior
 
@@ -2870,9 +2555,7 @@ h| 参数名称 h| backend_flush_after
 
 |===
 
-+
 
-+
 
 129. Resource Usage / Asynchronous Behavior
 
@@ -2889,9 +2572,7 @@ h| 参数名称 h| old_snapshot_threshold
 
 |===
 
-+
 
-+
 
 130. Replication / Standby Servers
 
@@ -2912,9 +2593,7 @@ a| +
 
 |===
 
-+
 
-+
 
 131. Replication / Standby Servers
 
@@ -2935,9 +2614,7 @@ a| +
 
 |===
 
-+
 
-+
 
 131. Replication / Standby Servers
 
@@ -2958,11 +2635,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 132. Replication / Standby Servers
 
@@ -2981,9 +2655,7 @@ a| +
 
 |===
 
-+
 
-+
 
 133. Replication / Standby Servers
 
@@ -3004,13 +2676,9 @@ a| 本参数为备库参数，本参数在sending-server端会被忽略。当hot
 
 |===
 
-+
 
-+
 
-+
 
-+
 
 134. Replication / Standby Servers
 
@@ -3027,9 +2695,7 @@ h| 参数名称 h| max_standby_streaming_delay
 
 |===
 
-+
 
-+
 
 135. Replication / Standby Servers
 
@@ -3048,11 +2714,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 136. Replication / Standby Servers
 
@@ -3069,9 +2732,7 @@ h| 参数名称 h| wal_receiver_status_interval
 
 |===
 
-+
 
-+
 
 137. Replication / Standby Servers
 
@@ -3090,9 +2751,7 @@ a| +
 
 |===
 
-+
 
-+
 
 138. Replication / Standby Servers
 
@@ -3109,9 +2768,7 @@ h| 参数名称 h| wal_receiver_timeout
 
 |===
 
-+
 
-+
 
 139. Replication / Standby Servers
 
@@ -3128,11 +2785,8 @@ h| 参数名称 h| wal_retrieve_retry_interval
 
 |===
 
-+
 
-+
 
-+
 
 140. Replication / Standby Servers
 
@@ -3149,7 +2803,6 @@ h| 参数名称 h| recovery_min_apply_delay
 
 |===
 
-+
 
 141. Query Tuning / Planner Cost Constants
 
@@ -3168,11 +2821,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 142. Query Tuning / Planner Cost Constants
 
@@ -3191,9 +2841,7 @@ a| +
 
 |===
 
-+
 
-+
 
 143. Query Tuning / Planner Cost Constants
 
@@ -3212,11 +2860,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 144. Query Tuning / Planner Cost Constants
 
@@ -3235,9 +2880,7 @@ a| +
 
 |===
 
-+
 
-+
 
 145. Query Tuning / Planner Cost Constants
 
@@ -3256,9 +2899,7 @@ a| +
 
 |===
 
-+
 
-+
 
 146. Query Tuning / Planner Cost Constants
 
@@ -3277,11 +2918,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 147. Query Tuning / Planner Cost Constants
 
@@ -3300,9 +2938,7 @@ a| +
 
 |===
 
-+
 
-+
 
 148. Query Tuning / Planner Cost Constants
 
@@ -3319,9 +2955,7 @@ h| 参数名称 h| min_parallel_table_scan_size
 
 |===
 
-+
 
-+
 
 149. Query Tuning / Planner Cost Constants
 
@@ -3338,9 +2972,7 @@ h| 参数名称 h| min_parallel_index_scan_size
 
 |===
 
-+
 
-+
 
 150. Query Tuning / Planner Cost Constants
 
@@ -3357,9 +2989,7 @@ h| 参数名称 h| effective_cache_size
 
 |===
 
-+
 
-+
 
 151. Query Tuning / Planner Cost Constants
 
@@ -3378,7 +3008,6 @@ a| +
 
 |===
 
-+
 
 152. Query Tuning / Planner Cost Constants
 
@@ -3397,9 +3026,7 @@ a| +
 
 |===
 
-+
 
-+
 
 153. Query Tuning / Planner Cost Constants
 
@@ -3418,13 +3045,9 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
-+
 
 154.autovacuum
 
@@ -3443,7 +3066,6 @@ a| +
 
 |===
 
-+
 
 155. autovacuum
 
@@ -3462,9 +3084,7 @@ a| 当autovacuum进程运行的时间长度大于等于本参数值时，autovac
 
 |===
 
-+
 
-+
 
 156. autovacuum
 
@@ -3483,9 +3103,7 @@ a| +
 
 |===
 
-+
 
-+
 
 157. autovacuum
 
@@ -3502,9 +3120,7 @@ h| 参数名称 h| autovacuum_naptime
 
 |===
 
-+
 
-+
 
 158. autovacuum
 
@@ -3523,7 +3139,6 @@ a| +
 
 |===
 
-+
 
 159. autovacuum
 
@@ -3542,9 +3157,7 @@ a| +
 
 |===
 
-+
 
-+
 
 160. autovacuum
 
@@ -3563,9 +3176,7 @@ a| +
 
 |===
 
-+
 
-+
 
 161 autovacuum
 
@@ -3584,7 +3195,6 @@ a| +
 
 |===
 
-+
 
 162. autovacuum
 
@@ -3603,7 +3213,6 @@ a| +
 
 |===
 
-+
 
 163. autovacuum
 
@@ -3622,7 +3231,6 @@ a| +
 
 |===
 
-+
 
 164.Autovacuum
 
@@ -3641,7 +3249,6 @@ a| +
 
 |===
 
-+
 
 165. autovacuum
 
@@ -3660,7 +3267,6 @@ a| +
 
 |===
 
-+
 
 166. autovacuum
 
@@ -3677,7 +3283,6 @@ h| 参数名称 h| autovacuum_vacuum_cost_delay
 
 |===
 
-+
 
 167. autovacuum
 
@@ -3696,15 +3301,10 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
-+
 
-+
 
 168. Connections and Authentication / SSL
 
@@ -3723,9 +3323,7 @@ a| +
 
 |===
 
-+
 
-+
 
 169.Connections and Authentication / SSL
 
@@ -3746,9 +3344,7 @@ a| +
 
 |===
 
-+
 
-+
 
 170. Connections and Authentication / SSL
 
@@ -3769,9 +3365,7 @@ a| +
 
 |===
 
-+
 
-+
 
 171. Connections and Authentication / SSL
 
@@ -3792,7 +3386,6 @@ a| +
 
 |===
 
-+
 
 172. Connections and Authentication / SSL
 
@@ -3813,9 +3406,7 @@ a| +
 
 |===
 
-+
 
-+
 
 173. Connections and Authentication / SSL
 
@@ -3836,9 +3427,7 @@ a| +
 
 |===
 
-+
 
-+
 
 174. Connections and Authentication / SSL
 
@@ -3857,9 +3446,7 @@ a| +
 
 |===
 
-+
 
-+
 
 175. Connections and Authentication / SSL
 
@@ -3880,7 +3467,6 @@ a| +
 
 |===
 
-+
 
 176. Connections and Authentication / SSL
 
@@ -3899,9 +3485,7 @@ a| +
 
 |===
 
-+
 
-+
 
 177. Connections and Authentication / SSL
 
@@ -3920,9 +3504,7 @@ a| +
 
 |===
 
-+
 
-+
 
 178. Connections and Authentication / SSL
 
@@ -3943,9 +3525,7 @@ a| +
 
 |===
 
-+
 
-+
 
 179. Connections and Authentication / SSL
 
@@ -3966,7 +3546,6 @@ a| +
 
 |===
 
-+
 
 180. Connections and Authentication / SSL
 
@@ -3985,7 +3564,6 @@ a| +
 
 |===
 
-+
 
 181. Resource Usage / Memory
 
@@ -4004,7 +3582,6 @@ a| +
 
 |===
 
-+
 
 182. Resource Usage / Memory
 
@@ -4023,7 +3600,6 @@ a| +
 
 |===
 
-+
 
 183.Resource Usage / Memory
 
@@ -4040,11 +3616,8 @@ h| 参数名称 h| temp_buffers
 
 |===
 
-+
 
-+
 
-+
 
 184.Resource Usage / Memory
 
@@ -4063,9 +3636,7 @@ a| +
 
 |===
 
-+
 
-+
 
 185. .Resource Usage / Memory
 
@@ -4085,9 +3656,7 @@ a| 在写入磁盘临时文件之前，被查询操作（比如sort或者hash ta
 
 |===
 
-+
 
-+
 
 186. .Resource Usage / Memory
 
@@ -4106,9 +3675,7 @@ a| +
 
 |===
 
-+
 
-+
 
 187. .Resource Usage / Memory
 
@@ -4125,11 +3692,8 @@ h| 参数名称 h| maintenance_work_mem
 
 |===
 
-+
 
-+
 
-+
 
 188. .Resource Usage / Memory
 
@@ -4146,7 +3710,6 @@ h| 参数名称 h| autovacuum_work_mem
 
 |===
 
-+
 
 189. .Resource Usage / Memory
 
@@ -4163,7 +3726,6 @@ h| 参数名称 h| logical_decoding_work_mem
 
 |===
 
-+
 
 190. .Resource Usage / Memory
 
@@ -4180,7 +3742,6 @@ h| 参数名称 h| max_stack_depth
 
 |===
 
-+
 
 191. .Resource Usage / Memory
 
@@ -4199,7 +3760,6 @@ a| +
 
 |===
 
-+
 
 192. .Resource Usage / Memory
 
@@ -4218,7 +3778,6 @@ a| +
 
 |===
 
-+
 
 193. Reporting and Logging / Where to Log
 
@@ -4239,7 +3798,6 @@ a| PostgreSQL支持多种记录PostgreSQL消息的方法。包括stderr、csvlog
 
 |===
 
-+
 
 194. Reporting and Logging / Where to Log
 
@@ -4258,7 +3816,6 @@ a| +
 
 |===
 
-+
 
 195. Reporting and Logging / Where to Log
 
@@ -4279,7 +3836,6 @@ a| +
 
 |===
 
-+
 
 196. Reporting and Logging / Where to Log
 
@@ -4300,13 +3856,9 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
-+
 
 197. Reporting and Logging / Where to Log
 
@@ -4325,9 +3877,7 @@ a| +
 
 |===
 
-+
 
-+
 
 198. Reporting and Logging / Where to Log
 
@@ -4344,9 +3894,7 @@ h| 参数名称 h| log_rotation_age
 
 |===
 
-+
 
-+
 
 199. Reporting and Logging / Where to Log
 
@@ -4365,9 +3913,7 @@ a| +
 
 |===
 
-+
 
-+
 
 200. Reporting and Logging / Where to Log
 
@@ -4386,9 +3932,7 @@ a| +
 
 |===
 
-+
 
-+
 
 201. Reporting and Logging / Where to Log
 
@@ -4407,7 +3951,6 @@ a| +
 
 |===
 
-+
 
 202. Reporting and Logging / Where to Log
 
@@ -4428,7 +3971,6 @@ a| +
 
 |===
 
-+
 
 203. Reporting and Logging / Where to Log
 
@@ -4450,7 +3992,6 @@ a| 当配置参数log_destination被设置为syslog并且本参数值设置为on
 
 |===
 
-+
 
 204. Reporting and Logging / Where to Log
 
@@ -4469,7 +4010,6 @@ a| +
 
 |===
 
-+
 
 205. Reporting and Logging / Where to Log
 
@@ -4490,9 +4030,7 @@ a| +
 
 |===
 
-+
 
-+
 
 206. Preset Options
 
@@ -4511,7 +4049,6 @@ a| +
 
 |===
 
-+
 
 207.Preset Options
 
@@ -4530,7 +4067,6 @@ a| +
 
 |===
 
-+
 
 208. Preset Options
 
@@ -4549,7 +4085,6 @@ a| +
 
 |===
 
-+
 
 209. Preset Options
 
@@ -4568,7 +4103,6 @@ a| +
 
 |===
 
-+
 
 210.
 
@@ -4589,7 +4123,6 @@ a| +
 
 |===
 
-+
 
 211. Preset Options
 
@@ -4610,9 +4143,7 @@ a| +
 
 |===
 
-+
 
-+
 
 212. Preset Options
 
@@ -4633,9 +4164,7 @@ a| +
 
 |===
 
-+
 
-+
 
 213. Preset Options
 
@@ -4656,9 +4185,7 @@ a| +
 
 |===
 
-+
 
-+
 
 214. Preset Options
 
@@ -4679,9 +4206,7 @@ a| +
 
 |===
 
-+
 
-+
 
 215. Preset Options
 
@@ -4702,9 +4227,7 @@ a| +
 
 |===
 
-+
 
-+
 
 216. Preset Options
 
@@ -4723,9 +4246,7 @@ a| +
 
 |===
 
-+
 
-+
 
 217. Preset Options
 
@@ -4746,9 +4267,7 @@ a| +
 
 |===
 
-+
 
-+
 
 218. Preset Options
 
@@ -4769,9 +4288,7 @@ a| +
 
 |===
 
-+
 
-+
 
 219. Preset Options
 
@@ -4792,9 +4309,7 @@ a| +
 
 |===
 
-+
 
-+
 
 220. Preset Options
 
@@ -4815,7 +4330,6 @@ a| +
 
 |===
 
-+
 
 221. Preset Options
 
@@ -4836,9 +4350,7 @@ a| +
 
 |===
 
-+
 
-+
 
 222. Preset Options
 
@@ -4857,9 +4369,7 @@ a| +
 
 |===
 
-+
 
-+
 
 223. Client Connection Defaults / Locale and Formatting
 
@@ -4880,7 +4390,6 @@ a| +
 
 |===
 
-+
 
 224. Client Connection Defaults / Locale and Formatting
 
@@ -4899,11 +4408,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 225. Client Connection Defaults / Locale and Formatting
 
@@ -4924,11 +4430,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 226. Client Connection Defaults / Locale and Formatting
 
@@ -4949,9 +4452,7 @@ a| +
 
 |===
 
-+
 
-+
 
 227.
 
@@ -4972,11 +4473,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 228. Client Connection Defaults / Locale and Formatting
 
@@ -4997,9 +4495,7 @@ a| +
 
 |===
 
-+
 
-+
 
 229. Client Connection Defaults / Locale and Formatting
 
@@ -5020,9 +4516,7 @@ a| +
 
 |===
 
-+
 
-+
 
 230. Client Connection Defaults / Locale and Formatting
 
@@ -5043,7 +4537,6 @@ a| +
 
 |===
 
-+
 
 231. Client Connection Defaults / Locale and Formatting
 
@@ -5064,9 +4557,7 @@ a| +
 
 |===
 
-+
 
-+
 
 232. Client Connection Defaults / Locale and Formatting
 
@@ -5089,7 +4580,6 @@ a| +
 
 |===
 
-+
 
 233. Client Connection Defaults / Locale and Formatting
 
@@ -5110,11 +4600,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 234. Write-Ahead Log / Settings
 
@@ -5135,13 +4622,9 @@ a| 本参数定义了有多少信息被写入到WAL日志中。参数值replica�
 
 |===
 
-+
 
-+
 
-+
 
-+
 
 235. Write-Ahead Log / Settings
 
@@ -5160,9 +4643,7 @@ a| +
 
 |===
 
-+
 
-+
 
 236.
 
@@ -5189,11 +4670,8 @@ a| 本参数值指定了在PostgreSQL数据库返回一个成功的提示给客�
 
 |===
 
-+
 
-+
 
-+
 
 237. Write-Ahead Log / Settings
 
@@ -5215,9 +4693,7 @@ a| 本参数值指定了强制将WAL写入Disk时使用的方法。当fsync参�
 
 |===
 
-+
 
-+
 
 238.
 
@@ -5242,9 +4718,7 @@ a| 当本参数值为on时，在一个checkpoint发生之后，当第一个修�
 
 |===
 
-+
 
-+
 
 239. Write-Ahead Log / Settings
 
@@ -5265,11 +4739,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 240. Write-Ahead Log / Settings
 
@@ -5288,9 +4759,7 @@ a| +
 
 |===
 
-+
 
-+
 
 241. Write-Ahead Log / Settings
 
@@ -5309,9 +4778,7 @@ a| +
 
 |===
 
-+
 
-+
 
 242. Write-Ahead Log / Settings
 
@@ -5330,7 +4797,6 @@ a| +
 
 |===
 
-+
 
 243.
 
@@ -5349,9 +4815,7 @@ h| 参数名称 h| wal_buffers
 
 |===
 
-+
 
-+
 
 244. Write-Ahead Log / Settings
 
@@ -5368,11 +4832,8 @@ h| 参数名称 h| wal_writer_delay
 
 |===
 
-+
 
-+
 
-+
 
 245. Write-Ahead Log / Settings
 
@@ -5389,9 +4850,7 @@ h| 参数名称 h| wal_writer_flush_after
 
 |===
 
-+
 
-+
 
 246. Write-Ahead Log / Settings
 
@@ -5408,11 +4867,8 @@ h| 参数名称 h| wal_skip_threshold
 
 |===
 
-+
 
-+
 
-+
 
 247. Write-Ahead Log / Settings
 
@@ -5429,9 +4885,7 @@ h| 参数名称 h| commit_delay
 
 |===
 
-+
 
-+
 
 248. Write-Ahead Log / Settings
 
@@ -5450,11 +4904,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 249. Developer Options
 
@@ -5473,7 +4924,6 @@ a| +
 
 |===
 
-+
 
 250. Developer Options
 
@@ -5494,11 +4944,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 251. Developer Options
 
@@ -5517,9 +4964,7 @@ a| +
 
 |===
 
-+
 
-+
 
 252. Developer Options
 
@@ -5536,9 +4981,7 @@ h| 参数名称 h| post_auth_delay
 
 |===
 
-+
 
-+
 
 253. Developer Options
 
@@ -5555,9 +4998,7 @@ h| 参数名称 h| pre_auth_delay
 
 |===
 
-+
 
-+
 
 254. Developer Options
 
@@ -5576,9 +5017,7 @@ a| +
 
 |===
 
-+
 
-+
 
 255.Developer Options
 
@@ -5597,9 +5036,7 @@ a| +
 
 |===
 
-+
 
-+
 
 256. Developer Options
 
@@ -5618,11 +5055,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 257. Developer Options
 
@@ -5650,11 +5084,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 258. Developer Options
 
@@ -5684,9 +5115,7 @@ a| +
 
 |===
 
-+
 
-+
 
 259. Developer Options
 
@@ -5716,9 +5145,7 @@ a| +
 
 |===
 
-+
 
-+
 
 260. Developer Options
 
@@ -5748,9 +5175,7 @@ a| +
 
 |===
 
-+
 
-+
 
 261. Developer Options
 
@@ -5780,9 +5205,7 @@ a| +
 
 |===
 
-+
 
-+
 
 262. Developer Options
 
@@ -5812,9 +5235,7 @@ a| +
 
 |===
 
-+
 
-+
 
 263. Developer Options
 
@@ -5844,9 +5265,7 @@ a| +
 
 |===
 
-+
 
-+
 
 264. Developer Options
 
@@ -5867,9 +5286,7 @@ a| +
 
 |===
 
-+
 
-+
 
 265. Developer Options
 
@@ -5895,7 +5312,6 @@ a| +
 
 |===
 
-+
 
 266. Developer Options
 
@@ -5914,9 +5330,7 @@ a| +
 
 |===
 
-+
 
-+
 
 267. Developer Options
 
@@ -5935,11 +5349,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 268. Developer Options
 
@@ -5958,9 +5369,7 @@ a| +
 
 |===
 
-+
 
-+
 
 269. Developer Options
 
@@ -5979,11 +5388,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 270. Developer Options
 
@@ -6002,9 +5408,7 @@ a| +
 
 |===
 
-+
 
-+
 
 271. Developer Options
 
@@ -6023,11 +5427,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 272. Developer Options
 
@@ -6046,11 +5447,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 273. Developer Options
 
@@ -6069,11 +5467,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 274. Query Tuning / Planner Method Configuration
 
@@ -6092,13 +5487,9 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
-+
 
 275. Query Tuning / Planner Method Configuration
 
@@ -6117,11 +5508,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 276. Query Tuning / Planner Method Configuration
 
@@ -6140,11 +5528,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 277. Query Tuning / Planner Method Configuration
 
@@ -6163,11 +5548,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 278. Query Tuning / Planner Method Configuration
 
@@ -6186,11 +5568,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 279. Query Tuning / Planner Method Configuration
 
@@ -6209,9 +5588,7 @@ a| +
 
 |===
 
-+
 
-+
 
 280.Query Tuning / Planner Method Configuration
 
@@ -6230,7 +5607,6 @@ a| +
 
 |===
 
-+
 
 281. Query Tuning / Planner Method Configuration
 
@@ -6249,9 +5625,7 @@ a| +
 
 |===
 
-+
 
-+
 
 282. Query Tuning / Planner Method Configuration
 
@@ -6270,11 +5644,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 283. Query Tuning / Planner Method Configuration
 
@@ -6293,9 +5664,7 @@ a| +
 
 |===
 
-+
 
-+
 
 284. Query Tuning / Planner Method Configuration
 
@@ -6314,9 +5683,7 @@ a| +
 
 |===
 
-+
 
-+
 
 285. Query Tuning / Planner Method Configuration
 
@@ -6335,21 +5702,13 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
-+
 
-+
 
-+
 
-+
 
-+
 
 286. Query Tuning / Planner Method Configuration
 
@@ -6368,9 +5727,7 @@ a| +
 
 |===
 
-+
 
-+
 
 287. Query Tuning / Planner Method Configuration
 
@@ -6389,9 +5746,7 @@ a| +
 
 |===
 
-+
 
-+
 
 288. Query Tuning / Planner Method Configuration
 
@@ -6410,9 +5765,7 @@ a| +
 
 |===
 
-+
 
-+
 
 289. Query Tuning / Planner Method Configuration
 
@@ -6431,9 +5784,7 @@ a| +
 
 |===
 
-+
 
-+
 
 290. Query Tuning / Planner Method Configuration
 
@@ -6452,9 +5803,7 @@ a| +
 
 |===
 
-+
 
-+
 
 291. Query Tuning / Planner Method Configuration
 
@@ -6473,9 +5822,7 @@ a| +
 
 |===
 
-+
 
-+
 
 292. Reporting and Logging / What to Log
 
@@ -6496,9 +5843,7 @@ a| +
 
 |===
 
-+
 
-+
 
 293. Reporting and Logging / What to Log
 
@@ -6521,9 +5866,7 @@ a| +
 
 |===
 
-+
 
-+
 
 294. Reporting and Logging / What to Log
 
@@ -6542,9 +5885,7 @@ a| +
 
 |===
 
-+
 
-+
 
 295. Reporting and Logging / What to Log
 
@@ -6563,9 +5904,7 @@ a| +
 
 |===
 
-+
 
-+
 
 296. Reporting and Logging / What to Log
 
@@ -6584,9 +5923,7 @@ a| +
 
 |===
 
-+
 
-+
 
 297. Reporting and Logging / What to Log
 
@@ -6605,9 +5942,7 @@ a| +
 
 |===
 
-+
 
-+
 
 298. Reporting and Logging / What to Log
 
@@ -6626,9 +5961,7 @@ a| +
 
 |===
 
-+
 
-+
 
 299. Reporting and Logging / What to Log
 
@@ -6647,9 +5980,7 @@ a| +
 
 |===
 
-+
 
-+
 
 300. Reporting and Logging / What to Log
 
@@ -6668,9 +5999,7 @@ a| +
 
 |===
 
-+
 
-+
 
 301. Reporting and Logging / What to Log
 
@@ -6689,7 +6018,6 @@ a| +
 
 |===
 
-+
 
 302. Reporting and Logging / What to Log
 
@@ -6748,9 +6076,7 @@ backend type&nbsp;列对应于pg_stat_activity视图的backend_type列，还有�
 
 |===
 
-+
 
-+
 
 303. Reporting and Logging / What to Log
 
@@ -6769,9 +6095,7 @@ a| +
 
 |===
 
-+
 
-+
 
 304. Reporting and Logging / What to Log
 
@@ -6791,9 +6115,7 @@ a| 如果本参数值大于零，则使用非错误语句日志消息记录的�
 
 |===
 
-+
 
-+
 
 305. Reporting and Logging / What to Log
 
@@ -6810,9 +6132,7 @@ h| 参数名称 h| log_parameter_max_length_on_error
 
 |===
 
-+
 
-+
 
 306. Reporting and Logging / What to Log
 
@@ -6831,9 +6151,7 @@ a| +
 
 |===
 
-+
 
-+
 
 307. Reporting and Logging / What to Log
 
@@ -6852,9 +6170,7 @@ a| +
 
 |===
 
-+
 
-+
 
 308. Reporting and Logging / What to Log
 
@@ -6871,9 +6187,7 @@ h| 参数名称 h| log_temp_files
 
 |===
 
-+
 
-+
 
 309. Reporting and Logging / What to Log
 
@@ -6894,9 +6208,7 @@ a| +
 
 |===
 
-+
 
-+
 
 310. Client Connection Defaults / Statement Behavior
 
@@ -6915,9 +6227,7 @@ a| +
 
 |===
 
-+
 
-+
 
 311. Client Connection Defaults / Statement Behavior
 
@@ -6941,7 +6251,6 @@ a| 当一个object(table, data type, function等等)不带前面的schema name�
 
 |===
 
-+
 
 312.Client Connection Defaults / Statement Behavior
 
@@ -6960,9 +6269,7 @@ a| +
 
 |===
 
-+
 
-+
 
 313. Client Connection Defaults / Statement Behavior
 
@@ -6983,11 +6290,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 314. Client Connection Defaults / Statement Behavior
 
@@ -7008,9 +6312,7 @@ a| +
 
 |===
 
-+
 
-+
 
 315. Client Connection Defaults / Statement Behavior
 
@@ -7031,11 +6333,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 316. Client Connection Defaults / Statement Behavior
 
@@ -7054,11 +6353,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 317. Client Connection Defaults / Statement Behavior
 
@@ -7077,9 +6373,7 @@ a| +
 
 |===
 
-+
 
-+
 
 318. Client Connection Defaults / Statement Behavior
 
@@ -7098,11 +6392,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 319. Client Connection Defaults / Statement Behavior
 
@@ -7121,11 +6412,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 320. Client Connection Defaults / Statement Behavior
 
@@ -7147,11 +6435,8 @@ a| 控制针对当前session的与复制相关的triggers和rules的触发(firin
 
 |===
 
-+
 
-+
 
-+
 
 321. Client Connection Defaults / Statement Behavior
 
@@ -7168,11 +6453,8 @@ h| 参数名称 h| statement_timeout
 
 |===
 
-+
 
-+
 
-+
 
 322. Client Connection Defaults / Statement Behavior
 
@@ -7189,11 +6471,8 @@ h| 参数名称 h| lock_timeout
 
 |===
 
-+
 
-+
 
-+
 
 323. Client Connection Defaults / Statement Behavior
 
@@ -7210,11 +6489,8 @@ h| 参数名称 h| idle_in_transaction_session_timeout
 
 |===
 
-+
 
-+
 
-+
 
 324. Client Connection Defaults / Statement Behavior
 
@@ -7233,9 +6509,7 @@ a| +
 
 |===
 
-+
 
-+
 
 325. Client Connection Defaults / Statement Behavior
 
@@ -7257,11 +6531,8 @@ a| +
 
 |===
 
-+
 
-+
 
-+
 
 326. Client Connection Defaults / Statement Behavior
 
@@ -7280,9 +6551,7 @@ a| +
 
 |===
 
-+
 
-+
 
 327. Client Connection Defaults / Statement Behavior
 
@@ -7301,9 +6570,7 @@ a| +
 
 |===
 
-+
 
-+
 
 328. Client Connection Defaults / Statement Behavior
 
@@ -7322,9 +6589,7 @@ a| +
 
 |===
 
-+
 
-+
 
 329. Client Connection Defaults / Statement Behavior
 
@@ -7343,9 +6608,7 @@ a| +
 
 |===
 
-+
 
-+
 
 330. Client Connection Defaults / Statement Behavior
 
@@ -7364,9 +6627,7 @@ a| +
 
 |===
 
-+
 
-+
 
 331. Client Connection Defaults / Statement Behavior
 
@@ -7382,10 +6643,3 @@ h| 参数名称 h| gin_pending_list_limit
 | 修改后何时生效 | Reload即可生效
 
 |===
-
-+
-
-<sdfield type="PAGE" subtype="RANDOM" format="PAGE">76</sdfield>
-
-PostgreSQLCHINA.com © 中国开源软件推进联盟PostgreSQL分会 image::PostgreSQL13%E6%96%87%E6%A1%A3%E4%B9%8BPG%E5%8F%82%E6%95%B0%E5%8F%82%E8%80%83%E6%89%8B%E5%86%8C_html_65203c2570992f5a.png["",107,26]
-
