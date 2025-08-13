@@ -1,12 +1,9 @@
-:sectnums:
-:sectnumlevels: 5
+:sectnumlevels: 16
 
 [.text-center]
-== PostgreSQL13商用文档之 PG 参数参考手册
+== PostgreSQL 13 商用文档之 PG 参数参考手册
 
-
-
-本文参考来源：https://www.postgresql.org/docs/13/runtime-config.html[https://www.postgresql.org/docs/13/runtime-config.html]
+本文参考来源： https://www.postgresql.org/docs/13/runtime-config.html[https://www.postgresql.org/docs/13/runtime-config.html]
 
 
 本文档贡献单位及贡献者:
@@ -18,7 +15,7 @@
 
 本文档错误反馈方式：
 
-请在https://www.pgfans.cn/blogs-tag/49[https://www.pgfans.cn/blogs-tag/49]参数参考专栏中提出。
+请在 https://www.pgfans.cn/blogs-tag/49[https://www.pgfans.cn/blogs-tag/49]参数参考专栏中提出。
 
 
 1-- Resource Usage / Disk
@@ -37,7 +34,7 @@ h| 参数名称 h| temp_file_limit
 |===
 
 
-2.-- Replication
+2-- Replication
 
 [cols="136,387"]
 |===
@@ -56,7 +53,7 @@ a| +
 
 
 
-3.-- Version and Platform Compatibility / Other Platforms and Clients
+3-- Version and Platform Compatibility / Other Platforms and Clients
 
 [cols="136,387"]
 |===
@@ -114,7 +111,7 @@ a| +
 
 
 
-6.--Process Title
+6--Process Title
 
 [cols="136,387"]
 |===
@@ -132,7 +129,7 @@ a| +
 |===
 
 
-7.-- Replication / Master Server
+7-- Replication / Master Server
 
 [cols="136,387"]
 |===
@@ -162,7 +159,7 @@ a| Reload即可生效。 +
 |===
 
 
-8.-- Replication / Master Server
+8-- Replication / Master Server
 
 [cols="136,387"]
 |===
@@ -6643,3 +6640,4 @@ h| 参数名称 h| gin_pending_list_limit
 | 修改后何时生效 | Reload即可生效
 
 |===
+
