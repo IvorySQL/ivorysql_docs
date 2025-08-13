@@ -42,9 +42,7 @@ h| 参数名称 h| track_commit_timestamp
 | 参数值数据类型 | bool
 | 默认值 | off
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 记录transaction的提交时间。注意：只有当这个参数是on时，函数pg_xact_commit_timestamp(xid)、pg_last_committed_xact()才能获得已提交事务的时间值。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -61,9 +59,7 @@ h| 参数名称 h| transform_null_equals
 | 参数值数据类型 | bool
 | 默认值 | off
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当本参数值为on时，PG会将expr=NULL(或者NULL=expr)视为expr IS NULL.本参数仅仅影响=NULL这个形式，不会影响其他形式（如in）
 | 是否可session级修改 | 可以，superuser和普通用户均可以在session级修改
 | 修改后何时生效 | Reload即可生效Session级修改时会立即在session级生效
@@ -79,9 +75,7 @@ h| 参数名称 h| max_files_per_process
 | 参数值数据类型 | integer
 | 默认值 | 1000
 | 取值范围 | 64到2147483647
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数用于设置每个server subprocess允许同时打开的files的最大数量。如果遇到&nbsp;"Too many open files"的提示，请尝试减少本参数值。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效。
@@ -96,12 +90,8 @@ a| +
 h| 参数名称 h| cluster_name
 | 参数值数据类型 | string
 | 默认值 | 空值
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数用于设置PGCluster的名字，可以用操作系统命令ps -ef| grep postgres查看该名字。该名字会出现在所有server process的开头位置，另外，对于standby连接来说，该名字还是默认的application name.
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效。
@@ -119,9 +109,7 @@ h| 参数名称 h| update_process_title
 | 参数值数据类型 | Bool
 | 默认值 | on（除windows之外的平台）；off（Windows平台）
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 每当服务器接收到一个新的 SQL 命令时都更新process title
 | 是否可session级修改 | 是，此时仅限于superuser可以在session级修改
 | 修改后何时生效 | Reload即可生效Session级修改时会立即在session级生效
@@ -136,12 +124,8 @@ a| +
 h| 参数名称 h| synchronous_standby_names
 | 参数值数据类型 | string
 | 默认值 | 空字符串
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义
 a| 本参数为primary角色库参数。本参数值区分大小写。本参数指定了支持同步复制的standby server清单。standby server的name是standby连接信息中的application_name,在物理复制standby中，standby server的name是在primary_conninfo中设置的，如果cluster_name配置参数的配置过了，那么standby server的name默认是cluster_name参数值，否则是walreceiver对于逻辑复制，可以在subscription中设置连接信息，默认值是subscription name本参数使用如下语法指定了一系列的standby servers的列表：[FIRST] num_sync ( standby_name [, ...] )ANY num_sync ( standby_name [, ...] )standby_name [, ...] +
 num_sync代表同步standby的个数举例，FIRST 3 (s1, s2, s3, s4)的含义:s1, s2, s3这三个standby是同步standbys4这个standby是潜在的同步standby(potential synchronous standbys)如果当前同步standby不论什么原因断开，它的位置会立即被next-highest-priority standby取代。关键字FIRST是可选的。FIRST 3 (s1, s2, s3, s4)中，优先级由大到小为s1>s2>s3>s4 +
@@ -167,9 +151,7 @@ h| 参数名称 h| vacuum_defer_cleanup_age
 | 参数值数据类型 | integer
 | 默认值 | 0
 | 取值范围 | 0到1000000
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义
 a| 该参数指定了在primary库上vacuum和HOT updates 会延迟清理dead row versions的事务的数量。默认值是零个事务，零个事务的含义是dead row versions会尽可能快的被removed掉。尽可能快是指dead row versions不会被任何open transaction可见。你可以在hot standby环境中的primary端为此参数设置为非零值，这允许standby端的query运行更长的时间以便完成，而不会遇到过早的dead row versions cleanup而导致冲突。由于本参数值是根据在primary上发生的写入事务的数量来衡量的，因此，很难预测会为standby query增加多长时间。 +
 本参数可以在postgresql.conf文件或者在the server command line设置 +
@@ -191,9 +173,7 @@ h| 参数名称 h| max_logical_replication_workers
 | 参数值数据类型 | integer
 | 默认值 | 4
 | 取值范围 | 0到262143
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数设置Logical replication workers进程的最大数量，此处的worker进程包括两种：apply workers 和table synchronization workers。Logical replication workers进程的数量从max_worker_processes配置参数定义的池中获取。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效。
@@ -209,9 +189,7 @@ h| 参数名称 h| max_sync_workers_per_subscription
 | 参数值数据类型 | integer
 | 默认值 | 2
 | 取值范围 | 0到262143
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 指定了每个subscription中synchronization workers的最大数量。本参数控制在subscription初始化 或者 新表加入时的initial data copy的并行度。目前，每个table只能指定一个synchronization workersynchronization workers从max_logical_replication_workers配置参数定义的池中取得。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效。
@@ -226,12 +204,8 @@ a| +
 h| 参数名称 h| restore_command
 | 参数值数据类型 | string
 | 默认值 | 空字符串
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义
 a| 恢复时指定archive wal的位置 restore_command = 'cp /mnt/server/archivedir/%f "%p"' restore_command = 'copy "C:\\server\\archivedir\\%f" "%p"' # Windows restore_command对应的命令执行成功之后，restore_command返回零， +
  %f代表archived wal文件名 %p代表copy destination path name %r代表含有最后一个有效的resart point的file的文件名 %%代表一个%字符(当需要写入%字符的情况下使用) +
@@ -250,12 +224,8 @@ a| 恢复时指定archive wal的位置 restore_command = 'cp /mnt/server/archive
 h| 参数名称 h| archive_cleanup_command
 | 参数值数据类型 | string
 | 默认值 | 空字符串
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义
 a| 本参数定义了在每个restart point时所执行的shell命令。 +
  archive_cleanup_command参数的目的是提供一个清理不再被standby server所需要的老的archived wal file的机制。 +
@@ -278,12 +248,8 @@ a| Reload即可生效。 +
 h| 参数名称 h| recovery_end_command
 | 参数值数据类型 | String
 | 默认值 | 空字符串
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数用于定义在recovery结束时候的需要执行的shell命令。如果命令返回非零值，一个警告日志消息会被写入，然后数据库会继续启动。一个例外是：当命令被一个signal终止或者shell中错误时，数据库不会继续启动。%r代表最后一个有效的restart point的wal file
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效。
@@ -299,9 +265,7 @@ h| 参数名称 h| exit_on_error
 | 参数值数据类型 | Bool
 | 默认值 | off
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义
 a| 当设置为on时，任何error均会导致session被终止。默认情况下，本参数值为off，只有FATAL error才会终止session。 postgres=# set exit_on_error=on; SET postgres=# show exit_on_error ; -[RECORD 1]-+--- exit_on_error | on +
  postgres=# begin; BEGIN postgres=*# select \* form t1; FATAL: syntax error at or near "form" LINE 1: select \* form t1; ^ server closed the connection unexpectedly This probably means the server terminated abnormally before or while processing the request. The connection to the server was lost. Attempting reset: Succeeded.postgres=#
@@ -320,12 +284,8 @@ a| 当设置为on时，任何error均会导致session被终止。默认情况下
 h| 参数名称 h| restart_after_crash
 | 参数值数据类型 | bool
 | 默认值 | on
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 当设置为on时，PostgreSQL会在backend crash之后重新初始化(即:restart)。在某些情况下，比如PostgreSQL被Clusterware调用时，需要禁用PostgreSQL的restart(将该参数值设置为off)以便clusterware获得PostreSQL的控制权并采取适当的操作。
 | 是否可session级修改 | 否
 | 修改后何时生效
@@ -342,9 +302,7 @@ h| 参数名称 h| data_sync_retry
 | 参数值数据类型 | bool
 | 默认值 | off
 | 取值范围 | off 和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 如果设置为off(默认值),当PostgreSQL flush数据到文件系统上遇到failure时，PostgreSQL会抛出一个panic级别的error。这会导致数据库服务crash掉。本参数只能在数据库服务启动之前设置。在某些操作系统中，当回写(write-back)失败之后，kernel的page cache中的数据状态是未知的(unknown).在一些情况下，它可能会被完全忘记，设置为尝试是不安全的，在实际上数据已经丢失的情况下，第二次尝试可能会报告成功，在这些场景中，避免数据损失的唯一方法是解决掉硬件问题之后从wal中恢复。当设置为on时，PostgreSQL会报告一个error并会继续运行，data flushing操作会在稍后的checkpoint中尝试。注意：仅在调查操作系统对buffered data的处理以防回写失败的情况下，才将其设置为on。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效。
@@ -360,9 +318,7 @@ h| 参数名称 h| archive_mode
 | 参数值数据类型 | enum
 | 默认值 | off
 | 取值范围 | off,on,always
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 指定归档模式。on表示启用归档模式，当wal_level配置参数值为minimal时, archive_mode&nbsp;不能设置为on。当本参数值设置为always时，standby 实例会为收到的每个wal segments调用归档命令,也就是standby实例上也会进行wal的归档操作。本参数仅仅能在pg启动时设置
 | 是否可session级修改 | 否
 | 修改后何时生效
@@ -380,12 +336,8 @@ a| 重启PG instance生效。 +
 h| 参数名称 h| archive_command
 | 参数值数据类型 | string
 | 默认值 | 空字符串
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义
 a| 定义对wal进行归档的命令。当archive_mode配置参数启用并且archive_command配置参数是空字符串时，wal archiving暂时被禁用，但是pg会继续积累wal segment文件。archive_command参数值设置为/bin/true会禁用归档，但这样会导致wal文件归档中断，归档中断是无法进行归档恢复的，请注意这一点。使用举例如下： archive_command = 'test ! -f /mnt/server/archivedir/%f && cp %p /mnt/server/archivedir/%f' # Unix archive_command = 'copy "%p" "C:\\server\\archivedir\\%f"' # Windows +
 退出码是零代表本命令正常运行。本参数可以在postgresql.conf或者server command line设置。
@@ -439,9 +391,7 @@ h| 参数名称 h| bgwriter_lru_maxpages&nbsp;
 | 参数值数据类型 | integer
 | 默认值 | 100
 | 取值范围 | 0到1073741823
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 每轮bgwriter进程写入LRU Page的最大数量。本参数设置为零会禁用background writing行为，但是background writer进程依然会存在。本参数可以在postgresql.conf或者server command line设置
 | 是否可session级修改 | 否
 | 修改后何时生效
@@ -458,9 +408,7 @@ h| 参数名称 h| bgwriter_lru_multiplier&nbsp;
 | 参数值数据类型 | real
 | 默认值 | 2.0
 | 取值范围 | 0到10
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 每轮写dirty buffer的数量基于服务器进程(即:backend process)在最近几轮中所需要的新buffer数量。最近的平均需要量乘以本参数值就是下一轮需要的新buffers数量的估计值。Dirty buffers会一直写入，直到有那么多干净的、可重用的buffers为止。因此，本参数值为1.0表示准确预计了需要的buffers数量。较大的本参数值提供了一些缓冲，以防需求激增，而较小的本参数值会有意将写dirty buffers操作留给服务器进程(即:backend process)完成。本参数可以在postgresql.conf或者server command line设置
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -497,9 +445,7 @@ h| 参数名称 h| log_statement_stats
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 在本参数设置为on的情况下，pg会向运行日志中写入系统性能统计信息。本参数on时，其他参数（log_parser_stats&nbsp;、log_planner_stats、log_executor_stats）必须设置为off在本参数设置为on的情况下，当前台发出SQL语句时（如下以psql中执行select \* from pg_database为例子），在pg的运行日志中，会有如下的输出： 2021-03-31 09:55:21.621 CST,"pg131","postgres",8896,"[local]",6063d5a4.22c0,6,"",2021-03-31 09:51:32 CST,3/0,0,LOG,00000,"QUERY STATISTICS","! system usage stats: ! 0.000657 s user, 0.000000 s system, 0.000657 s elapsed ! [0.003464 s user, 0.001403 s system total] ! 6288 kB max resident size ! 0/8 [0/24] filesystem blocks in/out ! 0/128 [0/1295] page faults/reclaims, 0 [0] swaps ! 0 [0] signals rcvd, 0/0 [0/0] messages rcvd/sent! 0/0 [11/2] voluntary/involuntary context switches",,,,,"select \*from pg_database;",,,"psql","client backend"
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级修改立即生效；非session级修改reload生效，仅仅superuser能修改本参数
@@ -516,9 +462,7 @@ h| 参数名称 h| log_parser_stats
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 在本参数设置为on的情况下，pg会向运行日志中写入解析统计信息。在本参数设置为on的情况下，log_statement_stats配置参数无法设置为on，设置为on时会有如下的错误： postgres=# alter system set log_statement_stats='on'; ERROR: invalid value for parameter "log_statement_stats": 1 DETAIL: Cannot enable "log_statement_stats" when "log_parser_stats", "log_planner_stats", or "log_executor_stats" is true. postgres=#在本参数设置为on的情况下，当前台发出SQL语句时（如下以psql中执行select \* from pg_database为例子），在pg的运行日志中，会有如下的输出： 2021-03-31 10:16:25.962 CST,"pg131","postgres",8896,"[local]",6063d5a4.22c0,41,"",2021-03-31 09:51:32 CST,3/3486,0,LOG,00000,"PARSER STATISTICS","! system usage stats: ! 0.000019 s user, 0.000000 s system, 0.000019 s elapsed ! [0.015481 s user, 0.001403 s system total] ! 7720 kB max resident size ! 0/0 [0/56] filesystem blocks in/out ! 0/0 [0/1673] page faults/reclaims, 0 [0] swaps ! 0 [0] signals rcvd, 0/0 [0/0] messages rcvd/sent ! 0/0 [39/6] voluntary/involuntary context switches",,,,,"select \* from pg_database;",,,"psql","client backend" 2021-03-31 10:16:25.962 CST,"pg131","postgres",8896,"[local]",6063d5a4.22c0,42,"",2021-03-31 09:51:32 CST,3/3486,0,LOG,00000,"statement: select \* from pg_database;",,,,,,,,,"psql","client backend" 2021-03-31 10:16:25.962 CST,"pg131","postgres",8896,"[local]",6063d5a4.22c0,43,"",2021-03-31 09:51:32 CST,3/3486,0,LOG,00000,"PARSE ANALYSIS STATISTICS","! system usage stats: ! 0.000031 s user, 0.000000 s system, 0.000030 s elapsed ! [0.015565 s user, 0.001403 s system total] ! 7720 kB max resident size ! 0/0 [0/56] filesystem blocks in/out ! 0/0 [0/1673] page faults/reclaims, 0 [0] swaps ! 0 [0] signals rcvd, 0/0 [0/0] messages rcvd/sent ! 0/0 [39/6] voluntary/involuntary context switches",,,,,"select \* from pg_database;",,,"psql","client backend" 2021-03-31 10:16:25.962 CST,"pg131","postgres",8896,"[local]",6063d5a4.22c0,44,"",2021-03-31 09:51:32 CST,3/3486,0,LOG,00000,"REWRITER STATISTICS","! system usage stats: ! 0.000003 s user, 0.000000 s system, 0.000003 s elapsed ! [0.015582 s user, 0.001403 s system total] ! 7720 kB max resident size ! 0/0 [0/56] filesystem blocks in/out ! 0/0 [0/1673] page faults/reclaims, 0 [0] swaps ! 0 [0] signals rcvd, 0/0 [0/0] messages rcvd/sent! 0/0 [39/6] voluntary/involuntary context switches",,,,,"select \* from pg_database;",,,"psql","client backend"
 | 是否可session级修改 | 是，但是不能在log_statement_stats=on时设置本参数为on
 | 修改后何时生效 | Session级修改立即生效非session级修改reload生效，仅仅superuser能修改本参数
@@ -535,9 +479,7 @@ h| 参数名称 h| log_planner_stats
 | 参数值数据类型 | boolean
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 在本参数设置为on的情况下，pg会向运行日志中写入规划器统计信息。在本参数设置为on的情况下，log_statement_stats配置参数无法设置为on，设置为on时会有如下的错误： postgres=# alter system set log_statement_stats='on'; ERROR: invalid value for parameter "log_statement_stats": 1 DETAIL: Cannot enable "log_statement_stats" when "log_parser_stats", "log_planner_stats", or "log_executor_stats" is true. postgres=#在本参数设置为on的情况下，当前台发出SQL语句时（如下以psql中执行select \* from pg_database为例子），在pg的运行日志中，会有如下的输出： 2021-03-31 10:24:39.323 CST,"pg131","postgres",8896,"[local]",6063d5a4.22c0,63,"",2021-03-31 09:51:32 CST,3/3491,0,LOG,00000,"PLANNER STATISTICS","! system usage stats: ! 0.000041 s user, 0.000006 s system, 0.000045 s elapsed ! [0.017384 s user, 0.002173 s system total] ! 7740 kB max resident size ! 0/0 [0/80] filesystem blocks in/out ! 0/0 [0/1674] page faults/reclaims, 0 [0] swaps ! 0 [0] signals rcvd, 0/0 [0/0] messages rcvd/sent! 0/0 [55/10] voluntary/involuntary context switches",,,,,"select \* from pg_database;",,,"psql","client backend"
 | 是否可session级修改 | 是，但是不能在log_statement_stats=on时设置本参数为on
 | 修改后何时生效 | Session级修改立即生效;非session级修改reload生效，仅仅superuser能修改本参数
@@ -554,9 +496,7 @@ h| 参数名称 h| log_executor_stats
 | 参数值数据类型 | Bool
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 在本参数设置为on的情况下，pg会向运行日志中写入执行器统计信息。在本参数设置为on的情况下，log_statement_stats配置参数无法设置为on，设置为on时会有如下的错误： postgres=# alter system set log_statement_stats='on'; ERROR: invalid value for parameter "log_statement_stats": 1 DETAIL: Cannot enable "log_statement_stats" when "log_parser_stats", "log_planner_stats", or "log_executor_stats" is true. postgres=#在本参数设置为on的情况下，当前台发出SQL语句时（如下以psql中执行select \* from pg_database为例子），在pg的运行日志中，会有如下的输出： 2021-03-31 10:27:59.858 CST,"pg131","postgres",8896,"[local]",6063d5a4.22c0,71,"",2021-03-31 09:51:32 CST,3/3496,0,LOG,00000,"EXECUTOR STATISTICS","! system usage stats: ! 0.000031 s user, 0.000000 s system, 0.000030 s elapsed ! [0.018581 s user, 0.003320 s system total] ! 7744 kB max resident size ! 0/0 [0/104] filesystem blocks in/out ! 0/0 [0/1676] page faults/reclaims, 0 [0] swaps ! 0 [0] signals rcvd, 0/0 [0/0] messages rcvd/sent! 0/0 [71/14] voluntary/involuntary context switches",,,,,"select \* from pg_database;",,,"psql","client backend"
 | 是否可session级修改 | 是，但是不能在log_statement_stats=on时设置本参数为on
 | 修改后何时生效 | Session级修改立即生效非session级修改reload生效，仅仅superuser能修改本参数
@@ -572,12 +512,8 @@ a| +
 h| 参数名称 h| jit_provider
 | 数据类型 | string
 | 默认值 | llvmjit
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数值指定了jit provider library的名称，本参数仅仅可以在pg启动时设置。若是指定了不存在的library，则jit不可用，但是不会有报错抛出。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -593,12 +529,8 @@ a| +
 h| 参数名称 h| local_preload_libraries
 | 数据类型 | string
 | 默认值 | 空字符串
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数指定在连接启动时被预加载的一个或多个共享库。多个库名称以逗号分隔，其中每个库名的解释与load命令相同。库名之间的空格会被忽略，若是需要在库名中包括空格或者逗号，请用双引号将库名引起来。参数值仅仅在连接开始时生效，后续更改无效。如果找不到指定的库，则连接会将失败(即:连接将无法登陆到数据库中)。本参数任何user都可以设置。因此，被加载的共享库仅仅限于在$libdir/plugins目录下。数据库管理员有责任确保该目录下的共享库的安全性。本参数的参数值可以明确指定目录，比如$libdir/plugins/mylib，或者仅仅指定library名称，比如mylib，mylib的作用等同于$libdir/plugins/mylib本参数的目的是允许非授权用户加载debugging或者performance-measurement 库到特定session中，而无需load命令。为此，可以在客户端上使用设置了本参数的PGOPTIONS环境变量或者使用alter role set
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级修改立即生效非session级修改reload生效
@@ -614,12 +546,8 @@ a| +
 h| 参数名称 h| session_preload_libraries
 | 数据类型 | string
 | 默认值 | 空字符串
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数值指定了在连接启动时被预加载的一个或者多个共享库。多个库名称以逗号分隔，其中每个库名的解释与load命令相同。库名之间的空格会被忽略，若是需要在库名中包括空格或者逗号，请用双引号将库名引起来。参数值仅仅在连接开始时生效，后续更改无效。如果找不到指定的库，则连接会将失败(即:连接将无法登陆到数据库中)。本参数的目的是允许加载debugging或者performance-measurement 库到特定session中，而无需load命令。比如，使用alter role set 语句设置本参数可以将auto_explain针对所有session生效。与shared_preload_libraries不同，在会话开始时（而不是在首次使用时）加载库没有太大的性能优势。但是，使用连接池时有一些优点。
 | 是否可session级修改 | 可以，只有superuser可以改变本参数值
 | 修改后何时生效 | Session级修改立即生效非session级修改reload生效，reload之后，仅仅对新启动的session生效。
@@ -635,12 +563,8 @@ a| +
 h| 参数名称 h| shared_preload_libraries
 | 数据类型 | string
 | 默认值 | 空字符串
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数值指定了在PostgreSQL数据库启动时被预加载的一个或者多个共享库。多个库名称以逗号分隔，其中每个库名的解释与load命令相同。库名之间的空格会被忽略，若是需要在库名中包括空格或者逗号，请用双引号将库名引起来。该参数只能在PostgreSQL数据库启动时设置，若是找不到指定的库，PostgreSQL数据库启动会失败。设置了本参数之后，新的backend process的启动时间会略有延长，即使这个backedn process不用这个共享库。因此，本参数推荐用于哪些在绝大多数session中使用的共享库。另外，由于本参数需要重启PostgreSQL数据库生效，因此，若是用于短期的debugging目的，请使用session_preload_libraries参数。请注意，在Windows主机上，在服务器启动时预加载库不会减少启动每个新服务器进程所需的时间。每个服务器进程将重新加载所有预加载库。但是，对于需要在postmaster启动时执行操作的库，本参数在windows主机上是很有用的。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -675,9 +599,7 @@ h| 参数名称 h| max_locks_per_transaction
 | 数据类型 | integer
 | 默认值 | 64
 | 取值范围 | 10到2147483647
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义
 a| 共享锁表(shared lock table)追踪max_locks_per_transaction \* (max_connections + max_prepared_transactions) 个lock objects，因此，一次只能锁定这么多不同的对象。本参数控制分配给每个事务的object lock的平均数量。单个事务可以锁定更多的对象，只要所有事务的锁都在锁表(lock table)中. 本参数值不是可以锁定的行数；可以锁定的行数是无限的。max_locks_per_transaction的默认值是64在历史上是被证明足够的，但是如果在多个事务中有涉及多个不同的表的SQL语句(比如一个有多个子表的父表的SQL语句),则可能提高该数值。本参数只能在PostgreSQL数据库启动时设置。当存在standby server时，standby server上的本参数值要大于或者等于master server上的本参数值，否则，查询语句在standby server上是不被允许的。 +
 
@@ -698,9 +620,7 @@ h| 参数名称 h| max_pred_locks_per_transaction
 | 数据类型 | Integer
 | 默认值 | 64
 | 取值范围 | 10到2147483647
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 共享谓词锁表(shared predicate lock table)追踪max_pred_locks_per_transaction \* (max_connections + max_prepared_transactions) 个lock objects，因此，一次只能锁定这么多不同的对象。本参数控制分配给每个事务的object lock的平均数量。单个事务可以锁定更多的对象，只要所有事务的锁都在锁表(lock table)中. 本参数值不是可以锁定的行数；可以锁定的行数是无限的。本参数默认值64在测试环境中是足够的，但是如果你的client在单个串行化事务中用到了多个不同的table，你可能需要加大本参数值。本参数只能在PostgreSQL数据库启动时设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -717,9 +637,7 @@ h| 参数名称 h| max_pred_locks_per_relation
 | 数据类型 | Integer
 | 默认值 | -2
 | 取值范围 | -2147483648到2147483647
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数控制在将锁提升为覆盖整个relation之前，单个relation中能有多少pages或者tuples能被predicate-locked&nbsp;。本参数值大于等于零时表示绝对限制，本参数值为负值时表示max_pred_locks_per_transaction/本参数值的绝对值。本参数可以在postgresql.conf设置也可以在server command line设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload生效
@@ -735,9 +653,7 @@ h| 参数名称 h| max_pred_locks_per_page
 | 数据类型 | integer
 | 默认值 | 2
 | 取值范围 | 0到2147483647
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数控制在将锁提升为覆盖整个page之前，单个page中能有多少tuples能被predicate-locked。本参数可以在postgresql.conf设置也可以在server command line设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload生效
@@ -774,9 +690,7 @@ h| 参数名称 h| vacuum_cost_page_hit
 | 数据类型 | Integer
 | 默认值 | 1
 | 取值范围 | 0到10000
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 对shared buffer中发现的一个buffer进行vacuum的估计成本，本成本代表：锁定buffer pool的成本+查找shared hash table的成本+扫描page中内容的成本。 
 | 是否可session级修改 | 是
 | 修改后何时生效 | session修改会立即生效;非session级修改reload即可生效。
@@ -793,9 +707,7 @@ h| 参数名称 h| vacuum_cost_page_miss
 | 数据类型 | Integer
 | 默认值 | 10
 | 取值范围 | 0到10000
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 对不在shared buffer中的一个buffer(只能从disk读取)进行vacuum的估计成本,本成本代表：锁定buffer pool的成本+查找shared hash table的成本+从disk中读取该block到buffer的成本+扫描page中内容的成本。 
 | 是否可session级修改 | 是
 | 修改后何时生效 | session修改会立即生效;非session级修改reload即可生效。
@@ -812,9 +724,7 @@ h| 参数名称 h| vacuum_cost_page_dirty
 | 数据类型 | Integer
 | 默认值 | 20
 | 取值范围 | 0到10000
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | Vacuum改变一个之前是干净的block的估计成本。本成本代表：额外的io操作以便将dirty block刷新到disk中。
 | 是否可session级修改 | 是
 | 修改后何时生效 | session修改会立即生效；非session级修改reload即可生效。
@@ -832,9 +742,7 @@ h| 参数名称 h| vacuum_cost_limit&nbsp;
 | 数据类型 | Integer
 | 默认值 | 200
 | 取值范围 | 1到10000
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数值是一个累积vacuum io操作的成本值，当vacuum操作达到本参数值之后，vacuum操作会停下来休眠一段时间。
 | 是否可session级修改 | 是
 | 修改后何时生效 | session修改会立即生效；非session级修改reload即可生效。
@@ -851,9 +759,7 @@ h| 参数名称 h| max_wal_senders
 | 数据类型 | Integer
 | 默认值 | 10
 | 取值范围 | 0到262143，0表示复制被禁用
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 同时运行wal sender process的最大数量。运行wal sender process的场景包括流复制和以streaming模式进行base backup(译者注：其实还包括逻辑复制使用逻辑复制槽的场景，但是在PostgreSQL文档中并没有写明这一点)。本参数仅能在PostgreSQL启动时进行设置。配置参数waL_level必须设置为replica或者更高的值以便允许来自standby server的连接。在流复制环境中，在流复制备库上的该参数值至少要等于或者大于流复制主库上的该参数值，否则在备库上的query是不允许的。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instanc生效
@@ -870,9 +776,7 @@ h| 参数名称 h| max_replication_slots
 | 数据类型 | Integer
 | 默认值 | 10
 | 取值范围 | 0到262143
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义
 a| 设置PostgreSQL能支持的复制槽的最大数量，本参数仅能在PostgreSQL启动时进行设置。当本参数值小于当前已经存在的replicat slot时，会导致PG instance无法启动。配置参数waL_level必须设置为replica或者更高的值以便允许replication slot被用到。 +
 
@@ -968,9 +872,7 @@ h| 参数名称 h| password_encryption
 | 数据类型 | enum
 | 默认值 | md5
 | 取值范围 | md5和scram-sha-256，写on也可以，on与md5有相同的作用。
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数决定了create role或者alter role语句中指定的密码的加密算法。请注意，老的客户端版本不支持SCRAM-SHA-256密码加密算法，具体请见下面的描述。有两个关键的标准去确定是否支持SCRAM密码加密算法。 正在运行PostgreSQL 10及其更高版本 你用来连接到PostgreSQL数据库的驱动有SCRAM兼容性。PostgreSQL社区已经提供了一个驱动清单(https://wiki.postgresql.org/wiki/List_of_drivers#Drivers)如果您的系统满足上述两个标准，您可以使用SCRAM密码加密算法。请注意：要把现有的环境从md5升级到scram-sha-256，可以在确保所有在用的客户端已经足以支持SCRAM之后，在postgresql.conf中设置password_encryption = 'scram-sha-256'，然后让所有用户设置新口令并且在pg_hba.conf中将认证方法说明改为scram-sha-256。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级修改立即生效；非session级修改reload生效
@@ -987,12 +889,8 @@ a| +
 h| 参数名称 h| krb_server_keyfile
 | 数据类型 | string
 | 默认值 | FILE:<sysconfdir>/krb5.keytab，注意,sysconfdir代表sysconfdir目录，该目录可以用pg_config --sysconfdir操作系统命令获得。
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 设置服务器Kerberos key file的位置。如果本参数设置为空字符串(empty string),PostgreSQL会忽略这个空字符串，此时系统默认值会被使用。本参数值在postgresql.conf或者server command line中设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -1008,12 +906,8 @@ a| +
 h| 参数名称 h| krb_caseins_users
 | 数据类型 | bool
 | 默认值 | off，off代表大小写敏感
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数用于控制GSSAPI user names是否被视为大小写不敏感，本参数值仅能在postgresql.conf或者server command line中设置
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -1030,9 +924,7 @@ h| 参数名称 h| db_user_namespace
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义
 a| 若本参数值设置为on，那么创建的用户名的格式是username@dbname，当client传递username时，@符以及database name会被附加到username的末尾，并且PostgreSQL数据库查询用户是查找username@dbname这个格式的用户。当你在SQL环境中使用username@dbname这个格式的用户名时，请使用引号引起来username@dbname。当本参数值设置为on时，你依然可以建立普通的全局users，在客户端指定username时加上@即可，当PostgreSQL查找username之前，@符号会被去掉。 +
 本参数会导致客户端和服务器端的用户名称表示方法不同。认证始终检查服务器端的username。因此，认证方法必须被配置为服务器端的username。因为md5密码加密算法在客户端和服务器端均使用username作为salt，因此，md5密码加密算法不能与本参数值一起使用。 +
@@ -1053,9 +945,7 @@ h| 参数名称 h| track_activities
 | 数据类型 | boolean
 | 默认值 | on
 | 取值范围 | on 和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当设置为on时，当每个session中执行SQL语句或者命令时，PostgreSQL会收集信息（包括命令执行的时间信息）。收集的信息仅仅对superuser和执行命令所在session的owner可见。
 | 是否可session级修改 | 是，仅限于superuser可进行session级修改
 | 修改后何时生效 | Session级修改立即生效;非session级修改reload生效
@@ -1090,9 +980,7 @@ h| 参数名称 h| track_counts
 | 数据类型 | Bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当设置为on时，针对database activity收集统计信息。Autovacuum进程需要这些收集的信息。
 | 是否可session级修改 | 是，仅限于superuser可进行session级修改
 | 修改后何时生效 | Session级修改立即生效；非session级修改reload生效
@@ -1110,9 +998,7 @@ h| 参数名称 h| track_io_timing
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 是否为database中的 io call/activity启用计时（即:io操作消耗了多少时间）。io计时信息体现在如下方面： pg_stat_database中 explain 带buffer时的输出中 pg_stat_statements中当设置为on时,PostgreSQL会重复查询操作系统的当前时间，这个可能会导致在某些平台下有大量开销。您可以使用pg_test_timing工具(该工具在bin目录下)来衡量系统的计时开销。仅superuser可以更改本参数值
 | 是否可session级修改 | 是，仅限于superuser可进行session级修改
 | 修改后何时生效 | Session级修改立即生效非session级修改reload生效
@@ -1129,9 +1015,7 @@ h| 参数名称 h| track_functions
 | 数据类型 | enum
 | 默认值 | none，none的含义是禁用本功能
 | 取值范围 | none,pl,all
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 启用追踪函数调用计数和消耗的时间。参数值pl的含义是仅仅对procedural-language函数进行追踪，参数值all的含义是追踪SQL和C语言函数。仅superuser可以更改本参数值
 | 是否可session级修改 | 是，仅限于superuser可进行session级修改
 | 修改后何时生效 | Session级修改立即生效；非session级修改reload生效
@@ -1148,12 +1032,8 @@ a| +
 h| 参数名称 h| stats_temp_directory
 | 数据类型 | string
 | 默认值 | pg_stat_tmp
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数值用于指定存储临时统计信息的目录。本参数值可以是绝对路径，也可以是相对于data directory的相对路径本参数值指定为基于RAM的文件系统会减少物理IO并提升性能。本参数仅能在postgresql.conf中设置或者在server command line设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload生效
@@ -1169,15 +1049,9 @@ a| +
 |===
 h| 参数名称 h| data_directory
 | 数据类型 | string
-| 默认值
-a| +
-
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 默认值 |
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数值表示PostgreSQL的数据目录的位置
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -1193,12 +1067,8 @@ a| +
 h| 参数名称 h| config_file
 | 数据类型 | string
 | 默认值 | 在数据目录中
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数值指定了postgresql.conf的位置本参数值仅仅可以在postgres command line设置
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -1214,12 +1084,8 @@ a| +
 h| 参数名称 h| hba_file
 | 数据类型 | string
 | 默认值 | 在数据目录中
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数值指定了pg_hba.conf的位置；本参数值仅仅可以在PostgreSQL启动时设置
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -1237,12 +1103,8 @@ a| +
 h| 参数名称 h| ident_file
 | 数据类型 | string
 | 默认值 | 在数据目录中
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数值指定了pg_ident.conf的位置本参数值仅仅可以在PostgreSQL启动时设置
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -1259,12 +1121,8 @@ a| +
 h| 参数名称 h| external_pid_file
 | 数据类型 | string
 | 默认值 | 空字符串
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 指定了将postmaster的pid写入哪个文件本参数值仅仅可以在PostgreSQL启动时设置。 postgres=# alter system set external_pid_file='/home/pg131/postmasterpid.txt'; ALTER SYSTEM postgres=# exit [pg131@VM-0-8-centos ~]$ pg_ctl restart waiting for server to shut down.... done server stopped waiting for server to start....2021-04-09 10:09:21.776 CST [5977] LOG: redirecting log output to logging collector process 2021-04-09 10:09:21.776 CST [5977] HINT: Future log output will appear in directory "log". done server started [pg131@VM-0-8-centos ~]$ cd [pg131@VM-0-8-centos ~]$ ll total 136260 -rw-rw-r-- 1 pg131 pg131 0 Mar 10 20:47 12345aa drwxrwxr-x 2 pg131 pg131 4096 Apr 9 10:09 archive drwx------ 20 pg131 pg131 4096 Apr 9 10:09 data -rw-rw-r-- 1 pg131 pg131 72 Mar 23 10:34 para.sql drwxrwxr-x 6 pg131 pg131 4096 Dec 20 14:32 postgresql-13.1 -rw-r--r-- 1 pg131 pg131 139499520 Dec 20 14:07 postgresql-13.1.tar -rw-r--r-- 1 pg131 pg131 5 Apr 9 10:09 postmasterpid.txt drwxrwxr-x 7 pg131 pg131 4096 Dec 20 14:45 soft drwx------ 3 pg131 pg131 4096 Dec 20 16:04 ts1 [pg131@VM-0-8-centos ~]$ cat postmasterpid.txt 5977 [pg131@VM-0-8-centos ~]$ pg_ctl status pg_ctl: server is running (PID: 5977) /home/pg131/soft/bin/postgres[pg131@VM-0-8-centos ~]$
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -1281,9 +1139,7 @@ h| 参数名称 h| log_min_messages
 | 数据类型 | enum
 | 默认值 | warning
 | 取值范围 | debug5,debug4,debug3,debug2,debug1,info,notice,warning,error,log,fatal,panic
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 控制哪种message level写入系统日志。取值范围见上。在上面的取值范围中，前一个取值包括其后的取值。在上面的取值范围中，级别越在后边，写入系统日志中的messages就越少。注意: 本参数的参数值log的级别与client_min_messages配置参数的参数值log的级别不同。仅允许superuser可以修改本参数值。
 | 是否可session级修改 | 是，此时仅限于superuser在session级别修改
 | 修改后何时生效 | Session级别修改立即生效；其他级别修改reload生效
@@ -1300,9 +1156,7 @@ h| 参数名称 h| log_min_error_statement
 | 数据类型 | enum
 | 默认值 | error，表示那些导致了errors、log messages、fatal errors、panics的SQL语句会被记录到日志中。
 | 取值范围 | debug5,debug4,debug3,debug2,debug1,info,notice,warning,error,log,fatal,panic
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 控制导致何种级别错误的SQL语句内容被记录到日志中。为了关闭对错误SQL语句的记录，请设置被参数值为panic仅允许superuser可以修改本参数值。
 | 是否可session级修改 | 是，此时仅限于superuser在session级别修改
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -1353,9 +1207,7 @@ h| 参数名称 h| log_statement_sample_rate
 | 数据类型 | Real
 | 默认值 | 1
 | 取值范围 | 0到1
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 确定将记录的持续时间超过log_min_duration_sample参数值的的语句的比率。例如0.5意味着统计上每两个给定语句中就有一个被记录的机会。默认值为1.0，意味着记录所有采样语句。本参数值设置为0表示禁用sampled statement-duration logging。仅允许superuser可以修改本参数值。
 | 是否可session级修改 | 是，此时仅限于superuser在session级别修改
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -1371,9 +1223,7 @@ h| 参数名称 h| log_transaction_sample_rate
 | 数据类型 | Real
 | 默认值 | 0，参数值为0表示不记录任何其他事务的语句
 | 取值范围 | 0到1，参数值为1表示记录所有事物的所有语句
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 设置除其他原因记录的语句之外，所有记录语句的事务的百分比，本参数适用于每个新事务，而不考虑其语句的持续时间。采样是随机的，例如0.1意味着在统计上，每十个交易中有一个机会记录任何给定的事务。本参数值有助于构建一个事务的采样。仅允许superuser可以修改本参数值。另外请注意：与所有statement-logging选项一样，本参数会显著增加系统负载。
 | 是否可session级修改 | 是，此时仅限于superuser在session级别修改
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -1408,9 +1258,7 @@ h| 参数名称 h| checkpoint_completion_target
 | 数据类型 | Real
 | 默认值 | 0.5
 | 取值范围 | 0到1
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 指定了checkpoint 完成的目标，即:checkpoint需要在checkpoint_timeout\* checkpoint_completion_target的时间长度内完成。本参数值仅能在postgresql.conf设置或者在server command line中设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -1500,12 +1348,8 @@ h| 参数名称 h| min_wal_size
 h| 参数名称 h| dynamic_library_path
 | 数据类型 | string
 | 默认值 | $libdir, $libdir代表的绝对路径请见pg_config --pkglibdir命令的输出
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 如果需要打开可动态加载的模块，并且create function 或LOAD命令中指定的文件名没有目录组件（即名称不包含斜杠），系统将在该路径中搜索所需的文件。本参数值必须是由冒号分隔(针对Linux平台)或者分号分隔(针对Windows平台)的绝对路径列表。如果本参数值以特殊字符串$libdir开头，那么编译后的PostgreSQL package library directory会取代$libdir, PostgreSQL package library directory请见pg_config --pkglibdir命令的结果。若是本参数值被设置为空字符串，表示自动path search功能会被关闭。superuser可以在运行时更改此参数，但这样做的设置只会持续到客户端连接结束，因此应将此方法保留用于开发目的。
 | 是否可session级修改 | 是，此时仅限于superuser在session级别修改。
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -1522,9 +1366,7 @@ h| 参数名称 h| gin_fuzzy_search_limit
 | 数据类型 | integer
 | 默认值 | 0，0表示无限制
 | 取值范围 | 0到2147483647
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | GIN索引扫描返回的结果集大小的软上限。开发GIN索引的主要目的是在PostgreSQL中创建对高度可伸缩的全文搜索的支持，而且通常情况下，全文搜索会返回非常大的结果集。此外，当查询包含非常频繁的单词时，这种情况经常发生，因此大的结果集甚至没有用处。因为从磁盘读取许多元组并对它们进行排序可能需要花费大量时间，这对于生产来说是不可接受的。（请注意，索引搜索本身非常快。）为了便于此类查询的受控执行，GIN对返回的行数有一个可配置的软上限，这就是gin_fuzzy_search_limit配置参数。默认设置为0（表示无限制）。如果设置了非零限制，则返回的集是随机选择的整个结果集的子集。"软"意味着返回结果的实际数量可能与指定的限制有所不同，这取决于查询和系统随机数生成器的质量。从经验来看，以千为单位的本参数值（例如，5000-20000）工作正常。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload生效
@@ -1538,14 +1380,10 @@ a| +
 [cols="136,387"]
 |===
 h| 参数名称 h| tcp_keepalives_count
-| 数据类型
-a| +
-
+| 数据类型 |
 | 默认值 | 0，0表示取操作系统的默认值， 
 | 取值范围 | 0到2147483647
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 指定在服务器与客户端的连接被视为已断开之前可以被丢弃的TCP keepalive messages.在一个基于Unix-domain socket的session中，本参数会被忽略，此时本参数值被视为零。本参数在Windows操作系统上不被支持，因此，在Windows操作系统上，本参数值必须为0。本参数仅仅支持符合如下条件的操作系统：那些支持TCP_KEEPCNT或者等价socket option的操作系统。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -1612,9 +1450,7 @@ h| 参数名称 h| geqo
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义
 a| 启用或者禁用genetic query optimization，生产环境中不应该将本参数设置为off。配置参数geqo_threshold提供了对GEQO更细粒度的控制。遗传查询优化器（GEQO）是一种使用启发式搜索进行查询计划的算法。这减少了用于复杂查询（那些包含许多关系的查询）的计划时间，但所产生的计划的成本有时不如普通穷举搜索算法所找到的计划。 +
 
@@ -1633,9 +1469,7 @@ h| 参数名称 h| geqo_threshold
 | 数据类型 | integer
 | 默认值 | 12
 | 取值范围 | 2到2147483647
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数是启用geqo的阈值，即:当from之后的关系数量至少有本参数值指定的个数时，才启用geqo。注意一个FULL OUTER JOIN只被计为一个FROM项。对于简单的SQL语句，通常最好使用常规的穷举搜索planner，但是对于具有许多表的查询，穷举搜索花费的时间太长，通常比执行次优计划的代价要长，因此，本阈值是管理geqo的一种方法。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -1652,9 +1486,7 @@ h| 参数名称 h| geqo_effort
 | 数据类型 | Integer
 | 默认值 | 5
 | 取值范围 | 1到10
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 控制GEQO中计划时间和查询计划质量之间的权衡。此变量必须是1到10之间的整数。默认值为5。较大的值会增加生成查询计划所花费的时间，但也会增加选择高效查询计划的可能性。本参数实际上并不直接做任何事情；它只用于计算影响geqo行为的其他变量的默认值。如果愿意，可以手动设置其他参数。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -1671,9 +1503,7 @@ h| 参数名称 h| geqo_pool_size
 | 数据类型 | Integer
 | 默认值 | 0，0表示PostgreSQL会根据SQL语句中表的数量以及geqo_effort参数值选择一个合适的值。
 | 取值范围 | 0到2147483647
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 控制GEQO使用的pool size，即:遗传群体中的个体数，至少是2，有用的值通常是100到1000. 参数值为0表示PostgreSQL会根据SQL语句中表的数量以及geqo_effort参数值选择一个合适的值。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -1690,9 +1520,7 @@ h| 参数名称 h| geqo_generations
 | 数据类型 | Integer
 | 默认值 | 0
 | 取值范围 | 0到2147483647
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 控制GEQO使用的generations，即算法的迭代次数。它必须至少是一个，并且有用的值通常是100到1000。如果设置为零（默认设置），则PostgreSQL会根据geqo_pool_size选择合适的值。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -1709,9 +1537,7 @@ h| 参数名称 h| geqo_selection_bias
 | 数据类型 | real
 | 默认值 | 2
 | 取值范围 | 1.5到2
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 控制GEQO使用的选择偏差。选择偏差是population内部的选择压力
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -1727,9 +1553,7 @@ h| 参数名称 h| geqo_seed
 | 数据类型 | real
 | 默认值 | 0
 | 取值范围 | 0到1
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 控制GEQO用于通过连接顺序搜索空间选择随机路径的随机数生成器的初始值，更改该值将更改所探索的连接路径集。并可能导致找到更好或更差的最佳路径
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -1746,9 +1570,7 @@ h| 参数名称 h| recovery_target
 | 数据类型 | string
 | 默认值 | 空串
 | 取值范围 | immediate
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 此参数指定恢复应在达到一致状态后尽快结束，即尽早结束。从联机备份还原时，这意味着在备份结束的时间点结束恢复。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 本参数不支持修改。
@@ -1764,12 +1586,8 @@ a| +
 h| 参数名称 h| recovery_target_name
 | 数据类型 | string
 | 默认值 | 空串
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 此参数指定将继续恢复(recovery)到的命名还原点,该还原点由函数pg_create_restore_point()创建。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG Instance生效
@@ -1785,12 +1603,8 @@ a| +
 h| 参数名称 h| recovery_target_time
 | 数据类型 | string
 | 默认值 | 空串
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 此参数指定将继续恢复(recovery)到的time stamp，精确的停止点受到recovery_target_inclusive配置参数影响。此参数的值是一个时间戳，其格式与timestamp with time zone数据类型所接受的格式相同，只是您不能使用时区缩写（除非在配置文件的前面设置了timezone_abbreviations变量）。首选样式是使用UTC的数字偏移量，或者您可以编写完整的时区名称，例如，Europe/Helsinki，而不是EEST
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG Instance生效
@@ -1805,15 +1619,9 @@ a| +
 |===
 h| 参数名称 h| recovery_target_xid
 | 数据类型 | string
-| 默认值
-a| +
-
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 默认值 |
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 此参数指定将继续恢复(recovery)到的trasaction ID。请记住，虽然事务ID在事务开始时按顺序分配，但事务可以按不同的数字顺序完成。要恢复的事务是在指定事务之前提交的事务（也可以选择包括指定事务），精确的停止点受到recovery_target_inclusive配置参数影响。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG Instance生效
@@ -1829,12 +1637,8 @@ a| +
 h| 参数名称 h| recovery_target_lsn
 | 数据类型 | string
 | 默认值 | 空串
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 此参数指定将继续恢复(recovery)到的LSN，精确的停止点受到recovery_target_inclusive配置参数影响。本参数使用系统数据类型pg_lsn解析。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG Instance生效
@@ -1851,9 +1655,7 @@ h| 参数名称 h| recovery_target_inclusive
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当本参数设置为on时指定到达指定的recovery target之后停止当本参数设置为off时指定到达指定的recovery target之前停止本参数与如下参数配合使用：recovery_target_lsn、recovery_target_time、recovery_target_xid。本参数控制含有精确recovery target(恢复目标)的LSN、commit time、或者trasaction id是否被包括恢复(recovery)之内。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG Instance生效
@@ -1869,12 +1671,8 @@ a| +
 h| 参数名称 h| recovery_target_timeline
 | 数据类型 | string
 | 默认值 | latest
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 指定recovery进入一个特定的timeline，本参数值可以是一个数字的timeline id或者一个特定的值，值current的含义：recover到做base backup时的那个timeline；值latest表示recover到在archive 中找到的最新的timeline，值latest适用于standby server。您通常只需要在复杂的重新恢复情况下设置本参数，在这种情况下，您需要返回到在时间点恢复之后达到的状态。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG Instance生效
@@ -1891,9 +1689,7 @@ h| 参数名称 h| recovery_target_action
 | 数据类型 | enum
 | 默认值 | pause
 | 取值范围 | pause,promote,shutdown
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 指定了一旦达到recovery target，PostgreSQL该采取的操作。默认值pause表示恢复暂停(pause)，值promote表示恢复过程完成并且PostgreSQL将会启动以接受外部连接，值shutdown表示在达到recovery target之后会stop PostgreSQL。pause值的预期用途是允许对数据库执行查询，以检查此恢复目标是否是最理想的恢复点,pg_wal_replay_resume()函数表示paused state resumed，这意味着恢复走到了终点。若是recovery target不是期望的那个stopping point，那么请关闭PostgreSQL，改变recovery target到更为之后的一个target，然后重启recovery即可。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG Instance生效
@@ -1910,9 +1706,7 @@ h| 参数名称 h| default_statistics_target
 | 数据类型 | integer
 | 默认值 | 100
 | 取值范围 | 1到10000
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 为没有通过ALTER TABLE SET STATISTICS设置column-specific target的表列设置默认统计目标。较大的本参数值会增加analyze的时间，但也会提升planner估计的质量。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -1929,9 +1723,7 @@ h| 参数名称 h| constraint_exclusion
 | 数据类型 | enum
 | 默认值 | partition
 | 取值范围 | partition,on,off on表示检查所有表的约束 off表示不检查约束partition表示仅仅对继承的子表以及union all子查询检查约束。
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义
 a| 控制planner是否使用constraints优化查询,如果表的约束保证没有与查询匹配的行，table scan会被跳过。本参数经常与传统的继承树一起使用以提高性能，比如如下的例子： CREATE TABLE parent(key integer, ...); CREATE TABLE child1000(check (key between 1000 and 1999)) INHERITS(parent); CREATE TABLE child2000(check (key between 2000 and 2999)) INHERITS(parent); ... SELECT \* FROM parent WHERE key = 2400;当本参数启用时，select语句就不会扫描child1000这个表。目前，默认情况下仅对经常用于通过继承树实现表分区的情况启用约束排除。为所有表启用它会带来额外的计划开销，这在简单查询中非常明显，而且对于简单查询通常不会产生任何好处。如果没有使用传统继承进行分区的表，则可能希望完全关闭它。（请注意，分区表的等效功能由单独的配置参数enable_partition_pruning控制。） +
 
@@ -1950,9 +1742,7 @@ h| 参数名称 h| cursor_tuple_fraction
 | 数据类型 | real
 | 默认值 | 0.1
 | 取值范围 | 0到1
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 设置planner's估计，本参数设置较少的值时，会使planner倾向于对cursors使用"fast start" plan，这会快速的检索前几行，而获取所有行可能需要很长时间。较大的值更强调总的估计时间。在最大设置为1.0时，游标的规划与常规查询完全相同，只考虑总的估计时间，而不考虑第一行的交付时间。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -1969,9 +1759,7 @@ h| 参数名称 h| from_collapse_limit
 | 数据类型 | integer
 | 默认值 | 8
 | 取值范围 | 1到2147483647
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 如果生成的FROM列表包含的项目不超过本参数值，那么planner将会把子查询合并到上面的查询中。较小的值会减少计划时间，但可能会产生较差的查询计划。设置本参数值为geqo_threshold参数值或者更大可能会触发GEQO Planner的使用，进而导致非优化的执行计划。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -1987,9 +1775,7 @@ h| 参数名称 h| jit
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 确定jit编译是否被PostgreSQL使用。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -2005,9 +1791,7 @@ h| 参数名称 h| join_collapse_limit
 | 数据类型 | integer
 | 默认值 | 8
 | 取值范围 | 1到2147483647
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 每当生成的items列表不超过本参数值时,planner就会将explicit join结构（FULL JOINs除外）重写为FROM items列表。较小的值会减少计划时间，但可能会产生较差的查询计划.默认情况下，此参数值设置为与from_collapse_limit参数值相同，这适用于大多数用途。将其设置为1可防止explicit join的任何重新排序。因此，查询中指定的显式连接顺序将是连接关系的实际顺序。因为查询规划器并不总是选择最佳的连接顺序，所以高级用户可以选择将此参数值临时设置为1，然后显式指定所需的连接顺序。设置本参数值为geqo_threshold参数值或者更大可能会触发GEQO Planner的使用，进而导致非优化的执行计划。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -2027,9 +1811,7 @@ h| 参数名称 h| parallel_leader_participation
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 允许leader进程在Gather和Gather Merge node下执行查询计划，而不是等待worker进程。将此值设置为off可降低worker进程被阻塞的可能性，因为leader进程读取元组的速度不够快，但需要leader进程等待工作进程启动，然后才能生成第一个元组。Leader进程能够帮助或阻碍性能的程度取决于计划类型、worker数量和查询持续时间。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -2047,9 +1829,7 @@ h| 参数名称 h| force_parallel_mode
 | 数据类型 | enum
 | 默认值 | off
 | 取值范围 | off,on,regress off表示仅仅当预期能提升性能时，才使用parallel mode on表示对被视为safe的查询语句强制使用并行查询。regress表示除了有本参数值设置为"on"的相同的所有效果之外，还有一些旨在促进自动回归测试的附加效果
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 是否使用parallel query功能。更具体地说，将此值设置为on将在任何查询计划的顶部添加一个Gather节点，这看起来是安全的，因此查询在并行worker进程中运行，即使并行worker进程不可用或无法使用，也将禁止在并行查询上下文中禁止的操作（如启动子事务），除非planner认为这将导致查询失败，如果设置此选项时出现故障或意外结果，则查询使用的某些函数可能需要标记为PARALLEL UNSAFE（或者，可能是PARALLEL RESTRICTED）通常，来自并行worker进程的消息包含一个context line，但是设置为regress会抑制该context line，以便输出与非并行执行中的输出相同。此外，通过此设置，添加到计划中的Gather nodes将隐藏在EXPLAIN的输出中，以便当本参数值设置为off时，输出与获得的结果相匹配。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -2066,9 +1846,7 @@ h| 参数名称 h| plan_cache_mode
 | 数据类型 | enum
 | 默认值 | auto
 | 取值范围 | auto,force_generic_plan,force_custom_plan
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 可以使用自定义或generic的plan执行prepared statements（explicitly prepared或implicitly generated，例如通过PL/pgSQL），针对每一次的执行，自定义plan使用特定的一组参数值被重新生成，generic plans不依赖本plan_cache_mode参数值，可以被多次的执行重复使用。此外，使用generic plans会节省 planning time，但是，如果理想的plan强烈依靠本参数，那么，generic plan可能效率低下。这些选项之间的选择通常是自动进行的，但它可以被plan_cache_mode配置参数覆盖。在执行缓存的计划时，而不是在准备计划时，会考虑本参数值
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -2086,9 +1864,7 @@ h| 参数名称 h| array_nulls
 | 数据类型 | bool
 | 默认值 | on，本参数值为on时表示允许输入包括NULL的数组值
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数控制数组输入解析器是否将未加引号的NULL识别为指定NULL数组元素。8.2版本之前的PostgreSQL不支持数组中的null值，因此将null视为使用字符串值"null"指定普通数组元素。为了向后兼容需要旧行为的应用程序，可以关闭此参数。请注意，即使本参数值是off，也可以创建包含NULL的数组值
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -2105,9 +1881,7 @@ h| 参数名称 h| backslash_quote
 | 数据类型 | enum
 | 默认值 | safe_encoding
 | 取值范围 | safe_encoding,on,off on表示始终允许\' off表示始终拒绝\'safe_encoding表示仅当客户端编码不允许在多字节字符中使用ASCII\时才允许.
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数用于设置字符串的引用符是否是\'符号。SQL标准中是'',而PostgreSQL历史上也接受了\'符号，但是，使用\'会带来安全风险，这是因为，在一些客户端字符集编码中，存在多字节字符，其中最后一个字节在数字上等同于ASCII \.如果客户端没有正确的转义，那么SQL注入攻击是可能的。这种风险可以通过使PostgreSQL数据库拒绝引用符被backslash反斜杠转义的查询来防止。请注意，在标准一致性字符串文本中，无论如何，\仅仅表示\。此参数仅影响对非标准一致性文本的处理，包括转义字符串语法（E'…'）
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -2124,9 +1898,7 @@ h| 参数名称 h| escape_string_warning
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当设置为on时，表示当\出现在一个普通的字符串('…'这样的)中并且standard_conforming_strings参数值为off时，一个warning会发出。希望使用反斜杠作为转义的应用程序应该修改为使用转义字符串语法（E'…'）. 因为根据SQL标准，普通字符串的默认行为现在是将反斜杠视为普通字符. 可以启用本参数来帮助定位需要更改的代码
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -2142,12 +1914,8 @@ a| +
 h| 参数名称 h| lo_compat_privileges
 | 数据类型 | bool
 | 默认值 | off
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 对large object，为权限检查启用面向backward的兼容性模式。在PostgreSQL9.0之前，large object并不具有访问权限，因此，large object总是能被所有的user进行读和写。设置本参数值为on将会禁用新权限的检查，这会与PostgreSQL9.0之前的版本保持兼容。
 | 是否可session级修改 | 是，仅限于superuser进行修改
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -2164,9 +1932,7 @@ h| 参数名称 h| operator_precedence_warning
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 启用此选项后，解析器将对自PostgreSQL 9.4以来由于运算符优先级的更改而可能已更改含义的任何构造发出警告。对于审核应用程序以查看优先级更改是否破坏了任何内容非常有用；但这并不意味着在生产环境中保持打开状态，因为它将警告某些完全有效、符合标准的SQL代码
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -2183,9 +1949,7 @@ h| 参数名称 h| quote_all_identifiers
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义
 a| 当数据库生成SQL语句时，即使标识符不是关键字，也会将标识符引用起来。这会影响explain的输出以及诸如pg_get_viewdef函数的结果，比如下面的例子： postgres=# select pg_get_viewdef('company_view'); -[RECORD 1]--+-------------------- pg_get_viewdef | SELECT company.id,+ | company.name, + | company.age + | FROM company; +
  postgres=# set quote_all_identifiers=on; SET postgres=# select pg_get_viewdef('company_view'); -[RECORD 1]--+------------------------ pg_get_viewdef | SELECT "company"."id",+ | "company"."name", + | "company"."age" + | FROM "company"; +
@@ -2206,9 +1970,7 @@ h| 参数名称 h| standard_conforming_strings
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数控制普通字符串文本（'…'）是否按SQL标准中的指定按字面含义处理反斜杠.从PostgreSQL9.1开始，默认值为on。此参数的存在也可以被视为表示支持转义字符串语法（E'…'）如果应用程序希望反斜杠被视为转义字符，则应使用转义字符串语法
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -2225,9 +1987,7 @@ h| 参数名称 h| synchronize_seqscans
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 这允许对大表的顺序扫描彼此同步，以便并发扫描在大约相同的时间读取相同的块，从而共享I/O工作负载。启用本参数后，扫描可能从表的中间开始，然后"环绕"结尾以覆盖所有行，以便与正在进行的扫描活动同步。这可能导致没有ORDERBY子句的查询返回的行顺序发生不可预知的更改。将此参数设置为off可确保与PostgreSQL 8.3之前的行为，即顺序扫描始终从表的开头开始
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效，其他级别修改reload生效
@@ -2243,12 +2003,8 @@ a| +
 h| 参数名称 h| listen_addresses
 | 数据类型 | string
 | 默认值 | localhost
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 设置数据库服务器监听的hostname或者IP地址，监听多个hostname或者IP地址时，请用逗号隔开。 \*号表示监听所有可用的IP地址， 0:0:0:0监听代表所有IPV4的地址， ::代表监听所有IPV6的地址。当本参数值为空时，PostgreSQL不会监听任何的IP，此时，只有Unix-domain sockets才可以用于连接到数据库中。本参数控制哪些IP地址上接受连接尝试，这可以帮助防止在不安全的IP地址上重复出现恶意连接请求。该参数只能在PostgreSQL启动时设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -2265,9 +2021,7 @@ h| 参数名称 h| port
 | 数据类型 | integer
 | 默认值 | 5432
 | 取值范围 | 1到65535
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | PostgreSQL监听的TCP端口。请注意，PostgreSQL监听的所有IP地址都使用相同的端口号，本参数只能在PostgreSQL启动时设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -2284,9 +2038,7 @@ h| 参数名称 h| max_connections
 | 数据类型 | integer
 | 默认值 | 100
 | 取值范围 | 1到262143
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数值指定了PostgreSQL数据库的最大连接数。本参数只能在PostgreSQL启动时设置。在流复制备库上，必须将本参数值设置为与主库相同或者比主库参数值大,否则，备用服务器将不允许查询操作。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -2305,9 +2057,7 @@ h| 参数名称 h| superuser_reserved_connections
 | 数据类型 | integer
 | 默认值 | 3
 | 取值范围 | 0到262143
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 为superusers保留的connection "slots"的数量，当PostgreSQL的活跃的并发连接的数量等于max_connections参数值减去superuser_reserved_connections参数值之后，仅仅可以面向superuser建立新的连接，并且，replication connection也是建立不了的。本参数只能在PostgreSQL启动时设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -2322,12 +2072,8 @@ a| +
 h| 参数名称 h| unix_socket_directories
 | 数据类型 | string
 | 默认值 | 在Linux中默认值为/tmp；在Windows中默认值为空
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数指定了PostgreSQL监听客户端连接的Unix-domain socket(s)目录，多个目录可以用逗号隔开，两个目录之间的空格会被忽略，如果你想在目录名中包括逗号或者空格，请使用双引号引起来。本参数值为空时表示不监听任何的Unix-domain socket(s)目录，这意味着只有TCP/IP sockets可以被用来连接到PostgreSQL中。本参数只能在PostgreSQL启动时设置。在本参数值指定的目录下，会有名为s.PGSQL.nnnn的socket file，nnnn是PostgreSQL使用的端口号，在该目录下，还有一个名为.s.PGSQL.nnnn.lock的文件。这两个文件请不要手工删除。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -2345,12 +2091,8 @@ a| +
 h| 参数名称 h| unix_socket_group
 | 数据类型 | string
 | 默认值 | 空字符串，空字符串表示使用启动PostgreSQL 的user的默认组。
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 设置Unix-domain socket(s).的owning group(请注意：socket的owning user总是启动PostgreSQL的user)。本参数与unix_socket_permissions结合使用可以将其作为Unix-domain connections的额外访问控制机制。本参数只能在PostgreSQL启动时设置。本参数不支持在Windows上使用，在Windows上，本参数取任何值都会被忽略。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -2367,9 +2109,7 @@ h| 参数名称 h| unix_socket_permissions
 | 数据类型 | integer
 | 默认值 | 0777，0777表示任何人都可以连接
 | 取值范围 | 0到511
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数用于设置Unix-domain socket(s)的访问权限。Unix-domain socket使用通常的Unix文件系统权限集。参数值预计是被chmod和umask系统调用接受的数字模式。（要使用惯用的八进制格式，数字必须以0（零）开头。）合理的参数值是0770（仅用户和组，另请参见unix_socket_group）和0700（仅用户）。请注意，对于Unix-domain socket，仅写许可权是重要的，因此设置或撤消读或执行许可权没有意义。本参数只能在PostgreSQL启动时设置。在完全忽略socket permissions的操作系统上（特别是自solaris10起的Solaris），此参数是不相关的。在此类操作系统上，可以通过将unix目录指向一个搜索权限仅限于所需访问用户的目录来实现类似的效果。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -2389,9 +2129,7 @@ h| 参数名称 h| bonjour
 | 数据类型 | boolean
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数控制是否通过Bonjour机制通告PostgreSQL的存在。本参数只能在PostgreSQL启动时设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效。
@@ -2408,12 +2146,8 @@ a| +
 h| 参数名称 h| bonjour_name
 | 数据类型 | string
 | 默认值 | 空字符串。空字符串表示使用计算机名
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数用于设置Bonjour service name。当PostgreSQL软件没有编译Bonjour support时，本参数会被忽略。本参数只能在PostgreSQL启动时设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效。
@@ -2430,9 +2164,7 @@ h| 参数名称 h| effective_io_concurrency
 | 数据类型 | integer
 | 默认值 | 1
 | 取值范围 | 0到1000，0表示禁止发布异步I/O请求
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 有效利用disk子系统的并发disk io的数量。目前，本参数仅仅影响bitmap heap scans。对于HDD(机械硬盘)，本参数的起始值应该是PostgreSQL database用到的、组成raid 0 条带或者raid 1镜像的单独 disk drive的个数。但是，如果PostgreSQL数据库经常忙于并发会话中发出的多个查询，则较低的值可能足以使磁盘阵列保持繁忙。高于使磁盘保持忙碌的本参数值只会导致额外的CPU开销，固态盘(SSD)以及其他基于内存的存储可以经常处理很多并发请求，因此，此时最佳的值可能是几百。异步IO请求取决于一个有效的posix_fadvise函数，该函数在有些操作系统上是缺少的。在该函数缺少时，设置本参数为非零值会导致错误发生。在有些操作系统上(比如Solaris),本函数存在但是并没有实际的执行任何操作。在受到支持的操作系统上，本参数值的默认值为1，否则为零。本参数值可以被tablespace级别的同名参数值所覆盖。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效非session级修改reload生效
@@ -2449,9 +2181,7 @@ h| 参数名称 h| maintenance_io_concurrency
 | 数据类型 | integer
 | 默认值 | 10
 | 取值范围 | 0到1000
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数类似于effective_io_concurrency参数，但本参数用于代表许多客户端会话执行的维护工作。在受到支持的操作系统上，本参数值的默认值为10，否则为零。本参数值可以被tablespace级别的同名参数值所覆盖。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效非session级修改reload生效
@@ -2468,9 +2198,7 @@ h| 参数名称 h| max_worker_processes
 | 数据类型 | integer
 | 默认值 | 8
 | 取值范围 | 0到262143
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数值指定了PostgreSQL所能支持的并发worker进程的最大数量。本参数值仅能在PostgreSQL启动时设置。当运行在standby server环境中时，在standby server上的本参数值必须大于或者等于在master server上的本参数值。否则，query是不能运行在standby server上。当改变本参数值时，请考虑调整max_parallel_workers,参数，max_parallel_maintenance_workers参数，max_parallel_workers_per_gather参数
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -2489,9 +2217,7 @@ h| 参数名称 h| max_parallel_workers_per_gather
 | 数据类型 | integer
 | 默认值 | 2
 | 取值范围 | 0到1024，0表示禁用parallel query execution
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数指定了可以被单个Gather或者Gather Merge Node启动的worker进程的最大数量。Parallel Workers进程从由max_worker_processes配置参数建立的进程池中获取，受限于max_parallel_workers配置参数。请注意，请求的workers的数量在运行时并不一定实际可用，如果这个情况发生，执行计划会以少于期望个数的workers去运行，这可能是低效的。请注意，parallel queries可能比非parallel queries消耗更多的资源，因为每个工作进程是一个完全独立的进程，其对系统的影响与附加用户会话大致相同。在为此设置选择值时，以及在配置控制资源利用率的其他设置（如work_mem）时，都应考虑到这一点。诸如work_mem之类的资源限制单独应用于每个worker，这意味着所有进程的总利用率可能比任何单个进程的正常利用率高得多。例如，一个使用4个worker的并行查询可能会使用多达5倍的CPU时间、内存、I/O带宽。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效非session级修改reload生效
@@ -2507,9 +2233,7 @@ h| 参数名称 h| max_parallel_maintenance_workers
 | 数据类型 | integer
 | 默认值 | 2
 | 取值范围 | 0到1024，0表示禁用由实用命令使用的parallel workers
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 可以被单个实用命令启动的parallel worker的最大数量。当前，支持parallel workers的并行实用命令有如下几种： create index 建立B-Tree时； vacuum 不带full选项时； Parallel Workers进程从由max_worker_processes配置参数建立的进程池中获取，受限于max_parallel_workers配置参数。请注意，请求的workers的数量在运行时并不一定实际可用，如果这个情况发生，执行计划会以少于期望个数的workers去运行，这可能是低效的。注意，并行实用程序命令不应该比等效的非并行操作消耗更多的内存，这种策略不同于并行查询，在并行查询中资源限制通常适用于每个worker进程。并行实用命令将资源限制maintenance_work_mem视为应用于整个实用命令的限制，而不考虑并行工作进程的数量。然而，并行实用命令仍然可能消耗更多的CPU资源和I/O带宽。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效非session级修改reload生效
@@ -2526,9 +2250,7 @@ h| 参数名称 h| max_parallel_workers
 | 数据类型 | integer
 | 默认值 | 8
 | 取值范围 | 0到1024
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数值指定了PostgreSQL支持的parallel操作的worker的最大数量。当增加或者减少本参数值时，请考虑同时调整max_parallel_maintenance_workers 配置参数和 max_parallel_workers_per_gather配置参数。请注意：当本参数值高于max_worker_processes参数值时不会有任何作用。因为，因为parallel workers是从max_worker_processes配置参数所建立的工作进程池中获取的。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级别修改立即生效非session级修改reload生效
@@ -2578,12 +2300,8 @@ h| 参数名称 h| old_snapshot_threshold
 h| 参数名称 h| primary_conninfo
 | 数据类型 | string
 | 默认值 | 空字符串
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数为备库参数，本参数在sending-server端会被忽略。本参数值指定了连接到sending server的连接字符串(连接信息）.在本连接字符串中缺少的option，PostgreSQL会到环境变量中取寻找。若是环境变量中也没有，那么就用默认值。连接字符串应该指定如下信息： Sending Server的主机名或者IP地址、 Sending Server的端口号（若是跟standby server端口号不同） Username(该用户在sending-server端有合适的权限) Password：请注意，密码可以在primary_conninfo中提供，也可以在standby server上的~/.pgpass文件中提供（此时，是用replication作为database name）。请不要在primary_conninfo中指定database的名字本参数仅能在postgresql.conf文件或者server command line中设置。当在wal receiver process正在运行的情况下修改本参数值，wal receiver process会被发信号通知关闭然后再以新参数值去启动，除非primary_conninfo配置参数为空字符串。当PostgreSQL没有处于standby mode的情况下，本参数无效。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -2599,12 +2317,8 @@ a| +
 h| 参数名称 h| primary_slot_name
 | 数据类型 | string
 | 默认值 | 空字符串
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数为备库参数，本参数在sending-server端会被忽略。本参数指定了当要连接到sending-server端时，要使用的sending-server端的已经存在的replication slot，用来控制sending-server端的wal removal。本参数仅能在postgresql.conf文件或者server command line中设置。当在wal receiver process正在运行的情况下修改本参数值，wal receiver process会被发信号通知关闭然后再以新参数值去启动，本参数在如下情况下没有作用：PostgreSQL没有处于standby mode或者primary_conninfo参数值没有设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -2620,12 +2334,8 @@ a| +
 h| 参数名称 h| promote_trigger_file
 | 数据类型 | string
 | 默认值 | 空字符串
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数为备库参数，本参数在sending-server端会被忽略。本参数值指定了一个trigger file，该文件用于standby server结束recovery状态进行角色提升。本参数值没有设置时，你可以使用pg_ctl promote或者使用函数pg_promote()进行角色提升。本参数仅能在postgresql.conf文件或者server command line中设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -2643,9 +2353,7 @@ h| 参数名称 h| hot_standby
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数为备库参数，本参数在sending-server端会被忽略。本参数控制standby server是否允许运行只读查询语句。本参数仅能在server start时设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -2702,9 +2410,7 @@ h| 参数名称 h| wal_receiver_create_temp_slot
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数为备库参数，本参数在sending-server端会被忽略。本参数用于指定当永久的复制槽没有配置(复制槽配置请见配置参数primary_slot_name)的情况下，wal receiver是否在远程PG Cluster上创建一个临时的复制槽。本参数仅能在postgresql.conf文件或者server command line中设置。当wal receiver进程正在运行的同时本参数被改变时，wal receiver进程会关闭并重启以读取到新值。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -2739,9 +2445,7 @@ h| 参数名称 h| hot_standby_feedback
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数为备库参数，本参数在sending-server端会被忽略。是否允许一个hot standby的备库发送关于正在备库执行的查询的feedback给primary库或者upstream库。本参数值可以消除由于cleanup records导致的query cancels，但是会导致primary库上发生膨胀。feedback信息的发送频率不会超过配置参数wal_receiver_status_interval。当是级联复制环境时，feedback会通过upstream(即:中间节点)会最终到达primary库。Standby节点除了向upstream反馈信息外，没有其他用途。本参数不会覆盖primary端的配置参数old_snapshot_threshold的行为。Standby端上超过primary端age阈值的snapshot会变为invalid，这导致standby端上的查询被取消。这是因为配置参数old_snapshot_threshold的目的是在时间上对dead row导致膨胀提供绝对的限制，否则会因为standby的配置违反该限制。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -2809,9 +2513,7 @@ h| 参数名称 h| seq_page_cost
 | 数据类型 | real
 | 默认值 | 1
 | 取值范围 | 0到1.79769e+308
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数设置了顺序读取磁盘上的page的成本。在table以及index上的表空间级别的同名本参数可以覆盖配置参数中的该参数值。增大本参数值会使索引扫描看起来相对更昂贵
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session修改立即生效；其他修改Reload即可生效
@@ -2829,9 +2531,7 @@ h| 参数名称 h| random_page_cost
 | 数据类型 | real
 | 默认值 | 4
 | 取值范围 | 0到1.79769e+308
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数设置了非顺序读取磁盘上的page的成本。在table以及index上的表空间级别的同名本参数可以覆盖配置参数中的该参数值。相对于seq_page_cost减少本参数值会使PostgreSQL更倾向于使用索引扫描。随机访问机械硬盘要比四次顺序访问还要昂贵。但是，使用较低的默认值(4.0)，因为大多数对磁盘的随机访问(如索引读取)都假定在cache中。默认值可以认为是将随机访问模型比顺序访问慢40倍，同时，期望90%的随机读取都是在cache中。如果您认为90%的缓存比率对于您的工作负载来说是一个不正确的假设，那么你可以增加本参数值以反映随机存储读取的真实成本。相应的，如果你的数据可能完全在cache中，比如在database大小小于服务器内存，减少本参数值是合适的。那些相对于顺序读具有低随机读成本的存储（比如固态驱动器），也可以使用较低本参数值（比如1.1）
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session修改立即生效；其他修改Reload即可生效
@@ -2848,9 +2548,7 @@ h| 参数名称 h| cpu_tuple_cost
 | 数据类型 | real
 | 默认值 | 0.01
 | 取值范围 | 0到1.79769e+308
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数值设置在执行一个SQL语句时planner预计的处理每行数据的成本
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session修改立即生效；其他修改Reload即可生效
@@ -2868,9 +2566,7 @@ h| 参数名称 h| cpu_index_tuple_cost
 | 数据类型 | real
 | 默认值 | 0.005
 | 取值范围 | 0到1.79769e+308
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数用于设置在索引扫描期间planner预计的处理每个index entry的成本。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session修改立即生效；其他修改Reload即可生效
@@ -2887,9 +2583,7 @@ h| 参数名称 h| cpu_operator_cost
 | 数据类型 | real
 | 默认值 | 0.0025
 | 取值范围 | 0到1.79769e+308
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数值设置在执行一个SQL语句时planner预计的处理执行的每个operator或者function的成本。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session修改立即生效；其他修改Reload即可生效
@@ -2906,9 +2600,7 @@ h| 参数名称 h| parallel_setup_cost
 | 数据类型 | real
 | 默认值 | 1000
 | 取值范围 | 0到1.79769e+308
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数值设置planner预估的启动parallel worker processes的成本。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session修改立即生效；其他修改Reload即可生效
@@ -2926,9 +2618,7 @@ h| 参数名称 h| parallel_tuple_cost
 | 数据类型 | real
 | 默认值 | 0.1
 | 取值范围 | 0到1.79769e+308
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数值设置了从一个parallel worker进程将一个tuple传输到另外一个parallel worker进程的成本。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session修改立即生效；其他修改Reload即可生效
@@ -2996,9 +2686,7 @@ h| 参数名称 h| jit_above_cost
 | 数据类型 | real
 | 默认值 | 100000
 | 取值范围 | -1到1.79769e+308。-1表示禁用JIT编译
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当SQL语句的查询成本高于本参数值时，JIT编译会被激活，若是JIT编译被enable的情况下。执行JIT会消耗planning time但是可以加速查询执行。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session修改立即生效；其他修改Reload即可生效
@@ -3014,9 +2702,7 @@ h| 参数名称 h| jit_inline_above_cost
 | 数据类型 | real
 | 默认值 | 500000
 | 取值范围 | -1到1.79769e+308，-1表示禁用inline
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当SQL语句的查询成本高于本参数值时，JIT编译会尝试inline functions and operators。Inlining会增加planning time，但是会提升执行速度。将本参数值设置为低于jit_above_cost是没有意义的。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session修改立即生效；其他修改Reload即可生效
@@ -3033,9 +2719,7 @@ h| 参数名称 h| jit_optimize_above_cost
 | 数据类型 | real
 | 默认值 | 500000
 | 取值范围 | -1到1.79769e+308，-1表示禁用expensive optimizations
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当SQL语句的查询成本高于本参数值时，JIT编译会尝试进行expensive optimizations。这种优化会增加planning time，但是会提升执行速度。将本参数值设置为低于jit_above_cost是没有意义的，将本参数值设置为高于jit_inline_above_cost也是没有益处的。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session修改立即生效；其他修改Reload即可生效
@@ -3054,9 +2738,7 @@ h| 参数名称 h| autovacuum
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 控制PostgreSQL是否允许autovacuum launcher daemon.autovacuum进程能正常工作的前提条件是配置参数track_counts设置为启用。本参数仅能在postgresql.conf文件或者server command line中设置。本参数可以在表级设置，在表级设置的优先级高于配置参数中的优先级。即使本参数被禁用，若是需要防止事务id wraparound，PostgreSQL会启动autovacuum进程。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3091,9 +2773,7 @@ h| 参数名称 h| autovacuum_max_workers
 | 数据类型 | integer
 | 默认值 | 3
 | 取值范围 | 1到262143
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数设置了同时可以运行的autovacuum worker进程的最大个数。本参数仅仅可以在PostgreSQL启动时设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -3127,9 +2807,7 @@ h| 参数名称 h| autovacuum_vacuum_threshold
 | 数据类型 | integer
 | 默认值 | 50
 | 取值范围 | 0到2147483647
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数用于设置作为vacuum操作候选表的条件，即:更新或者删除掉多少条记录可以被作为vacuum操作的候选表。本参数仅能在postgresql.conf文件或者server command line中设置。本参数可以在表级设置，在表级设置的优先级高于配置参数中的优先级。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3145,9 +2823,7 @@ h| 参数名称 h| autovacuum_vacuum_insert_threshold
 | 数据类型 | integer
 | 默认值 | 1000
 | 取值范围 | -1到2147483647，-1表示即使有本参数值数量的insert记录，autovacuum守护进程也不会针对该表触发vacuum操作。
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数用于设置作为vacuum操作候选表的条件，即:插入多少条记录可以触发针对该表的vacuum。本参数仅能在postgresql.conf文件或者server command line中设置。本参数可以在表级设置，在表级设置的优先级高于配置参数中的优先级。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3164,9 +2840,7 @@ h| 参数名称 h| autovacuum_analyze_threshold
 | 数据类型 | integer
 | 默认值 | 50
 | 取值范围 | 0到2147483647
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数用于设置作为analyze操作候选表的条件，即:插入、更新、删除多少条记录可以触发针对该表的analyze。本参数仅能在postgresql.conf文件或者server command line中设置。本参数可以在表级设置，在表级设置的优先级高于配置参数中的优先级。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3183,9 +2857,7 @@ h| 参数名称 h| autovacuum_vacuum_scale_factor
 | 数据类型 | real
 | 默认值 | 0.2，0.2表示表大小的20%
 | 取值范围 | 0到100
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数设置了表大小的一个比率，当决定一个表是否触发vacuum操作时，该比率会被配置参数autovacuum_vacuum_threshold考虑在内。本参数仅能在postgresql.conf文件或者server command line中设置。本参数可以在表级设置，在表级设置的优先级高于配置参数中的优先级。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3201,9 +2873,7 @@ h| 参数名称 h| autovacuum_vacuum_insert_scale_factor
 | 数据类型 | real
 | 默认值 | 0.2，0.2表示表大小的20%
 | 取值范围 | 0到100
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数设置了表大小的一个比率，当决定一个表是否触发vacuum操作时，该比率会被配置参数autovacuum_vacuum_insert_threshold考虑在内。本参数仅能在postgresql.conf文件或者server command line中设置。本参数可以在表级设置，在表级设置的优先级高于配置参数中的优先级。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3219,9 +2889,7 @@ h| 参数名称 h| autovacuum_analyze_scale_factor
 | 数据类型 | real
 | 默认值 | 0.1
 | 取值范围 | 0到100
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数设置了表大小的一个比率，当决定一个表是否触发vacuum操作时，该比率会被配置参数autovacuum_analyze_threshold考虑在内。本参数仅能在postgresql.conf文件或者server command line中设置。本参数可以在表级设置，在表级设置的优先级高于配置参数中的优先级。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3237,9 +2905,7 @@ h| 参数名称 h| autovacuum_freeze_max_age
 | 数据类型 | integer
 | 默认值 | 200000000
 | 取值范围 | 100000到2000000000
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 指定表的pg_class.relfrozenxid字段在强制执行vacuum操作以防止事务ID wraparound之前可以达到的最大年龄，请注意，即使autovacuum进程被禁用，PostgreSQL也会为了防止wraparound而启动autovacuum进程。Vacuum还允许从pg_xact子目录中删除旧文件，这就是为什么默认值是相对较低的2亿个事务的原因。此参数只能在服务器启动时设置，但是可以通过更改表存储参数来减少单个表的设置值。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -3255,9 +2921,7 @@ h| 参数名称 h| autovacuum_multixact_freeze_max_age
 | 数据类型 | integer
 | 默认值 | 400000000
 | 取值范围 | 10000到2000000000
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 指定表的pg_class. relminmxid字段在强制执行vacuum操作以防止multixact ID wraparound之前可以达到的最大年龄，请注意，即使autovacuum进程被禁用，PostgreSQL也会为了防止wraparound而启动autovacuum进程。Vacuuming multixacts还允许从pg_multixact/members 和pg_multixact/offsets子目录中删除旧文件，这就是为什么默认值是相对较低的4亿个事务的原因。此参数只能在服务器启动时设置，但是可以通过更改表存储参数来减少单个表的设置值。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -3289,9 +2953,7 @@ h| 参数名称 h| autovacuum_vacuum_cost_limit
 | 数据类型 | integer
 | 默认值 | -1，-1表示使用配置参数vacuum_cost_limit的参数值。
 | 取值范围 | -1到10000
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数是在autovacuum中vacuum操作用到的cost limit值。请注意，如果有多个autovacuum workers，则本参数值按比例分布在运行中的autovacuum workers之间，以便每个autovacuum worker该值的总和不超过本参数值。本参数仅能在postgresql.conf文件或者server command line中设置。本参数可以在表级设置，在表级设置的优先级高于配置参数中的优先级。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3311,9 +2973,7 @@ h| 参数名称 h| ssl
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 是否启用ssl连接
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3329,12 +2989,8 @@ a| +
 h| 参数名称 h| ssl_ca_file
 | 数据类型 | string
 | 默认值 | 空字符串，空字符串表示没有CA File被加载，并且Client身份验证不会被执行。
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数指定了包括SSL server certificate authority (CA)的文件名。本参数值是相对于data directory的相对路径，本参数仅能在postgresql.conf文件或者server command line中设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3350,12 +3006,8 @@ a| +
 h| 参数名称 h| ssl_cert_file
 | 数据类型 | string
 | 默认值 | server.crt
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数指定了包括SSL server certificate的文件名。本参数值是相对于data directory的相对路径，本参数仅能在postgresql.conf文件或者server command line中设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3371,12 +3023,8 @@ a| +
 h| 参数名称 h| ssl_crl_file
 | 数据类型 | string
 | 默认值 | 空字符串，空字符串表示没有CRL文件被加载。
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数指定了包括SSL server certificate revocation list (CRL)的文件名。本参数值是相对于data directory的相对路径，本参数仅能在postgresql.conf文件或者server command line中设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3391,12 +3039,8 @@ a| +
 h| 参数名称 h| ssl_key_file
 | 数据类型 | string
 | 默认值 | server.key
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数指定了包括SSL server private key的文件名。本参数值是相对于data directory的相对路径，本参数仅能在postgresql.conf文件或者server command line中设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3412,12 +3056,8 @@ a| +
 h| 参数名称 h| ssl_ciphers
 | 数据类型 | string
 | 默认值 | HIGH:MEDIUM:+3DES:!aNULL
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 设置允许被SSL连接使用的SSL ciphers suites的清单。有关此设置的语法和支持值的列表，请参阅OpenSSL package中的ciphers manual page。有使用TLS版本1.2及更低版本的连接才会受到影响。当前没有控制TLS版本1.3连接使用的密码选择的设置。默认值通常是一个合理的选择，除非您有特定的安全要求。本参数仅能在postgresql.conf文件或者server command line中设置。下面解释一下默认值的含义： HIGH：使用HIGH Group的Cipher suites（例如，AES、Camellia、3DES）MEDIUM：使用MEDIUM Group的Cipher suites（例如，RC4, SEED） +3DES：针对HIGH的OpenSSL默认排序是存在问题的，因为3DES排序高于AES128.这是错误的，因为3DES比ASE128提供了少的安全性，并且3DES更慢。在所有除了HIGH和MEDIUM的ciphers外，+3DES进行了重新排序 !aNULL:禁用掉没有经过身份验证的匿名cipher suites。此类cipher suites易于遭受中间人攻击，因此不应该使用。可用的cipher suites在不同OpenSSL版本中的细节差异很大。使用操作系统命令openssl ciphers -v 'HIGH:MEDIUM:+3DES:!aNULL'可以看到当前安装的OpenSSL库的实际细节。请注意：这个list会在运行时基于server key type被过滤
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3434,9 +3074,7 @@ h| 参数名称 h| ssl_prefer_server_ciphers
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 指定是否优先使用server端的SSL cipher，还是使用client端的。本参数仅能在postgresql.conf文件或者server command line中设置。更老的PostgreSQL版本没有本参数，更老的PostgreSQL版本总是优先使用client端的SSL cipher。本参数仅能在postgresql.conf文件或者server command line中设置。本参数的目的是用于向后兼容性。优先使用server端通常更好，因为更可能的是server端的配置是适当的
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3452,12 +3090,8 @@ a| +
 h| 参数名称 h| ssl_ecdh_curve
 | 数据类型 | string
 | 默认值 | prime256v1
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 指定要在ECDH密钥交换中使用的曲线的名称。它需要所有连接的客户端支持。它不需要与服务器的椭圆曲线密钥使用的曲线相同。本参数仅能在postgresql.conf文件或者server command line中设置。最常见曲线的OpenSSL名称是：prime256v1（NIST P-256）、secp384r1（NIST P-384）、secp521r1（NIST P-521）。可用曲线的完整列表可以通过操作系统命令openssl ecparam -list_curves显示。但并不是所有这些都可以在TLS中使用。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3473,9 +3107,7 @@ h| 参数名称 h| ssl_min_protocol_version
 | 数据类型 | enum
 | 默认值 | TLSv1.2
 | 取值范围 | {TLSv1,TLSv1.1,TLSv1.2,TLSv1.3}
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 设置使用的SSL/TLS协议的最小版本。OpenSSLLibrary的更老的版本不支持所有的值。如果选择了不支持的设置，将引发错误。TLS 1.0之前的协议版本（即SSL version 2 和3）始终处于禁用状态。默认值是TLSv1.2，该默认值是满足本文档编写时的工业最佳实践。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3492,9 +3124,7 @@ h| 参数名称 h| ssl_max_protocol_version
 | 数据类型 | enum
 | 默认值 | 空字符串，空字符串意味着运行任何的协议版本。
 | 取值范围 | {"",TLSv1,TLSv1.1,TLSv1.2,TLSv1.3}
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 设置使用的SSL/TLS协议的最大版本，这对测试或者有些组件使用新版本协议出现问题是有用的。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3510,12 +3140,8 @@ a| +
 h| 参数名称 h| ssl_dh_params_file
 | 数据类型 | string
 | 默认值 | 空字符串，空字符串意味着使用默认DH参数编译。
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 指定包含Diffie-Hellman参数的文件名，该参数用于所谓的临时DH SSL密码族。如果攻击者设法破解众所周知的编译在DH中的参数，那么使用自定义DH参数可以减少暴露。您可以使用操作系统命令openssl dhparam-out dhparams.pem 2048创建自己的DH参数文件本参数仅能在postgresql.conf文件或者server command line中设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3531,12 +3157,8 @@ a| +
 h| 参数名称 h| ssl_passphrase_command
 | 数据类型 | string
 | 默认值 | 空字符串，空字符串表示使用内置的提示机制。
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 设置需要获取用于解密SSL文件（如私钥）的密码短语时要调用的外部命令。命令必须将密码短语打印到标准输出，并以代码0退出。在参数值中，%p替换为提示字符串(写%%表示文本值%)。请注意提示字符串可能包含空格，因此请确保引用足够的引号。命令实际上不必提示用户输入密码短语，它可以从一个文件中读取它，从一个keychain工具中获取它，或者类似的。由用户来确定所选机制是否足够安全本参数仅能在postgresql.conf文件或者server command line中设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3552,9 +3174,7 @@ h| 参数名称 h| ssl_passphrase_command_supports_reload
 | 数据类型 | bool
 | 默认值 | off，off表示在reload时，ssl_passphrase_command配置参数会被忽略，并且在passphrase被需要时，SSL configuration不会被reload
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当一个key file需要passphrase时，本参数决定由ssl_passphrase_command配置参数设置的passphrase command在configuration reload期间是否被调用本参数仅能在postgresql.conf文件或者server command line中设置。该设置适用于需要TTY进行提示的命令，该命令在PostgreSQL运行时可能不可用。例如，如果密码短语是从文件获取的，则将本参数设置为on可能是合适的
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3571,9 +3191,7 @@ h| 参数名称 h| shared_buffers
 | 默认值 | 16384，即：128MB
 | 取值范围 | 16到1073741823
 | 参数单位 | 8KB，若是指定本参数值时不带单位，则取自源码中的符号常量BLCKSZ大小，默认是8KB。非默认的BLCKSZ大小会改变本参数的最小值。本参数值仅仅能在PostgreSQL启动时设置。建议将OS物理内存的25%分配给本参数值。因为PostgreSQL依赖于操作系统的cache（也就是文件系统的page cache），因此将超过40%的RAM分配给本参数值的情况不太可能比分配较小的缓冲区效果更好。较大的本参数值通常需要相应的增加max_wal_size, 以便在较长时间内分散写入大量新数据或更改数据的过程。
-| 参数含义
-a| +
-
+| 参数含义 |
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
 
@@ -3588,9 +3206,7 @@ h| 参数名称 h| huge_pages
 | 数据类型 | enum
 | 默认值 | try，try的含义是PostgreSQL会尝试使用huge pages，如果尝试失败将返回默认值。on的含义是请求huge pages失败将阻止PostgreSQL启动，off的含义是不会启用huge pages。目前，本参数值仅支持Linux和Windows平台。当在其他平台下本参数值设置为try时，本参数值会被忽略。 huge pages的使用导致了更小的page tables以及耗费在内存管理方面的更小的CPU时间，这提高了性能。在Windows平台上，huge pages被称之为large pages。开启large pages的步骤： 0.安装PostgreSQL 数据库 1.关闭windows uac控制面板--系统和安全--更改用户账户控制设置--改为'从不通知'，点击确定。 2.在windows组策略编辑器，赋予运行PostgreSQL的操作系统用户'锁定内存页'的权力（Lock Pages in Memory）计算机配置\Windows 设置\安全设置\本地策略\用户权利分配\下的"锁定内存页"这个策略。 3.将windows服务中的postgresql-x64-11这个服务改为手动启动。 4.重新启动OS 5.设置postgresql.conf的配置参数huge_pages=on 6.设置postgresql.conf的配置参数shared_buffers=2048MB 7.以管理员身份打开cmd窗口，执行pg_ctl start -D e:\postgresql\11\data启动PostgreSQL 8.验证是否启用请注意：当启用large pages时，不能用Windows服务中的PostgreSQL服务启动postgresql。请注意，本参数设置仅影响main shared memory area. Linux、FreeBSD和Illumos等操作系统也可以自动使用huge pages（也称为"super" pages 或者 "large" pages）进行正常内存分配，而无需PostgreSQL的显式请求。在Linux上，这被称为"transparent huge pages"（THP）。众所周知，对于某些Linux版本的某些用户来说，该特性会导致PostgreSQL的性能下降，因此目前不鼓励使用它（与显式使用huge_pages）。
 | 取值范围 | {off,on,try}
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 控制shared_buffers是否使用huge pages。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -3625,9 +3241,7 @@ h| 参数名称 h| max_prepared_transactions
 | 默认值 | 100
 | 取值范围 | 0到262143，0代表禁用prepared-transaction特性。
 | 参数单位 | 设置同时可以处于prepared状态的最大的事务个数。若是你不打算使用prepared transaction，请将本参数值设置为零以防止偶然建立prepared transaction。如果你使用prepared transaction，你可能希望本参数值与max_connections一样大。这样每个session都可以有一个prepared transaction pending。当有流复制环境是，你必须确保在备库上该参数值要大于等于在主库上的该参数值，否则，不能在备库上运行查询语句。
-| 参数含义
-a| +
-
+| 参数含义 |
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
 
@@ -3663,9 +3277,7 @@ h| 参数名称 h| hash_mem_multiplier
 | 数据类型 | real
 | 默认值 | 1
 | 取值范围 | 1到1000
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数值用于计算hash-base操作可以使用的最大内存。该最大内存是由work_mem*hash_mem_multiplier决定的。在经常有大量查询操作的环境中，考虑增加本参数值，特别是当简单的增加work_mem会导致内存压力时（内存压力通常以间歇性内存不足的形式出现）。设置我1.5或者2.0可能对混合负载有效。在work_mem参数值已经增加到40MB或者更多时，2.0-8.0或者更大范文内的更高设置可能会有效。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Session级修改立即生效其他修改Reload即可生效
@@ -3748,9 +3360,7 @@ h| 参数名称 h| shared_memory_type
 | 数据类型 | enum
 | 默认值 | mmap
 | 取值范围 | {sysv,mmap,windows}, sysv,mmap适用于Linux平台；windows适用于windows平台。
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 指定shared memory的实现方式。 mmap是指使用mmap分配的anonymous shared memory； sysv是指通过shmget分配的 System V shared memory ；windows是指Windows shared memory。通常不鼓励使用sysv值，因为它通常需要非默认的内核设置来允许较大的分配，而sysv值在任何平台上都不是默认的。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -3766,9 +3376,7 @@ h| 参数名称 h| dynamic_shared_memory_type
 | 数据类型 | enum
 | 默认值 | posix
 | 取值范围 | {posix,sysv,mmap,windows} 其中posix,sysv,mmap适用于Linux平台；windows适用于Windows平台
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 指定PostgreSQL使用的dynamic shared memory的实现方式。 posix是指使用shm_open分配的POSIX shared memory; sysv是指使用shmget分配的System V shared memory； windows是指Windows shared memory； mmap是指使用存在的data directory中的memory-mapped files模拟的shared memory。通常不鼓励使用mmap值，这在任何平台上都不是默认值，因为操作系统可能会反复将修改过的页面写回磁盘，从而增加系统I/O负载；但是，当pg_dynshmem子目录存储在RAM磁盘上，或者其他共享内存工具不可用时，它可能对调试有用。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -3784,9 +3392,7 @@ h| 参数名称 h| log_destination
 | 数据类型 | string
 | 默认值 | stderr
 | 取值范围 | Linux平台下的取值有：stderr、csvlog、syslogWindows平台下的取值有：stderr、csvlog、eventlog
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义
 a| PostgreSQL支持多种记录PostgreSQL消息的方法。包括stderr、csvlog、syslog，在windows平台下还有eventlog。当本参数值是一个列表时，请使用逗号分隔每个值。本参数仅能在postgresql.conf中设置或者在server command line中设置。当本参数值中含有csvlog时，日志条目被输出为csv格式（comma separated value），这便于程序加载log内容。需要将配置参数logging_collector设置为on才可以生成csv格式的log。当本参数值含有stderr或者csvlog时，current_logfiles文件被建立用来记录当前正在被logging collector进程使用的logfile的位置。这提供了一个查找当前正在使用的log的简便方法。 current_logfiles文件的内容如下（举例）: stderr log/postgresql.log csvlog log/postgresql.csv当新的logfile被建立或者log_destination被加载时，current_logfiles文件会被重建。当本参数值不含有stderr或者csvlog，以及logging collector被禁用时，current_logfiles文件会被删除掉。 +
 
@@ -3804,9 +3410,7 @@ h| 参数名称 h| logging_collector
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数会启用logging collector进程，该进程是一个background process，用来捕获发送到stderr的log messages并重定向这些信息到log file中。这个方法比记录到syslog中要有用。因为有些类型的messages不会显示在syslog的输出中（一个例子是dynamic-linker failure messages，另外一个是脚本产生的error messages，比如archive_command）.本参数仅仅可以在PostgreSQL启动时设置。logging collector设计为永不丢失消息。这意味着在负载极高的情况下，当logging collector落后时，服务器进程可能会在尝试发送额外日志消息时被阻止。相反，syslog更喜欢在无法写入消息时丢弃消息，这意味着在这种情况下它可能无法记录某些消息，但不会阻塞系统的其余部分。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -3821,12 +3425,8 @@ a| +
 h| 参数名称 h| log_directory
 | 数据类型 | string
 | 默认值 | log
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 在logging_collector配置参数设置为on的情况下，本参数用于确定log file被建立在哪个目录下。本参数值可以是绝对路径，也可以是相对于data directory的相对路径。本参数仅能在postgresql.conf中设置或者在server command line中设置
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3841,12 +3441,8 @@ a| +
 h| 参数名称 h| log_filename
 | 数据类型 | string
 | 默认值 | postgresql-%Y-%m-%d_%H%M%S.log
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 在logging_collector配置参数设置为on的情况下，本参数用于确定所创建的log file的文件名。本参数值被视为strftime pattern，因此可以使用%-escapes指定随时间变化的文件名(请注意，如果存在任何依赖于时区的%-转义，则计算将在配置参数log_timezone指定的时区中完成。）支持的%-转义与开放组的strftime规范中列出的那些类似。请注意，系统的strftime不是直接使用的，因此特定于平台（非标准）的扩展不起作用。如果本参数值中不带转义符，你应使用log rotation 工具以避免日志填充满整个磁盘。若是在log_destination配置参数中启用了csv格式的输出，那么会将.CSV附加到带时间戳的日志文件名. 以创建CSV格式输出的文件名(如果日志文件名以.log结尾，则替换后缀。）本参数仅能在postgresql.conf中设置或者在server command line中设置
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3865,9 +3461,7 @@ h| 参数名称 h| log_file_mode
 | 数据类型 | string
 | 默认值 | 0600， 0600表示只有PostgreSQL的owner可以读取或者写入log files
 | 取值范围 | 0到511
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 在logging_collector配置参数设置为on的情况下，在Unix/Linux系统中本参数用于设置logfile的权限（在Microsoft Windows平台上，本参数被忽略）。 参数值应该是以chmod和umask系统调用接受的格式指定的数字模式。 0600表示只有PostgreSQL的owner可以读取或者写入log files.其他通常有用的设置是0640，0640允许owner的group的成员去读取log files。请注意，要使用这样的设置，您需要更改log_directory目录以将文件存储在data directory目录之外的某个位置。无论如何，让日志文件具有广泛的可读性是不明智的，因为它们可能包含敏感数据本参数仅能在postgresql.conf中设置或者在server command line中设置
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3901,9 +3495,7 @@ h| 参数名称 h| log_rotation_size
 | 数据类型 | integer
 | 默认值 | 10240
 | 取值范围 | 0到2097151，0表示禁用掉基于size的new log file创建
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 在logging_collector配置参数设置为on的情况下，本参数确定了一个单独的log file能使用的最大大小。将此数量的数据发送到日志文件后，将创建一个新的日志文件。若指定本参数值时不带单位，那默认的单位是KB。默认值是10MB。本参数仅能在postgresql.conf中设置或者在server command line中设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3920,9 +3512,7 @@ h| 参数名称 h| log_truncate_on_rotation
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 在logging_collector配置参数设置为on的情况下，本参数将导致PostgreSQL截断（覆盖）而不是附加到任何同名的现有日志文件。请注意，只有在由于基于time(时间)的rotate而打开新文件时才会发生截断，而不是在服务器启动或基于size的rotate期间。当本参数值设置off时，在所有情况下都会附加到已有文件中。将本参数值与日志文件名（如postgresql-%H.log）结合使用会生成24个每小时一次的日志文件，然后周期性地覆盖它们。本参数仅能在postgresql.conf中设置或者在server command line中设置。举例：为了达到如下目的：保留7天的log，每天的log文件的文件名是server_log.Mon,server_log.Tue等等，然后用本周的log自动覆盖上周的log。该需求需要设置log_filename为server_log.%a, log_truncate_on_rotation为on，log_rotation_age为1440举例：为了达到如下目的：保留24小时的log，每小时一个log file，如果log file大小超过1GB时也需要很快进行rotate。该需求需要设置log_filename为server_log.%H%M, log_truncate_on_rotation为on，log_rotation_age为60，log_rotation_size为1000000.在log_filename中包括%M允许任何基于size的且可能在同一个小时内有多个log file的rotate
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3939,9 +3529,7 @@ h| 参数名称 h| syslog_facility
 | 数据类型 | enum
 | 默认值 | local0
 | 取值范围 | {local0,local1,local2,local3,local4,local5,local6,local7}
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当配置参数log_destination被设置为syslog时，本参数用于确定使用的syslog facility。本参数仅能在postgresql.conf中设置或者在server command line中设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3956,12 +3544,8 @@ a| +
 h| 参数名称 h| syslog_ident
 | 数据类型 | string
 | 默认值 | postgres
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数设置了在操作系统syslog日志中用于标识PostgreSQL消息的关键字。本参数仅仅适用于Linux平台，因为只有Linux平台才有syslog.虽然在Windows平台下也能修改本参数值，但是该修改没有任何意义。本参数仅能在postgresql.conf中设置或者在server command line中设置
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -3977,9 +3561,7 @@ h| 参数名称 h| syslog_sequence_numbers
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义
 a| 当配置参数log_destination被设置为syslog并且本参数值设置为on时，PostgreSQL会在每条消息的前面加一个依次增大的顺序号，同一个命令的多条输出会以[2-1],[2-2]之类的次序标出：（如下截取自linux的/var/log/messages）image::PostgreSQL13%E6%96%87%E6%A1%A3%E4%B9%8BPG%E5%8F%82%E6%95%B0%E5%8F%82%E8%80%83%E6%89%8B%E5%86%8C_html_b376f05a85e6462b.png["",357,140] +
 本参数设置为off的效果如下：（如下截取自linux的/var/log/messages）image::PostgreSQL13%E6%96%87%E6%A1%A3%E4%B9%8BPG%E5%8F%82%E6%95%B0%E5%8F%82%E8%80%83%E6%89%8B%E5%86%8C_html_340e68e94edcda77.png["",361,131]本参数仅能在postgresql.conf中设置或者在server command line中设置。 +
@@ -3998,9 +3580,7 @@ h| 参数名称 h| syslog_split_messages
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当配置参数log_destination被设置为syslog并且本参数值设置为on时，消息被按行分割，长的行会被分割，以便填满1024Bytes，这是传统syslog实现上的典型大小限制。当设置为off时，PostgreSQL日志消息将按照原样传递给syslog服务，并由syslog服务来处理可能非常庞大的消息。如果syslog最终记录到一个文本文件中，那么无论哪种方式，效果都是一样的，最好保持该设置处于on状态，因为大多数syslog实现要么不能处理大型消息，要么需要专门配置来处理它们。但是，如果syslog最终要写入其他介质，那么将消息逻辑地保持在一起可能是必要的或更有用的。本参数仅能在postgresql.conf中设置或者在server command line中设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -4015,12 +3595,8 @@ a| +
 h| 参数名称 h| event_source
 | 数据类型 | bool
 | 默认值 | PostgreSQL
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数仅仅适用于Windows平台，因为只有Windows平台才有event log，本参数值会体现在Windows操作系统的事件查看器的"Windows日志"-"应用程序"-"来源"一列。虽然在Linux平台下也能修改本参数值，但是该修改没有任何意义。本参数仅能在postgresql.conf中设置或者在server command line中设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -4037,9 +3613,7 @@ h| 参数名称 h| block_size
 | 数据类型 | Integer
 | 默认值 | 8192
 | 取值范围 | 8192
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 数据库使用的disk block的大小，该参数也影响其他的配置参数，比如shared_buffers，该参数通过编译时./configure命令的--with-blocksize选项确定
 | 是否可session级修改 | 否，不可修改。
 | 修改后何时生效 | 不可修改。
@@ -4055,9 +3629,7 @@ h| 参数名称 h| data_checksums
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 显示data checksums是否启用。本参数值通过initdb时的-k选项或者--data-checksums选项确定。本参数值可以使用pg_checksums进行修改，pg_checksums命令具体用法请见pg_checksums --help
 | 是否可session级修改 | 否
 | 修改后何时生效 | 立即生效
@@ -4073,9 +3645,7 @@ h| 参数名称 h| data_directory_mode
 | 数据类型 | integer
 | 默认值 | 0700
 | 取值范围 | 0到511
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 在linux/unix中显示data_directory参数值对应的目录的权限；在windows系统中，本参数值总是显示为0700
 | 是否可session级修改 | 否
 | 修改后何时生效 | 不可修改
@@ -4091,9 +3661,7 @@ h| 参数名称 h| debug_assertions
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 显示PG在编译时是否启用assertion。本参数值通过编译时./configure命令的--enable-cassert选项确定。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 不可修改
@@ -4111,9 +3679,7 @@ h| 参数名称 h| integer_datetimes
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 支持64bit整型的date和time。本参数通过编译时./configure命令确定。注意：configure的--disable-integer-datetimes选项，是"obsolete option, no longer supported"
 | 是否可session级修改 | 否
 | 修改后何时生效 | 不可修改
@@ -4128,12 +3694,8 @@ a| +
 h| 参数名称 h| lc_collate
 | 数据类型 | string
 | 默认值 | en_US.UTF-8(根据操作系统环境变量不同而不同，见os命令locale的返回结果)
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 字符串的排序规则(String sort order)。本参数值通过initdb时的--lc-collate确定，若是不指定该选项，initdb会取环境变量
 | 是否可session级修改 | 否
 | 修改后何时生效 | 在PG Database级别确定，确定后不可修改，只读参数
@@ -4149,12 +3711,8 @@ a| +
 h| 参数名称 h| lc_ctype
 | 数据类型 | string
 | 默认值 | en_US.UTF-8(根据操作系统环境变量不同而不同，见os命令locale的返回结果)
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 字符分类(是否区分大小写，什么是字符等)。本参数通过initdb时的--lc-ctype确定，若是不指定该选项，initdb会取环境变量
 | 是否可session级修改 | 否
 | 修改后何时生效 | 在PG Database级别确定，确定后不可修改，只读参数。
@@ -4170,12 +3728,8 @@ a| +
 h| 参数名称 h| max_function_args
 | 数据类型 | integer
 | 默认值 | 100
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 返回函数参数的最大个数，
 | 是否可session级修改 | 否
 | 修改后何时生效 | 不可修改，只读参数
@@ -4191,12 +3745,8 @@ a| +
 h| 参数名称 h| max_identifier_length
 | 数据类型 | integer
 | 默认值 | 63
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 返回标识符的最大长度
 | 是否可session级修改 | 否
 | 修改后何时生效 | 不可修改，只读参数
@@ -4212,12 +3762,8 @@ a| +
 h| 参数名称 h| max_index_keys
 | 数据类型 | integer
 | 默认值 | 32
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 一个index最多能含有多少列
 | 是否可session级修改 | 否
 | 修改后何时生效 | 不可修改，只读参数
@@ -4233,9 +3779,7 @@ a| +
 h| 参数名称 h| segment_size
 | 数据类型 | integer
 | 默认值 | 131072
-| 取值范围
-a| +
-
+| 取值范围 |
 | 参数单位 | 8KB
 | 参数含义 | 本参数值确定了每个disk file中的page的数量。本参数值通过编译时./configure命令执行的--with-segsize=SEGSIZE选项确定。
 | 是否可session级修改 | 否
@@ -4252,12 +3796,8 @@ a| +
 h| 参数名称 h| server_encoding
 | 数据类型 | string
 | 默认值 | UTF8
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 数据库的编码 (即:字符集),本参数通过initdb时的-E或者--encoding参数确定。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 不可修改，只读参数
@@ -4273,12 +3813,8 @@ a| +
 h| 参数名称 h| server_version
 | 数据类型 | string
 | 默认值 | 默认值是当前PostgreSQL版本，格式为主版本号.次版本号
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 返回PostgreSQL的版本号
 | 是否可session级修改 | 否
 | 修改后何时生效 | 不可修改，只读参数
@@ -4294,12 +3830,8 @@ a| +
 h| 参数名称 h| server_version_num
 | 数据类型 | integer
 | 默认值 | 130000，返回主版本号
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 返回PostgreSQL的版本号
 | 是否可session级修改 | 否
 | 修改后何时生效 | 不可修改，只读参数
@@ -4315,12 +3847,8 @@ a| +
 h| 参数名称 h| ssl_library
 | 数据类型 | string
 | 默认值 | OpenSSL
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 返回PostgreSQL软件编译时的SSL library。本参数值通过./configure的--with-openssl选项确定。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 不可修改，只读参数
@@ -4335,12 +3863,8 @@ a| +
 h| 参数名称 h| wal_block_size
 | 数据类型 | integer
 | 默认值 | 8192
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 返回WAL中disk block的大小。本参数值通过./configure的--with-wal-blocksize选项确定。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 不可修改，只读参数
@@ -4356,9 +3880,7 @@ a| +
 h| 参数名称 h| wal_segment_size
 | 数据类型 | string
 | 默认值 | 16777216
-| 取值范围
-a| +
-
+| 取值范围 |
 | 参数单位 | Byte
 | 参数含义 | 返回WAL Segments的大小。本参数值通过initdb的--wal-segsize选项确定。
 | 是否可session级修改 | 否
@@ -4375,12 +3897,8 @@ a| +
 h| 参数名称 h| DateStyle
 | 数据类型 | string
 | 默认值 | ISO, MDY
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数用于设置date和time的显示格式，以及解释不明确日期输入值的规则。由于历史原因，本参数值包括两个部分：第一部分：output format specification (ISO, Postgres, SQL, or German)；第二部分：the input/output specification for year/month/day ordering (DMY, MDY, or YMD)。上述两者可以单独设置，也可以一起设置。请注意，关键词Euro和European是DMY的同义词；关键词US和NonEnro是MDY的同义词；Initdb生成配置参数文件时，会根据os的locale命令的lc_time结果来设置本参数值。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -4396,9 +3914,7 @@ h| 参数名称 h| IntervalStyle
 | 数据类型 | enum
 | 默认值 | postgres
 | 取值范围 | postgres,postgres_verbose,sql_standard,iso_8601
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数用于设置interval values的显示格式。参数值sql_standard表示产生匹配SQL标准interval常量的输出；参数值postgres表示当DateStyle参数值设置为ISO时，产生匹配PostgreSQL8.4版本之前的输出；参数值postgres_verbose表示当DateStyle参数值设置为非ISO时，表示当DateStyle参数值设置为ISO时，参数值iso_8601表示产生匹配在ISO 8601标准的4.4.3.2章节中定义的时间间隔带"format with designators"匹配的输出。本参数值也会影响模糊的interval输入的解释。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -4415,12 +3931,8 @@ a| +
 h| 参数名称 h| TimeZone
 | 数据类型 | String
 | 默认值 | 内置的默认值是GMT，一般情况下，本参数值依据initdb时的操作系统时区而定，即：initdb时的操作系统时区是什么，initdb后postgresql.conf中的本参数值就是什么。注意：CentoOS7/8的操作系统当前时区请使用操作系统命令timedatectl status查询。
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 为显示以及翻译timestamp设置时区。可用的时区名称可以通过pg_timezone_names视图进行查询。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -4437,12 +3949,8 @@ a| +
 h| 参数名称 h| timezone_abbreviations
 | 数据类型 | string
 | 默认值 | Default
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 被PostgreSQL接受的datetime输入的时区简写。默认值Default在世界上大部分地区都有效。另外的有效值是Australia和India。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -4461,9 +3969,7 @@ h| 参数名称 h| extra_float_digits
 | 数据类型 | string
 | 默认值 | 1
 | 取值范围 | -15到3
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 设置浮点值(float4,float8以及地理数据类型)的显示的位数。extra_float_digits大于０时，原有精度最多增加3位，　小于0时，　精度最多减掉相应数值，　等于０时，　float4精度为6位，　float8精度为15
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -4480,12 +3986,8 @@ a| +
 h| 参数名称 h| client_encoding
 | 数据类型 | string
 | 默认值 | 取自Database encoding
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数用于设置客户端字符集。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效。
@@ -4501,12 +4003,8 @@ a| +
 h| 参数名称 h| lc_messages
 | 数据类型 | string
 | 默认值 | 与系统locale设置有关
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数用于设置消息显示的语言。可接受的参数值是跟系统相关的。本参数值会影响发送到服务器运行日志以及客户端的消息，不正确的本参数值会影响服务器日志的可读性。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效，且只有超级用户才能更改此设置。
@@ -4522,12 +4020,8 @@ a| +
 h| 参数名称 h| lc_monetary
 | 数据类型 | string
 | 默认值 | 与系统locale设置有关
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 设置用于格式化货币金额的语言环境，可接受的参数值是跟系统相关的。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -4542,12 +4036,8 @@ a| +
 h| 参数名称 h| lc_numeric
 | 数据类型 | string
 | 默认值 | 与系统locale设置有关
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数值用于设置格式化数字。可接受的参数值是跟系统相关的。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -4562,15 +4052,9 @@ a| +
 |===
 h| 参数名称 h| lc_time
 | 数据类型 | string
-| 默认值
-a| +
-
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 默认值 |
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数值用于设置格式化的日期和时间。可接受的参数值是跟系统相关的。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -4585,12 +4069,8 @@ a| +
 h| 参数名称 h| default_text_search_config
 | 数据类型 | string
 | 默认值 | 依据initdb时的lc_ctype对应的设置而定
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数值用于设置当全文检索函数中不明确指定配置项时所用的全文检索配置项。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -4608,9 +4088,7 @@ h| 参数名称 h| wal_level
 | 数据类型 | enum
 | 默认值 | replica
 | 取值范围 | {minimal,replica,logical}
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义
 a| 本参数定义了有多少信息被写入到WAL日志中。参数值replica表示WAL日志中写入了足够的信息以支持WAL Archiving和replicatin（包括在standby server上的read-only查询），参数值minimal表示WAL日志中移除了除了需要从crash或者immeidate shutdown进行recovery之外的信息。参数值logical添加了必要信息以支持逻辑解码(logical decoding)，在本参数使用logical参数值的情况下，会使得WAL日志的数量变大，特别是很多表被配置为replica identity full并且很多delete和update被执行的情况下。本参数仅仅可以在PostgreSQL Start时修改。每个更高级别的参数值会包括更低级别参数值中记录的所有内容。但是最少的WAL不能包含足够的信息来从基本备份和WAL日志中重建数据，因此必须使用replica参数值来提供更多的信息以启用WAL归档（archive_mode）和流复制.在9.6之前的版本中，此参数值还可以是archive和hot_standby。在PG13版本中，这些仍被接受，但已映射到replica参数值上。当本参数设置为minimal时，如下操作会更快，因为如下操作在创建或重写它们的事务的其余部分中，没有记录永久关系的信息： ALTER ... SET TABLESPACE CLUSTER CREATE TABLE REFRESH MATERIALIZED VIEW（无CONCURRENTLY） REINDEX TRUNCATE +
 
@@ -4631,9 +4109,7 @@ h| 参数名称 h| fsync
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当本参数值为on时，通过发出fsync系统调用或者各种等价的方法(参见wal_sync_method配置参数)，PostgreSQL会尝试确保更新被物理的写入disk。这就保证了PostgreSQL Cluster可以在操作系统或者硬件crash之后能recover(恢复)到一个一致的状态。当本参数值为off时，会带来性能优势，在电源故障或者系统crash时，这会导致不可恢复的数据损坏。仅仅当数据库的全部数据来源自外部数据的情况下，才建议将本参数值设置为off关闭fsync的场景包括：从备份文件中加载数据到PG中；使用PG进行数据的批处理，然后数据库会被废弃并重建；一个经常被重建的只读数据库克隆，并且不会用于failover.高质量的硬件不足以让本参数值设置为off基于可靠恢复的原因将本参数值从off改为on时，需要强制将kernel中修改过的buffer刷新到持久存储中，可以通过如下方法达到本目的： PostgreSQL Cluster关闭；当fsync参数值为on时运行initdb –sync-only,运行sync操作系统命令，unmount掉文件系统或者重启服务器操作系统。在很多场景中，针对非关键事务将synchronous_commit参数值设置为off可以提供比将fsync参数值设置为off更大的潜在优势，不会造成数据损坏等风险。本参数值只能在postgresql.conf文件或server command line中设置。如果关闭此参数，请考虑关闭full_page_writes。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -4652,9 +4128,7 @@ h| 参数名称 h| synchronous_commit
 | 数据类型 | enum
 | 默认值 | on
 | 取值范围 | {local,remote_write,remote_apply,on,off}
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义
 a| 本参数值指定了在PostgreSQL数据库返回一个成功的提示给客户端之前，必须处理多少WAL数据。如果synchronous_standby_names是空，那么本参数有意义的参数值为on和off；remote_apply、remote_write、和local提供了与on参数值一样的本地同步级别。所有非off模式的本地行为是等待本地WAL刷新到Disk中。在off模式下，没有等待，因此存在一个延迟，这个延迟是给client报告成功与以后保证事务安全以防server crash之间的延迟（最大的延迟是三倍的wal_writer_delay参数值）。与fsync参数值不同，将此参数设置为off不会造成数据库不一致的任何风险。操作系统或者数据库的crash可能会导致一些最近据称已提交的事务丢失，但数据库状态将与这些事务完全中止时的状态相同，因此，当性能比事务持久性的精确确定性更重要时，将本参数设置为off是一个有用的选择。如果synchronous_standby_names是非空，本参数值用来控制事务提交是否等待在standby server上的WAL Record被处理。 +
 当本参数值为remote_apply时,commit会等待直到从当前的同步standby指示它们已经收到事务的commit record并应用( applied),因此，它可以在standby 端被query可见，并且在standby端被写入持久性的存储中。这会导致比之前设置的更大的提交延迟，因为primary端会等standby端的WAL replay。 +
@@ -4678,9 +4152,7 @@ h| 参数名称 h| wal_sync_method
 | 数据类型 | enum
 | 默认值 | Linux和FreeBSD下默认值是fdatasyncWindows下默认值是open_datasync
 | 取值范围 | {fsync,fdatasync,open_sync,open_datasync}
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义
 a| 本参数值指定了强制将WAL写入Disk时使用的方法。当fsync参数值为off时，本参数值无关紧要。 open_datasync：使用open()的O_DSYNC选项写WAL Files fdatasync:每次commit时调用fdatasync() fsync:每次commit时调用fsync() fsync_writethrough:每次commit时调用fsync(),对disk write cache强制write-through open_sync：使用open()的O_SYNC选项写WAL Files +
  open_*选项使用O_DIRECT(若是可用)，不是上述所有选项都在所有平台下可用。默认值是在该平台下支持的上述列表中的第一个方法，除了在Linux平台和FreeBSD平台下fdatasync是默认值。默认值不一定理想，可能有必要更次此设置或系统配置的其他方面，以创建crash的安全配置或实现最佳性能。本参数值只能在postgresql.conf文件或server command line中设置。 +
@@ -4701,12 +4173,8 @@ Write-Ahead Log / Settings
 h| 参数名称 h| full_page_writes
 | 数据类型 | bool
 | 默认值 | on
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义
 a| 当本参数值为on时，在一个checkpoint发生之后，当第一个修改发生时，将full page（即：该修改所在的disk page中的全部内容）写入WAL日志中。这是需要的，因为在操作系统crash期间正在进行的page write可能仅部分完成，从而导致磁盘上的页包含新旧数据的混合。通常存储在WAL中的行级更改数据不足以在crash之后的恢复中完全还原一个page。存储full page image可以保证页面可以正确还原，但代价是增加必须写入WAL的数据量(因为WAL replay总是从检查点开始，所以在检查点之后的每个页面的第一次更改期间这样做就足够了。因此，降低整页写入成本的一种方法是增加checkpoint interval参数。）关闭此参数可加快正常操作，但在系统发生故障后，可能会导致不可恢复的数据损坏或静默数据损坏。风险类似于关闭fsync，虽然较小，但应该仅基于为fsync参数建议的相同情况关闭本参数。关闭此参数不会影响将WAL存档用于时间点恢复（PITR）。此参数只能在postgresql.conf文件或server command line中设置 +
 
@@ -4724,12 +4192,8 @@ a| 当本参数值为on时，在一个checkpoint发生之后，当第一个修�
 h| 参数名称 h| wal_log_hints
 | 数据类型 | bool
 | 默认值 | off
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 当本参数值设置为on时，在一个checkpoint发生之后，当第一个修改发生时，将full page（即：该修改所在的disk page中的全部内容）写入WAL日志中。即使对于所谓的提示位的非关键修改也是如此。如果data ckecksums被启用，hint bit updates总是被记录在wal中，此时本参数值被忽略。你可以使用本参数值来测试当数据库cluster启用checksum之后的会生成多少额外的wal-logging.本参数仅能在server start时设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | PG instance重启生效
@@ -4747,9 +4211,7 @@ h| 参数名称 h| wal_compression
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当本参数值为on时，在如下情况下PostgreSQL压缩一个全部的page image并写入到WAL中：full_page_writes参数值为on或者执行一次base backup。压缩的page image会在wal replay期间进行解压。启用本参数可以降低WAL日志的产生量而不会增加不可恢复的数据损坏的风险，但是在wal压缩以及解压过程中会有额外的cpu消耗。
 | 是否可session级修改 | 是，仅限于superuser
 | 修改后何时生效 | Session级修改立即生效，非session修改relaod生效
@@ -4766,9 +4228,7 @@ h| 参数名称 h| wal_init_zero
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当本参数值为on时，会导致新的wal file以零填充，在某些文件系统中，这确保了在需要写入wal records之前的空间已被分配。但是，Copy-On-Write (COW)文件系统不会从本参数中获益，因此可以选择跳过不必要的工作。如果设置为off，则在创建文件时仅写入最后一个字节，以使其具有预期的大小。
 | 是否可session级修改 | 是，仅限于superuser
 | 修改后何时生效 | Session级修改立即生效，非session修改relaod生效
@@ -4785,9 +4245,7 @@ h| 参数名称 h| wal_recycle
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数值为on时，会导致wal file被循环使用(通过renaming wal file的方式)，避免了创建新wal file的需要。在COW文件系统中，本参数可能让create new wal file更快。
 | 是否可session级修改 | 是，仅限于superuser
 | 修改后何时生效 | Session级修改立即生效，非session修改relaod生效
@@ -4892,9 +4350,7 @@ h| 参数名称 h| commit_siblings
 | 数据类型 | Integer
 | 默认值 | 5
 | 取值范围 | 0到1000
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 在执行配置参数commit_delay指定的延迟之前，需要的最小的并发打开的事务数。值越大，在延迟间隔期间至少有一个其他事务准备好提交的可能性就越大
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -4912,9 +4368,7 @@ h| 参数名称 h| allow_system_table_mods
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 允许修改系统表的结构以及对系统表进行某些其他有风险的操作。否则即使对于超级用户也是不允许的。不明智地使用此设置可能会导致无法挽回的数据丢失或严重损坏数据库系统。只有超级用户才能更改此设置。
 | 是否可session级修改 | 是，仅限于superuser
 | 修改后何时生效 | Session级修改立即生效，其他修改reload生效
@@ -4929,12 +4383,8 @@ a| +
 h| 参数名称 h| backtrace_functions
 | 数据类型 | string
 | 默认值 | 空字符串
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数值是以逗号分隔的C函数名称。如果一个错误被抛出并且错误发生地方的内部C函数名称与本参数值list中的值相匹配，然后backtrace与error message会被写入server log。不是所有的平台都支持backtrace功能，backtrace的质量取决于编译选项。
 | 是否可session级修改 | 是，仅限于superuser
 | 修改后何时生效 | Session级修改立即生效，其他修改reload生效
@@ -4952,9 +4402,7 @@ h| 参数名称 h| ignore_system_indexes
 | 数据类型 | boolean
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当读取system table时忽略system index（但是当修改表时，依然会更新索引）。本参数用于从损坏的索引中恢复的场景中。本参数当session启动后无法改变
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效，但是仅仅针对reload之后的新session生效。
@@ -5005,9 +4453,7 @@ h| 参数名称 h| trace_notify
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 为LISTEN和NOTIFY命令生成大量的debugging输出。配置参数client_min_messages或者log_min_messages必须设置为DEBUG1或者更低才能发送该输出到client或者server log
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5024,9 +4470,7 @@ h| 参数名称 h| trace_recovery_messages
 | 数据类型 | enum
 | 默认值 | log，log不会影响log决策
 | 取值范围 | {debug5,debug4,debug3,debug2,debug1,log,notice,warning,error}
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 启用记录恢复相关的调试输出，否则将不会被记录。此参数允许用户覆盖log_min_messages的正常设置，但仅限于特定消息。本参数的目的是调试hot standby。其他值导致该优先级或更高优先级的与恢复相关的调试消息被记录，就好像它们具有LOG优先级一样。针对配置参数log_min_messages的通用设置会导致无条件发送messages到server log中。本参数只能在postgresql.conf中或者server command line中设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -5043,9 +4487,7 @@ h| 参数名称 h| trace_sort
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当本参数值为on时，在sort操作期间，会发出有关资源使用的信息。本参数仅仅针对PostgreSQL编译时TRACE_SORT macro被定义时才有效（默认情况下，TRACE_SORT是被定义的）
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5061,24 +4503,12 @@ a| +
 |===
 h| 参数名称 h| trace_locks
 | 数据类型 | bool
-| 默认值
-a| +
-
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
-| 参数含义
-a| +
-
-| 是否可session级修改
-a| +
-
-| 修改后何时生效
-a| +
-
+| 默认值 |
+| 取值范围 |
+| 参数单位 |
+| 参数含义 |
+| 是否可session级修改 |
+| 修改后何时生效 |
 |===
 
 
@@ -5089,27 +4519,13 @@ a| +
 [cols="136,387"]
 |===
 h| 参数名称 h| trace_lwlocks
-| 数据类型
-a| +
-
-| 默认值
-a| +
-
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
-| 参数含义
-a| +
-
-| 是否可session级修改
-a| +
-
-| 修改后何时生效
-a| +
-
+| 数据类型 |
+| 默认值 |
+| 取值范围 |
+| 参数单位 |
+| 参数含义 |
+| 是否可session级修改 |
+| 修改后何时生效 |
 |===
 
 
@@ -5119,27 +4535,13 @@ a| +
 [cols="136,387"]
 |===
 h| 参数名称 h| trace_userlocks
-| 数据类型
-a| +
-
-| 默认值
-a| +
-
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
-| 参数含义
-a| +
-
-| 是否可session级修改
-a| +
-
-| 修改后何时生效
-a| +
-
+| 数据类型 |
+| 默认值 |
+| 取值范围 |
+| 参数单位 |
+| 参数含义 |
+| 是否可session级修改 |
+| 修改后何时生效 |
 |===
 
 
@@ -5149,27 +4551,13 @@ a| +
 [cols="136,387"]
 |===
 h| 参数名称 h| trace_lock_oidmin
-| 数据类型
-a| +
-
-| 默认值
-a| +
-
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
-| 参数含义
-a| +
-
-| 是否可session级修改
-a| +
-
-| 修改后何时生效
-a| +
-
+| 数据类型 |
+| 默认值 |
+| 取值范围 |
+| 参数单位 |
+| 参数含义 |
+| 是否可session级修改 |
+| 修改后何时生效 |
 |===
 
 
@@ -5179,27 +4567,13 @@ a| +
 [cols="136,387"]
 |===
 h| 参数名称 h| trace_lock_table
-| 数据类型
-a| +
-
-| 默认值
-a| +
-
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
-| 参数含义
-a| +
-
-| 是否可session级修改
-a| +
-
-| 修改后何时生效
-a| +
-
+| 数据类型 |
+| 默认值 |
+| 取值范围 |
+| 参数单位 |
+| 参数含义 |
+| 是否可session级修改 |
+| 修改后何时生效 |
 |===
 
 
@@ -5209,27 +4583,13 @@ a| +
 [cols="136,387"]
 |===
 h| 参数名称 h| debug_deadlocks
-| 数据类型
-a| +
-
-| 默认值
-a| +
-
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
-| 参数含义
-a| +
-
-| 是否可session级修改
-a| +
-
-| 修改后何时生效
-a| +
-
+| 数据类型 |
+| 默认值 |
+| 取值范围 |
+| 参数单位 |
+| 参数含义 |
+| 是否可session级修改 |
+| 修改后何时生效 |
 |===
 
 
@@ -5239,27 +4599,13 @@ a| +
 [cols="136,387"]
 |===
 h| 参数名称 h| log_btree_build_stats
-| 数据类型
-a| +
-
-| 默认值
-a| +
-
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
-| 参数含义
-a| +
-
-| 是否可session级修改
-a| +
-
-| 修改后何时生效
-a| +
-
+| 数据类型 |
+| 默认值 |
+| 取值范围 |
+| 参数单位 |
+| 参数含义 |
+| 是否可session级修改 |
+| 修改后何时生效 |
 |===
 
 
@@ -5271,12 +4617,8 @@ a| +
 h| 参数名称 h| wal_consistency_checking
 | 数据类型 | String
 | 默认值 | 空串，空串意味着禁用本特性。
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数的目的是检查WAL redo routine中的错误。当启用本参数时，与WAL记录一起修改的任何buffer的full page image都会添加到记录中。如果该记录随后被重放，系统将首先应用每个记录，然后测试由该记录修改的buffer是否与存储的image匹配。在某些情况下（如提示位），可以接受较小的变化，并将被忽略。任何意外的差异都将导致致命错误，从而终止恢复。本参数值可以设置为all，all表示检查所有记录，本参数值也可以设置为逗号分隔的resource manager列表，受到支持的resource manager 是heap、heap2、btree、hash、gin、gist、sequence、spgist、brin、generic
 | 是否可session级修改 | 是，仅限于superuser进行修改
 | 修改后何时生效 | Reload即可生效
@@ -5291,22 +4633,12 @@ a| +
 |===
 h| 参数名称 h| wal_debug
 | 数据类型 | bool
-| 默认值
-a| +
-
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 默认值 |
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 当设置为on时，发出与wal相关的debugging out。本参数仅仅当PostgreSQL编译时定义了WAL_DEBUG macro的情况下才适用。
-| 是否可session级修改
-a| +
-
-| 修改后何时生效
-a| +
-
+| 是否可session级修改 |
+| 修改后何时生效 |
 |===
 
 
@@ -5318,9 +4650,7 @@ h| 参数名称 h| ignore_checksum_failure
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数仅仅在data checksums启用的情况下才生效。在读取过程中检查到checksum失败通常会导致PostgreSQL报告一个error，从而中止当前事务。本参数值设置为on会导致PostgreSQL忽略故障（但是依然会报告警告）并继续处理。此行为可能导致crash、传播或隐藏corruption或其他严重问题。但是，如果block header是正常的，可能允许您越过错误并检索可能仍然存在于表中的未损坏的tuple。如果block header已损坏，那么即使启用本选项，也会报告错误。
 | 是否可session级修改 | 是，仅限于superuser在session级修改
 | 修改后何时生效 | Reload即可生效
@@ -5337,9 +4667,7 @@ h| 参数名称 h| zero_damaged_pages
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 检测到一个损坏的page header通常会导致PostgreSQL报错一个error，并终止当前事务。设置本参数值为on会导致系统报告warning，将内存中损坏的页面清零，然后继续处理。这种行为会破坏数据，即：损坏页面上的所有行。但是，本参数确实允许您克服错误并从表中可能存在的任何未损坏的页面中检索行。如果由于硬件或软件错误而发生损坏，它对于恢复数据很有用。在您放弃从表的损坏页恢复数据的希望之前，您通常不应设置本参数。。清零页不会被强制写入磁盘，因此建议在再次关闭此参数之前重新创建表或索引。本参数值只能由超级用户更改。
 | 是否可session级修改 | 是，仅限于superuser
 | 修改后何时生效 | Reload即可生效
@@ -5357,9 +4685,7 @@ h| 参数名称 h| ignore_invalid_pages
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当本参数值是off时，在recovery期间检测wal record中存在invalid pages之后，PostgreSQL会发出一个PANIC-level的error，进而会终止recovery。当本参数值设置为on时会导致PostgreSQL忽略wal record中的invalid pages（但是依然会报warning）继续进行recovery。本行为可能会导致crash，data loss，传播或者隐藏corruption，或者其他严重问题。但是，本参数会允许你绕过的PANIC-level的error，进而完成recovery，进而启动PostgreSQL。本参数仅能在PostgreSQL启动时设置。本参数仅仅在recovery或者standby mode下生效。
 | 是否可session级修改 | 否
 | 修改后何时生效 | 重启PG instance生效
@@ -5376,9 +4702,7 @@ h| 参数名称 h| jit_debugging_support
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 注册JIT编译函数给debugger使用，本参数仅能在PostgreSQL启动时设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可对新的connection生效
@@ -5396,9 +4720,7 @@ h| 参数名称 h| jit_dump_bitcode
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 写出LLVM的bitcode以便利于JIT debugging，
 | 是否可session级修改 | 是，仅限于superuser
 | 修改后何时生效 | Reload即可生效
@@ -5415,9 +4737,7 @@ h| 参数名称 h| jit_expressions
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当 JIT 编译被启用时，本参数用于确定表达式是否被 JIT 编译
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5435,9 +4755,7 @@ h| 参数名称 h| jit_profiling_support
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 如果 LLVM 具有所需的功能，则发出允许perf分析 JIT 生成的函数所需的数据。这会将文件写入$HOME/.debug/jit/下; 用户负责在需要时执行清理。默认设置是off。该参数只能在服务器启动时设置。本参数仅能在PostgreSQL启动时设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可对新的connection生效
@@ -5455,9 +4773,7 @@ h| 参数名称 h| jit_tuple_deforming
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当JIT编译被启用的状态下，本参数用于确定允许不允许tuple deforming进行jit 编译
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload接口生效
@@ -5475,9 +4791,7 @@ h| 参数名称 h| enable_bitmapscan
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 启用或禁用query planner对位图扫描计划类型的使用
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5496,9 +4810,7 @@ h| 参数名称 h| enable_gathermerge
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 启用或禁用query planner对gather merge计划类型的使用
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5516,9 +4828,7 @@ h| 参数名称 h| enable_hashagg
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 启用或禁用query planner对hashed aggregation计划类型的使用
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5536,9 +4846,7 @@ h| 参数名称 h| enable_hashjoin
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 启用或禁用query planner对hash-join计划类型的使用
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5556,9 +4864,7 @@ h| 参数名称 h| enable_incremental_sort
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 数单位
-a| +
-
+| 数单位 |
 | 参数含义 | 启用或禁用query planner对incremental sort steps的使用
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5576,9 +4882,7 @@ h| 参数名称 h| enable_indexscan
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 启用或禁用query planner对index-scan的使用
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5595,9 +4899,7 @@ h| 参数名称 h| enable_indexonlyscan
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 启用或禁用query planner对index-only-scan的使用
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5613,9 +4915,7 @@ h| 参数名称 h| enable_material
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 启用或禁用query planner对materialization的使用，完全抑制物化是不可能的，但是关闭本参数可以防止query planner插入物化节点，除非在需要正确性的情况下。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5632,9 +4932,7 @@ h| 参数名称 h| enable_mergejoin
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 启用或禁用query planner对merge-join的使用
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5652,9 +4950,7 @@ h| 参数名称 h| enable_nestloop
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 启用或禁用query planner对nested-loop的使用。完全抑制nested-loop连接是不可能的，但是如果有其他方法可用，关闭本参数会阻止query planner使用nested-loop。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5671,9 +4967,7 @@ h| 参数名称 h| enable_parallel_append
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 启用或禁用query planner对parallel-aware append的使用
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5690,9 +4984,7 @@ h| 参数名称 h| enable_parallel_hash
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 启用或禁用query planner对parall hash join的使用，在hash-join被禁用的情况下，本参数值无效。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5715,9 +5007,7 @@ h| 参数名称 h| enable_partition_pruning
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 启用或禁用query planner的partitioned table中消除partition。这也控制计划器生成查询计划的能力。允许查询执行器在查询执行期间删除（忽略）分区
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5734,9 +5024,7 @@ h| 参数名称 h| enable_partitionwise_join
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 启用或禁用query planner对partitionwise join的使用，这允许在partitioned table上的join在匹配的partition上执行join。Partitionwise 目前仅适用于连接条件包括所有分区键的情况，这些分区键必须是相同的数据类型并且具有一对一匹配的子分区集。由于分区连接规划在规划期间可以使用明显更多的 CPU 时间和内存，本参数默认值为off
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5753,9 +5041,7 @@ h| 参数名称 h| enable_partitionwise_aggregate
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 启用或禁用query planner对partitionwise grouping or aggregation的使用，这允许在partitioned table上的partitionwise grouping or aggregation会在每个partition上单独执行。如果GROUP BY子句不包含分区键，则只能在每个分区的基础上执行部分聚合，并且必须稍后执行最终确定。由于partitionwise grouping or aggregation在规划期间可能会使用更多的 CPU 时间和内存，本参数值为off
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5772,9 +5058,7 @@ h| 参数名称 h| enable_seqscan
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 启用或禁用query planner对sequential scan的使用。完全抑制顺序扫描是不可能的，但是如果有其他方法可用，关闭本参数会阻止query planner使用sequential scan。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5791,9 +5075,7 @@ h| 参数名称 h| enable_sort
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 启用或禁用query planner对explicit sort steps的使用。完全抑制显式排序是不可能的，但是如果有其他方法可用，关闭本参数会阻止query planner使用显式排序。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5810,9 +5092,7 @@ h| 参数名称 h| enable_tidscan
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 启用或禁用query planner对TID scan的使用
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5828,12 +5108,8 @@ a| +
 h| 参数名称 h| application_name
 | 数据类型 | string
 | 默认值 | psql
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数值的长度小于NAMEDATALEN值（NAMEDATALEN是源码中的符号常量，默认是64个字符）。本参数被连接到服务器上的应用程序设置，本参数值会显示在pg_stat_activity视图中，也会显示在csv log中。本参数值也可以被包括在配置参数log_line_prefix的参数值中。只有可打印的ASCII字符才可以用于本参数值。其他字符会被问号(?)取代。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5848,15 +5124,9 @@ a| +
 |===
 h| 参数名称 h| debug_print_parse
 | 数据类型 | bool
-| 默认值
-a| +
-
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 默认值 |
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 在运行日志中记录query的parse tree。本消息在LOG消息级别的情况下被发出，因此，默认情况下，本消息会出现在运行日志中，但不会发给client。您可以通过调整client_min_messages配置参数、log_min_messages配置参数让消息发送给client。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5873,9 +5143,7 @@ h| 参数名称 h| debug_print_rewritten
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 在运行日志中记录query的query rewriter output,。本消息在LOG消息级别的情况下被发出，因此，默认情况下，本消息会出现在运行日志中，但不会发给client。您可以通过调整client_min_messages配置参数、log_min_messages配置参数让消息发送给client。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5892,9 +5160,7 @@ h| 参数名称 h| debug_print_plan
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 在运行日志中记录query的execution plan。本消息在LOG消息级别的情况下被发出，因此，默认情况下，本消息会出现在运行日志中，但不会发给client。您可以通过调整client_min_messages配置参数、log_min_messages配置参数让消息发送给client。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5911,9 +5177,7 @@ h| 参数名称 h| debug_pretty_print
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数设置为on时，会将debug_print_parse, debug_print_rewritten, or debug_print_plan配置参数产生的消息进行缩进，这会导致比设置为off时的compact格式更具有可读性但输出会更长。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -5930,9 +5194,7 @@ h| 参数名称 h| log_checkpoints
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 将checkpoints 和restartpoints记录到运行日志中，一些统计信息被包括到消息中，如写入buffer的数量以及写buffer的耗时等。本参数仅能在postgresql.conf设置或者在server command line中设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -5949,9 +5211,7 @@ h| 参数名称 h| log_connections
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当本参数值为on时，每一次尝试连接到PostgreSQL数据库以及客户端成功完成身份认证都会被记录到运行日志中。请注意：有些客户端程序(如psql)会连接两次以确定password是否需要，在该情况下，会有重复的"connection received"消息出现，该消息不一定表示有问题。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可对新的connection生效
@@ -5968,9 +5228,7 @@ h| 参数名称 h| log_disconnections
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当本参数值为on时， session终止的信息会被记录到运行日志中。日志输出类似log_connections配置参数的输出信息，以及session的持续时间。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可对新的connection生效
@@ -5987,9 +5245,7 @@ h| 参数名称 h| log_error_verbosity
 | 数据类型 | enum
 | 默认值 | default
 | 取值范围 | {terse,default,verbose}
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 设置日志消息的详细程度。控制在PG运行日志中为记录的每条消息写入的详细程度。Terse排除了DETAIL、HINT、QUERY、和CONTEXT&nbsp;级别的信息。Verbose输出包括SQLSTATE错误代码以及源码文件名称、函数名称、生成错误的行号。仅有superuser能修改本参数值
 | 是否可session级修改 | 是，仅限于superuser
 | 修改后何时生效 | Reload即可生效
@@ -6006,9 +5262,7 @@ h| 参数名称 h| log_hostname
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 默认情况下，在运行日志中显示连接主机的 IP 地址。打开此参数也会导致记录主机名。请注意，根据您的主机名解析设置，这可能会造成不可忽视的性能损失。此参数只能在postgresql.conf文件中或在server command line中设置。
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -6023,14 +5277,10 @@ a| +
 h| 参数名称 h| log_line_prefix | 
 | 数据类型 | string | 
 | 默认值 | %m [%p] | 
-| 取值范围
-a| +
-
+| 取值范围 |
 | 
 
-| 参数单位
-a| +
-
+| 参数单位 |
 | 
 
 | 参数含义
@@ -6083,9 +5333,7 @@ h| 参数名称 h| log_lock_waits
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当一个session的等待时间长于配置参数deadlock_timeout参数值以获得锁时是否生成日志消息。这在锁定等待是否导致性能不佳时非常有用。只有superuser才能更改本设置。
 | 是否可session级修改 | 是，仅限于superuser进行修改
 | 修改后何时生效 | Reload即可生效。
@@ -6139,9 +5387,7 @@ h| 参数名称 h| log_statement
 | 数据类型 | enum
 | 默认值 | all
 | 取值范围 | {none,ddl,mod,all} none是off的意思， ddl的含义是记录所有数据定义语句，如create、alter、drop; mod的含义是记录DDL语句之外，还会记录数据修改语句，如insert、update、delete、truncate以及copy from语句。PREPARE、EXECUTE和EXPLAIN ANALYZE语句所包含的命令的类型适当时，也会记录这些语句。all的含义是记录所有语句。
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 控制在PG的运行日志中写入哪些类型的SQL语句。对于使用扩展查询协议的客户端来说，记录到运行日志是从一个执行消息被收到开始的。绑定参数值也会被记录。请注意，即使是本参数值设置为all，运行日志中也不会显示那些包含简单语法错误的SQL语句。因为仅仅在基本的解析完成并确定SQL语句的type之后，log message才会被发出。在扩展查询协议的情况下，本参数值同样不会记录在执行阶段之前(即:在parser分析或planner期间)失败的语句。设置log_min_error_statement为error(或者更低)以记录此类语句
 | 是否可session级修改 | 是，仅限于superuser进行修改
 | 修改后何时生效 | Reload即可生效
@@ -6158,9 +5404,7 @@ h| 参数名称 h| log_replication_commands
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 是否将每个复制命令记录到PG运行日志中
 | 是否可session级修改 | 是，仅限于superuser修改
 | 修改后何时生效 | Reload即可生效
@@ -6193,12 +5437,8 @@ h| 参数名称 h| log_temp_files
 h| 参数名称 h| log_timezone
 | 数据类型 | String
 | 默认值 | 内置默认值是GMT，但该内置默认值通常在postgresql.conf中被覆盖; initdb将在会设置本参数值以便与系统环境相对应。
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 设置在log message中使用的time zone。与TimeZone配置参数不同，此值是PostgreSQL Cluster范围的，因此所有会话将一致地报告时间戳。此参数只能在postgresql.conf文件中或在server command line中设置
 | 是否可session级修改 | 否
 | 修改后何时生效 | Reload即可生效
@@ -6215,9 +5455,7 @@ h| 参数名称 h| client_min_messages
 | 数据类型 | enum
 | 默认值 | notice
 | 取值范围 | {debug5,debug4,debug3,debug2,debug1,log,notice,warning,error}
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 控制将哪些消息级别发送到客户端。有效值为DEBUG5，DEBUG4，DEBUG3，DEBUG2，DEBUG1，LOG，NOTICE，WARNING和ERROR。每个级别包括其后的所有级别。级别越靠后，发送的消息就越少。请注意，本参数值log的级别与log_min_messages配置参数值log的级别是不同的。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -6233,12 +5471,8 @@ a| +
 h| 参数名称 h| search_path
 | 数据类型 | string
 | 默认值 | "$user", public
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义
 a| 当一个object(table, data type, function等等)不带前面的schema name时，本参数用来指定哪个schema name会被搜索到。当在不同的schema name中有相同的object name时，在search_path中第一个匹配的object的那个schema会被使用。若是一个object没有被search_path中的任何schema匹配到，那么，这个object使用时需要带schema name(即:前面带上 "schema.").本参数值需要以逗号分隔，当本参数值包括不存在schema name 或者user没有对该schema name的usage权限时，此类参数值会被忽略。本参数值中出现的$user，其含义是current_user，若是存在与该user同名的schema name并且该user有对该schema name的usage权限（若不是这样，$user会被忽略）不论在本参数值中包括不包括pg_catalog，pg_catalog总会被搜索到，若是在本参数值中包括pg_catalog，那么会按照在本参数值中出现的顺序去搜，若是在本参数值中不包括pg_catalog,那么，PostgreSQL会在本参数值之前去搜索pg_catalog.类似的，当前的session临时表schema pg_temp_nnn 若是存在的话，会总被搜索到。可以在本参数值中使用pg_temp来明确指定要对pg_temp_nnn进行搜索。若是在本参数值中不明确列出，那么，PostgreSQL会首先搜索pg_temp_nnn（在pg_catalog之前）。临时schema name仅仅被用来搜索relation(表、视图、序列等等)和data type name，临时schema name不能用来搜索function name或者operator name当一个object被建立时其前面不指定任何schema name时，该object的schema name是在本参数值中搜索到的第一个有效的schema。当本参数值为空时，一个错误会被抛出。 +
 本参数的默认值是"$user", public，该默认值支持对一个数据库的共享使用（即:没有user有私有的schemas，并且都对public共享使用）、每个user schema的私有使用以及混合使用。其他的影响可以通过alter语句修改本参数值来获得，这个修改可以是全局的也可以每个user的。可以通过函数current_schemas来检查当前使用的有效的schema name，这与search_path的参数值并不完全一致，因为函数current_schemas显示了在本参数值中出现的item是如何解析的。
@@ -6257,9 +5491,7 @@ h| 参数名称 h| row_security
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数控制是否抛出错误以代替应用行安全策略。on代表正常应用行安全策略，off代表查询失败除非应用了至少行安全策略。在限制了行可见性导致错误的结果的情况下，可以将本参数值改为off。在默认情况下，pg_dump会进行该修改(即:修改本参数值为off)。本参数对可以绕过行安全策略的roles是无效的，即:superuser和那些带有bypassrls属性的role。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -6275,12 +5507,8 @@ a| +
 h| 参数名称 h| default_table_access_method
 | 数据类型 | string
 | 默认值 | heap
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 本参数指定了create table或者create materialized views不带访问方法时table或者materialized views的访问方法，以及select …into语句使用时用到的访问方法。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -6297,12 +5525,8 @@ a| +
 h| 参数名称 h| default_tablespace
 | 数据类型 | string
 | 默认值 | 空字符串，空字符串代表当前database的默认tablespace
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 在create object(table和index)语句不明确指定tablespace情况下，本参数值指定了该object对应的tablespace。如果指定的本参数值与现有的任何tablespace不匹配，那么PostgreSQL会自动使用当前database的默认tablespace。如果一个非默认表空间被指定，那么user必须带有对该非默认表空间的create的权限，否则创建会失败本参数不适用于临时表。临时表对应的配置参数是temp_tablespaces。本参数也不适用于create database语句。默认情况下，一个新的database从template数据库中继承了tablespace。若是本参数值是非空字符串，然后partitioned table被创建，那么，该partitioned table的表空间被设置为该非空字符串，该非空字符串也是将来partition被建立的默认表空间，即使本配置参数值之后被更改。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效。
@@ -6318,12 +5542,8 @@ a| +
 h| 参数名称 h| temp_tablespaces
 | 数据类型 | string
 | 默认值 | 空字符串，空字符串代表所有的temporary objects都会被创建在当前数据库的默认表空间中。
-| 取值范围
-a| +
-
-| 参数单位
-a| +
-
+| 取值范围 |
+| 参数单位 |
 | 参数含义 | 在create temporary object(temp tables 和temp tables 上的indexes)语句不明确指定tablespace情况下，本参数值指定了该object对应的temporary tablespace。诸如排序生成的临时文件也被建立到这个temp_tablespaces指定的临时表空间中。本参数值是一系列的tablespace name的清单，当有多个tablespace name的情况下，每次创建临时对象时，PostgreSQL 都会从列表中随机选择一个tablespace name。除了在事务中，连续创建的临时对象被放置在列表中的连续表空间中。如果列表中选定的是空字符串，PostgreSQL会自动使用当前数据库的默认表空间。当temp_tablespaces以交互方式设置时，指定不存在的表空间会报错，指定用户没有CREATE权限的表空间也会报错。但是，当使用先前设置的值时，将忽略不存在的表空间，以及用户缺乏CREATE权限的表空间。此规则适用于在postgresql.conf设置本参数值的情况下
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -6341,9 +5561,7 @@ h| 参数名称 h| check_function_bodies
 | 数据类型 | bool
 | 默认值 | on
 | 取值范围 | on和off
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当设置为off时，它会在CREATE FUNCTION期间禁用函数体字符串的验证。禁用验证可避免验证过程的副作用，并避免由于前向引用等问题导致的误报。在代表其他用户加载函数之前，将此参数设置为off；pg_dump会自动执行此操作
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -6361,9 +5579,7 @@ h| 参数名称 h| default_transaction_isolation
 | 数据类型 | enum
 | 默认值 | read committed
 | 取值范围 | {serializable,"repeatable read","read committed","read uncommitted"}
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数用来控制新事务的隔离级别
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -6380,9 +5596,7 @@ h| 参数名称 h| default_transaction_read_only
 | 数据类型 | bool
 | 默认值 | off，off的意思是read/write
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数用来控制每个新事务的默认只读状态。一个只读事务不能改变(alter)一个非临时表.
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -6400,9 +5614,7 @@ h| 参数名称 h| default_transaction_deferrable
 | 数据类型 | bool
 | 默认值 | off
 | 取值范围 | off和on
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 当运行在serializable隔离级别中时，一个deferrable的只读事务在它被允许继续处理之前可能会被延迟。然而，一旦它开始执行，它就不会产生任何确保可串行化所需的开销；所以序列化代码没有理由因为并发更新而强制中止该只读事务，这确保了对长时间运行的只读事务是很合适的。本参数控制每个新事务的默认的deferrable状态。当前，本参数对read-write事务是无效的，对隔离级别低于serializable的事务也是无效的
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -6420,9 +5632,7 @@ h| 参数名称 h| session_replication_role
 | 数据类型 | enum
 | 默认值 | origin
 | 取值范围 | {origin,replica,local}
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义
 a| 控制针对当前session的与复制相关的triggers和rules的触发(firing),设置本参数需要superuser权限，并且会导致之前cache起来的查询计划被丢弃掉。本参数的用意是逻辑复制系统在应用复制的更改时将本参数值设置为replica，这样做的结果是，触发器和规则（没有从默认配置更改）不会在复制副本上触发。详细信息，请参阅ALTER TABLE子句ENABLE TRIGGER和ENABLE RULE +
  PostgreSQL在内部将参数值origin和local视为相同的值，第三方复制软件可能把这两个参数用于他们的目的，比如，使用local来指示一个session的变化不会被复制的session。因为外键是通过trigger实现的，因此，设置本参数为replica也会disable掉所有的外键约束检查。
@@ -6497,9 +5707,7 @@ h| 参数名称 h| vacuum_freeze_table_age
 | 数据类型 | integer
 | 默认值 | 150000000
 | 取值范围 | 0到2000000000
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 如果表的pg_class.relfrozenxid字段值已经达到本参数值，那么vacuum会执行一次侵略性的扫描（aggressive scan）。侵略性的扫描（aggressive scan）不同于常规vacuum(regular VACUUM), 侵略性的扫描（aggressive scan）会查看每个page以确定page中是否包括未冻结的xids或者mxids，而不是仅仅查看page中是否包括dead tuples。尽管用户可以将此值设置为 0 到 20 亿之间的任何值，但VACUUM会默默地将有效值限制为autovacuum_freeze_max_age 的95% ，以便有机会定期在为表启动反环绕自动清理(anti-wraparound autovacuum)之前手工运行VACUUM。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -6516,16 +5724,10 @@ h| 参数名称 h| vacuum_freeze_min_age
 | 数据类型 | integer
 | 默认值 | 50000000
 | 取值范围 | 0到1000000000
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数用于指定VACUUM在扫描表时用于决定是否冻结行版本的截止年龄(cutoff age，以事物计算), 尽管用户可以将此值设置为 0 到 10 亿之间的任何值，但VACUUM会默默地将有效值限制为autovacuum_freeze_max_age参数值的一半，这样强制 autovacuum之间的时间不会过短。
-| 是否可session级修改
-a| +
-
-| 修改后何时生效
-a| +
-
+| 是否可session级修改 |
+| 修改后何时生效 |
 |===
 
 
@@ -6539,9 +5741,7 @@ h| 参数名称 h| vacuum_multixact_freeze_table_age
 | 数据类型 | integer
 | 默认值 | 150000000
 | 取值范围 | 0到2000000000
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 如果表的pg_class. relminmxid字段值已经达到本参数值，那么vacuum会执行一次侵略性的扫描（aggressive scan）。侵略性的扫描（aggressive scan）不同于常规vacuum(regular VACUUM), 侵略性的扫描（aggressive scan）会查看每个page以确定page中是否包括未冻结的xids或者mxids，而不是仅仅查看page中是否包括dead tuples。尽管用户可以将此值设置为 0 到 20 亿之间的任何值，但VACUUM会默默地将有效值限制为autovacuum_multixact_freeze_max_age的95% ，以便有机会定期在为表启动反环绕自动清理(anti-wraparound autovacuum)之前手工运行VACUUM。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -6558,9 +5758,7 @@ h| 参数名称 h| vacuum_multixact_freeze_min_age
 | 数据类型 | integer
 | 默认值 | 5000000
 | 取值范围 | 0到1000000000
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数用于指定VACUUM在扫描表时用于决定是否冻结行版本的multixacts截止年龄(cutoff age), 尽管用户可以将此值设置为 0 到 10 亿之间的任何值，但VACUUM会默默地将有效值限制为autovacuum_multixact_freeze_max_age参数值的一半，这样强制 autovacuum之间的时间不会过短。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -6577,9 +5775,7 @@ h| 参数名称 h| bytea_output
 | 数据类型 | enum
 | 默认值 | hex
 | 取值范围 | {escape,hex}
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本配置参数定义了对数据类型bytea的输出格式。 bytea数据类型在输入时对两种格式(escape和hex)均接受。escape代表传统的PostgreSQL格式。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -6596,9 +5792,7 @@ h| 参数名称 h| xmlbinary
 | 数据类型 | enum
 | 默认值 | base64
 | 取值范围 | {base64,hex}
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 设置二进制值在 XML 中的编码方式。例如，这适用于通过函数xmlelement或xmlforest将bytea值转换为XML的情况。可能的值为base64和hex，它们都在 XML 模式标准中定义。
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -6615,9 +5809,7 @@ h| 参数名称 h| xmloption
 | 数据类型 | enum
 | 默认值 | content
 | 取值范围 | {content,document}
-| 参数单位
-a| +
-
+| 参数单位 |
 | 参数含义 | 本参数用于设置在XML和字符串值之间转换时DOCUMENT或CONTENT是隐式的。在PostgreSQL中，也可以使用下面的SQL标准来设置:SET XML OPTION { DOCUMENT | CONTENT };
 | 是否可session级修改 | 是
 | 修改后何时生效 | Reload即可生效
@@ -6640,4 +5832,5 @@ h| 参数名称 h| gin_pending_list_limit
 | 修改后何时生效 | Reload即可生效
 
 |===
+
 
