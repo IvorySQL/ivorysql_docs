@@ -1,5 +1,5 @@
 name: ivorysql-doc
-title: IvorySQL
+title: 文档中心
 version: master
 start_page: master/welcome.adoc
 asciidoc:
