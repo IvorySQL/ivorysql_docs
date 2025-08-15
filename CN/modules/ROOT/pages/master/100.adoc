@@ -15,7 +15,7 @@
 
 本文档错误反馈方式：
 
-请在 https://www.pgfans.cn/blogs-tag/49[https://www.pgfans.cn/blogs-tag/49]参数参考专栏中提出。
+请在 https://github.com/IvorySQL/ivorysql_docs/issues[https://github.com/IvorySQL/ivorysql_docs/issues]提交issue。
 
 
 1-- Resource Usage / Disk
