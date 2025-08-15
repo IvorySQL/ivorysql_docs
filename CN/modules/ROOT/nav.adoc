@@ -23,6 +23,7 @@
 *** xref:master/6.3.1.adoc[like]
 *** xref:master/6.3.3.adoc[RowID]
 *** xref:master/6.3.2.adoc[OUT 参数]
+** xref:master/6.4.adoc[国标GB18030]
 * Oracle兼容功能列表
 ** xref:master/7.1.adoc[1、框架设计]
 ** xref:master/7.2.adoc[2、GUC框架]
