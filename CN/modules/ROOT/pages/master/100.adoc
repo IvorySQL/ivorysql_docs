@@ -1,4 +1,4 @@
-[%sectnums]
+:sectnums:
 :sectnumlevels: 16
 
 == PostgreSQL 参数参考手册
@@ -17,8 +17,9 @@
 
 请在 https://github.com/IvorySQL/ivorysql_docs/issues[https://github.com/IvorySQL/ivorysql_docs/issues]提交issue。
 
-[%sectnums]
 === Resource Usage / Disk
+
+==== temp_file_limit
 
 [cols="136,387"]
 |===
@@ -35,6 +36,8 @@ h| 参数名称 h| temp_file_limit
 
 
 === Replication
+
+==== track_commit_timestamp
 
 [cols="136,387"]
 |===
@@ -53,6 +56,8 @@ h| 参数名称 h| track_commit_timestamp
 
 === Version and Platform Compatibility / Other Platforms and Clients
 
+==== transform_null_equals
+
 [cols="136,387"]
 |===
 h| 参数名称 h| transform_null_equals
@@ -68,6 +73,8 @@ h| 参数名称 h| transform_null_equals
 
 
 === Resource Usage / Kernel Resources
+
+==== max_files_per_process
 
 [cols="136,387"]
 |===
@@ -85,6 +92,8 @@ h| 参数名称 h| max_files_per_process
 
 === Process Title
 
+==== cluster_name
+
 [cols="136,387"]
 |===
 h| 参数名称 h| cluster_name
@@ -98,7 +107,7 @@ h| 参数名称 h| cluster_name
 |===
 
 
-===Process Title
+==== update_process_title
 
 [cols="136,387"]
 |===
@@ -115,6 +124,8 @@ h| 参数名称 h| update_process_title
 
 
 === Replication / Master Server
+
+==== synchronous_standby_names
 
 [cols="136,387"]
 |===
@@ -140,7 +151,7 @@ a| Reload即可生效。 +
 |===
 
 
-=== Replication / Master Server
+==== vacuum_defer_cleanup_age
 
 [cols="136,387"]
 |===
@@ -164,6 +175,8 @@ a| Reload即可生效。 +
 
 === Replication / Subscribers
 
+==== max_logical_replication_workers
+
 [cols="136,387"]
 |===
 h| 参数名称 h| max_logical_replication_workers
@@ -178,7 +191,7 @@ h| 参数名称 h| max_logical_replication_workers
 |===
 
 
-=== Replication / Subscribers
+==== max_sync_workers_per_subscription
 
 [cols="136,387"]
 |===
@@ -195,6 +208,8 @@ h| 参数名称 h| max_sync_workers_per_subscription
 
 
 === Write-Ahead Log / Archive Recovery
+
+==== restore_command
 
 [cols="136,387"]
 |===
@@ -214,7 +229,7 @@ a| 恢复时指定archive wal的位置 restore_command = 'cp /mnt/server/archive
 |===
 
 
-=== Write-Ahead Log / Archive Recovery
+==== archive_cleanup_command
 
 [cols="136,387"]
 |===
@@ -237,7 +252,7 @@ a| Reload即可生效。 +
 |===
 
 
-=== Write-Ahead Log / Archive Recovery
+==== recovery_end_command
 
 
 [cols="136,387"]
@@ -256,6 +271,8 @@ h| 参数名称 h| recovery_end_command
 
 === Error Handling
 
+==== exit_on_error
+
 [cols="136,387"]
 |===
 h| 参数名称 h| exit_on_error
@@ -272,7 +289,7 @@ a| 当设置为on时，任何error均会导致session被终止。默认情况下
 |===
 
 
-=== Error Handling
+==== restart_after_crash
 
 [cols="136,387"]
 |===
@@ -289,7 +306,7 @@ a| Reload即可生效 +
 |===
 
 
-=== Error Handling
+==== data_sync_retry
 
 [cols="136,387"]
 |===
@@ -306,6 +323,8 @@ h| 参数名称 h| data_sync_retry
 
 
 === Write-Ahead Log / Archiving
+
+==== archive_mode
 
 [cols="136,387"]
 |===
@@ -324,7 +343,7 @@ a| 重启PG instance生效。 +
 
 
 
-=== Write-Ahead Log / Archiving
+==== archive_command
 
 [cols="136,387"]
 |===
@@ -344,7 +363,7 @@ a| Reload即可生效 +
 |===
 
 
-=== Write-Ahead Log / Archiving
+==== archive_timeout
 
 [cols="136,387"]
 |===
@@ -362,6 +381,8 @@ h| 参数名称 h| archive_timeout
 
 === Resource Usage / Background Writer
 
+==== bgwriter_delay
+
 [cols="136,387"]
 |===
 h| 参数名称 h| bgwriter_delay
@@ -378,11 +399,11 @@ h| 参数名称 h| bgwriter_delay
 
 
 
-=== Resource Usage / Background Writer
+==== bgwriter_lru_maxpages
 
 [cols="136,387"]
 |===
-h| 参数名称 h| bgwriter_lru_maxpages&nbsp;
+h| 参数名称 h| bgwriter_lru_maxpages
 | 参数值数据类型 | integer
 | 默认值 | 100
 | 取值范围 | 0到1073741823
@@ -395,11 +416,11 @@ a| Reload即可 +
 |===
 
 
-=== Resource Usage / Background Writer
+==== bgwriter_lru_multiplier
 
 [cols="136,387"]
 |===
-h| 参数名称 h| bgwriter_lru_multiplier&nbsp;
+h| 参数名称 h| bgwriter_lru_multiplier
 | 参数值数据类型 | real
 | 默认值 | 2.0
 | 取值范围 | 0到10
@@ -411,7 +432,7 @@ h| 参数名称 h| bgwriter_lru_multiplier&nbsp;
 |===
 
 
-=== Resource Usage / Background Writer
+==== bgwriter_flush_after
 
 [cols="136,387"]
 |===
@@ -430,6 +451,8 @@ h| 参数名称 h| bgwriter_flush_after
 
 === Statistics / Monitoring
 
+==== log_statement_stats
+
 [cols="62,207"]
 |===
 h| 参数名称 h| log_statement_stats
@@ -445,7 +468,7 @@ h| 参数名称 h| log_statement_stats
 
 
 
-=== Statistics / Monitoring
+==== log_parser_stats
 
 [cols="58,211"]
 |===
@@ -462,7 +485,7 @@ h| 参数名称 h| log_parser_stats
 
 
 
-=== Statistics / Monitoring
+==== log_planner_stats
 
 [cols="58,211"]
 |===
@@ -479,7 +502,7 @@ h| 参数名称 h| log_planner_stats
 
 
 
-=== Statistics / Monitoring
+==== log_executor_stats
 
 [cols="58,211"]
 |===
@@ -498,6 +521,8 @@ h| 参数名称 h| log_executor_stats
 
 === Client Connection Defaults / Shared Library Preloading
 
+==== jit_provider
+
 [cols="136,387"]
 |===
 h| 参数名称 h| jit_provider
@@ -513,7 +538,7 @@ h| 参数名称 h| jit_provider
 
 
 
-=== Client Connection Defaults / Shared Library Preloading
+==== local_preload_libraries
 
 [cols="136,387"]
 |===
@@ -530,7 +555,7 @@ h| 参数名称 h| local_preload_libraries
 
 
 
-=== Client Connection Defaults / Shared Library Preloading
+==== session_preload_libraries
 
 [cols="136,387"]
 |===
@@ -547,7 +572,7 @@ h| 参数名称 h| session_preload_libraries
 
 
 
-===
+==== shared_preload_libraries
 
 [cols="136,387"]
 |===
@@ -566,6 +591,8 @@ h| 参数名称 h| shared_preload_libraries
 
 === Lock Management
 
+==== deadlock_timeout
+
 [cols="136,387"]
 |===
 h| 参数名称 h| deadlock_timeout
@@ -582,7 +609,7 @@ h| 参数名称 h| deadlock_timeout
 
 
 
-=== Lock Management
+==== max_locks_per_transaction
 
 [cols="136,387"]
 |===
@@ -603,7 +630,7 @@ a| 共享锁表(shared lock table)追踪max_locks_per_transaction \* (max_connec
 
 
 
-=== Lock Management
+==== max_pred_locks_per_transaction
 
 [cols="136,387"]
 |===
@@ -620,7 +647,7 @@ h| 参数名称 h| max_pred_locks_per_transaction
 
 
 
-=== Lock Management
+==== max_pred_locks_per_relation
 
 [cols="136,387"]
 |===
@@ -636,7 +663,7 @@ h| 参数名称 h| max_pred_locks_per_relation
 |===
 
 
-=== Lock Management
+==== max_pred_locks_per_page
 
 [cols="136,387"]
 |===
@@ -656,6 +683,8 @@ h| 参数名称 h| max_pred_locks_per_page
 
 === Resource Usage / Cost-Based Vacuum Delay
 
+==== vacuum_cost_delay
+
 [cols="136,387"]
 |===
 h| 参数名称 h| vacuum_cost_delay
@@ -673,7 +702,7 @@ h| 参数名称 h| vacuum_cost_delay
 
 
 
-=== Resource Usage / Cost-Based Vacuum Delay
+==== vacuum_cost_page_hit
 
 [cols="136,387"]
 |===
@@ -690,7 +719,7 @@ h| 参数名称 h| vacuum_cost_page_hit
 
 
 
-=== Resource Usage / Cost-Based Vacuum Delay
+==== vacuum_cost_page_miss
 
 [cols="136,387"]
 |===
@@ -707,7 +736,7 @@ h| 参数名称 h| vacuum_cost_page_miss
 
 
 
-=== Resource Usage / Cost-Based Vacuum Delay
+==== vacuum_cost_page_dirty
 
 [cols="136,387"]
 |===
@@ -725,11 +754,11 @@ h| 参数名称 h| vacuum_cost_page_dirty
 
 
 
-=== Resource Usage / Cost-Based Vacuum Delay
+==== vacuum_cost_limit
 
 [cols="136,387"]
 |===
-h| 参数名称 h| vacuum_cost_limit&nbsp;
+h| 参数名称 h| vacuum_cost_limit
 | 数据类型 | Integer
 | 默认值 | 200
 | 取值范围 | 1到10000
@@ -743,6 +772,8 @@ h| 参数名称 h| vacuum_cost_limit&nbsp;
 
 
 === Replication / Sending Servers
+
+==== max_wal_senders
 
 [cols="136,387"]
 |===
@@ -759,7 +790,7 @@ h| 参数名称 h| max_wal_senders
 
 
 
-===Replication / Sending Servers
+==== max_replication_slots
 
 [cols="136,387"]
 |===
@@ -777,7 +808,7 @@ a| 设置PostgreSQL能支持的复制槽的最大数量，本参数仅能在Post
 |===
 
 
-=== Replication / Sending Servers
+==== wal_keep_size
 
 [cols="136,387"]
 |===
@@ -795,7 +826,7 @@ h| 参数名称 h| wal_keep_size
 
 
 
-=== Replication / Sending Servers
+==== max_slot_wal_keep_size
 
 [cols="136,387"]
 |===
@@ -813,7 +844,7 @@ h| 参数名称 h| max_slot_wal_keep_size
 
 
 
-=== Replication / Sending Servers
+==== wal_sender_timeout
 
 [cols="136,387"]
 |===
@@ -831,6 +862,8 @@ h| 参数名称 h| wal_sender_timeout
 
 
 === Connections and Authentication / Authentication
+
+==== authentication_timeout
 
 [cols="136,387"]
 |===
@@ -855,7 +888,7 @@ h| 参数名称 h| authentication_timeout
 
 
 
-=== Connections and Authentication / Authentication
+==== password_encryption
 
 [cols="136,387"]
 |===
@@ -873,7 +906,7 @@ h| 参数名称 h| password_encryption
 
 
 
-=== Connections and Authentication / Authentication
+==== krb_server_keyfile
 
 [cols="136,387"]
 |===
@@ -890,7 +923,7 @@ h| 参数名称 h| krb_server_keyfile
 
 
 
-=== Connections and Authentication / Authentication
+==== krb_caseins_users
 
 [cols="136,387"]
 |===
@@ -907,7 +940,7 @@ h| 参数名称 h| krb_caseins_users
 
 
 
-=== Connections and Authentication / Authentication
+==== db_user_namespace
 
 [cols="136,387"]
 |===
@@ -930,6 +963,8 @@ a| 若本参数值设置为on，那么创建的用户名的格式是username@dbn
 
 === Statistics / Query and Index Statistics Collector
 
+==== track_activities
+
 [cols="136,387"]
 |===
 h| 参数名称 h| track_activities
@@ -945,7 +980,7 @@ h| 参数名称 h| track_activities
 
 
 
-=== Statistics / Query and Index Statistics Collector
+==== track_activity_query_size
 
 [cols="136,387"]
 |===
@@ -963,7 +998,7 @@ h| 参数名称 h| track_activity_query_size
 
 
 
-=== Statistics / Query and Index Statistics Collector
+==== track_counts
 
 [cols="136,387"]
 |===
@@ -981,7 +1016,7 @@ h| 参数名称 h| track_counts
 
 
 
-=== Statistics / Query and Index Statistics Collector
+==== track_io_timing
 
 [cols="136,387"]
 |===
@@ -998,7 +1033,7 @@ h| 参数名称 h| track_io_timing
 
 
 
-=== Statistics / Query and Index Statistics Collector
+==== track_functions
 
 [cols="136,387"]
 |===
@@ -1016,7 +1051,7 @@ h| 参数名称 h| track_functions
 
 
 
-=== Statistics / Query and Index Statistics Collector
+==== stats_temp_directory
 
 [cols="136,387"]
 |===
@@ -1036,6 +1071,8 @@ h| 参数名称 h| stats_temp_directory
 
 === File Locations
 
+==== data_directory
+
 [cols="136,387"]
 |===
 h| 参数名称 h| data_directory
@@ -1051,7 +1088,7 @@ h| 参数名称 h| data_directory
 
 
 
-=== File Locations
+==== config_file
 
 [cols="136,387"]
 |===
@@ -1068,7 +1105,7 @@ h| 参数名称 h| config_file
 
 
 
-=== File Locations
+==== hba_file
 
 [cols="136,387"]
 |===
@@ -1087,7 +1124,7 @@ h| 参数名称 h| hba_file
 
 
 
-=== File Locations
+==== ident_file
 
 [cols="136,387"]
 |===
@@ -1105,7 +1142,7 @@ h| 参数名称 h| ident_file
 
 
 
-=== File Locations
+==== external_pid_file
 
 [cols="136,387"]
 |===
@@ -1124,6 +1161,8 @@ h| 参数名称 h| external_pid_file
 
 === Reporting and Logging / When to Log
 
+==== log_min_messages
+
 [cols="136,387"]
 |===
 h| 参数名称 h| log_min_messages
@@ -1139,7 +1178,7 @@ h| 参数名称 h| log_min_messages
 
 
 
-=== Reporting and Logging / When to Log
+==== log_min_error_statement
 
 [cols="136,387"]
 |===
@@ -1156,7 +1195,7 @@ h| 参数名称 h| log_min_error_statement
 
 
 
-=== Reporting and Logging / When to Log
+==== log_min_duration_statement
 
 [cols="136,387"]
 |===
@@ -1174,7 +1213,7 @@ h| 参数名称 h| log_min_duration_statement
 
 
 
-=== Reporting and Logging / When to Log
+==== log_min_duration_sample
 
 [cols="136,387"]
 |===
@@ -1190,7 +1229,7 @@ h| 参数名称 h| log_min_duration_sample
 |===
 
 
-=== Reporting and Logging / When to Log
+==== log_statement_sample_rate
 
 [cols="136,387"]
 |===
@@ -1206,7 +1245,7 @@ h| 参数名称 h| log_statement_sample_rate
 |===
 
 
-=== Reporting and Logging / When to Log
+==== log_transaction_sample_rate
 
 [cols="136,387"]
 |===
@@ -1225,6 +1264,8 @@ h| 参数名称 h| log_transaction_sample_rate
 
 === Checkpoints
 
+==== checkpoint_timeout
+
 [cols="136,387"]
 |===
 h| 参数名称 h| checkpoint_timeout
@@ -1241,7 +1282,7 @@ h| 参数名称 h| checkpoint_timeout
 
 
 
-=== Checkpoints
+==== checkpoint_completion_target
 
 [cols="136,387"]
 |===
@@ -1258,7 +1299,7 @@ h| 参数名称 h| checkpoint_completion_target
 
 
 
-=== Checkpoints
+==== checkpoint_flush_after
 
 [cols="136,387"]
 |===
@@ -1275,7 +1316,7 @@ h| 参数名称 h| checkpoint_flush_after
 
 
 
-=== Checkpoints
+==== checkpoint_warning
 
 [cols="136,387"]
 |===
@@ -1298,7 +1339,7 @@ h| 参数名称 h| checkpoint_warning
 
 
 
-=== Checkpoints
+==== max_wal_size
 
 [cols="136,387"]
 |===
@@ -1315,7 +1356,7 @@ h| 参数名称 h| max_wal_size
 
 
 
-=== Checkpoints
+==== min_wal_size
 
 [cols="136,387"]
 |===
@@ -1332,7 +1373,7 @@ h| 参数名称 h| min_wal_size
 
 
 
-===
+=== dynamic_library_path
 
 [cols="136,387"]
 |===
@@ -1349,7 +1390,7 @@ h| 参数名称 h| dynamic_library_path
 
 
 
-===
+=== gin_fuzzy_search_limit
 
 [cols="136,387"]
 |===
@@ -1366,7 +1407,7 @@ h| 参数名称 h| gin_fuzzy_search_limit
 
 
 
-===
+=== tcp_keepalives_count
 
 [cols="136,387"]
 |===
@@ -1383,7 +1424,7 @@ h| 参数名称 h| tcp_keepalives_count
 
 
 
-===
+=== tcp_keepalives_idle
 
 [cols="136,387"]
 |===
@@ -1399,7 +1440,7 @@ h| 参数名称 h| tcp_keepalives_idle
 |===
 
 
-===
+=== tcp_keepalives_interval
 
 [cols="136,387"]
 |===
@@ -1415,7 +1456,7 @@ h| 参数名称 h| tcp_keepalives_interval
 |===
 
 
-===
+=== tcp_user_timeout
 
 [cols="136,387"]
 |===
@@ -1435,6 +1476,8 @@ h| 参数名称 h| tcp_user_timeout
 
 === Query Tuning / Genetic Query Optimizer
 
+==== geqo
+
 [cols="136,387"]
 |===
 h| 参数名称 h| geqo
@@ -1452,7 +1495,7 @@ a| 启用或者禁用genetic query optimization，生产环境中不应该将本
 
 
 
-=== Query Tuning / Genetic Query Optimizer
+==== geqo_threshold
 
 [cols="136,387"]
 |===
@@ -1469,7 +1512,7 @@ h| 参数名称 h| geqo_threshold
 
 
 
-=== Query Tuning / Genetic Query Optimizer
+==== geqo_effort
 
 [cols="136,387"]
 |===
@@ -1486,7 +1529,7 @@ h| 参数名称 h| geqo_effort
 
 
 
-=== Query Tuning / Genetic Query Optimizer
+==== geqo_pool_size
 
 [cols="136,387"]
 |===
@@ -1503,7 +1546,7 @@ h| 参数名称 h| geqo_pool_size
 
 
 
-=== Query Tuning / Genetic Query Optimizer
+==== geqo_generations
 
 [cols="136,387"]
 |===
@@ -1520,7 +1563,7 @@ h| 参数名称 h| geqo_generations
 
 
 
-=== Query Tuning / Genetic Query Optimizer
+==== geqo_selection_bias
 
 [cols="136,387"]
 |===
@@ -1536,7 +1579,7 @@ h| 参数名称 h| geqo_selection_bias
 |===
 
 
-=== Query Tuning / Genetic Query Optimizer
+==== geqo_seed
 
 [cols="136,387"]
 |===
@@ -1555,6 +1598,8 @@ h| 参数名称 h| geqo_seed
 
 === Write-Ahead Log / Recovery Target
 
+==== recovery_target
+
 [cols="136,387"]
 |===
 h| 参数名称 h| recovery_target
@@ -1570,7 +1615,7 @@ h| 参数名称 h| recovery_target
 
 
 
-=== Write-Ahead Log / Recovery Target
+==== recovery_target_name
 
 [cols="136,387"]
 |===
@@ -1587,7 +1632,7 @@ h| 参数名称 h| recovery_target_name
 
 
 
-=== Write-Ahead Log / Recovery Target
+==== recovery_target_time
 
 [cols="136,387"]
 |===
@@ -1604,7 +1649,7 @@ h| 参数名称 h| recovery_target_time
 
 
 
-=== Write-Ahead Log / Recovery Target
+==== recovery_target_xid
 
 [cols="136,387"]
 |===
@@ -1621,7 +1666,7 @@ h| 参数名称 h| recovery_target_xid
 
 
 
-=== Write-Ahead Log / Recovery Target
+==== recovery_target_lsn
 
 [cols="136,387"]
 |===
@@ -1638,7 +1683,7 @@ h| 参数名称 h| recovery_target_lsn
 
 
 
-=== Write-Ahead Log / Recovery Target
+==== recovery_target_inclusive
 
 [cols="136,387"]
 |===
@@ -1655,7 +1700,7 @@ h| 参数名称 h| recovery_target_inclusive
 
 
 
-=== Write-Ahead Log / Recovery Target
+==== recovery_target_timeline
 
 [cols="136,387"]
 |===
@@ -1672,7 +1717,7 @@ h| 参数名称 h| recovery_target_timeline
 
 
 
-=== Write-Ahead Log / Recovery Target
+==== recovery_target_action
 
 [cols="136,387"]
 |===
@@ -1691,6 +1736,8 @@ h| 参数名称 h| recovery_target_action
 
 === Query Tuning / Other Planner Options
 
+==== default_statistics_target
+
 [cols="136,387"]
 |===
 h| 参数名称 h| default_statistics_target
@@ -1706,7 +1753,7 @@ h| 参数名称 h| default_statistics_target
 
 
 
-=== Query Tuning / Other Planner Options
+==== constraint_exclusion
 
 [cols="136,387"]
 |===
@@ -1725,7 +1772,7 @@ a| 控制planner是否使用constraints优化查询,如果表的约束保证没�
 
 
 
-=== Query Tuning / Other Planner Options
+==== cursor_tuple_fraction
 
 [cols="136,387"]
 |===
@@ -1742,7 +1789,7 @@ h| 参数名称 h| cursor_tuple_fraction
 
 
 
-=== Query Tuning / Other Planner Options
+==== from_collapse_limit
 
 [cols="136,387"]
 |===
@@ -1758,7 +1805,7 @@ h| 参数名称 h| from_collapse_limit
 |===
 
 
-=== Query Tuning / Other Planner Options
+==== jit
 
 [cols="136,387"]
 |===
@@ -1774,7 +1821,7 @@ h| 参数名称 h| jit
 |===
 
 
-=== Query Tuning / Other Planner Options
+==== join_collapse_limit
 
 [cols="136,387"]
 |===
@@ -1794,7 +1841,7 @@ h| 参数名称 h| join_collapse_limit
 
 
 
-=== Query Tuning / Other Planner Options
+==== parallel_leader_participation
 
 [cols="136,387"]
 |===
@@ -1812,7 +1859,7 @@ h| 参数名称 h| parallel_leader_participation
 
 
 
-=== Query Tuning / Other Planner Options
+==== force_parallel_mode
 
 [cols="136,387"]
 |===
@@ -1829,7 +1876,7 @@ h| 参数名称 h| force_parallel_mode
 
 
 
-=== Query Tuning / Other Planner Options
+==== plan_cache_mode
 
 [cols="136,387"]
 |===
@@ -1849,6 +1896,8 @@ h| 参数名称 h| plan_cache_mode
 
 === Version and Platform Compatibility / Previous PostgreSQL Versions
 
+==== array_nulls
+
 [cols="136,387"]
 |===
 h| 参数名称 h| array_nulls
@@ -1864,7 +1913,7 @@ h| 参数名称 h| array_nulls
 
 
 
-=== Version and Platform Compatibility / Previous PostgreSQL Versions
+==== backslash_quote
 
 [cols="136,387"]
 |===
@@ -1881,7 +1930,7 @@ h| 参数名称 h| backslash_quote
 
 
 
-=== Version and Platform Compatibility / Previous PostgreSQL Versions
+==== escape_string_warning
 
 [cols="136,387"]
 |===
@@ -1898,7 +1947,7 @@ h| 参数名称 h| escape_string_warning
 
 
 
-=== Version and Platform Compatibility / Previous PostgreSQL Versions
+==== lo_compat_privileges
 
 [cols="136,387"]
 |===
@@ -1915,7 +1964,7 @@ h| 参数名称 h| lo_compat_privileges
 
 
 
-=== Version and Platform Compatibility / Previous PostgreSQL Versions
+==== operator_precedence_warning
 
 [cols="136,387"]
 |===
@@ -1932,7 +1981,7 @@ h| 参数名称 h| operator_precedence_warning
 
 
 
-=== Version and Platform Compatibility / Previous PostgreSQL Versions
+==== quote_all_identifiers
 
 [cols="136,387"]
 |===
@@ -1953,7 +2002,7 @@ postgres=#
 
 
 
-=== Version and Platform Compatibility / Previous PostgreSQL Versions
+==== standard_conforming_strings
 
 [cols="136,387"]
 |===
@@ -1970,7 +2019,7 @@ h| 参数名称 h| standard_conforming_strings
 
 
 
-=== Version and Platform Compatibility / Previous PostgreSQL Versions
+==== synchronize_seqscans
 
 [cols="136,387"]
 |===
@@ -1989,6 +2038,8 @@ h| 参数名称 h| synchronize_seqscans
 
 === Connections and Authentication / Connection Settings
 
+==== listen_addresses
+
 [cols="136,387"]
 |===
 h| 参数名称 h| listen_addresses
@@ -2004,7 +2055,7 @@ h| 参数名称 h| listen_addresses
 
 
 
-=== Connections and Authentication / Connection Settings
+==== port
 
 [cols="136,387"]
 |===
@@ -2021,7 +2072,7 @@ h| 参数名称 h| port
 
 
 
-=== Connections and Authentication / Connection Settings
+==== max_connections
 
 [cols="136,387"]
 |===
@@ -2040,7 +2091,7 @@ h| 参数名称 h| max_connections
 
 
 
-=== Connections and Authentication / Connection Settings
+==== superuser_reserved_connections
 
 [cols="136,387"]
 |===
@@ -2056,7 +2107,7 @@ h| 参数名称 h| superuser_reserved_connections
 |===
 
 
-=== Connections and Authentication / Connection Settings
+==== unix_socket_directories
 
 [cols="136,387"]
 |===
@@ -2075,7 +2126,7 @@ h| 参数名称 h| unix_socket_directories
 
 
 
-=== Connections and Authentication / Connection Settings
+==== unix_socket_group
 
 [cols="136,387"]
 |===
@@ -2092,7 +2143,7 @@ h| 参数名称 h| unix_socket_group
 
 
 
-=== Connections and Authentication / Connection Settings
+==== unix_socket_permissions
 
 [cols="136,387"]
 |===
@@ -2112,7 +2163,7 @@ h| 参数名称 h| unix_socket_permissions
 
 
 
-=== Connections and Authentication / Connection Settings
+==== bonjour
 
 [cols="136,387"]
 |===
@@ -2130,7 +2181,7 @@ h| 参数名称 h| bonjour
 
 
 
-=== Connections and Authentication / Connection Settings
+==== bonjour_name
 
 [cols="136,387"]
 |===
@@ -2149,6 +2200,8 @@ h| 参数名称 h| bonjour_name
 
 === Resource Usage / Asynchronous Behavior
 
+==== effective_io_concurrency
+
 [cols="136,387"]
 |===
 h| 参数名称 h| effective_io_concurrency
@@ -2164,7 +2217,7 @@ h| 参数名称 h| effective_io_concurrency
 
 
 
-=== Resource Usage / Asynchronous Behavior
+==== maintenance_io_concurrency
 
 [cols="136,387"]
 |===
@@ -2181,7 +2234,7 @@ h| 参数名称 h| maintenance_io_concurrency
 
 
 
-=== Resource Usage / Asynchronous Behavior
+==== max_worker_processes
 
 [cols="136,387"]
 |===
@@ -2200,7 +2253,7 @@ h| 参数名称 h| max_worker_processes
 
 
 
-=== Resource Usage / Asynchronous Behavior
+==== max_parallel_workers_per_gather
 
 [cols="136,387"]
 |===
@@ -2216,7 +2269,7 @@ h| 参数名称 h| max_parallel_workers_per_gather
 |===
 
 
-=== Resource Usage / Asynchronous Behavior
+==== max_parallel_maintenance_workers
 
 [cols="136,387"]
 |===
@@ -2233,7 +2286,7 @@ h| 参数名称 h| max_parallel_maintenance_workers
 
 
 
-=== Resource Usage / Asynchronous Behavior
+==== max_parallel_workers
 
 [cols="136,387"]
 |===
@@ -2250,7 +2303,7 @@ h| 参数名称 h| max_parallel_workers
 
 
 
-=== Resource Usage / Asynchronous Behavior
+==== backend_flush_after
 
 [cols="136,387"]
 |===
@@ -2267,7 +2320,7 @@ h| 参数名称 h| backend_flush_after
 
 
 
-=== Resource Usage / Asynchronous Behavior
+==== old_snapshot_threshold
 
 [cols="136,387"]
 |===
@@ -2286,6 +2339,8 @@ h| 参数名称 h| old_snapshot_threshold
 
 === Replication / Standby Servers
 
+==== primary_conninfo
+
 [cols="136,387"]
 |===
 h| 参数名称 h| primary_conninfo
@@ -2301,7 +2356,7 @@ h| 参数名称 h| primary_conninfo
 
 
 
-=== Replication / Standby Servers
+==== primary_slot_name
 
 [cols="136,387"]
 |===
@@ -2318,7 +2373,7 @@ h| 参数名称 h| primary_slot_name
 
 
 
-=== Replication / Standby Servers
+==== promote_trigger_file
 
 [cols="136,387"]
 |===
@@ -2336,7 +2391,7 @@ h| 参数名称 h| promote_trigger_file
 
 
 
-=== Replication / Standby Servers
+==== hot_standby
 
 [cols="136,387"]
 |===
@@ -2353,7 +2408,7 @@ h| 参数名称 h| hot_standby
 
 
 
-=== Replication / Standby Servers
+==== max_standby_archive_delay
 
 [cols="136,387"]
 |===
@@ -2376,7 +2431,7 @@ a| 本参数为备库参数，本参数在sending-server端会被忽略。当hot
 
 
 
-=== Replication / Standby Servers
+==== max_standby_streaming_delay
 
 [cols="136,387"]
 |===
@@ -2393,7 +2448,7 @@ h| 参数名称 h| max_standby_streaming_delay
 
 
 
-=== Replication / Standby Servers
+==== wal_receiver_create_temp_slot
 
 [cols="136,387"]
 |===
@@ -2411,7 +2466,7 @@ h| 参数名称 h| wal_receiver_create_temp_slot
 
 
 
-=== Replication / Standby Servers
+==== wal_receiver_status_interval
 
 [cols="136,387"]
 |===
@@ -2428,7 +2483,7 @@ h| 参数名称 h| wal_receiver_status_interval
 
 
 
-=== Replication / Standby Servers
+==== hot_standby_feedback
 
 [cols="136,387"]
 |===
@@ -2445,7 +2500,7 @@ h| 参数名称 h| hot_standby_feedback
 
 
 
-=== Replication / Standby Servers
+==== wal_receiver_timeout
 
 [cols="136,387"]
 |===
@@ -2462,7 +2517,7 @@ h| 参数名称 h| wal_receiver_timeout
 
 
 
-=== Replication / Standby Servers
+==== wal_retrieve_retry_interval
 
 [cols="136,387"]
 |===
@@ -2480,7 +2535,7 @@ h| 参数名称 h| wal_retrieve_retry_interval
 
 
 
-=== Replication / Standby Servers
+==== recovery_min_apply_delay
 
 [cols="136,387"]
 |===
@@ -2498,6 +2553,8 @@ h| 参数名称 h| recovery_min_apply_delay
 
 === Query Tuning / Planner Cost Constants
 
+==== seq_page_cost
+
 [cols="136,387"]
 |===
 h| 参数名称 h| seq_page_cost
@@ -2514,7 +2571,7 @@ h| 参数名称 h| seq_page_cost
 
 
 
-=== Query Tuning / Planner Cost Constants
+==== random_page_cost
 
 [cols="136,387"]
 |===
@@ -2531,7 +2588,7 @@ h| 参数名称 h| random_page_cost
 
 
 
-=== Query Tuning / Planner Cost Constants
+==== cpu_tuple_cost
 
 [cols="136,387"]
 |===
@@ -2549,7 +2606,7 @@ h| 参数名称 h| cpu_tuple_cost
 
 
 
-=== Query Tuning / Planner Cost Constants
+==== cpu_index_tuple_cost
 
 [cols="136,387"]
 |===
@@ -2566,7 +2623,7 @@ h| 参数名称 h| cpu_index_tuple_cost
 
 
 
-=== Query Tuning / Planner Cost Constants
+==== cpu_operator_cost
 
 [cols="136,387"]
 |===
@@ -2583,7 +2640,7 @@ h| 参数名称 h| cpu_operator_cost
 
 
 
-=== Query Tuning / Planner Cost Constants
+==== parallel_setup_cost
 
 [cols="136,387"]
 |===
@@ -2601,7 +2658,7 @@ h| 参数名称 h| parallel_setup_cost
 
 
 
-=== Query Tuning / Planner Cost Constants
+==== parallel_tuple_cost
 
 [cols="136,387"]
 |===
@@ -2618,7 +2675,7 @@ h| 参数名称 h| parallel_tuple_cost
 
 
 
-=== Query Tuning / Planner Cost Constants
+==== min_parallel_table_scan_size
 
 [cols="136,387"]
 |===
@@ -2635,7 +2692,7 @@ h| 参数名称 h| min_parallel_table_scan_size
 
 
 
-=== Query Tuning / Planner Cost Constants
+==== min_parallel_index_scan_size
 
 [cols="136,387"]
 |===
@@ -2652,7 +2709,7 @@ h| 参数名称 h| min_parallel_index_scan_size
 
 
 
-=== Query Tuning / Planner Cost Constants
+==== effective_cache_size
 
 [cols="136,387"]
 |===
@@ -2669,7 +2726,7 @@ h| 参数名称 h| effective_cache_size
 
 
 
-=== Query Tuning / Planner Cost Constants
+==== jit_above_cost
 
 [cols="136,387"]
 |===
@@ -2685,7 +2742,7 @@ h| 参数名称 h| jit_above_cost
 |===
 
 
-=== Query Tuning / Planner Cost Constants
+==== jit_inline_above_cost
 
 [cols="136,387"]
 |===
@@ -2702,7 +2759,7 @@ h| 参数名称 h| jit_inline_above_cost
 
 
 
-=== Query Tuning / Planner Cost Constants
+==== jit_optimize_above_cost
 
 [cols="136,387"]
 |===
@@ -2721,7 +2778,9 @@ h| 参数名称 h| jit_optimize_above_cost
 
 
 
-===autovacuum
+=== autovacuum
+
+==== autovacuum
 
 [cols="136,387"]
 |===
@@ -2737,7 +2796,7 @@ h| 参数名称 h| autovacuum
 |===
 
 
-=== autovacuum
+==== log_autovacuum_min_duration
 
 [cols="136,387"]
 |===
@@ -2756,7 +2815,7 @@ a| 当autovacuum进程运行的时间长度大于等于本参数值时，autovac
 
 
 
-=== autovacuum
+==== autovacuum_max_workers
 
 [cols="136,387"]
 |===
@@ -2773,7 +2832,7 @@ h| 参数名称 h| autovacuum_max_workers
 
 
 
-=== autovacuum
+==== autovacuum_naptime
 
 [cols="136,387"]
 |===
@@ -2790,7 +2849,7 @@ h| 参数名称 h| autovacuum_naptime
 
 
 
-=== autovacuum
+==== autovacuum_vacuum_threshold
 
 [cols="136,387"]
 |===
@@ -2806,7 +2865,7 @@ h| 参数名称 h| autovacuum_vacuum_threshold
 |===
 
 
-=== autovacuum
+==== autovacuum_vacuum_insert_threshold
 
 [cols="136,387"]
 |===
@@ -2823,7 +2882,7 @@ h| 参数名称 h| autovacuum_vacuum_insert_threshold
 
 
 
-=== autovacuum
+==== autovacuum_analyze_threshold
 
 [cols="136,387"]
 |===
@@ -2840,7 +2899,7 @@ h| 参数名称 h| autovacuum_analyze_threshold
 
 
 
-=== autovacuum
+==== autovacuum_vacuum_scale_factor
 
 [cols="136,387"]
 |===
@@ -2856,7 +2915,7 @@ h| 参数名称 h| autovacuum_vacuum_scale_factor
 |===
 
 
-=== autovacuum
+==== autovacuum_vacuum_insert_scale_factor
 
 [cols="136,387"]
 |===
@@ -2872,7 +2931,7 @@ h| 参数名称 h| autovacuum_vacuum_insert_scale_factor
 |===
 
 
-=== autovacuum
+==== autovacuum_analyze_scale_factor
 
 [cols="136,387"]
 |===
@@ -2888,7 +2947,7 @@ h| 参数名称 h| autovacuum_analyze_scale_factor
 |===
 
 
-===Autovacuum
+==== autovacuum_freeze_max_age
 
 [cols="136,387"]
 |===
@@ -2904,7 +2963,7 @@ h| 参数名称 h| autovacuum_freeze_max_age
 |===
 
 
-=== autovacuum
+==== autovacuum_multixact_freeze_max_age
 
 [cols="136,387"]
 |===
@@ -2920,7 +2979,7 @@ h| 参数名称 h| autovacuum_multixact_freeze_max_age
 |===
 
 
-=== autovacuum
+==== autovacuum_vacuum_cost_delay
 
 [cols="136,387"]
 |===
@@ -2936,7 +2995,7 @@ h| 参数名称 h| autovacuum_vacuum_cost_delay
 |===
 
 
-=== autovacuum
+==== autovacuum_vacuum_cost_limit
 
 [cols="136,387"]
 |===
@@ -2958,6 +3017,8 @@ h| 参数名称 h| autovacuum_vacuum_cost_limit
 
 === Connections and Authentication / SSL
 
+==== ssl
+
 [cols="136,387"]
 |===
 h| 参数名称 h| ssl
@@ -2973,7 +3034,7 @@ h| 参数名称 h| ssl
 
 
 
-===Connections and Authentication / SSL
+==== ssl_ca_file
 
 [cols="136,387"]
 |===
@@ -2990,7 +3051,7 @@ h| 参数名称 h| ssl_ca_file
 
 
 
-=== Connections and Authentication / SSL
+==== ssl_cert_file
 
 [cols="136,387"]
 |===
@@ -3007,7 +3068,7 @@ h| 参数名称 h| ssl_cert_file
 
 
 
-=== Connections and Authentication / SSL
+==== ssl_crl_file
 
 [cols="136,387"]
 |===
@@ -3023,7 +3084,7 @@ h| 参数名称 h| ssl_crl_file
 |===
 
 
-=== Connections and Authentication / SSL
+==== ssl_key_file
 
 [cols="136,387"]
 |===
@@ -3040,7 +3101,7 @@ h| 参数名称 h| ssl_key_file
 
 
 
-=== Connections and Authentication / SSL
+==== ssl_ciphers
 
 [cols="136,387"]
 |===
@@ -3057,7 +3118,7 @@ h| 参数名称 h| ssl_ciphers
 
 
 
-=== Connections and Authentication / SSL
+==== ssl_prefer_server_ciphers
 
 [cols="136,387"]
 |===
@@ -3074,7 +3135,7 @@ h| 参数名称 h| ssl_prefer_server_ciphers
 
 
 
-=== Connections and Authentication / SSL
+==== ssl_ecdh_curve
 
 [cols="136,387"]
 |===
@@ -3090,7 +3151,7 @@ h| 参数名称 h| ssl_ecdh_curve
 |===
 
 
-=== Connections and Authentication / SSL
+==== ssl_min_protocol_version
 
 [cols="136,387"]
 |===
@@ -3107,7 +3168,7 @@ h| 参数名称 h| ssl_min_protocol_version
 
 
 
-=== Connections and Authentication / SSL
+==== ssl_max_protocol_version
 
 [cols="136,387"]
 |===
@@ -3124,7 +3185,7 @@ h| 参数名称 h| ssl_max_protocol_version
 
 
 
-=== Connections and Authentication / SSL
+==== ssl_dh_params_file
 
 [cols="136,387"]
 |===
@@ -3141,7 +3202,7 @@ h| 参数名称 h| ssl_dh_params_file
 
 
 
-=== Connections and Authentication / SSL
+==== ssl_passphrase_command
 
 [cols="136,387"]
 |===
@@ -3157,7 +3218,7 @@ h| 参数名称 h| ssl_passphrase_command
 |===
 
 
-=== Connections and Authentication / SSL
+==== ssl_passphrase_command_supports_reload
 
 [cols="136,387"]
 |===
@@ -3175,6 +3236,8 @@ h| 参数名称 h| ssl_passphrase_command_supports_reload
 
 === Resource Usage / Memory
 
+==== shared_buffers
+
 [cols="136,387"]
 |===
 h| 参数名称 h| shared_buffers
@@ -3189,7 +3252,7 @@ h| 参数名称 h| shared_buffers
 |===
 
 
-=== Resource Usage / Memory
+==== huge_pages
 
 [cols="136,387"]
 |===
@@ -3205,7 +3268,7 @@ h| 参数名称 h| huge_pages
 |===
 
 
-===Resource Usage / Memory
+==== temp_buffers
 
 [cols="136,387"]
 |===
@@ -3223,7 +3286,7 @@ h| 参数名称 h| temp_buffers
 
 
 
-===Resource Usage / Memory
+==== max_prepared_transactions
 
 [cols="136,387"]
 |===
@@ -3240,7 +3303,7 @@ h| 参数名称 h| max_prepared_transactions
 
 
 
-=== .Resource Usage / Memory
+==== work_mem
 
 [cols="136,387"]
 |===
@@ -3260,7 +3323,7 @@ a| 在写入磁盘临时文件之前，被查询操作（比如sort或者hash ta
 
 
 
-=== .Resource Usage / Memory
+==== hash_mem_multiplier
 
 [cols="136,387"]
 |===
@@ -3277,7 +3340,7 @@ h| 参数名称 h| hash_mem_multiplier
 
 
 
-=== .Resource Usage / Memory
+==== maintenance_work_mem
 
 [cols="136,387"]
 |===
@@ -3295,7 +3358,7 @@ h| 参数名称 h| maintenance_work_mem
 
 
 
-=== .Resource Usage / Memory
+==== autovacuum_work_mem
 
 [cols="136,387"]
 |===
@@ -3311,7 +3374,7 @@ h| 参数名称 h| autovacuum_work_mem
 |===
 
 
-=== .Resource Usage / Memory
+==== logical_decoding_work_mem
 
 [cols="136,387"]
 |===
@@ -3327,7 +3390,7 @@ h| 参数名称 h| logical_decoding_work_mem
 |===
 
 
-=== .Resource Usage / Memory
+==== max_stack_depth
 
 [cols="136,387"]
 |===
@@ -3343,7 +3406,7 @@ h| 参数名称 h| max_stack_depth
 |===
 
 
-=== .Resource Usage / Memory
+==== shared_memory_type
 
 [cols="136,387"]
 |===
@@ -3359,7 +3422,7 @@ h| 参数名称 h| shared_memory_type
 |===
 
 
-=== .Resource Usage / Memory
+==== dynamic_shared_memory_type
 
 [cols="136,387"]
 |===
@@ -3377,6 +3440,8 @@ h| 参数名称 h| dynamic_shared_memory_type
 
 === Reporting and Logging / Where to Log
 
+==== log_destination
+
 [cols="136,387"]
 |===
 h| 参数名称 h| log_destination
@@ -3393,7 +3458,7 @@ a| PostgreSQL支持多种记录PostgreSQL消息的方法。包括stderr、csvlog
 |===
 
 
-=== Reporting and Logging / Where to Log
+==== logging_collector
 
 [cols="136,387"]
 |===
@@ -3409,7 +3474,7 @@ h| 参数名称 h| logging_collector
 |===
 
 
-=== Reporting and Logging / Where to Log
+==== log_directory
 
 [cols="136,387"]
 |===
@@ -3425,7 +3490,7 @@ h| 参数名称 h| log_directory
 |===
 
 
-=== Reporting and Logging / Where to Log
+==== log_filename
 
 [cols="136,387"]
 |===
@@ -3444,7 +3509,7 @@ h| 参数名称 h| log_filename
 
 
 
-=== Reporting and Logging / Where to Log
+==== log_file_mode
 
 [cols="136,387"]
 |===
@@ -3461,7 +3526,7 @@ h| 参数名称 h| log_file_mode
 
 
 
-=== Reporting and Logging / Where to Log
+==== log_rotation_age
 
 [cols="136,387"]
 |===
@@ -3478,7 +3543,7 @@ h| 参数名称 h| log_rotation_age
 
 
 
-=== Reporting and Logging / Where to Log
+==== log_rotation_size
 
 [cols="136,387"]
 |===
@@ -3495,7 +3560,7 @@ h| 参数名称 h| log_rotation_size
 
 
 
-=== Reporting and Logging / Where to Log
+==== log_truncate_on_rotation
 
 [cols="136,387"]
 |===
@@ -3512,7 +3577,7 @@ h| 参数名称 h| log_truncate_on_rotation
 
 
 
-=== Reporting and Logging / Where to Log
+==== syslog_facility
 
 [cols="136,387"]
 |===
@@ -3528,7 +3593,7 @@ h| 参数名称 h| syslog_facility
 |===
 
 
-=== Reporting and Logging / Where to Log
+==== syslog_ident
 
 [cols="136,387"]
 |===
@@ -3544,7 +3609,7 @@ h| 参数名称 h| syslog_ident
 |===
 
 
-=== Reporting and Logging / Where to Log
+==== syslog_sequence_numbers
 
 [cols="136,387"]
 |===
@@ -3563,7 +3628,7 @@ a| 当配置参数log_destination被设置为syslog并且本参数值设置为on
 |===
 
 
-=== Reporting and Logging / Where to Log
+==== syslog_split_messages
 
 [cols="136,387"]
 |===
@@ -3579,7 +3644,7 @@ h| 参数名称 h| syslog_split_messages
 |===
 
 
-=== Reporting and Logging / Where to Log
+==== event_source
 
 [cols="136,387"]
 |===
@@ -3598,6 +3663,8 @@ h| 参数名称 h| event_source
 
 === Preset Options
 
+==== block_size
+
 [cols="136,387"]
 |===
 h| 参数名称 h| block_size
@@ -3612,7 +3679,7 @@ h| 参数名称 h| block_size
 |===
 
 
-===Preset Options
+==== data_checksums
 
 [cols="136,387"]
 |===
@@ -3628,7 +3695,7 @@ h| 参数名称 h| data_checksums
 |===
 
 
-=== Preset Options
+==== data_directory_mode
 
 [cols="136,387"]
 |===
@@ -3644,7 +3711,7 @@ h| 参数名称 h| data_directory_mode
 |===
 
 
-=== Preset Options
+==== debug_assertions
 
 [cols="136,387"]
 |===
@@ -3660,9 +3727,7 @@ h| 参数名称 h| debug_assertions
 |===
 
 
-===
-
-Preset Options
+==== integer_datetimes
 
 [cols="136,387"]
 |===
@@ -3678,7 +3743,7 @@ h| 参数名称 h| integer_datetimes
 |===
 
 
-=== Preset Options
+==== lc_collate
 
 [cols="136,387"]
 |===
@@ -3695,7 +3760,7 @@ h| 参数名称 h| lc_collate
 
 
 
-=== Preset Options
+==== lc_ctype
 
 [cols="136,387"]
 |===
@@ -3712,7 +3777,7 @@ h| 参数名称 h| lc_ctype
 
 
 
-=== Preset Options
+==== max_function_args
 
 [cols="136,387"]
 |===
@@ -3729,7 +3794,7 @@ h| 参数名称 h| max_function_args
 
 
 
-=== Preset Options
+==== max_identifier_length
 
 [cols="136,387"]
 |===
@@ -3746,7 +3811,7 @@ h| 参数名称 h| max_identifier_length
 
 
 
-=== Preset Options
+==== max_index_keys
 
 [cols="136,387"]
 |===
@@ -3763,7 +3828,7 @@ h| 参数名称 h| max_index_keys
 
 
 
-=== Preset Options
+==== segment_size
 
 [cols="136,387"]
 |===
@@ -3780,7 +3845,7 @@ h| 参数名称 h| segment_size
 
 
 
-=== Preset Options
+==== server_encoding
 
 [cols="136,387"]
 |===
@@ -3797,7 +3862,7 @@ h| 参数名称 h| server_encoding
 
 
 
-=== Preset Options
+==== server_version
 
 [cols="136,387"]
 |===
@@ -3814,7 +3879,7 @@ h| 参数名称 h| server_version
 
 
 
-=== Preset Options
+==== server_version_num
 
 [cols="136,387"]
 |===
@@ -3831,7 +3896,7 @@ h| 参数名称 h| server_version_num
 
 
 
-=== Preset Options
+==== ssl_library
 
 [cols="136,387"]
 |===
@@ -3847,7 +3912,7 @@ h| 参数名称 h| ssl_library
 |===
 
 
-=== Preset Options
+==== wal_block_size
 
 [cols="136,387"]
 |===
@@ -3864,7 +3929,7 @@ h| 参数名称 h| wal_block_size
 
 
 
-=== Preset Options
+==== wal_segment_size
 
 [cols="136,387"]
 |===
@@ -3883,6 +3948,8 @@ h| 参数名称 h| wal_segment_size
 
 === Client Connection Defaults / Locale and Formatting
 
+==== DateStyle
+
 [cols="136,387"]
 |===
 h| 参数名称 h| DateStyle
@@ -3897,7 +3964,7 @@ h| 参数名称 h| DateStyle
 |===
 
 
-=== Client Connection Defaults / Locale and Formatting
+==== IntervalStyle
 
 [cols="136,387"]
 |===
@@ -3915,7 +3982,7 @@ h| 参数名称 h| IntervalStyle
 
 
 
-=== Client Connection Defaults / Locale and Formatting
+==== TimeZone
 
 [cols="136,387"]
 |===
@@ -3933,7 +4000,7 @@ h| 参数名称 h| TimeZone
 
 
 
-=== Client Connection Defaults / Locale and Formatting
+==== timezone_abbreviations
 
 [cols="136,387"]
 |===
@@ -3950,9 +4017,7 @@ h| 参数名称 h| timezone_abbreviations
 
 
 
-===
-
-Client Connection Defaults / Locale and Formatting
+==== extra_float_digits
 
 [cols="136,387"]
 |===
@@ -3970,7 +4035,7 @@ h| 参数名称 h| extra_float_digits
 
 
 
-=== Client Connection Defaults / Locale and Formatting
+==== client_encoding
 
 [cols="136,387"]
 |===
@@ -3987,7 +4052,7 @@ h| 参数名称 h| client_encoding
 
 
 
-=== Client Connection Defaults / Locale and Formatting
+==== lc_messages
 
 [cols="136,387"]
 |===
@@ -4004,7 +4069,7 @@ h| 参数名称 h| lc_messages
 
 
 
-=== Client Connection Defaults / Locale and Formatting
+==== lc_monetary
 
 [cols="136,387"]
 |===
@@ -4020,7 +4085,7 @@ h| 参数名称 h| lc_monetary
 |===
 
 
-=== Client Connection Defaults / Locale and Formatting
+==== lc_numeric
 
 [cols="136,387"]
 |===
@@ -4037,7 +4102,7 @@ h| 参数名称 h| lc_numeric
 
 
 
-=== Client Connection Defaults / Locale and Formatting
+==== lc_time
 
 [cols="136,387"]
 |===
@@ -4053,7 +4118,7 @@ h| 参数名称 h| lc_time
 |===
 
 
-=== Client Connection Defaults / Locale and Formatting
+==== default_text_search_config
 
 [cols="136,387"]
 |===
@@ -4072,6 +4137,8 @@ h| 参数名称 h| default_text_search_config
 
 
 === Write-Ahead Log / Settings
+
+==== wal_level
 
 [cols="136,387"]
 |===
@@ -4092,7 +4159,7 @@ a| 本参数定义了有多少信息被写入到WAL日志中。参数值replica�
 
 
 
-=== Write-Ahead Log / Settings
+==== fsync
 
 [cols="136,387"]
 |===
@@ -4109,9 +4176,7 @@ h| 参数名称 h| fsync
 
 
 
-===
-
-Write-Ahead Log / Settings
+==== synchronous_commit
 
 [cols="136,387"]
 |===
@@ -4135,7 +4200,7 @@ a| 本参数值指定了在PostgreSQL数据库返回一个成功的提示给客�
 
 
 
-=== Write-Ahead Log / Settings
+==== wal_sync_method
 
 [cols="136,387"]
 |===
@@ -4155,9 +4220,7 @@ a| 本参数值指定了强制将WAL写入Disk时使用的方法。当fsync参�
 
 
 
-===
-
-Write-Ahead Log / Settings
+==== full_page_writes
 
 [cols="136,387"]
 |===
@@ -4176,7 +4239,7 @@ a| 当本参数值为on时，在一个checkpoint发生之后，当第一个修�
 
 
 
-=== Write-Ahead Log / Settings
+==== wal_log_hints
 
 [cols="136,387"]
 |===
@@ -4194,7 +4257,7 @@ h| 参数名称 h| wal_log_hints
 
 
 
-=== Write-Ahead Log / Settings
+==== wal_compression
 
 [cols="136,387"]
 |===
@@ -4211,7 +4274,7 @@ h| 参数名称 h| wal_compression
 
 
 
-=== Write-Ahead Log / Settings
+==== wal_init_zero
 
 [cols="136,387"]
 |===
@@ -4228,7 +4291,7 @@ h| 参数名称 h| wal_init_zero
 
 
 
-=== Write-Ahead Log / Settings
+==== wal_recycle
 
 [cols="136,387"]
 |===
@@ -4244,9 +4307,7 @@ h| 参数名称 h| wal_recycle
 |===
 
 
-===
-
-Write-Ahead Log / Settings
+==== wal_buffers
 
 [cols="136,387"]
 |===
@@ -4263,7 +4324,7 @@ h| 参数名称 h| wal_buffers
 
 
 
-=== Write-Ahead Log / Settings
+==== wal_writer_delay
 
 [cols="136,387"]
 |===
@@ -4281,7 +4342,7 @@ h| 参数名称 h| wal_writer_delay
 
 
 
-=== Write-Ahead Log / Settings
+==== wal_writer_flush_after
 
 [cols="136,387"]
 |===
@@ -4298,7 +4359,7 @@ h| 参数名称 h| wal_writer_flush_after
 
 
 
-=== Write-Ahead Log / Settings
+==== wal_skip_threshold
 
 [cols="136,387"]
 |===
@@ -4316,7 +4377,7 @@ h| 参数名称 h| wal_skip_threshold
 
 
 
-=== Write-Ahead Log / Settings
+==== commit_delay
 
 [cols="136,387"]
 |===
@@ -4333,7 +4394,7 @@ h| 参数名称 h| commit_delay
 
 
 
-=== Write-Ahead Log / Settings
+==== commit_siblings
 
 [cols="136,387"]
 |===
@@ -4353,6 +4414,8 @@ h| 参数名称 h| commit_siblings
 
 === Developer Options
 
+==== allow_system_table_mods
+
 [cols="136,387"]
 |===
 h| 参数名称 h| allow_system_table_mods
@@ -4367,7 +4430,7 @@ h| 参数名称 h| allow_system_table_mods
 |===
 
 
-=== Developer Options
+==== backtrace_functions
 
 [cols="136,387"]
 |===
@@ -4385,7 +4448,7 @@ h| 参数名称 h| backtrace_functions
 
 
 
-=== Developer Options
+==== ignore_system_indexes
 
 [cols="136,387"]
 |===
@@ -4402,7 +4465,7 @@ h| 参数名称 h| ignore_system_indexes
 
 
 
-=== Developer Options
+==== post_auth_delay
 
 [cols="136,387"]
 |===
@@ -4419,7 +4482,7 @@ h| 参数名称 h| post_auth_delay
 
 
 
-=== Developer Options
+==== pre_auth_delay
 
 [cols="136,387"]
 |===
@@ -4436,7 +4499,7 @@ h| 参数名称 h| pre_auth_delay
 
 
 
-=== Developer Options
+==== trace_notify
 
 [cols="136,387"]
 |===
@@ -4453,7 +4516,7 @@ h| 参数名称 h| trace_notify
 
 
 
-===Developer Options
+==== trace_recovery_messages
 
 [cols="68,199"]
 |===
@@ -4470,7 +4533,7 @@ h| 参数名称 h| trace_recovery_messages
 
 
 
-=== Developer Options
+==== trace_sort
 
 [cols="136,387"]
 |===
@@ -4488,7 +4551,7 @@ h| 参数名称 h| trace_sort
 
 
 
-=== Developer Options
+==== trace_locks
 
 [cols="136,387"]
 |===
@@ -4505,7 +4568,7 @@ h| 参数名称 h| trace_locks
 
 
 
-=== Developer Options
+==== trace_lwlocks
 
 [cols="136,387"]
 |===
@@ -4521,7 +4584,7 @@ h| 参数名称 h| trace_lwlocks
 
 
 
-=== Developer Options
+==== trace_userlocks
 
 [cols="136,387"]
 |===
@@ -4537,7 +4600,7 @@ h| 参数名称 h| trace_userlocks
 
 
 
-=== Developer Options
+==== trace_lock_oidmin
 
 [cols="136,387"]
 |===
@@ -4553,7 +4616,7 @@ h| 参数名称 h| trace_lock_oidmin
 
 
 
-=== Developer Options
+==== trace_lock_table
 
 [cols="136,387"]
 |===
@@ -4569,7 +4632,7 @@ h| 参数名称 h| trace_lock_table
 
 
 
-=== Developer Options
+==== debug_deadlocks
 
 [cols="136,387"]
 |===
@@ -4585,7 +4648,7 @@ h| 参数名称 h| debug_deadlocks
 
 
 
-=== Developer Options
+==== log_btree_build_stats
 
 [cols="136,387"]
 |===
@@ -4601,7 +4664,7 @@ h| 参数名称 h| log_btree_build_stats
 
 
 
-=== Developer Options
+==== wal_consistency_checking
 
 [cols="136,387"]
 |===
@@ -4618,7 +4681,7 @@ h| 参数名称 h| wal_consistency_checking
 
 
 
-=== Developer Options
+==== wal_debug
 
 [cols="136,387"]
 |===
@@ -4633,7 +4696,7 @@ h| 参数名称 h| wal_debug
 |===
 
 
-=== Developer Options
+==== ignore_checksum_failure
 
 [cols="136,387"]
 |===
@@ -4650,7 +4713,7 @@ h| 参数名称 h| ignore_checksum_failure
 
 
 
-=== Developer Options
+==== zero_damaged_pages
 
 [cols="136,387"]
 |===
@@ -4668,7 +4731,7 @@ h| 参数名称 h| zero_damaged_pages
 
 
 
-=== Developer Options
+==== ignore_invalid_pages
 
 [cols="136,387"]
 |===
@@ -4685,7 +4748,7 @@ h| 参数名称 h| ignore_invalid_pages
 
 
 
-=== Developer Options
+==== jit_debugging_support
 
 [cols="136,387"]
 |===
@@ -4703,7 +4766,7 @@ h| 参数名称 h| jit_debugging_support
 
 
 
-=== Developer Options
+==== jit_dump_bitcode
 
 [cols="136,387"]
 |===
@@ -4720,7 +4783,7 @@ h| 参数名称 h| jit_dump_bitcode
 
 
 
-=== Developer Options
+==== jit_expressions
 
 [cols="136,387"]
 |===
@@ -4738,7 +4801,7 @@ h| 参数名称 h| jit_expressions
 
 
 
-=== Developer Options
+==== jit_profiling_support
 
 [cols="136,387"]
 |===
@@ -4756,7 +4819,7 @@ h| 参数名称 h| jit_profiling_support
 
 
 
-=== Developer Options
+==== jit_tuple_deforming
 
 [cols="136,387"]
 |===
@@ -4776,6 +4839,8 @@ h| 参数名称 h| jit_tuple_deforming
 
 === Query Tuning / Planner Method Configuration
 
+==== enable_bitmapscan
+
 [cols="136,387"]
 |===
 h| 参数名称 h| enable_bitmapscan
@@ -4793,7 +4858,7 @@ h| 参数名称 h| enable_bitmapscan
 
 
 
-=== Query Tuning / Planner Method Configuration
+==== enable_gathermerge
 
 [cols="136,387"]
 |===
@@ -4811,7 +4876,7 @@ h| 参数名称 h| enable_gathermerge
 
 
 
-=== Query Tuning / Planner Method Configuration
+==== enable_hashagg
 
 [cols="136,387"]
 |===
@@ -4829,7 +4894,7 @@ h| 参数名称 h| enable_hashagg
 
 
 
-=== Query Tuning / Planner Method Configuration
+==== enable_hashjoin
 
 [cols="136,387"]
 |===
@@ -4847,7 +4912,7 @@ h| 参数名称 h| enable_hashjoin
 
 
 
-=== Query Tuning / Planner Method Configuration
+==== enable_incremental_sort
 
 [cols="136,387"]
 |===
@@ -4865,7 +4930,7 @@ h| 参数名称 h| enable_incremental_sort
 
 
 
-=== Query Tuning / Planner Method Configuration
+==== enable_indexscan
 
 [cols="136,387"]
 |===
@@ -4882,7 +4947,7 @@ h| 参数名称 h| enable_indexscan
 
 
 
-===Query Tuning / Planner Method Configuration
+==== enable_indexonlyscan
 
 [cols="136,387"]
 |===
@@ -4898,7 +4963,7 @@ h| 参数名称 h| enable_indexonlyscan
 |===
 
 
-=== Query Tuning / Planner Method Configuration
+==== enable_material
 
 [cols="136,387"]
 |===
@@ -4915,7 +4980,7 @@ h| 参数名称 h| enable_material
 
 
 
-=== Query Tuning / Planner Method Configuration
+==== enable_mergejoin
 
 [cols="136,387"]
 |===
@@ -4933,7 +4998,7 @@ h| 参数名称 h| enable_mergejoin
 
 
 
-=== Query Tuning / Planner Method Configuration
+==== enable_nestloop
 
 [cols="136,387"]
 |===
@@ -4950,7 +5015,7 @@ h| 参数名称 h| enable_nestloop
 
 
 
-=== Query Tuning / Planner Method Configuration
+==== enable_parallel_append
 
 [cols="136,387"]
 |===
@@ -4967,7 +5032,7 @@ h| 参数名称 h| enable_parallel_append
 
 
 
-=== Query Tuning / Planner Method Configuration
+==== enable_parallel_hash
 
 [cols="136,387"]
 |===
@@ -4983,7 +5048,7 @@ h| 参数名称 h| enable_parallel_hash
 |===
 
 
-=== Query Tuning / Planner Method Configuration
+==== enable_partition_pruning
 
 [cols="136,387"]
 |===
@@ -5000,7 +5065,7 @@ h| 参数名称 h| enable_partition_pruning
 
 
 
-=== Query Tuning / Planner Method Configuration
+==== enable_partitionwise_join
 
 [cols="136,387"]
 |===
@@ -5017,7 +5082,7 @@ h| 参数名称 h| enable_partitionwise_join
 
 
 
-=== Query Tuning / Planner Method Configuration
+==== enable_partitionwise_aggregate
 
 [cols="136,387"]
 |===
@@ -5034,7 +5099,7 @@ h| 参数名称 h| enable_partitionwise_aggregate
 
 
 
-=== Query Tuning / Planner Method Configuration
+==== enable_seqscan
 
 [cols="136,387"]
 |===
@@ -5051,7 +5116,7 @@ h| 参数名称 h| enable_seqscan
 
 
 
-=== Query Tuning / Planner Method Configuration
+==== enable_sort
 
 [cols="136,387"]
 |===
@@ -5068,7 +5133,7 @@ h| 参数名称 h| enable_sort
 
 
 
-=== Query Tuning / Planner Method Configuration
+==== enable_tidscan
 
 [cols="136,387"]
 |===
@@ -5087,6 +5152,8 @@ h| 参数名称 h| enable_tidscan
 
 === Reporting and Logging / What to Log
 
+==== application_name
+
 [cols="136,387"]
 |===
 h| 参数名称 h| application_name
@@ -5102,7 +5169,7 @@ h| 参数名称 h| application_name
 
 
 
-=== Reporting and Logging / What to Log
+==== debug_print_parse
 
 [cols="136,387"]
 |===
@@ -5119,7 +5186,7 @@ h| 参数名称 h| debug_print_parse
 
 
 
-=== Reporting and Logging / What to Log
+==== debug_print_rewritten
 
 [cols="136,387"]
 |===
@@ -5136,7 +5203,7 @@ h| 参数名称 h| debug_print_rewritten
 
 
 
-=== Reporting and Logging / What to Log
+==== debug_print_plan
 
 [cols="136,387"]
 |===
@@ -5153,7 +5220,7 @@ h| 参数名称 h| debug_print_plan
 
 
 
-=== Reporting and Logging / What to Log
+==== debug_pretty_print
 
 [cols="136,387"]
 |===
@@ -5170,7 +5237,7 @@ h| 参数名称 h| debug_pretty_print
 
 
 
-=== Reporting and Logging / What to Log
+==== log_checkpoints
 
 [cols="136,387"]
 |===
@@ -5187,7 +5254,7 @@ h| 参数名称 h| log_checkpoints
 
 
 
-=== Reporting and Logging / What to Log
+==== log_connections
 
 [cols="136,387"]
 |===
@@ -5204,7 +5271,7 @@ h| 参数名称 h| log_connections
 
 
 
-=== Reporting and Logging / What to Log
+==== log_disconnections
 
 [cols="136,387"]
 |===
@@ -5221,7 +5288,7 @@ h| 参数名称 h| log_disconnections
 
 
 
-=== Reporting and Logging / What to Log
+==== log_error_verbosity
 
 [cols="136,387"]
 |===
@@ -5238,7 +5305,7 @@ h| 参数名称 h| log_error_verbosity
 
 
 
-=== Reporting and Logging / What to Log
+==== log_hostname
 
 [cols="136,387"]
 |===
@@ -5254,7 +5321,7 @@ h| 参数名称 h| log_hostname
 |===
 
 
-=== Reporting and Logging / What to Log
+==== log_line_prefix
 
 [cols="136,387,50"]
 |===
@@ -5277,7 +5344,7 @@ a| 控制运行日志中每行开头的输出内容。
 |===
 
 
-=== Reporting and Logging / What to Log
+==== log_lock_waits
 
 [cols="136,387"]
 |===
@@ -5293,7 +5360,7 @@ h| 参数名称 h| log_lock_waits
 |===
 
 
-=== Reporting and Logging / What to Log
+==== log_parameter_max_length
 
 [cols="136,387"]
 |===
@@ -5313,7 +5380,7 @@ a| 如果本参数值大于零，则使用非错误语句日志消息记录的�
 
 
 
-=== Reporting and Logging / What to Log
+==== log_parameter_max_length_on_error
 
 [cols="136,387"]
 |===
@@ -5330,7 +5397,7 @@ h| 参数名称 h| log_parameter_max_length_on_error
 
 
 
-=== Reporting and Logging / What to Log
+==== log_statement
 
 [cols="136,387"]
 |===
@@ -5347,7 +5414,7 @@ h| 参数名称 h| log_statement
 
 
 
-=== Reporting and Logging / What to Log
+==== log_replication_commands
 
 [cols="136,387"]
 |===
@@ -5364,7 +5431,7 @@ h| 参数名称 h| log_replication_commands
 
 
 
-=== Reporting and Logging / What to Log
+==== log_temp_files
 
 [cols="136,387"]
 |===
@@ -5381,7 +5448,7 @@ h| 参数名称 h| log_temp_files
 
 
 
-=== Reporting and Logging / What to Log
+==== log_timezone
 
 [cols="136,387"]
 |===
@@ -5400,6 +5467,8 @@ h| 参数名称 h| log_timezone
 
 === Client Connection Defaults / Statement Behavior
 
+==== client_min_messages
+
 [cols="68,199"]
 |===
 h| 参数名称 h| client_min_messages
@@ -5415,7 +5484,7 @@ h| 参数名称 h| client_min_messages
 
 
 
-=== Client Connection Defaults / Statement Behavior
+==== search_path
 
 [cols="136,387"]
 |===
@@ -5434,7 +5503,7 @@ a| 当一个object(table, data type, function等等)不带前面的schema name�
 |===
 
 
-===Client Connection Defaults / Statement Behavior
+==== row_security
 
 [cols="136,387"]
 |===
@@ -5451,7 +5520,7 @@ h| 参数名称 h| row_security
 
 
 
-=== Client Connection Defaults / Statement Behavior
+==== default_table_access_method
 
 [cols="136,387"]
 |===
@@ -5469,7 +5538,7 @@ h| 参数名称 h| default_table_access_method
 
 
 
-=== Client Connection Defaults / Statement Behavior
+==== default_tablespace
 
 [cols="136,387"]
 |===
@@ -5486,7 +5555,7 @@ h| 参数名称 h| default_tablespace
 
 
 
-=== Client Connection Defaults / Statement Behavior
+==== temp_tablespaces
 
 [cols="136,387"]
 |===
@@ -5504,7 +5573,7 @@ h| 参数名称 h| temp_tablespaces
 
 
 
-=== Client Connection Defaults / Statement Behavior
+==== check_function_bodies
 
 [cols="136,387"]
 |===
@@ -5522,7 +5591,7 @@ h| 参数名称 h| check_function_bodies
 
 
 
-=== Client Connection Defaults / Statement Behavior
+==== default_transaction_isolation
 
 [cols="136,387"]
 |===
@@ -5539,7 +5608,7 @@ h| 参数名称 h| default_transaction_isolation
 
 
 
-=== Client Connection Defaults / Statement Behavior
+==== default_transaction_read_only
 
 [cols="136,387"]
 |===
@@ -5557,7 +5626,7 @@ h| 参数名称 h| default_transaction_read_only
 
 
 
-=== Client Connection Defaults / Statement Behavior
+==== default_transaction_deferrable
 
 [cols="136,387"]
 |===
@@ -5575,7 +5644,7 @@ h| 参数名称 h| default_transaction_deferrable
 
 
 
-=== Client Connection Defaults / Statement Behavior
+==== session_replication_role
 
 [cols="136,387"]
 |===
@@ -5596,7 +5665,7 @@ a| 控制针对当前session的与复制相关的triggers和rules的触发(firin
 
 
 
-=== Client Connection Defaults / Statement Behavior
+==== statement_timeout
 
 [cols="136,387"]
 |===
@@ -5614,7 +5683,7 @@ h| 参数名称 h| statement_timeout
 
 
 
-=== Client Connection Defaults / Statement Behavior
+==== lock_timeout
 
 [cols="136,387"]
 |===
@@ -5632,7 +5701,7 @@ h| 参数名称 h| lock_timeout
 
 
 
-=== Client Connection Defaults / Statement Behavior
+==== idle_in_transaction_session_timeout
 
 [cols="136,387"]
 |===
@@ -5650,7 +5719,7 @@ h| 参数名称 h| idle_in_transaction_session_timeout
 
 
 
-=== Client Connection Defaults / Statement Behavior
+==== vacuum_freeze_table_age
 
 [cols="136,387"]
 |===
@@ -5667,7 +5736,7 @@ h| 参数名称 h| vacuum_freeze_table_age
 
 
 
-=== Client Connection Defaults / Statement Behavior
+==== vacuum_freeze_min_age
 
 [cols="136,387"]
 |===
@@ -5684,7 +5753,7 @@ h| 参数名称 h| vacuum_freeze_min_age
 
 
 
-=== Client Connection Defaults / Statement Behavior
+==== vacuum_multixact_freeze_table_age
 
 [cols="136,387"]
 |===
@@ -5701,7 +5770,7 @@ h| 参数名称 h| vacuum_multixact_freeze_table_age
 
 
 
-=== Client Connection Defaults / Statement Behavior
+==== vacuum_multixact_freeze_min_age
 
 [cols="136,387"]
 |===
@@ -5718,7 +5787,7 @@ h| 参数名称 h| vacuum_multixact_freeze_min_age
 
 
 
-=== Client Connection Defaults / Statement Behavior
+==== bytea_output
 
 [cols="136,387"]
 |===
@@ -5734,7 +5803,7 @@ h| 参数名称 h| bytea_output
 |===
 
 
-=== Client Connection Defaults / Statement Behavior
+==== xmlbinary
 
 [cols="136,387"]
 |===
@@ -5750,7 +5819,7 @@ h| 参数名称 h| xmlbinary
 |===
 
 
-=== Client Connection Defaults / Statement Behavior
+==== xmloption
 
 [cols="136,387"]
 |===
@@ -5766,7 +5835,7 @@ h| 参数名称 h| xmloption
 |===
 
 
-=== Client Connection Defaults / Statement Behavior
+==== gin_pending_list_limit
 
 [cols="136,387"]
 |===
@@ -5780,5 +5849,4 @@ h| 参数名称 h| gin_pending_list_limit
 | 修改后何时生效 | Reload即可生效
 
 |===
-
 
