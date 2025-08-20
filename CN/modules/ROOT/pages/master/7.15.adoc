@@ -125,6 +125,7 @@ PL/iSQL function inline_code_block line 5 at assignment
 ```
 
 === 匿名块支持out参数
+
 1. 支持冒号占位符形式的绑定变量，新增DO+USING语法
 ```
 ivorysql=# do $$
@@ -139,6 +140,7 @@ ivorysql$# end; $$ using out, out;
   1 |  2
 (1 row)
 ```
+
 2. 系统函数 get_parameter_descr
 ```
 ivorysql=# select * from get_parameter_description('insert into t values(:x,:y)');
