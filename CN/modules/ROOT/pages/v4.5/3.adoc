@@ -26,6 +26,7 @@ IvorySQL数据库目前支持的操作系统包括但不限于CentOS 8.X、CentO
 [[快速安装]]
 == 快速安装 
 快速开始示例所使用的操作系统为CentOS Stream 9。
+
 === 从yum源安装IvorySQL数据库
 
 ** 安装前准备

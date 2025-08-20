@@ -25,7 +25,8 @@ Currently, IvorySQL supports but is not limited to linux(CentOS 8.X/CentOS Strea
 [[quick-installation]]
 == Quick installation 
 The operating system used for the quick start is CentOS Stream 9.
-=== yum installation
+
+==== yum installation
 
 ** Pre-requirements
 
