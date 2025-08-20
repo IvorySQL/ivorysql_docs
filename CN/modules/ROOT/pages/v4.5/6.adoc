@@ -32,7 +32,7 @@ gpgcheck=0
 ```
 保存退出后，安装IvorySQL4
 ```
-$ sudo dnf install -y IvorySQL-4.5
+$ sudo dnf install -y ivorysql4-4.5
 ```
 
 [[docker安装]]
