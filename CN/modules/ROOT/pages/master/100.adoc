@@ -17,6 +17,10 @@
 
 请在 https://github.com/IvorySQL/ivorysql_docs/issues[https://github.com/IvorySQL/ivorysql_docs/issues]提交issue。
 
+文档下载：
+
+link:postgresql.pdf[PostgreSQL参考手册]
+
 === Resource Usage / Disk
 
 ==== temp_file_limit
