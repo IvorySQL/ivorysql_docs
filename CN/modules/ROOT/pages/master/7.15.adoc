@@ -70,78 +70,86 @@ libpq接口端提供准备、绑定、执行函数，这些函数与OCI相应函
 == 测试用例
 
 === 含有out参数的函数
+
 1. out参数和返回值数据类型没有关联
-```
-ivorysql=# create or replace function test_return_out(id integer,price out integer,name out varchar) return varchar 
-ivorysql-# as
-ivorysql-# begin
-ivorysql-#   price := 20000;
-ivorysql-#   name := 'test a char out';
-ivorysql-#   return 'welcome to QingDao';
-ivorysql-# end;
-ivorysql-# /
-CREATE FUNCTION
-```
+
+  ```
+  ivorysql=# create or replace function test_return_out(id integer,price out integer,name out varchar) return varchar 
+  ivorysql-# as
+  ivorysql-# begin
+  ivorysql-#   price := 20000;
+  ivorysql-#   name := 'test a char out';
+  ivorysql-#   return 'welcome to QingDao';
+  ivorysql-# end;
+  ivorysql-# /
+  CREATE FUNCTION
+  ```
 
 2. IN OUT模式和OUT模式都不能有默认值
-```
-ivorysql=# create or replace function test_return_inout(id integer,price in out integer default 100,name out varchar) return varchar 
-ivorysql-# as
-ivorysql-# begin
-ivorysql-#   price := 20000 + price;
-ivorysql-#   name := 'this is a test';
-ivorysql-# return 'welcome to QingDao';
-ivorysql-# end;
-ivorysql-# /
-ERROR:  IN OUT formal parameters may have no default expressions
-```
+
+  ```
+  ivorysql=# create or replace function test_return_inout(id integer,price in out integer default 100,name out varchar) return varchar 
+  ivorysql-# as
+  ivorysql-# begin
+  ivorysql-#   price := 20000 + price;
+  ivorysql-#   name := 'this is a test';
+  ivorysql-# return 'welcome to QingDao';
+  ivorysql-# end;
+  ivorysql-# /
+  ERROR:  IN OUT formal parameters may have no default expressions
+  ```
 
 3. 如果有out参数，并且函数返回类型不是void，则函数体中必须有RETURN语句
-```
---if function's return type is non-void, the function body must has RETURN statement
---if there is no RETURN statement, the function can be created, but when it is called, 
---an error is raised
-ivorysql=# create or replace function f2(id integer,price out integer) return varchar 
-ivorysql-# as
-ivorysql-# begin
-ivorysql-#   price := 2;
-ivorysql-# end;
-ivorysql-# /
-CREATE FUNCTION
-ivorysql=# declare
-ivorysql-#   a varchar(20);
-ivorysql-#   b int;  
-ivorysql-# begin
-ivorysql-#   a := f2(1, b);
-ivorysql-# end;
-ivorysql-# /
-ERROR:  Function returned without value
-CONTEXT:  PL/iSQL function f2(pg_catalog.int4,pg_catalog.int4) line 0 at RETURN
-PL/iSQL function inline_code_block line 5 at assignment
-```
+
+  ```
+  --if function's return type is non-void, the function body must has RETURN statement
+  --if there is no RETURN statement, the function can be created, but when it is called, 
+  --an error is raised
+  ivorysql=# create or replace function f2(id integer,price out integer) return varchar 
+  ivorysql-# as
+  ivorysql-# begin
+  ivorysql-#   price := 2;
+  ivorysql-# end;
+  ivorysql-# /
+  CREATE FUNCTION
+  ivorysql=# declare
+  ivorysql-#   a varchar(20);
+  ivorysql-#   b int;  
+  ivorysql-# begin
+  ivorysql-#   a := f2(1, b);
+  ivorysql-# end;
+  ivorysql-# /
+  ERROR:  Function returned without value
+  CONTEXT:  PL/iSQL function f2(pg_catalog.int4,pg_catalog.int4) line 0 at RETURN
+  PL/iSQL function inline_code_block line 5 at assignment
+  ```
 
 === 匿名块支持out参数
+
 1. 支持冒号占位符形式的绑定变量，新增DO+USING语法
-```
-ivorysql=# do $$
-ivorysql$# declare
-ivorysql$#   a int; 
-ivorysql$# begin
-ivorysql$#   :x := 1;
-ivorysql$#   :y := 2;
-ivorysql$# end; $$ using out, out;
- $1 | $2 
-----+----
-  1 |  2
-(1 row)
-```
+
+  ```
+  ivorysql=# do $$
+  ivorysql$# declare
+  ivorysql$#   a int; 
+  ivorysql$# begin
+  ivorysql$#   :x := 1;
+  ivorysql$#   :y := 2;
+  ivorysql$# end; $$ using out, out;
+   $1 | $2 
+  ----+----
+    1 |  2
+  (1 row)
+  ```
+
 2. 系统函数 get_parameter_descr
-```
-ivorysql=# select * from get_parameter_description('insert into t values(:x,:y)');
- name  | position 
--------+----------
- false |        0
- :x    |        1
- :y    |        2
-(3 rows)
-```
+
+  ```
+  ivorysql=# select * from get_parameter_description('insert into t values(:x,:y)');
+   name  | position 
+  -------+----------
+   false |        0
+   :x    |        1
+   :y    |        2
+  (3 rows)
+  ```
