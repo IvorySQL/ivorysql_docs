@@ -24,9 +24,7 @@ Currently, IvorySQL supports but is not limited to linux(CentOS 8.X/CentOS Strea
 
 [[quick-installation]]
 == Quick installation 
-....
-  The operating system used for the quick start is CentOS Stream 9.
-....
+The operating system used for the quick start is CentOS Stream 9.
 === yum installation
 
 ** Pre-requirements
@@ -51,7 +49,7 @@ gpgcheck=0
 ```
 After saving and exiting, you can install IvorySQL 4 with the following steps
 ```
-$ sudo dnf install -y IvorySQL-4.5
+$ sudo dnf install -y ivorysql4-4.5
 ```
 
 [[setting-environment-variables]]
@@ -61,9 +59,9 @@ $ sudo dnf install -y IvorySQL-4.5
 
 Add below contents in ~/.bash_profile file and source to make it effective:
 ```
-PATH=/opt/IvorySQL-4.5/bin:$PATH
+PATH=/usr/ivory-4/bin:$PATH
 export PATH
-PGDATA=/opt/IvorySQL-4.5/data
+PGDATA=/usr/ivory-4/data
 export PGDATA
 ```
 ```
@@ -73,29 +71,27 @@ $ source ~/.bash_profile
 ** Initializing database
 
 ```
-$ initdb -D /opt/IvorySQL-4.5/data
+$ initdb -D /usr/ivory-4/data
 ```
-....
-  The -D option specifies the directory where the database cluster should be stored. This is the only information required by initdb, but you can avoid writing it by setting the PGDATA environment variable, which can be convenient since the database server can find the database directory later by the same variable. 
+The -D option specifies the directory where the database cluster should be stored. This is the only information required by initdb, but you can avoid writing it by setting the PGDATA environment variable, which can be convenient since the database server can find the database directory later by the same variable. 
 
-  For more options, refer to initdb --help.
-....
+For more options, refer to initdb --help.
 
 ** Starting IvorySQL service
 
 ```
-$ pg_ctl -D /opt/IvorySQL-4.5/data -l ivory.log start 
+$ pg_ctl -D /usr/ivory-4/data -l ivory.log start 
 ```
 
-  The -D option specifies the file system location of the database configuration files. If this option is omitted, the environment variable PGDATA in <<setting-environment-variables>> is used. -l option appends the server log output to filename. If the file does not exist, it is created.
+The -D option specifies the file system location of the database configuration files. If this option is omitted, the environment variable PGDATA in <<setting-environment-variables>> is used. -l option appends the server log output to filename. If the file does not exist, it is created.
 
-  For more options, refer to pg_ctl --help.
+For more options, refer to pg_ctl --help.
 
 
 Confirm it’s successfully started:
 ```
 $ ps -ef | grep postgres
-ivorysql  3214     1  0 20:35 ?        00:00:00 /opt/IvorySQL-4.5/bin/postgres -D /opt/IvorySQL-4.5/data
+ivorysql  3214     1  0 20:35 ?        00:00:00 /usr/ivory-4/bin/postgres -D /usr/ivory-4/data
 ivorysql  3215  3214  0 20:35 ?        00:00:00 postgres: checkpointer 
 ivorysql  3216  3214  0 20:35 ?        00:00:00 postgres: background writer 
 ivorysql  3218  3214  0 20:35 ?        00:00:00 postgres: walwriter 
@@ -133,11 +129,9 @@ Type "help" for help.
 
 ivorysql=#
 ```
-....
-  The -d option specifies the name of the database to connect to. ivorysql is the default database of IvorySQL. However,IvorySQL of lower versions need the users themselves to connect to postgres database at the first connection and then create the ivorysql database.The latest IvorySQL can do all these for users.
+The -d option specifies the name of the database to connect to. ivorysql is the default database of IvorySQL. However,IvorySQL of lower versions need the users themselves to connect to postgres database at the first connection and then create the ivorysql database.The latest IvorySQL can do all these for users.
 
-  For more options, refer to psql --help.
-....
+For more options, refer to psql --help.
 
 TIP: When running IvorySQL in Docker, additional parameters need to be added, like: psql -d ivorysql -U ivorysql -h 127.0.0.1 -p 5434
 

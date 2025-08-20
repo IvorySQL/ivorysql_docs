@@ -25,9 +25,7 @@ IvorySQL数据库目前支持的操作系统包括但不限于CentOS 8.X、CentO
 
 [[快速安装]]
 == 快速安装 
-....
-  快速开始示例所使用的操作系统为CentOS Stream 9。
-....
+快速开始示例所使用的操作系统为CentOS Stream 9。
 === 从yum源安装IvorySQL数据库
 
 ** 安装前准备
@@ -52,16 +50,14 @@ gpgcheck=0
 ```
 保存退出后，安装IvorySQL4
 ```
-$ sudo dnf install -y IvorySQL-4.5
+$ sudo dnf install -y ivorysql4-4.5
 ```
-....
 
-  正确安装后，数据库将被安装在/opt/IvorySQL-4.5/路径下的IvorySQL-version(如:IvorySQL-4.5)文件夹内
-....
+正确安装后，数据库将被安装在/usr/ivory-4/文件夹内
 
 执行以下命令为ivorysql用户赋权：
 ```
-$ sudo chown -R ivorysql:ivorysql /opt/IvorySQL-4.5
+$ sudo chown -R ivorysql:ivorysql /usr/ivory-4
 ```
 [[配置环境变量]]
 ** 配置环境变量
@@ -70,9 +66,9 @@ $ sudo chown -R ivorysql:ivorysql /opt/IvorySQL-4.5
 
 将以下配置写入~/.bash_profile文件并使用source命令该文件使环境变量生效：
 ```
-PATH=/opt/IvorySQL-4.5/bin:$PATH
+PATH=/usr/ivory-4/bin:$PATH
 export PATH
-PGDATA=/opt/IvorySQL-4.5/data
+PGDATA=/usr/ivory-4/data
 export PGDATA
 ```
 ```
@@ -82,16 +78,14 @@ $ source ~/.bash_profile
 ** 数据库初始化
 
 ```
-$ initdb -D /opt/IvorySQL-4.5/data
+$ initdb -D /usr/ivory-4/data
 ```
-....
-  其中-D参数用来指定数据库的数据目录。更多参数使用方法，请使用initdb --help命令获取。
-....
+其中-D参数用来指定数据库的数据目录。更多参数使用方法，请使用initdb --help命令获取。
 
 ** 启动数据库服务
 
 ```
-$ pg_ctl -D /opt/IvorySQL-4.5/data -l ivory.log start 
+$ pg_ctl -D /usr/ivory-4/data -l ivory.log start 
 ```
 
 其中-D参数用来指定数据库的数据目录，如果<<配置环境变量>> 配置了PGDATA，则该参数可以省略。-l参数用来指定日志目录。更多参数使用方法，请使用pg_ctl --help命令获取。
@@ -100,7 +94,7 @@ $ pg_ctl -D /opt/IvorySQL-4.5/data -l ivory.log start
 查看确认数据库启动成功：
 ```
 $ ps -ef | grep postgres
-ivorysql  3214     1  0 20:35 ?        00:00:00 /opt/IvorySQL-4.5/bin/postgres -D /opt/IvorySQL-4.5/data
+ivorysql  3214     1  0 20:35 ?        00:00:00 /usr/ivory-4/bin/postgres -D /usr/ivory-4/data
 ivorysql  3215  3214  0 20:35 ?        00:00:00 postgres: checkpointer 
 ivorysql  3216  3214  0 20:35 ?        00:00:00 postgres: background writer 
 ivorysql  3218  3214  0 20:35 ?        00:00:00 postgres: walwriter 
@@ -138,11 +132,9 @@ Type "help" for help.
 
 ivorysql=#
 ```
-....
-  其中-d参数用来指定想要连接到的数据库名称。IvorySQL默认使用ivorysql数据库，但较低版本的IvorySQL首次使用时需用户先连接postgres数据库，然后自己创建ivorysql数据库。较高版本的IvorySQL则已为用户创建好ivorysql数据库，可以直接连接。
+其中-d参数用来指定想要连接到的数据库名称。IvorySQL默认使用ivorysql数据库，但较低版本的IvorySQL首次使用时需用户先连接postgres数据库，然后自己创建ivorysql数据库。较高版本的IvorySQL则已为用户创建好ivorysql数据库，可以直接连接。
 
-  更多参数使用方法，请使用psql --help命令获取。
-....
+更多参数使用方法，请使用psql --help命令获取。
 
 TIP: Docker运行IvorySQL时，需要添加额外参数，如 psql -d ivorysql -U ivorysql -h 127.0.0.1 -p 5434
 

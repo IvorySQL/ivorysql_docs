@@ -33,29 +33,8 @@ gpgcheck=0
 ```
 After saving and exiting, you can install IvorySQL 4 with the following steps
 ```
-$ sudo dnf install -y IvorySQL-4.5
+$ sudo dnf install -y ivorysql4-4.5
 ```
-
-** Checking installation results
-```
-dnf search IvorySQL
-```
-Details:
-|====
-| id | Package name  | Description
-| 1 | ivorysql4.x86_64 |  IvorySQL client programs and lib files
-| 2 | ivorysql4-contrib.x86_64 | Contributed source code and binary files released with IvorySQL
-| 3 | ivorysql4-devel.x86_64 | IvorySQL development header files and libraries
-| 4 | ivorysql4-docs.x86_64 | Additional docs for IvorySQL
-| 5 | ivorysql4-libs.x86_64 | Shared libraries required by all IvorySQL clients
-| 6 | ivorysql4-llvmjit.x86_64 | Instant compilation support for IvorySQL
-| 7 | ivorysql4-plperl.x86_64 | Perl, a procedural language for IvorySQL
-| 8 | ivorysql4-plpython3.x86_64 | Python3, a procedural language for IvorySQL
-| 9 | ivorysql4-pltcl.x86_64 | Tcl, a procedural language for IvorySQL
-| 10 | ivorysql4-server.x86_64 | The programs required to create and run an IvorySQL server
-| 11 | Ivorysql4-test.x86_64 | Test suite released with IvorySQL
-| 12 | ivorysql-release.noarch | Yum Source Configuration RPM Package of HighGo
-|====
 
 [[Docker-installation]]
 == Docker installation
@@ -105,7 +84,7 @@ Use the following command to install all the rpms:
 ```
 $ sudo yum --disablerepo=* localinstall *.rpm 
 ```
-IvorySQL then will be installed in the /opt/IvorySQL-4.5/ directory.
+IvorySQL then will be installed in the /usr/ivory-4/ directory.
 
 [[Source-code-installation]]
 == Source code installation
@@ -126,7 +105,7 @@ $ git checkout -b IVORY_REL_4_STABLE origin/IVORY_REL_4_STABLE
 
 In the IvorySQL directory run the following command with --prefix to specify the directory where you want the database to be installed:
 ```
-$ ./configure --prefix=/usr/local/ivorysql/ivorysql-4
+$ ./configure --prefix=/usr/ivory-4
 ```
 ** Compiling
 
@@ -167,16 +146,16 @@ $ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.5/
 ```
 $ sudo dpkg -i IvorySQL-4.5-a50789d-20250304.amd64.deb
 ```
-IvorySQL will then be installed in the /opt/IvorySQL-4.5/ directory.
+IvorySQL will then be installed in the /usr/ivory-4/ directory.
 
 == Start Database
 Users following the instructions in <<Yum-installation>>, <<Rpm-installation>>, <<Source-code-installation>> and <<deb-installation>> need to manually start the database.
 
 ** Granting permissions
 
-Execute the following command to grant permissions to the installation user. The example user is ivorysql, and the installation directory is /opt/IvorySQL-4.5/:
+Execute the following command to grant permissions to the installation user. The example user is ivorysql, and the installation directory is //usr/ivory-4/:
 ```
-$ sudo chown -R ivorysql:ivorysql /opt/IvorySQL-4.5/
+$ sudo chown -R ivorysql:ivorysql /usr/ivory-4/
 ```
 [[setting-environment-variables]]
 ** Setting environment variables
@@ -185,9 +164,9 @@ $ sudo chown -R ivorysql:ivorysql /opt/IvorySQL-4.5/
 
 Add below contents in ~/.bash_profile file and source to make it effective:
 ```
-PATH=/opt/IvorySQL-4.5/bin:$PATH
+PATH=/usr/ivory-4/bin:$PATH
 export PATH
-PGDATA=/opt/IvorySQL-4.5/data
+PGDATA=/usr/ivory-4/data
 export PGDATA
 ```
 ```
@@ -197,8 +176,8 @@ $ source ~/.bash_profile
 ** Initializing database
 
 ```
-$ mkdir /opt/IvorySQL-4.5/data
-$ initdb -D /opt/IvorySQL-4.5/data
+$ mkdir /usr/ivory-4/data
+$ initdb -D /usr/ivory-4/data
 ```
 ....
   The -D option specifies the directory where the database cluster should be stored. This is the only information required by initdb, but you can avoid writing it by setting the PGDATA environment variable, which can be convenient since the database server can find the database directory later by the same variable. 
@@ -209,7 +188,7 @@ $ initdb -D /opt/IvorySQL-4.5/data
 ** Starting IvorySQL service
 
 ```
-$ pg_ctl -D /opt/IvorySQL-4.5/data -l ivory.log start 
+$ pg_ctl -D /usr/ivory-4/data -l ivory.log start 
 ```
 
 The -D option specifies the file system location of the database configuration files. If this option is omitted, the environment variable PGDATA in <<setting-environment-variables>> is used. -l option appends the server log output to filename. If the file does not exist, it is created.
@@ -220,7 +199,7 @@ For more options, refer to pg_ctl --help.
 Confirm it's successfully started:
 ```
 $ ps -ef | grep postgres
-ivorysql  130427       1  0 02:45 ?        00:00:00 /opt/IvorySQL-4.5/bin/postgres -D /opt/IvorySQL-4.5/data
+ivorysql  130427       1  0 02:45 ?        00:00:00 /usr/ivory-4/bin/postgres -D /usr/ivory-4/data
 ivorysql  130428  130427  0 02:45 ?        00:00:00 postgres: checkpointer 
 ivorysql  130429  130427  0 02:45 ?        00:00:00 postgres: background writer 
 ivorysql  130431  130427  0 02:45 ?        00:00:00 postgres: walwriter 
@@ -258,8 +237,7 @@ No matter which method is used for the uninstallation, make sure the service has
 
 Run the following commands in turn and clean the residual folders:
 ```
-$ sudo dnf remove -y IvorySQL-4.5
-$ sudo rpm -e ivorysql-release-4.2-1.noarch
+$ sudo dnf remove -y ivorysql4-4.5
 ```
 
 === Uninstallation for docker installation
