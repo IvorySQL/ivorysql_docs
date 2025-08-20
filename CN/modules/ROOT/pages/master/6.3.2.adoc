@@ -48,34 +48,34 @@ IvorySQL提供了兼容Oracle的out参数功能，包括含有out参数的函数
 修改Libpq以支持按位置和按参数名字绑定，涉及SQL端，PLiSQL端，libpq接口端。
 
 1. SQL端：在服务器端实现系统函数 get_parameter_description，该函数根据SQL语句，返回变量名字与位置的关系。这个函数被用在libpq接口函数中。
-返回的第一行name显示SQL类型，后面行依次显示占位符名字、位置信息。
+   返回的第一行name显示SQL类型，后面行依次显示占位符名字、位置信息。
 
-```
-ivorysql=# select * from get_parameter_description('insert into t values(:x, :y);');
- name  | position 
--------+----------
- false |        0
- :x    |        1
- :y    |        2
-(3 rows)
-```
-对于匿名块语句，尚不支持。
+   ```
+   ivorysql=# select * from get_parameter_description('insert into t values(:x, :y);');
+    name  | position 
+   -------+----------
+    false |        0
+    :x    |        1
+    :y    |        2
+   (3 rows)
+   ```
+   对于匿名块语句，尚不支持。
 
 2. PLiSQL端：主要是PL/iSQL块根据参数位置或参数名称调整参数内部标识。
 
-执行函数需要从绑定句柄中获取参数的值与类型的信息；
+   执行函数需要从绑定句柄中获取参数的值与类型的信息；
 
-对out参数的返回列名称做一个特殊处理。如果是out参数，那么其列名称为_column_xxx，其中xxx是out参数的位置，从而根据绑定位置与返回的位置从结果集中给out参数赋值；
+   对out参数的返回列名称做一个特殊处理。如果是out参数，那么其列名称为_column_xxx，其中xxx是out参数的位置，从而根据绑定位置与返回的位置从结果集中给out参数赋值；
 
-在PLiSQL执行端，根据参数名字出现的位置，调整名字转换成内部标识的变量，如$number。在返回到客户端的时候，发送描述信息给libpq， 从而达到返回的列名是由参数名字构造，LIBPQ端根据列名来给out参数赋值。
+   在PLiSQL执行端，根据参数名字出现的位置，调整名字转换成内部标识的变量，如$number。在返回到客户端的时候，发送描述信息给libpq， 从而达到返回的列名是由参数名字构造，LIBPQ端根据列名来给out参数赋值。
 
 3. libpq接口端：提供准备、绑定、执行函数，这些函数与OCI接口相应函数类似。
 
-一般调用流程如下：
-使用IvyHandleAlloc分配语句句柄和错误句柄。
-调用IvyStmtPrepare准备语句。
-调用IvyBindByPos或IvyBindByName 绑定参数。
-调用IvyStmtExecute 执行，可重复执行。
-调用IvyFreeHandle 释放语句句柄和错误句柄。
+   一般调用流程如下：
+   使用IvyHandleAlloc分配语句句柄和错误句柄。
+   调用IvyStmtPrepare准备语句。
+   调用IvyBindByPos或IvyBindByName 绑定参数。
+   调用IvyStmtExecute 执行，可重复执行。
+   调用IvyFreeHandle 释放语句句柄和错误句柄。
 
-另外还实现了Ivyconnectdb，Ivystatus，Ivyexec，IvyresultStatus，IvyCreatePreparedStatement，IvybindOutParameterByPos，IvyexecPreparedStatement，IvyexecPreparedStatement2，Ivynfields，Ivyntuples，Ivyclear等一系列接口函数。
+   另外还实现了Ivyconnectdb，Ivystatus，Ivyexec，IvyresultStatus，IvyCreatePreparedStatement，IvybindOutParameterByPos，IvyexecPreparedStatement，IvyexecPreparedStatement2，Ivynfields，Ivyntuples，Ivyclear等一系列接口函数。

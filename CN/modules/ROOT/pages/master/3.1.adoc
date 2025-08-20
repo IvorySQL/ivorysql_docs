@@ -148,4 +148,4 @@ TIP: Docker运行IvorySQL时，需要添加额外参数，如 psql -d ivorysql -
 
 现在可以开始使用IvorySQL啦！就是这么简单！
 
-想要获得更多安装方式，请参考xref:master/4.1adoc[安装指南]
+想要获得更多安装方式，请参考xref:master/4.1.adoc[安装指南]
