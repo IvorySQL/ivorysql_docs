@@ -35,27 +35,6 @@ gpgcheck=0
 $ sudo dnf install -y IvorySQL-4.5
 ```
 
-** 查看安装结果
-```
-dnf search IvorySQL
-```
-查看结果说明如下：
-|====
-| 序号 | 包名  | 描述
-| 1 | ivorysql4.x86_64 |  IvorySQL客户端程序和库文件
-| 2 | ivorysql4-contrib.x86_64 | 随IvorySQL发布的已贡献的源代码和二进制文件
-| 3 | ivorysql4-devel.x86_64 | IvorySQL开发头文件和库
-| 4 | ivorysql4-docs.x86_64 | IvorySQL的额外文档
-| 5 | ivorysql4-libs.x86_64 | 所有IvorySQL客户端所需的共享库
-| 6 | ivorysql4-llvmjit.x86_64 | 对IvorySQL的即时编译支持
-| 7 | ivorysql4-plperl.x86_64 | 用于IvorySQL的过程语言Perl
-| 8 | ivorysql4-plpython3.x86_64 | 用于IvorySQL的过程语言Python3
-| 9 | ivorysql4-pltcl.x86_64 | 用于IvorySQL的过程语言Tcl
-| 10 | ivorysql4-server.x86_64 | 创建和运行IvorySQL服务器所需的程序
-| 11 | ivorysql4-test.x86_64 | 随IvorySQL发布的测试套件
-| 12 | ivorysql-release.noarch | 瀚高基础软件股份有限公司的Yum源配置RPM包
-|====
-
 [[docker安装]]
 == docker安装
 
@@ -104,7 +83,7 @@ $ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.5/
 ```
 $ sudo yum --disablerepo=* localinstall *.rpm 
 ```
-数据库将被安装在/opt/IvorySQL-4.5/路径下。
+数据库将被安装在/usr/ivory-4/路径下。
 
 [[源码安装]]
 == 源码安装
@@ -125,7 +104,7 @@ $ git checkout -b IVORY_REL_4_STABLE origin/IVORY_REL_4_STABLE
 
 在IvorySQL目录下，执行以下命令进行配置，请使用--prefix指定安装目录:
 ```
-$ ./configure --prefix=/usr/local/ivorysql/ivorysql-4
+$ ./configure --prefix=/usr/ivory-4/
 ```
 ** 编译
 
@@ -166,7 +145,7 @@ $ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.5/
 ```
 $ sudo dpkg -i IvorySQL-4.5-a50789d-20250304.amd64.deb
 ```
-数据库将被安装在/opt/IvorySQL-4.5/路径下。
+数据库将被安装在/usr/ivory-4/路径下。
 
 == 启动数据库
 参考<<yum源安装>>、<<rpm安装>>、<<源码安装>>、<<deb安装>>的用户，需要手动启动数据库。
@@ -175,9 +154,9 @@ $ sudo dpkg -i IvorySQL-4.5-a50789d-20250304.amd64.deb
 
 +
 
-执行以下命令为安装用户赋权，示例用户为ivorysql，安装目录为/opt/IvorySQL-4.5/：
+执行以下命令为安装用户赋权，示例用户为ivorysql，安装目录为/usr/ivory-4/：
 ```
-$ sudo chown -R ivorysql:ivorysql /opt/IvorySQL-4.5/
+$ sudo chown -R ivorysql:ivorysql /usr/ivory-4/
 ```
 [[配置环境变量]]
 ** 配置环境变量
@@ -186,9 +165,9 @@ $ sudo chown -R ivorysql:ivorysql /opt/IvorySQL-4.5/
 
 将以下配置写入用户的~/.bash_profile文件并使用source命令该文件使环境变量生效：
 ```
-PATH=/opt/IvorySQL-4.5/bin:$PATH
+PATH=/usr/ivory-4/bin:$PATH
 export PATH
-PGDATA=/opt/IvorySQL-4.5/data
+PGDATA=/usr/ivory-4/data
 export PGDATA
 ```
 ```
@@ -197,17 +176,15 @@ $ source ~/.bash_profile
 ** 数据库初始化
 
 ```
-$ mkdir /opt/IvorySQL-4.5/data
-$ initdb -D /opt/IvorySQL-4.5/data
+$ mkdir /usr/ivory-4/data
+$ initdb -D /usr/ivory-4/data
 ```
-....
-  其中-D参数用来指定数据库的数据目录。更多参数使用方法，请使用initdb --help命令获取。
-....
+其中-D参数用来指定数据库的数据目录。更多参数使用方法，请使用initdb --help命令获取。
 
 ** 启动数据库服务
 
 ```
-$ pg_ctl -D /opt/IvorySQL-4.5/data -l ivory.log start 
+$ pg_ctl -D /usr/ivory-4/data -l ivory.log start 
 ```
 
 其中-D参数用来指定数据库的数据目录，如果<<配置环境变量>> 配置了PGDATA，则该参数可以省略。-l参数用来指定日志目录。更多参数使用方法，请使用pg_ctl --help命令获取。
@@ -216,7 +193,7 @@ $ pg_ctl -D /opt/IvorySQL-4.5/data -l ivory.log start
 查看确认数据库启动成功：
 ```
 $ ps -ef | grep postgres
-ivorysql  130427       1  0 02:45 ?        00:00:00 /opt/IvorySQL-4.5/bin/postgres -D /opt/IvorySQL-4.5/data
+ivorysql  130427       1  0 02:45 ?        00:00:00 /usr/ivory-4/bin/postgres -D /usr/ivory-4/data
 ivorysql  130428  130427  0 02:45 ?        00:00:00 postgres: checkpointer 
 ivorysql  130429  130427  0 02:45 ?        00:00:00 postgres: background writer 
 ivorysql  130431  130427  0 02:45 ?        00:00:00 postgres: walwriter 
@@ -254,8 +231,7 @@ TIP: Docker运行IvorySQL时，需要添加额外参数，参考：psql -d ivory
 
 执行以下命令依次卸载：
 ```
-$ sudo dnf remove -y IvorySQL-4.5
-$ sudo rpm -e ivorysql-release-4.2-1.noarch
+$ sudo dnf remove -y ivorysql4-4.5
 ```
 
 === docker安装的卸载
@@ -272,7 +248,7 @@ $ docker rmi ivorysql/ivorysql:4.5-ubi8
 执行以下命令卸载并清理文件夹：
 ```
 $ sudo yum remove --disablerepo=* ivorysql4\* 
-$ sudo rm -rf /opt/IvorySQL-4.5
+$ sudo rm -rf /usr/ivory-4/
 ```
 
 === 源码安装的卸载
@@ -281,7 +257,7 @@ $ sudo rm -rf /opt/IvorySQL-4.5
 ```
 $ sudo make uninstall
 $ make clean
-$ sudo rm -rf /opt/IvorySQL-4.5
+$ sudo rm -rf /usr/ivory-4/
 ```
 
 === deb安装的卸载
@@ -289,5 +265,5 @@ $ sudo rm -rf /opt/IvorySQL-4.5
 执行以下命令卸载数据库并清理文件夹：
 ```
 $ sudo dpkg -P IvorySQL-4.5
-$ sudo rm -rf /opt/IvorySQL-4.5
+$ sudo rm -rf /usr/ivory-4/
 ```
