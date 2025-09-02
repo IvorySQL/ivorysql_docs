@@ -1,0 +1,101 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= %ROWTYPE、%TYPE
+
+== 目的
+
+IvorySQL提供了兼容Oracle的plsql数据类型功能，包括%TYPE、%ROWTYPE。
+
+== 实现说明
+
+===引用类型发生变化时，如何确保%TYPE声明的变量也随之相应改变
+
+这是一个被动的过程。 当前的实现方案是记录函数（存储过程）与 tablename.columname 的依赖关系。当引用类型发生变化时，根据依赖关系，让函数（存储过程）缓存失效。这样一来，函数被调用时就会执行强制编译。从而确保函数获取最新的变量类型。
+
+在系统表 pg_proc 中添加一个字段 prostatus 用来表示函数（存储过程）状态，有3种状态: validate(v)，invalidate(i)，N/A(n)。函数编译成功后，这个状态会被设置为valid。
+
+在解析函数内容时，plisql_parse_cwordtype，plisql_parse_wordrowtype，plisql_parse_cwordrowtype 等函数识别出%TYPE， %ROWTYPE引用的对象，并记录在 plisql_referenced_object 链表中，最后添加到 pg_depend 系统表中。
+
+增加一种新的依赖类型 DEPENDENCY_TYPE = 't'，表示%TYPE或%ROWTYPE依赖。在添加对象引用关系到pg_depend系统表时，设置依赖类型为 't'。
+
+对表进行操作时（修改表类型、删除表等），查看系统表pg_depend，如果存在依赖类型deptype=’t’，并且依赖对象是函数，则调用函数 plisql_free_function 删除函数缓存，并修改 pg_proc 系统表中的函数状态prostatus 为 NA(n)。
+
+
+===%TYPE声明的变量继承引用变量的约束
+
+在 PLiSQL_type 结构体中添加成员 bool notnull;
+
+```
+/*
+ * Postgres data type
+ */
+typedef struct PLiSQL_type
+{
+	bool		notnull;		/* the type is built by variable%type,
+								 * isnull or notnull of the variable */
+```
+
+在负责解析%TYPE类型函数的plisql_parse_wordtype或plisql_parse_cwordtype函数中，判断如果引用变量类型指定了NOT NULL约束，为返回的datatype的成员 bool notnull 属性赋值为true。
+在pl_gram.y 文件的 decl_statement 语法中，根据PLiSQL_type 的成员 bool notnull 为变量PLiSQL_variable *var的notnull属性赋值。这样就继承了引用变量的约束。
+
+
+===表名%ROWTYPE或视图名%ROWTYPE作为函数或存储过程的参数类型和函数返回值类型
+
+在 ora_gram.y 中为 func_type 添加%ROWTYPE支持。
+
+```
+| type_function_name attrs '%' ROWTYPE
+				{
+					$$ = makeTypeNameFromNameList(lcons(makeString($1), $2));
+					$$->row_type = true;
+					$$->location = @1;
+				}			
+```
+
+在 TypeName 结构体中添加成员 bool row_type 用来标记是否指定了%ROWTYPE。
+
+```
+typedef struct TypeName
+{
+	bool		pct_type;		/* %TYPE specified? */
+	bool		row_type;	/* %ROWTYPE specified? */
+```	
+	
+在 LookupTypeName 函数中，如果 TypeName 的成员 row_type 为 TRUE，则根据TypeName的成员names中获得schema名与表名，然后获取表的typeoid。
+
+===INSERT语句增强
+
+在 ora_gram.y 中添加新的语法，支持 VALUES 后面不带括号’(‘。
+
+```
+values_clause_no_parens:
+			VALUES columnref
+				{
+					SelectStmt *n = makeNode(SelectStmt);
+					n->valuesLists = list_make1(list_make1($2));
+					n->valuesIsrow = true;
+					$$ = (Node *) n;
+				}
+```
+				
+为结构体 SelectStmt 添加一个字段 bool valuesIsrow 表示 values 是一个 row。
+
+在为insert语句做 transform 时，也就是函数 transformInsertStmt 中，在处理 INSERT ... VALUES 语句时，如果 valuesIsrow 为true，调用新函数 transformRowExpression，将 row_variable 转换成等价的 row_variable.field1,...,row_variable.fieldN。
+
+===UPDATE语句增强
+
+在UPDATE语句做transform时候，也就是transformUpdateStmt的时候，如果是Oralce兼容模式，调用新添加的 transformIvyUpdateTargetList 函数。
+在这个新函数中，对于参数origTlist(即targetList)中没有名字为row的情况，按原来UPDATE的transform流程执行 transformUpdateTargetList 函数。
+
+对参数origTlist中有名字为row的情况：因为PostgreSQL中row可以作为列名，而Oracle 中row是保留关键字，不可以作为列名，所以需要区分row是否是表中的列，如果row不是要更新的表中的列，则调用新函数 transformUpdateRowTargetList 把UPDATE table_name SET ROW = row_variable [WHERE …]; 语句转换成等价的 UPDATE table_name SET table_name.column1 = row_variable.column1, table_name.column2= row_variable.filed2,… table_name.columnN = row_variable.columnN [WHERE …];的transform形式。
+
+如果语句“UPDATE table_name SET ROW = row_variable”中的变量 row_variable不是组合类型，就按原来UPDATE的transform流程执行 transformUpdateTargetList 函数；
+如果语句中的变量 row_variable 是组合类型，表中的名为row的那一列也是组合类型，并且两者的类型Oid也一样，则按原来UPDATE的transform流程执行 transformUpdateTargetList 函数； 
+其他所有情况，调用新函数 transformUpdateRowTargetList 处理；
+
+```
+
+
