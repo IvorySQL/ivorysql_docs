@@ -128,7 +128,7 @@ NOTICE:  v.first_name = Steven, v.last_name = Niu, v.phone_number = 1-650-555-12
 (1 row)
 ```
 
-===INSERT语句增强
+=== INSERT语句增强
 
 INSERT语句增强支持把一个%ROWTYPE声明的变量插入表中。
 

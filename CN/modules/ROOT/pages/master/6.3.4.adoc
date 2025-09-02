@@ -11,7 +11,7 @@ IvorySQL提供了兼容Oracle的plsql数据类型功能，包括%TYPE、%ROWTYPE
 
 == 实现说明
 
-===引用类型发生变化时，如何确保%TYPE声明的变量也随之相应改变
+=== 引用类型发生变化时，如何确保%TYPE声明的变量也随之相应改变
 
 这是一个被动的过程。 当前的实现方案是记录函数（存储过程）与 tablename.columname 的依赖关系。当引用类型发生变化时，根据依赖关系，让函数（存储过程）缓存失效。这样一来，函数被调用时就会执行强制编译。从而确保函数获取最新的变量类型。
 
@@ -24,7 +24,7 @@ IvorySQL提供了兼容Oracle的plsql数据类型功能，包括%TYPE、%ROWTYPE
 对表进行操作时（修改表类型、删除表等），查看系统表pg_depend，如果存在依赖类型deptype=’t’，并且依赖对象是函数，则调用函数 plisql_free_function 删除函数缓存，并修改 pg_proc 系统表中的函数状态prostatus 为 NA(n)。
 
 
-===%TYPE声明的变量继承引用变量的约束
+=== %TYPE声明的变量继承引用变量的约束
 
 在 PLiSQL_type 结构体中添加成员 bool notnull;
 
@@ -42,7 +42,7 @@ typedef struct PLiSQL_type
 在pl_gram.y 文件的 decl_statement 语法中，根据PLiSQL_type 的成员 bool notnull 为变量PLiSQL_variable *var的notnull属性赋值。这样就继承了引用变量的约束。
 
 
-===表名%ROWTYPE或视图名%ROWTYPE作为函数或存储过程的参数类型和函数返回值类型
+=== 表名%ROWTYPE或视图名%ROWTYPE作为函数或存储过程的参数类型和函数返回值类型
 
 在 ora_gram.y 中为 func_type 添加%ROWTYPE支持。
 
@@ -66,7 +66,7 @@ typedef struct TypeName
 	
 在 LookupTypeName 函数中，如果 TypeName 的成员 row_type 为 TRUE，则根据TypeName的成员names中获得schema名与表名，然后获取表的typeoid。
 
-===INSERT语句增强
+=== INSERT语句增强
 
 在 ora_gram.y 中添加新的语法，支持 VALUES 后面不带括号’(‘。
 
@@ -85,7 +85,7 @@ values_clause_no_parens:
 
 在为insert语句做 transform 时，也就是函数 transformInsertStmt 中，在处理 INSERT ... VALUES 语句时，如果 valuesIsrow 为true，调用新函数 transformRowExpression，将 row_variable 转换成等价的 row_variable.field1,...,row_variable.fieldN。
 
-===UPDATE语句增强
+=== UPDATE语句增强
 
 在UPDATE语句做transform时候，也就是transformUpdateStmt的时候，如果是Oralce兼容模式，调用新添加的 transformIvyUpdateTargetList 函数。
 在这个新函数中，对于参数origTlist(即targetList)中没有名字为row的情况，按原来UPDATE的transform流程执行 transformUpdateTargetList 函数。
