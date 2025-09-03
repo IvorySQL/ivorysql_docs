@@ -21,7 +21,7 @@ IvorySQL提供了兼容Oracle的plsql数据类型功能，包括%TYPE、%ROWTYPE
 
 增加一种新的依赖类型 DEPENDENCY_TYPE = 't'，表示%TYPE或%ROWTYPE依赖。在添加对象引用关系到pg_depend系统表时，设置依赖类型为 't'。
 
-对表进行操作时（修改表类型、删除表等），查看系统表pg_depend，如果存在依赖类型deptype=’t’，并且依赖对象是函数，则调用函数 plisql_free_function 删除函数缓存，并修改 pg_proc 系统表中的函数状态prostatus 为 NA(n)。
+对表进行操作时（修改表类型、删除表等），查看系统表pg_depend，如果存在依赖类型deptype=’t’，并且依赖对象是函数，则调用函数 plisql_free_function 删除函数缓存，并修改 pg_proc 系统表中的函数状态prostatus 为 N/A(n)。
 
 
 === %TYPE声明的变量继承引用变量的约束
@@ -90,12 +90,15 @@ values_clause_no_parens:
 在UPDATE语句做transform时候，也就是transformUpdateStmt的时候，如果是Oralce兼容模式，调用新添加的 transformIvyUpdateTargetList 函数。
 在这个新函数中，对于参数origTlist(即targetList)中没有名字为row的情况，按原来UPDATE的transform流程执行 transformUpdateTargetList 函数。
 
-对参数origTlist中有名字为row的情况：因为PostgreSQL中row可以作为列名，而Oracle 中row是保留关键字，不可以作为列名，所以需要区分row是否是表中的列，如果row不是要更新的表中的列，则调用新函数 transformUpdateRowTargetList 把UPDATE table_name SET ROW = row_variable [WHERE …]; 语句转换成等价的 UPDATE table_name SET table_name.column1 = row_variable.column1, table_name.column2= row_variable.filed2,… table_name.columnN = row_variable.columnN [WHERE …];的transform形式。
+对参数origTlist中有名字为row的情况：因为PostgreSQL中row可以作为列名，而Oracle 中row是保留关键字，不可以作为列名，所以需要区分row是否是表中的列，如果row不是要更新的表中的列，则调用新函数 transformUpdateRowTargetList 把语句
+```
+UPDATE table_name SET ROW = row_variable [WHERE …]; 
+```
+转换成等价的 
+```
+UPDATE table_name SET table_name.column1 = row_variable.column1, table_name.column2 = row_variable.filed2,… table_name.columnN = row_variable.columnN [WHERE …];
+```
 
 如果语句“UPDATE table_name SET ROW = row_variable”中的变量 row_variable不是组合类型，就按原来UPDATE的transform流程执行 transformUpdateTargetList 函数；
 如果语句中的变量 row_variable 是组合类型，表中的名为row的那一列也是组合类型，并且两者的类型Oid也一样，则按原来UPDATE的transform流程执行 transformUpdateTargetList 函数； 
 其他所有情况，调用新函数 transformUpdateRowTargetList 处理；
-
-```
-
-
