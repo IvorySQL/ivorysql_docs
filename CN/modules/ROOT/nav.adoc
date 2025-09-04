@@ -14,6 +14,9 @@
 * IvorySQL生态
 ** xref:v4.5/11.adoc[PostGIS]
 ** xref:v4.5/12.adoc[pgvector]
+** xref:v4.5/34.adoc[PGroonga]
+** xref:v4.5/35.adoc[pgddl (DDL Extractor)]
+** xref:v4.5/36.adoc[pgRouting]
 * IvorySQL架构设计
 ** 查询处理
 *** xref:v4.5/31.adoc[双parser]
