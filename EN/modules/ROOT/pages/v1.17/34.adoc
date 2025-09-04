@@ -1,0 +1,104 @@
+:sectnums:
+:sectnumlevels: 5
+
+= PGroonga
+
+== Overview
+PostgreSQL has built-in full-text search functionality, but when dealing with large-scale data, complex queries, and non-English languages (especially CJK languages like Chinese, Japanese, and Korean), its functionality and performance may not meet the requirements of high-performance applications.
+
+PGroonga was created to address this need. It is a PostgreSQL extension that deeply integrates Groonga, a high-performance full-featured full-text search engine, with the PostgreSQL database. Groonga itself is an excellent open-source search engine, renowned for its extreme speed and rich functionality, particularly excelling at handling multilingual text. PGroonga's mission is to seamlessly bring Groonga's powerful capabilities into the PostgreSQL world, providing users with an experience that far exceeds native full-text search.
+
+== Installation
+
+Based on the development environment, users can choose the appropriate installation method for PGroonga from the https://pgroonga.github.io/install[PGroonga Installation] page.
+
+[NOTE]
+PGroonga plugin is already integrated in the IvorySQL installation package. If you use the installation package to install IvorySQL, you typically do not need to manually install PGroonga and can use it directly.
+
+=== Source Installation
+In addition to the installation methods provided by the PGroonga community, the IvorySQL community also provides source installation methods. The source installation environment is Ubuntu 24.04 (x86_64).
+
+[TIP]
+IvorySQL 4.6 or higher version is already installed in the environment, with the installation path at /usr/local/ivorysql/ivorysql-4
+
+==== Install groonga
+
+** Install dependency kytea
+```
+git clone https://github.com/neubig/kytea.git
+autoreconf -i
+./configure
+make
+sudo make install
+```
+
+** Install dependency libzmq
+```
+Download zeromq-4.3.5.tar.gz from https://github.com/zeromq/libzmq/releases/tag/v4.3.5
+tar xvf zeromq-4.3.5.tar.gz
+cd zeromq-4.3.5/
+./configure
+make
+sudo make install
+```
+
+** Download groonga package and install specified dependencies
+```
+wget https://packages.groonga.org/source/groonga/groonga-latest.tar.gz
+tar xvf groonga-15.1.5.tar.gz
+cd groonga-15.1.5
+# Run this script to install dependencies, supporting apt and dnf package managers
+./ setup.sh
+```
+
+** Compile and install
+```
+# -S specifies the groonga source directory, -B specifies the build directory, which is a directory outside the source directory used only for building
+cmake -S /home/ivorysql/groonga-15.1.5 -B /home/ivorysql/groonga_build --preset=release-maximum
+cmake --build /home/ivorysql/groonga_build
+sudo cmake --install /home/ivorysql/groonga_build
+# Update dynamic library cache
+sudo ldconfig
+```
+
+** Verify groonga installation success
+```
+$ groonga --version
+Groonga 15.1.5 [Linux,x86_64,utf8,match-escalation-threshold=0,nfkc,mecab,message-pack,mruby,onigmo,zlib,lz4,zstandard,epoll,apache-arrow,xxhash,blosc,bfloat16,h3,simdjson,llama.cpp]
+```
+
+==== Install pgroonga
+```
+wget https://packages.groonga.org/source/pgroonga/pgroonga-4.0.1.tar.gz
+tar xvf pgroonga-4.0.1.tar.gz
+cd pgroonga-4.0.1
+```
+
+When compiling PGroonga, there is an option: HAVE_MSGPACK=1, which is used to support WAL. Using this option requires installing msgpack-c 1.4.1 or higher. On Debian-based platforms, use the libmsgpack-dev package, and on CentOS 7, use msgpack-devel.
+```
+# Install dependencies
+sudo apt install libmsgpack-dev
+```
+
+Before running make, ensure that the path of the pg_config command is in the PATH environment variable.
+```
+make HAVE_MSGPACK=1
+make install
+```
+
+== Create Extension and Confirm PGroonga Version
+
+Connect to the database with psql and execute the following commands:
+```
+ivorysql=# CREATE extension pgroonga;
+CREATE EXTENSION
+
+ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'pgroonga';
+  name   | default_version | installed_version |                          comment
+---------+-----------------+-------------------+-------------------------------------------------------------------------------
+ pgroonga| 4.0.1           | 4.0.1             | Super fast and all languages supported full text search index based on Groonga
+(1 row)
+```
+
+== Usage
+For PGroonga usage, please refer to the https://pgroonga.github.io/tutorial[PGroonga Official Documentation]
