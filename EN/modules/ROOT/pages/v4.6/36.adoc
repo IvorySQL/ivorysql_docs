@@ -18,6 +18,7 @@ IvorySQL 4.6 or higher version is already installed in the environment, with the
 === Source Installation
 
 ** Install dependencies
+
 It depends on perl, which is generally already installed when installing IvorySQL, so no need to install it here.
 CMake version requirement >= 3.12, Boost version >= 1.56
 ```
