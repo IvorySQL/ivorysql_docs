@@ -1,0 +1,44 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pgddl (DDL Extractor) 
+
+== 概述
+pgddl 是一个专为 PostgreSQL 数据库设计的 SQL 函数扩展，它能够直接从数据库系统目录中生成清晰、格式化的 SQL DDL (数据定义语言) 脚本，例如 CREATE TABLE 或 ALTER FUNCTION。它解决了 PostgreSQL 原生缺乏类似 SHOW CREATE TABLE 命令的问题，让用户无需借助外部工具（如 pg_dump）即可在纯 SQL 环境中轻松获取对象的创建语句。
+
+该扩展通过一组简单的 SQL 函数提供了一套完整的解决方案，其优势包括：仅需使用 SQL 查询即可操作、支持通过 WHERE 子句灵活筛选对象、并能智能处理对象之间的依赖关系，生成包含 Drop 和 Create 步骤的完整脚本。这使得它特别适用于数据库变更管理、升级脚本编写和结构审计等场景。
+
+需要注意的是，ddlx 仍在发展中，可能尚未覆盖所有 PostgreSQL 对象类型和高级选项。生成的脚本建议始终在非生产环境中先行检查和测试，以确保其正确性与安全性。
+
+== 安装
+
+[TIP]
+环境中已经安装了IvorySQL4.6及以上版本，安装路径为/usr/local/ivorysql/ivorysql-4
+
+=== 源码安装
+从https://github.com/lacanoid/pgddl/releases/tag/0.20 下载pgddl-0.20.tar.gz，解压缩。
+
+```
+cd pgddl-0.20
+# 设置PG_CONFIG环境变量值为pg_config路径，eg：/usr/local/ivorysql/ivorysql-4/bin/pg_config
+make PG_CONFIG=/path/to/pg_config
+make PG_CONFIG=/path/to/pg_config install
+```
+
+== 创建Extension并确认ddlx版本
+
+psql 连接到数据库，执行如下命令：
+```
+ivorysql=# CREATE extension ddlx;
+CREATE EXTENSION
+
+ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'ddlx';
+ name | default_version | installed_version |         comment         
+------+-----------------+-------------------+-------------------------
+ ddlx | 0.20            | 0.20              | DDL eXtractor functions
+(1 row)
+```
+
+== 使用
+关于pgddl的使用，请参阅 https://github.com/lacanoid/pgddl[ddlx官方文档]
