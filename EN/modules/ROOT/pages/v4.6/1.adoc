@@ -5,43 +5,59 @@
 
 == Version Overview
 
-[**Release date: June 04, 2025**]
+[**Release date: Sept 10, 2025**]
 
-IvorySQL 4.5, based on PostgreSQL 17.5 and includes a variety of bug fixes. For a comprehensive list of updates, please visit our https://docs.ivorysql.org/[documentation site].
+IvorySQL 4.6, based on PostgreSQL 17.6 and includes a variety of bug fixes. For a comprehensive list of updates, please visit our https://docs.ivorysql.org/[documentation site].
 
 == Enhancements & Fixed Issue
 
-- PostgreSQL 17.5 Enhancements
+- PostgreSQL 17.6 Enhancements
 
-1. Avoid one-byte buffer overread when examining invalidly-encoded strings that are claimed to be in GB18030 encoding.
-2. Handle self-referential foreign keys on partitioned tables correctly.
-3. Avoid data loss when merging compressed BRIN summaries in brin_bloom_union().
-4. Correctly process references to outer CTE names that appear within a WITH clause attached to an INSERT/UPDATE/DELETE/MERGE command that's inside WITH.
-5. Fix ALTER TABLE ADD COLUMN to correctly handle the case of a domain type that has a default.
+1. Tighten security checks in planner estimation functions.
+2. Prevent pg_dump scripts from being used to attack the user running the restore.
+3. Convert newlines to spaces in names included in comments in pg_dump output.
+4. Fix incorrect distance calculation in BRIN numeric_minmax_multi_ops support function.
+5. Avoid regression in the size of XML input that we will accept.
 
 +
 
-For further details, visit https://www.postgresql.org/docs/release/17.5/[PostgreSQL’s release notes].
+For further details, visit https://www.postgresql.org/docs/release/17.6/[PostgreSQL’s release notes].
 
-- IvorySQL 4.5
+- IvorySQL 4.6 New Features
 
-1. MIPS Packaging for All Platforms: Feature https://github.com/IvorySQL/IvorySQL/issues/736[#736]
+1. Upgrade to PG 17.6 kernel
+
+2. MongoDB-compatible solution
 +
-Provides multi-platform media packages for MIPS architecture, supporting both domestic and international mainstream operating systems, including Red Hat, Debian, Kylin, UOS, and NSAR OS, etc.
+Provide a MongoDB-compatible solution using FerretDB and DocumentDB.
 
-2. IvorySQL Online trail: Feature https://github.com/IvorySQL/ivorysql-wasm/issues/1[#1]
+3. LoongArch Packaging for All Platforms
 +
-Provide users with a web-based platform to experience IvorySQL V4.5 in an online environment, enabling database interaction directly through a browser interface.
+Provides multi-platform media packages for LoongArch architecture, supporting both domestic and international mainstream operating systems, including Red Hat, Debian, Kylin, UOS, and NSAR OS, etc. It also supports x86, ARM, and MIPS architectures.
 
-3. Add code of conduct: Feature https://github.com/IvorySQL/IvorySQL/issues/808[#808]
+4. IvorySQL Online trail
++
+Provide users with a web-based platform to experience IvorySQL V4.6 in an online environment, enabling database interaction directly through a browser interface.
 
-4. Update the community contribution guide: Feature https://github.com/IvorySQL/ivorysql_docs/pull/121[#121]
+5. Containerized Deployment Support (Docker Swarm)
++
+Supports deployment of standalone IvorySQL databases and high-availability clusters in Docker Swarm environments.
 
-5. Automate Documentation Build and Website Update via Pull Requests: Feature https://github.com/IvorySQL/ivorysql_docs/issues/115[#115]
+6. Containerized Deployment Support (Kubernetes)
++
+Supports deployment of standalone IvorySQL databases and high-availability clusters on Kubernetes (K8S) using Helm.
 
-6. Enhanced Contributor Workflow: Self-Assign Issues by using the '/assign' command: Feature https://github.com/IvorySQL/ivorysql_docs/issues/109[#109]
+7. https://github.com/IvorySQL/ivory-cloud/releases/tag/ivyc_4.0[IvorySQL Cloud v4.0] released.
++
+The IvorySQL Cloud platform currently supports subscription management for IvorySQL v4 databases, as well as comprehensive management of its surrounding ecosystem.
 
-7. IvorySQL Operator V4 has been adapted to support IvorySQL 4.5, with upgrades to system component versions and database extension versions : Feature https://github.com/IvorySQL/ivory-operator/pull/79[#79]
+- IvorySQL 4.6 Fixed Issues
+
+1. Missing libcrypt on aarch64 platform.
+2. prefix test_ extension are wrongly compiled and installed while exec make and make install.
+3. Doc:fix some typos.
+4. Doc:Fix document errors in the installation section.
+5. Doc:Update the community contribution process.
 
 == Source Code
 
@@ -54,23 +70,29 @@ IvorySQL's development is maintained across two main repositories:
 
 The following individuals (in alphabetical order) have contributed to this release as patch authors, committers, reviewers, testers, or reporters of issues.
 
-* Cary Huang
-* Denis Lussier
+* caffiendo
+* Cédric Villemain
 * Fawei Zhao
-* Flyingbeecd
+* flyingbeecd
 * Ge Sui
 * Grant Zhou
-* Hulin Ji
-* Hope Gao
-* Lily Wang
-* Renli Zou
+* huchangqiqi
+* Pedro Lopez
+* RRRRhl
+* Ruohang Feng
+* shangwei007
 * Shawn Yan
+* Shaolin Chu
 * Shihua Yang
 * Shiji Niu
-* Shoubo Wang
 * Shuntian Jiao
+* tiankongbuqi
 * Xiangyu Liang
 * Xinjie Lv
+* Xueyu Gao
+* Yanliang Lei
+* Yasir Hussain Shah
+* Yuan Li
 * Zheng Tao
 * Zhenhao Pan
 * Zhuoyan Shi

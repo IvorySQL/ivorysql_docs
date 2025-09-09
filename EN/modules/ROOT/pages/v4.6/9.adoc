@@ -87,7 +87,7 @@ This upgrade method can be used with built-in logical replication tools and exte
 
 == Managing IvorySQL Versions
 
-IvorySQL is based on PostgreSQL and is updated at the same frequency as PostgreSQL, with one major release per year and one minor release per quarter. IvorySQL 4.5 is based on PostgreSQL 17.5, and all versions of IvorySQL are backward compatible.The relevant version features can be viewed by looking at https://www.ivorysql.org/en/releases-page/[Official Website]。
+IvorySQL is based on PostgreSQL and is updated at the same frequency as PostgreSQL, with one major release per year and one minor release per quarter. IvorySQL 4.6 is based on PostgreSQL 17.6, and all versions of IvorySQL are backward compatible.The relevant version features can be viewed by looking at https://www.ivorysql.org/en/releases-page/[Official Website]。
 
 
 == Managing IvorySQL database access
@@ -898,7 +898,7 @@ WHERE t1.unique1 < 100 AND t1.unique2 = t2.unique2 ORDER BY t1.fivethous;
 
                                                                  QUERY PLAN
 -------------------------------------------------------------------​-------------------------------------------------------------------​------
- Sort  (cost=717.34..717.59 rows=101 width=488) (actual time=7.761..7.774 rows=100 loops=1)
+ Sort  (cost=717.34..717.69 rows=101 width=488) (actual time=7.761..7.774 rows=100 loops=1)
    Sort Key: t1.fivethous
    Sort Method: quicksort  Memory: 77kB
    ->  Hash Join  (cost=230.47..713.98 rows=101 width=488) (actual time=0.711..7.427 rows=100 loops=1)
@@ -1016,7 +1016,7 @@ When an `UPDATE` or `DELETE` command affects an inheritance hierarchy, the outpu
 EXPLAIN UPDATE parent SET f2 = f2 + 1 WHERE f1 = 101;
                                     QUERY PLAN
 -------------------------------------------------------------------​----------------
- Update on parent  (cost=0.00..24.53 rows=4 width=14)
+ Update on parent  (cost=0.00..24.63 rows=4 width=14)
    Update on parent
    Update on child1
    Update on child2

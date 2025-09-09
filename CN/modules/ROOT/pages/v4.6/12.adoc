@@ -23,7 +23,7 @@ HNSW (Hierarchical Navigating Small World) 是一种基于图的索引算法，�
 == 安装
 [TIP]
 ====
-环境中已经安装了IvorySQL4.5及以上版本，安装路径为/usr/local/ivorysql/ivorysql-4
+环境中已经安装了IvorySQL4.6及以上版本，安装路径为/usr/local/ivorysql/ivorysql-4
 ====
 
 === 源码安装
@@ -49,7 +49,7 @@ sudo --preserve-env=PG_CONFIG make install
 ** 创建pgvector扩展
 ```
 [ivorysql@localhost ivorysql-4]$ psql
-psql (17.5)
+psql (17.6)
 Type "help" for help.
 
 ivorysql=# create extension vector;
