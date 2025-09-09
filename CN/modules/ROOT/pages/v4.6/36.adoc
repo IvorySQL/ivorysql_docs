@@ -20,7 +20,7 @@ pgRouting 广泛应用于物流配送、交通导航、网络分析、城市规�
 
 ** 安装依赖
 
-对perl有依赖，perl一般在装IvorySQL时已经装上了，这里不用再装
+对perl有依赖，perl一般在装IvorySQL时已经装上了，这里不用再装。
 CMake版本要求 >= 3.12, Boost版本 >= 1.56
 ```
 #安装依赖
