@@ -124,17 +124,7 @@ ivorysql=# show ivorysql.compatible_mode;
  ✔ Container etcd  Started                                                                                                                                                                   0.1s
 
 ```
-当所有节点均部署完成后，检查etcd集群状态
-```
-[root@manager-node1 docker-compose]# docker exec -it etcd etcdctl --write-out=table --endpoints="192.168.21.205:2379,192.168.21.164:2379,192.168.21.51:2379"     endpoint status
-+---------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
-|      ENDPOINT       |        ID        | VERSION | DB SIZE | IS LEADER | IS LEARNER | RAFT TERM | RAFT INDEX | RAFT APPLIED INDEX | ERRORS |
-+---------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
-| 192.168.21.205:2379 | 10574d87df892440 |   3.5.8 |   20 kB |      true |      false |         2 |         13 |                 13 |        |
-| 192.168.21.164:2379 | a47a4fd720eb36e7 |   3.5.8 |   20 kB |     false |      false |         2 |         13 |                 13 |        |
-|  192.168.21.51:2379 | b76a77d78fdf886f |   3.5.8 |   20 kB |     false |      false |         2 |         13 |                 13 |        |
-+---------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
-```
+
 部署IvorySQL高可用集群
 
 在每个节点上，部署ivyhac服务
@@ -149,19 +139,7 @@ CONTAINER ID   IMAGE                                               COMMAND      
 9d8e04e4f819   quay.io/coreos/etcd:v3.5.8                          "/usr/local/bin/etcd"    24 minutes ago   Up 24 minutes             etcd
 
 ```
-待所有节点部署完毕后，检查IvorySQL集群状态
-```
-[root@manager-node1 docker-compose]# docker exec -it ivyhac1 /bin/bash
-[ivorysql@manager-node1 /]$ patronictl -c $PATRONICONF/patroni.yml list
-+ Cluster: ivory-cluster (7548337408295624728) ------+----+-----------+
-| Member      | Host           | Role    | State     | TL | Lag in MB |
-+-------------+----------------+---------+-----------+----+-----------+
-| ivypatroni1 | 192.168.21.205 | Leader  | running   |  1 |           |
-| ivypatroni2 | 192.168.21.164 | Replica | streaming |  1 |         0 |
-| ivypatroni3 | 192.168.21.51  | Replica | streaming |  1 |         0 |
-+-------------+----------------+---------+-----------+----+-----------+
 
-```
 此时，一主两备集群搭建完成
 psql连接数据库的Oracle端口及PG端口
 ```

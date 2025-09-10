@@ -124,17 +124,7 @@ Deploy a three-node etcd cluster, taking node1 as an example
  ✔ Container etcd  Started                                                                                                                                                                   0.1s
 
 ```
-After all nodes are deployed, check the status of the etcd cluster.
-```
-[root@manager-node1 docker-compose]# docker exec -it etcd etcdctl --write-out=table --endpoints="192.168.21.205:2379,192.168.21.164:2379,192.168.21.51:2379"     endpoint status
-+---------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
-|      ENDPOINT       |        ID        | VERSION | DB SIZE | IS LEADER | IS LEARNER | RAFT TERM | RAFT INDEX | RAFT APPLIED INDEX | ERRORS |
-+---------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
-| 192.168.21.205:2379 | 10574d87df892440 |   3.5.8 |   20 kB |      true |      false |         2 |         13 |                 13 |        |
-| 192.168.21.164:2379 | a47a4fd720eb36e7 |   3.5.8 |   20 kB |     false |      false |         2 |         13 |                 13 |        |
-|  192.168.21.51:2379 | b76a77d78fdf886f |   3.5.8 |   20 kB |     false |      false |         2 |         13 |                 13 |        |
-+---------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
-```
+
 Deploy an IvorySQL high-availability cluster.
 
 Deploy the ivyhac service on each node, using node1 as an example.
@@ -148,19 +138,7 @@ CONTAINER ID   IMAGE                                               COMMAND      
 9d8e04e4f819   quay.io/coreos/etcd:v3.5.8                          "/usr/local/bin/etcd"    24 minutes ago   Up 24 minutes             etcd
 
 ```
-After all nodes are deployed, check the status of the IvorySQL cluster.
-```
-[root@manager-node1 docker-compose]# docker exec -it ivyhac1 /bin/bash
-[ivorysql@manager-node1 /]$ patronictl -c $PATRONICONF/patroni.yml list
-+ Cluster: ivory-cluster (7548337408295624728) ------+----+-----------+
-| Member      | Host           | Role    | State     | TL | Lag in MB |
-+-------------+----------------+---------+-----------+----+-----------+
-| ivypatroni1 | 192.168.21.205 | Leader  | running   |  1 |           |
-| ivypatroni2 | 192.168.21.164 | Replica | streaming |  1 |         0 |
-| ivypatroni3 | 192.168.21.51  | Replica | streaming |  1 |         0 |
-+-------------+----------------+---------+-----------+----+-----------+
 
-```
 At this point, the one-primary-two-standby cluster setup is complete.
 Connect to the database using psql via Oracle-compatible ports and PostgreSQL ports.
 ```
