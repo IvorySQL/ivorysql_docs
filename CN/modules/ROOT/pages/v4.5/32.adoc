@@ -3,7 +3,7 @@
 :sectnumlevels: 5
 
 :imagesdir: ./_images
-= **IvorySQL社区协作流程**
+== **IvorySQL社区协作流程**
 
 IvorySQL 社区采用一套 闭环式开源协作流程，确保从问题提出到版本发布，每一个环节都能闭合反馈、持续改进。这一流程鼓励用户与开发者形成良性互动，让社区开发始终围绕实际需求持续演进。
 
@@ -45,7 +45,7 @@ image::p23.jpg[]
 
 通过这套完整的闭环协作机制，IvorySQL 实现了问题响应 → 开发贡献 → 质量保障 → 发布反馈的全流程闭合，推动项目持续健康演进。
 
-= **IvorySQL社区贡献指南**
+== **IvorySQL社区贡献指南**
 
 IvorySQL是一个由核心开发团队主导、社区共同维护的开源项目。我们欢迎用户、贡献者和维护者的加入，共同推动IvorySQL的发展。如果您希望看到您的代码或文档更改被添加到IvorySQL并出现在将来的版本中，本节的内容介绍是您需要知道的。
 
@@ -61,7 +61,7 @@ IvorySQL是一个由核心开发团队主导、社区共同维护的开源项目
 
 📢 请务必阅读并遵守我们的 https://github.com/IvorySQL/IvorySQL/blob/master/CODE_OF_CONDUCT_CN.md[IvorySQL社区行为准则]。
 
-== 注册Github账号
+=== 注册Github账号
 
 无论您是要提交 Issue、参与讨论，还是贡献代码与文档，您都需要使用 GitHub 账号登录并与 IvorySQL 项目进行交互。
 
@@ -69,11 +69,11 @@ IvorySQL是一个由核心开发团队主导、社区共同维护的开源项目
 
 IvorySQL源码托管在github: <https://github.com/IvorySQL>。
 
-== 用户
+=== 用户
 
 作为用户，您在使用 IvorySQL 过程中扮演着重要角色。我们鼓励您：
 
-=== 反馈问题与需求
+==== 反馈问题与需求
 
 * 发现 Bug、性能缺陷或文档不准确？
 
@@ -81,7 +81,7 @@ IvorySQL源码托管在github: <https://github.com/IvorySQL>。
 
 如果您准备向社区上报 Bug 或者提交需求，请在 IvorySQL 社区对应的仓库上提交 Issue，并参考Issue xref:./33.adoc[提交指南]。
 
-=== 参与社区讨论
+==== 参与社区讨论
 
 * 通过 https://lists.ivorysql.org[邮件列表]进行讨论
 
@@ -89,11 +89,11 @@ IvorySQL源码托管在github: <https://github.com/IvorySQL>。
 
 * 在 微信、Discord等聊天群参与技术交流
 
-== 贡献者
+=== 贡献者
 
 我们欢迎代码、文档、测试等各类贡献。
 
-=== 签署CLA
+==== 签署CLA
 在提交代码或文档贡献之前，为了确保代码合法合规，个人或企业贡献者需要签署贡献者许可协议(CLA)。签署CLA是IvorySQL社区接受贡献的必要条件，以确保您的贡献被合法分发。请根据下列链接下载CLA进行签署并将签署后的CLA发送至 cla@ivorysql.org。
 
 * https://www.ivorysql.org/zh-CN/assets/files/individual_cla-a81f001209eb5ce0f8ea7c3be4cc69b5.pdf[个人贡献者]
@@ -101,7 +101,7 @@ IvorySQL源码托管在github: <https://github.com/IvorySQL>。
 
 未签署CLA的Pull Request将无法进入评审阶段。
 
-=== 找到您感兴趣的项目
+==== 找到您感兴趣的项目
 
 我们将仓库划分为多个子项目，您可以从如下列表中找到感兴趣的项目及其代码仓库
 
@@ -119,17 +119,17 @@ IvorySQL源码托管在github: <https://github.com/IvorySQL>。
 |https://github.com/IvorySQL/ivorysql-wasm[Ivorysql_wasm] | 负责IvorySQL在线易用体验网站的开发和维护
 |=== 
 
-=== 给自己分配Issue
+==== 给自己分配Issue
 您可以将自己创建的Issue或者愿意处理的Issue分配给自己。 只需要在评论框内输入/assign，机器人就会将问题分配给您。 每个 Issue 下面可能已经有参与者的交流和讨论，如果您感兴趣，也可以在评论框中发表自己的意见参与 Issue 讨论。
 
-=== 开发与提交Pull Request
+==== 开发与提交Pull Request
 对于提交一个PR应该保持一个功能，或者一个bug提交一次。禁止多个功能一次提交。
 
-==== Fork仓库
+===== Fork仓库
 
 前往项目主页，点击Fork按钮，将IvorySQL项目Fork到您自己的GitHub账户中。
 
-==== 编码
+===== 编码
 
 使用如下命令将项目克隆到本地进行开发：
 
@@ -139,7 +139,7 @@ git checkout -b feature/your-feature-name
 
 在提交代码前，请确保通过回归测试
 
-==== 创建一个Pull Request并提交
+===== 创建一个Pull Request并提交
 
 打开你 Fork 的仓库： https://github.com/$user/IvorySQL.git 
 
@@ -156,25 +156,25 @@ leave a comment
 
 点击Create pull request 按钮即可提交。
 
-== 维护者
+=== 维护者
 维护者负责进行IvorySQL代码的管理，PR审查，主导版本发布与IvorySQL发展方向。
 
-=== 社区规划
+==== 社区规划
 * 制定版本规划和 Roadmap
 
 * 跟踪与评估社区需求
 
 * 维护公开的 TODO 列表
 
-=== 代码管理
+==== 代码管理
 * 参与 Pull Request 评审
 
 * 审查安全问题，保障项目健康
 
-=== 流程与治理机制
+==== 流程与治理机制
 * 优化协作机制（代码贡献指南、PR 模板等）
 
 * 建立漏洞响应机制和行为守则
 
-== 致谢
+=== 致谢
 感谢每一位参与 IvorySQL 的开发者、文档编辑者、测试人员和使用者。正是有了你们的付出，IvorySQL 才能不断成长！我们欢迎所有人参与 IvorySQL 社区贡献，我们的目标是发展一个由贡献者组成的活跃、健康的社区。
