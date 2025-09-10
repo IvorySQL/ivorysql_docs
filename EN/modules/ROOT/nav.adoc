@@ -8,6 +8,9 @@
 * IvorySQL Advanced Feature
 ** xref:v4.6/6.adoc[Installation]
 ** xref:v4.6/7.adoc[Building Cluster]
+** Containerization 
+*** xref:v4.6/37.adoc[K8S]
+*** xref:v4.6/38.adoc[Docker Swarm & Docker Compose]
 ** xref:v4.6/8.adoc[Developer]
 ** xref:v4.6/9.adoc[Operation Management]
 ** xref:v4.6/10.adoc[Migration]

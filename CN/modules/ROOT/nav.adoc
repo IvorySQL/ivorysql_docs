@@ -8,6 +8,9 @@
 * IvorySQL高级
 ** xref:v4.6/6.adoc[安装指南]
 ** xref:v4.6/7.adoc[集群搭建]
+** 容器化指南
+*** xref:v4.6/37.adoc[K8S部署]
+*** xref:v4.6/38.adoc[Docker Swarm & Docker Compose部署]
 ** xref:v4.6/8.adoc[开发者指南]
 ** xref:v4.6/9.adoc[运维管理指南]
 ** xref:v4.6/10.adoc[迁移指南]
