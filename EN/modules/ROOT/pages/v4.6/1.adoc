@@ -25,17 +25,17 @@ For further details, visit https://www.postgresql.org/docs/release/17.6/[Postgre
 
 - IvorySQL 4.6 New Features
 
-1. Upgrade to PG 17.6 kernel
+1. Upgrade to PG 17.6 kernel https://github.com/IvorySQL/IvorySQL/issues/859[#859]
 
-2. MongoDB-compatible solution
+2. MongoDB-compatible solution https://github.com/IvorySQL/IvorySQL/issues/860[#860]
 +
 Provide a MongoDB-compatible solution using FerretDB and DocumentDB.
 
-3. LoongArch Packaging for All Platforms
+3. LoongArch Packaging for All Platforms https://github.com/IvorySQL/IvorySQL/issues/738[#738] https://github.com/IvorySQL/IvorySQL/issues/829[#829]
 +
 Provides multi-platform media packages for LoongArch architecture, supporting both domestic and international mainstream operating systems, including Red Hat, Debian, Kylin, UOS, and NSAR OS, etc. It also supports x86, ARM, and MIPS architectures.
 
-4. IvorySQL Online trail
+4. IvorySQL Online trail https://github.com/IvorySQL/ivorysql-wasm/issues/4[#4]
 +
 Provide users with a web-based platform to experience IvorySQL V4.6 in an online environment, enabling database interaction directly through a browser interface.
 
@@ -53,11 +53,11 @@ The IvorySQL Cloud platform currently supports subscription management for Ivory
 
 - IvorySQL 4.6 Fixed Issues
 
-1. Missing libcrypt on aarch64 platform.
-2. prefix test_ extension are wrongly compiled and installed while exec make and make install.
-3. Doc:fix some typos.
-4. Doc:Fix document errors in the installation section.
-5. Doc:Update the community contribution process.
+1. Missing libcrypt on aarch64 platform: Issue https://github.com/IvorySQL/IvorySQL/issues/826[#826]
+2. prefix test_ extension are wrongly compiled and installed while exec make and make install: Issue https://github.com/IvorySQL/IvorySQL/issues/836[#836]
+3. Doc:fix some typos: Issue https://github.com/IvorySQL/ivorysql_docs/pull/143[#143]
+4. Doc:Fix document errors in the installation section: Issue https://github.com/IvorySQL/ivorysql_docs/pull/143[#142]
+5. Doc:Update the community contribution process: Issue https://github.com/IvorySQL/ivorysql_docs/pull/130[#130]
 
 == Source Code
 
