@@ -15,7 +15,7 @@ pgddl 是一个专为 PostgreSQL 数据库设计的 SQL 函数扩展，它能够
 IvorySQL的安装包里已经集成了pgddl插件，如果使用安装包安装的IvorySQL，通常不需要再手动安装pgddl即可使用。其它安装方式可以参考下面的源码安装步骤。
 
 [TIP]
-环境中已经安装了IvorySQL4.6及以上版本，安装路径为/usr/local/ivorysql/ivorysql-4
+环境中已经安装了IvorySQL1.17及以上版本，安装路径为/usr/local/ivorysql/ivorysql-1
 
 === 源码安装
 从https://github.com/lacanoid/pgddl/releases/tag/0.20 下载pgddl-0.20.tar.gz，解压缩。

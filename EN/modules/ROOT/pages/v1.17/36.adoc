@@ -13,7 +13,7 @@ pgRouting is widely used in logistics and distribution, traffic navigation, netw
 == Installation
 
 [TIP]
-IvorySQL 4.6 or higher version is already installed in the environment, with the installation path at /usr/local/ivorysql/ivorysql-4
+IvorySQL 1.17 or higher version is already installed in the environment, with the installation path at /usr/local/ivorysql/ivorysql-1
 
 === Source Installation
 

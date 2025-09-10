@@ -17,7 +17,7 @@ IvorySQL的安装包里已经集成了PGroonga插件，如果使用安装包安�
 除PGroonga社区提供的安装方式以外，IvorySQL社区也提供了源码安装方式，源码安装环境为 Ubuntu 24.04(x86_64)。
 
 [TIP]
-环境中已经安装了IvorySQL4.6及以上版本，安装路径为/usr/local/ivorysql/ivorysql-4
+环境中已经安装了IvorySQL1.17及以上版本，安装路径为/usr/local/ivorysql/ivorysql-1
 
 ==== 安装 groonga
 
