@@ -59,7 +59,7 @@ IvorySQL云平台当前支持IvorySQL v4数据库的订阅管理，以及其周�
 - IvorySQL 4.6 问题修复
 
 1. 在aarch64平台上缺少依赖库libcrypt。
-2. p执行make和make install时，前缀test_开头的测试项被错误地编译和安装到extension目录。
+2. 执行make和make install时，前缀test_开头的测试项被错误地编译和安装到extension目录。
 3. 文档：修复一些错别字。
 4. 文档：修复安装部分的文档错误。
 5. 文档：更新社区贡献流程。
