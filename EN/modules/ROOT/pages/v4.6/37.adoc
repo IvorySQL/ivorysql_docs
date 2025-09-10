@@ -169,6 +169,8 @@ ivorysql=# SELECT pg_is_in_recovery();
 (1 row)
 
 ivorysql=# exit
+```
+```
 [root@k8s-master helm_charts]# psql -U ivorysql -p 32477 -h 127.0.0.1 -d ivorysql
 Password for user ivorysql:
 

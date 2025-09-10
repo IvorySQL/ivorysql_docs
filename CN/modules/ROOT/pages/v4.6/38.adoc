@@ -76,6 +76,8 @@ ivorysql=# show ivorysql.compatible_mode;
 (1 row)
 
 ivorysql=# exit
+```
+```
 [root@manager-node1 docker-swarm]# psql -h127.0.0.1 -p5432 -U ivorysql -d ivorysql
 Password for user ivorysql:
 
@@ -159,6 +161,8 @@ ivorysql=# show ivorysql.compatible_mode;
 (1 row)
 
 ivorysql=# exit
+```
+```
 [root@manager-node1 docker-swarm]# psql -h127.0.0.1 -p5432 -U ivorysql -d ivorysql
 Password for user ivorysql:
 
