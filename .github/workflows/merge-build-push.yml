@@ -133,6 +133,36 @@ jobs:
           echo "Building Chinese site..."
           npx antora generate --stacktrace --to-dir ../www_publish_target/docs/cn antora-playbook-CN.yml
 
+      - name: Move and Rename PDF Files
+        id: process_pdfs
+        working-directory: ./www_publish_target
+        run: |
+          echo "--- Searching for PDF files to move and rename ---"
+
+          PDF_FILES_FOUND=$(find . -type f -path '*/_exports/index.pdf')
+
+          if [ -z "${PDF_FILES_FOUND}" ]; then
+            echo "No PDF files found to move. Skipping."
+          else
+            echo "Found PDF files to process:"
+            echo "${PDF_FILES_FOUND}"
+
+            echo "${PDF_FILES_FOUND}" | while read PDF_FILE; do
+              # ./docs/cn/ivorysql-doc/master/_exports/index.pdf -> ./docs/cn/ivorysql-doc/master
+              BASE_DIR="${PDF_FILE%/_exports/index.pdf}"
+              
+              NEW_PDF_PATH="${BASE_DIR}/ivorysql.pdf"
+
+              echo "Moving '${PDF_FILE}' to '${NEW_PDF_PATH}'"
+              mv "${PDF_FILE}" "${NEW_PDF_PATH}"
+            done
+            
+            echo "--- Cleaning up empty _exports directories ---"
+            find . -type d -name '_exports' -empty -delete
+          fi
+          
+          echo "--- PDF processing complete ---"
+
       - name: Commit and Push to web Repository new branch , pull request
         id: commit_push_new_branch
         working-directory: ./www_publish_target
