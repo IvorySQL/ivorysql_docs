@@ -29,18 +29,18 @@ IvorySQL 4.6，基于PostgreSQL 17.6，并修复了多个问题。有关更新�
 
 - IvorySQL 4.6 新特性
 
-1. 内核升级至 PG 17.6
+1. 内核升级至 PG 17.6 https://github.com/IvorySQL/IvorySQL/issues/859[#859]
 
-2. 兼容MongoDB
+2. 兼容MongoDB https://github.com/IvorySQL/IvorySQL/issues/860[#860]
 +
-提供基于 FerretDB 与 DocumentDB 支持兼容 MongoDB 的解决方案。
+提供基于 FerretDB 与 DocumentDB 支持兼容 MongoDB 的解决方案。 
 
-3. loongarch 架构全平台打包支持
+3. Loongarch 架构全平台打包支持 https://github.com/IvorySQL/IvorySQL/issues/738[#738] https://github.com/IvorySQL/IvorySQL/issues/829[#829]
 +
-提供面向 loongarch 架构的多平台软件包，支持国内外主流操作系统，包括Red Hat、Debian、麒麟（Kylin）、统信（UOS）以及 NSAR OS 等。
+提供面向 Loongarch 架构的多平台软件包，支持国内外主流操作系统，包括Red Hat、Debian、麒麟（Kylin）、统信（UOS）以及 NSAR OS 等。
 提供面向龙芯架构（LoongArch）的多平台介质包，兼容国内外主流操作系统，包括红帽（Red Hat）、Debian、麒麟（Kylin）、统信UOS、凝思NSAR OS等，同时支持x86、ARM及MIPS架构。
 
-4. 新增IvorySQL 在线体验平台
+4. 新增IvorySQL 在线体验平台 https://github.com/IvorySQL/ivorysql-wasm/issues/4[#4]
 +
 提供一个基于 Web 的平台，用户可直接通过浏览器界面在线体验 IvorySQL V4.6 并进行数据库交互。
 
@@ -58,11 +58,11 @@ IvorySQL云平台当前支持IvorySQL v4数据库的订阅管理，以及其周�
 
 - IvorySQL 4.6 问题修复
 
-1. 在aarch64平台上缺少依赖库libcrypt。
-2. 执行make和make install时，前缀test_开头的测试项被错误地编译和安装到extension目录。
-3. 文档：修复一些错别字。
-4. 文档：修复安装部分的文档错误。
-5. 文档：更新社区贡献流程。
+1. 在aarch64平台上缺少依赖库libcrypt: Issue https://github.com/IvorySQL/IvorySQL/issues/826[#826]
+2. 执行make和make install时，前缀test_开头的测试项被错误地编译和安装到extension目录: Issue https://github.com/IvorySQL/IvorySQL/issues/836[#836]
+3. 文档：修复一些错别字: Issue https://github.com/IvorySQL/ivorysql_docs/pull/143[#143]
+4. 文档：修复安装部分的文档错误: Issue https://github.com/IvorySQL/ivorysql_docs/pull/143[#142]
+5. 文档：更新社区贡献流程: Issue https://github.com/IvorySQL/ivorysql_docs/pull/130[#130]
 
 == 源代码
 
