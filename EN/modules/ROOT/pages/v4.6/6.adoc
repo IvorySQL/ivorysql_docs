@@ -15,7 +15,7 @@ The installation methods for IvorySQL include the following five:
 - <<deb-installation>>
 
 
-This chapter will provide detailed instructions on the installation, execution, and uninstallation processes for each method. For a quicker access to IvorySQL, please refer to xref:v4.5/3.adoc#quick-installation[Quick installation].
+This chapter will provide detailed instructions on the installation, execution, and uninstallation processes for each method. For a quicker access to IvorySQL, please refer to xref:v4.6/3.adoc#quick-installation[Quick installation].
 
 Before getting started, please create an user and grant it root privileges. All the installation steps will be performed by this user. Here we just name it 'ivorysql'.
 
@@ -33,7 +33,7 @@ gpgcheck=0
 ```
 After saving and exiting, you can install IvorySQL 4 with the following steps
 ```
-$ sudo dnf install -y ivorysql4-4.5
+$ sudo dnf install -y ivorysql4-4.6
 ```
 
 [[Docker-installation]]
@@ -41,12 +41,12 @@ $ sudo dnf install -y ivorysql4-4.5
 
 ** Get IvorySQL image from Docker Hub
 ```
-$ docker pull ivorysql/ivorysql:4.5-ubi8
+$ docker pull ivorysql/ivorysql:4.6-ubi8
 ```
 
 ** Run IvorySQL
 ```
-$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:4.5-ubi8
+$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:4.6-ubi8
 ```
 -e Parameter Explanation
 |====
@@ -74,7 +74,7 @@ $ sudo dnf install -y lz4 libicu libxslt python3
 ```
 ** Getting rpms
 ```
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.5/IvorySQL-4.5-a50789d-20250304.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.6/IvorySQL-4.6-a50789d-20250304.x86_64.rpm
 ```
 ** Installing rpms
 
@@ -139,12 +139,12 @@ $ sudo apt -y install pkg-config libreadline-dev libicu-dev libldap2-dev uuid-de
 
 ** Getting deb
 ```
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.5/IvorySQL-4.5-a50789d-20250304.amd64.deb
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.6/IvorySQL-4.6-a50789d-20250304.amd64.deb
 ```
 
 ** Installing deb
 ```
-$ sudo dpkg -i IvorySQL-4.5-a50789d-20250304.amd64.deb
+$ sudo dpkg -i IvorySQL-4.6-a50789d-20250304.amd64.deb
 ```
 IvorySQL will then be installed in the /usr/ivory-4/ directory.
 
@@ -213,7 +213,7 @@ ivorysql  130445  130274  0 02:45 pts/1    00:00:00 grep --color=auto postgres
 Connect to IovrySQL via psql:
 ```
 $ psql -d <database>
-psql (17.5)
+psql (17.6)
 Type "help" for help.
 
 ivorysql=#
@@ -237,7 +237,7 @@ No matter which method is used for the uninstallation, make sure the service has
 
 Run the following commands in turn and clean the residual folders:
 ```
-$ sudo dnf remove -y ivorysql4-4.5
+$ sudo dnf remove -y ivorysql4-4.6
 ```
 
 === Uninstallation for docker installation
@@ -246,7 +246,7 @@ Stop IvorySQL container and remove IvorySQL image:
 ```
 $ docker stop ivorysql
 $ docker rm ivorysql
-$ docker rmi ivorysql/ivorysql:4.5-ubi8
+$ docker rmi ivorysql/ivorysql:4.6-ubi8
 ```
 
 === Uninstallation for rpm installation
@@ -254,7 +254,7 @@ $ docker rmi ivorysql/ivorysql:4.5-ubi8
 Uninstall the rpms and clear the residual folders:
 ```
 $ sudo yum remove --disablerepo=* ivorysql4\* 
-$ sudo rm -rf IvorySQL-4.5
+$ sudo rm -rf IvorySQL-4.6
 ```
 
 === Uninstallation for source code installation
@@ -263,13 +263,13 @@ Uninstall the database system, then clear the residual folders:
 ```
 $ sudo make uninstall
 $ make clean
-$ sudo rm -rf IvorySQL-4.5
+$ sudo rm -rf IvorySQL-4.6
 ```
 
 === Uninstallation for deb installation
 
 Uninstall the database system, then clear the residual folders:
 ```
-$ sudo dpkg -P IvorySQL-4.5
-$ sudo rm -rf IvorySQL-4.5
+$ sudo dpkg -P IvorySQL-4.6
+$ sudo rm -rf IvorySQL-4.6
 ```

@@ -15,4 +15,4 @@ IvorySQL 项目是瀚高软件提出的一个开源项目，旨在将 Oracle 兼
 IvorySQL 开源并且可以免费使用，如果您有任何建议请联系 support@ivorysql.org
 
 == 文档下载
-https://docs.ivorysql.org/cn/ivorysql-doc/v4.5/ivorysql.pdf[IvorySQL v4.5 pdf 文档]
+https://docs.ivorysql.org/cn/ivorysql-doc/v4.6/ivorysql.pdf[IvorySQL v4.6 pdf 文档]

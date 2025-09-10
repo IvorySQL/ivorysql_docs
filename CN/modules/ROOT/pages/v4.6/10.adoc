@@ -448,7 +448,7 @@ $ createdb orcl
 
 $ psql
 
-psql (17.5)
+psql (17.6)
 
 Type "help" for help.
 
@@ -477,7 +477,7 @@ ivorysql=#
 ```
 $ psql orcl
 
-psql (17.5)
+psql (17.6)
 
 Type "help" for help.
 

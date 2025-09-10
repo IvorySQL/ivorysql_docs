@@ -1,0 +1,240 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= k8s部署单机容器和高可用集群
+
+== 单机容器
+进入k8s集群的master节点上，创建名为ivorysql的namespace
+```
+[root@k8s-master ~]# kubectl create ns ivorysql
+```
+
+下载最新docker_library代码
+```
+[root@k8s-master ~]# git clone https://github.com/IvorySQL/docker_library.git
+```
+
+进入单机目录
+```
+[root@k8s-master ~]# cd docker_library/k8s-cluster/single
+[root@k8s-master single]# vim statefulset.yaml #根据个人环境自行修改statefulset中的pvc信息及数据库密码
+```
+
+使用statefulset.yaml创建一个单机pod
+```
+[root@k8s-master single]# kubectl apply -f statefulset.yaml
+service/ivorysql-svc created
+statefulset.apps/ivorysql created
+```
+
+等待pod创建成功
+```
+[root@k8s-master single]# kubectl get all -n ivorysql
+NAME             READY   STATUS              RESTARTS   AGE
+pod/ivorysql-0   0/1     ContainerCreating   0          47s
+
+NAME                   TYPE       CLUSTER-IP       EXTERNAL-IP   PORT(S)                         AGE
+service/ivorysql-svc   NodePort   10.108.178.236   <none>        5432:32106/TCP,1521:31887/TCP   47s
+
+NAME                        READY   AGE
+statefulset.apps/ivorysql   0/1     47s
+[root@k8s-master single]# kubectl get all -n ivorysql
+NAME             READY   STATUS    RESTARTS   AGE
+pod/ivorysql-0   1/1     Running   0          2m39s
+
+NAME                   TYPE       CLUSTER-IP       EXTERNAL-IP   PORT(S)                         AGE
+service/ivorysql-svc   NodePort   10.108.178.236   <none>        5432:32106/TCP,1521:31887/TCP   2m39s
+
+NAME                        READY   AGE
+statefulset.apps/ivorysql   1/1     2m39s
+```
+
+psql连接IvorySQL的PG端口
+```
+[root@k8s-master single]# psql -U ivorysql -p 32106 -h 127.0.0.1 -d ivorysql
+Password for user ivorysql:
+
+ivorysql=# select version();
+                                                        version
+------------------------------------------------------------------------------------------------------------------------
+ PostgreSQL 17.6 (IvorySQL 4.6) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
+(1 row)
+
+ivorysql=# show ivorysql.compatible_mode;
+ ivorysql.compatible_mode
+--------------------------
+ pg
+(1 row)
+
+ivorysql=# exit
+```
+
+psql连接IvorySQL的Oracle端口
+```
+[root@k8s-master single]# psql -U ivorysql -p 31887 -h 127.0.0.1 -d ivorysql
+Password for user ivorysql:
+
+ivorysql=# select version();
+                                                        version
+------------------------------------------------------------------------------------------------------------------------
+ PostgreSQL 17.6 (IvorySQL 4.6) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
+(1 row)
+
+ivorysql=# show ivorysql.compatible_mode;
+ ivorysql.compatible_mode
+--------------------------
+ oracle
+(1 row)
+```
+
+卸载单机容器
+```
+[root@k8s-master single]# kubectl delete-f statefulset.yaml
+```
+
+== 高可用集群
+
+进入k8s集群的master节点上，创建名为ivorysql的namespace
+```
+[root@k8s-master ~]# kubectl create ns ivorysql
+```
+
+下载最新docker_library代码
+```
+[root@k8s-master ~]# git clone https://github.com/IvorySQL/docker_library.git
+```
+
+进入高可用集群目录
+```
+[root@k8s-master ~]# cd docker_library/k8s-cluster/ha-cluster/helm_charts
+[root@k8s-master single]# vim values.yaml #根据个人环境自行values.yaml中的pvc信息及集群规模等信息，数据库密码查看templates/secret.yaml并自行修改。
+```
+
+使用 https://helm.sh/docs/intro/install/[Helm] 命令部署高可用集群
+```
+[root@k8s-master helm_charts]# helm install ivorysql-ha-cluster -n ivorysql .
+NAME: ivorysql-ha-cluster
+LAST DEPLOYED: Wed Sep 10 09:45:36 2025
+NAMESPACE: ivorysql
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+[root@k8s-master helm_charts]# kubectl get all -n ivorysql
+NAME                         READY   STATUS    RESTARTS   AGE
+pod/ivorysql-patroni-hac-0   1/1     Running   0          42s
+pod/ivorysql-patroni-hac-1   0/1     Running   0          18s
+
+NAME                                  TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                         AGE
+service/ivorysql-patroni-hac          NodePort    10.96.119.203    <none>        5432:32391/TCP,1521:32477/TCP   42s
+service/ivorysql-patroni-hac-config   ClusterIP   None             <none>        <none>                          42s
+service/ivorysql-patroni-hac-pods     ClusterIP   None             <none>        <none>                          42s
+service/ivorysql-patroni-hac-repl     NodePort    10.100.122.0     <none>        5432:30111/TCP,1521:32654/TCP   42s
+
+NAME                                    READY   AGE
+statefulset.apps/ivorysql-patroni-hac   1/3     42s
+```
+
+等待所有pod均运行成功，集群部署成功
+```
+[root@k8s-master helm_charts]# kubectl get all -n ivorysql
+NAME                         READY   STATUS    RESTARTS   AGE
+pod/ivorysql-patroni-hac-0   1/1     Running   0          88s
+pod/ivorysql-patroni-hac-1   1/1     Running   0          64s
+pod/ivorysql-patroni-hac-2   1/1     Running   0          41s
+
+NAME                                  TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)                         AGE
+service/ivorysql-patroni-hac          NodePort    10.96.119.203    <none>        5432:32391/TCP,1521:32477/TCP   88s
+service/ivorysql-patroni-hac-config   ClusterIP   None             <none>        <none>                          88s
+service/ivorysql-patroni-hac-pods     ClusterIP   None             <none>        <none>                          88s
+service/ivorysql-patroni-hac-repl     NodePort    10.100.122.0     <none>        5432:30111/TCP,1521:32654/TCP   88s
+NAME                                    READY   AGE
+statefulset.apps/ivorysql-patroni-hac   3/3     88s
+```
+
+使用psql连接集群主节点的PG、Oracle端口
+```
+[root@k8s-master helm_charts]# psql -U ivorysql -p 32391 -h 127.0.0.1 -d ivorysql
+Password for user ivorysql:
+
+ivorysql=# show ivorysql.compatible_mode;
+ ivorysql.compatible_mode
+--------------------------
+ pg
+(1 row)
+
+ivorysql=# SELECT pg_is_in_recovery();
+ pg_is_in_recovery
+-------------------
+ f
+(1 row)
+
+ivorysql=# exit
+[root@k8s-master helm_charts]# psql -U ivorysql -p 32477 -h 127.0.0.1 -d ivorysql
+Password for user ivorysql:
+
+ivorysql=# show ivorysql.compatible_mode;
+ ivorysql.compatible_mode
+--------------------------
+ oracle
+(1 row)
+
+ivorysql=# SELECT pg_is_in_recovery();
+ pg_is_in_recovery
+-------------------
+ f
+(1 row)
+
+ivorysql=#
+```
+
+使用psql连接集群备节点的PG、Oracle端口
+```
+[root@k8s-master helm_charts]# psql -U ivorysql -p 30111 -h 127.0.0.1 -d ivorysql
+Password for user ivorysql:
+
+ivorysql=# show ivorysql.compatible_mode;
+ ivorysql.compatible_mode
+--------------------------
+ pg
+(1 row)
+
+ivorysql=# SELECT pg_is_in_recovery();
+ pg_is_in_recovery
+-------------------
+ t
+(1 row)
+
+ivorysql=# exit
+
+[root@k8s-master helm_charts]# psql -U ivorysql -p 32654 -h 127.0.0.1 -d ivorysql
+Password for user ivorysql:
+
+ivorysql=#  show ivorysql.compatible_mode;
+ ivorysql.compatible_mode
+--------------------------
+ oracle
+(1 row)
+
+ivorysql=# SELECT pg_is_in_recovery();
+ pg_is_in_recovery
+-------------------
+ t
+(1 row)
+
+ivorysql=#
+```
+
+卸载高可用集群
+```
+[root@k8s-master helm_charts]# helm uninstall ivorysql-ha-cluster -n ivorysql
+```
+删除PVC
+```
+[root@k8s-master helm_charts]# kubectl delete pvc ivyhac-config-ivorysql-patroni-hac-0 -n ivorysql
+[root@k8s-master helm_charts]# kubectl delete pvc ivyhac-config-ivorysql-patroni-hac-1 -n ivorysql
+[root@k8s-master helm_charts]# kubectl delete pvc ivyhac-config-ivorysql-patroni-hac-2 -n ivorysql
+[root@k8s-master helm_charts]# kubectl delete pvc pgdata-ivorysql-patroni-hac-0 -n ivorysql
+[root@k8s-master helm_charts]# kubectl delete pvc pgdata-ivorysql-patroni-hac-1 -n ivorysql
+[root@k8s-master helm_charts]# kubectl delete pvc pgdata-ivorysql-patroni-hac-2 -n ivorysql
+```
