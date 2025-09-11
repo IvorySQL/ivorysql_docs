@@ -41,7 +41,9 @@
 *** xref:master/7.13.adoc[13、不可见列]
 *** xref:master/7.14.adoc[14、RowID]
 *** xref:master/7.15.adoc[15、OUT 参数]
-** xref:master/8.adoc[社区贡献指南]
+** IvorySQL贡献指南
+*** xref:master/8.1.adoc[社区贡献指南]
+*** xref:master/8.2.adoc[asciidoc语法快速参考]
 ** xref:master/9.adoc[工具参考]
 ** xref:master/10.adoc[FAQ]
 * PostgreSQL
