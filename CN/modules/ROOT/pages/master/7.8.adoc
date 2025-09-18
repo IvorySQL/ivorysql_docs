@@ -326,7 +326,7 @@ SELECT INSTR('database administration', 'z') FROM DUAL;
 (1 row)
 ```
 
-`instr`还能像`like`一样用于模糊查询：
+`instr` 还能像 `like` 一样用于模糊查询：
 
 ```
 select * from tableName where instr(name,'helloworld')>0;
