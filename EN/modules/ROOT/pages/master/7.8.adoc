@@ -38,6 +38,7 @@
 |new_time
 |tz_offset
 |trunc
+|instr
 |instrb
 |substr
 |substrb
