@@ -38,6 +38,7 @@
 |new_time
 |tz_offset
 |trunc
+|instr
 |instrb
 |substr
 |substrb
@@ -278,7 +279,68 @@ select trunc(sysdate(),'mm') from dual;
 (1 row)
 ```
 
-12、Compatible with instrb function, function: string lookup function, return the position of the string, support parameters: varchar2, text, number DEFAULT 1, number DEFAULT 1, the following are test cases:
+12、Compatible with instr function, function: string search that checks whether the source string contains the target string and returns the match position. Supported parameter forms are as follows:
+
+* `instr(string, str)`
+* `instr(string, str, start_position, nth_appearance)`
+
+The following are test cases:
+
+Returns the first match by default:
+
+```
+SELECT INSTR('database administration', 'data') FROM DUAL;
+ instr 
+-------
+     1
+(1 row)
+```
+
+Specify the starting position and match sequence:
+
+```
+SELECT INSTR('database administration', 'i', 1, 2) FROM DUAL;
+ instr 
+-------
+    15
+(1 row)
+```
+
+Supports reverse search from the end of the string:
+
+```
+SELECT INSTR('mississippi river', 's', -5, 2) FROM DUAL;
+ instr 
+-------
+     6
+(1 row)
+```
+
+Returns 0 when no match is found:
+
+```
+SELECT INSTR('database administration', 'z') FROM DUAL;
+ instr 
+-------
+     0
+(1 row)
+```
+
+`instr` can also be used for like-style fuzzy matching:
+
+```
+select * from tableName where instr(name,'helloworld')>0;
+```
+
+Implementation notes:
+
+* Searches for one string inside another with a classic brute-force algorithm.
+* Reuses the `text_instring` helper function.
+* Uses the `isByte` flag to detect multibyte encodings and branch between single-byte and multibyte handling.
+* The sign of `position` decides forward or backward search and sets loop bounds and step.
+* Iterates byte by byte through the source string, comparing with the pattern until a match is found.
+
+13、Compatible with instrb function, function: string lookup function, return the position of the string, support parameters: varchar2, text, number DEFAULT 1, number DEFAULT 1, the following are test cases:
 RETURNS THE POSITION OF THE STRING IN CORPORATE FLOOR WHEN THE FIRST OR OCCURS BY DEFAULT:
 
 ```
@@ -299,7 +361,7 @@ SELECT INSTRB('CORPORATE FLOOR','OR',5,2) "Instring in bytes" FROM DUAL;
 (1 row)
 ```
 
-13、Compatible with substr function, function: intercept string function, truncated in characters, support parameters: text, integer, test cases are as follows:
+14、Compatible with substr function, function: intercept string function, truncated in characters, support parameters: text, integer, test cases are as follows:
 Intercept the string from the fifth character in 'It is nice today', followed by:
 
 ```
@@ -311,7 +373,7 @@ SELECT SUBSTR('It is nice today',5) "Substring with bytes" FROM DUAL;
 (1 row)
 ```
 
-14、Compatible with substrb function, function: intercept string function, intercept in bytes, support parameters: varchar2, number/varchar2, number, number, the test cases are as follows:
+15、Compatible with substrb function, function: intercept string function, intercept in bytes, support parameters: varchar2, number/varchar2, number, number, the test cases are as follows:
 Intercept the string starting with the fifth byte in 'It's nice today' and then onwards:
 
 ```
@@ -333,7 +395,7 @@ SELECT SUBSTRB('It is nice today',5,8) "Substring with bytes" FROM DUAL;
 (1 row)
 ```
 
-15、Compatible with trim function, function: remove the left and right spaces or corresponding data of the specified string, support parameters: varchar2 / varchar2, varchar2, the test cases are as follows:
+16、Compatible with trim function, function: remove the left and right spaces or corresponding data of the specified string, support parameters: varchar2 / varchar2, varchar2, the test cases are as follows:
 Remove the left and right spaces of '   aaa bbb ccc   ':
 ```
 select trim('   aaa bbb ccc   ')trim from dual;
@@ -353,7 +415,7 @@ select trim('aaa bbb ccc','aaa')trim from dual;
 (1 row)
 ```
 
-16、Compatible with ltrim function, function: remove the left space or corresponding data of the specified string, support parameters: varchar2 / varchar2, varchar2, the test cases are as follows:
+17、Compatible with ltrim function, function: remove the left space or corresponding data of the specified string, support parameters: varchar2 / varchar2, varchar2, the test cases are as follows:
 Remove the space to the left of '   abcdefg   ':
 
 ```
@@ -374,7 +436,7 @@ select ltrim('abcdefg','fegab')ltrim from dual;
 (1 row)
 ```
 
-17、Compatible with rtrim function, function: remove the space on the right side of the specified string, the test case is as follows:
+18、Compatible with rtrim function, function: remove the space on the right side of the specified string, the test case is as follows:
 Remove the space to the right of '   abcdefg   ':
 
 ```
@@ -395,7 +457,7 @@ select rtrim('abcdefg','fegab')rtrim from dual;
 (1 row)
 ```
 
-18、Compatible with the length function, function: find the length of the specified string character, support parameters: char/integer/varchar2 The test cases are as follows:
+19、Compatible with the length function, function: find the length of the specified string character, support parameters: char/integer/varchar2 The test cases are as follows:
 Query the character length of 223:
 
 ```
@@ -426,7 +488,7 @@ select length('ivorysql database') from dual;
 (1 row)
 ```
 
-19、Compatible with lengthb function: find the length of the specified string byte, support parameters: char/bytea/varchar2 test cases are as follows:
+20、Compatible with lengthb function: find the length of the specified string byte, support parameters: char/bytea/varchar2 test cases are as follows:
 Query the byte lengthb of 'ivorysql':
 
 
@@ -458,7 +520,7 @@ select lengthb('ivorysql database') from dual;
 (1 row)
 ```
 
-20、compatible with replace function, function: replace the character in the specified string or delete the character, support parameters: text, text, text/varchar2, varchar2, varchar2 DEFAULT NULL::varchar2, test for example:
+21、compatible with replace function, function: replace the character in the specified string or delete the character, support parameters: text, text, text/varchar2, varchar2, varchar2 DEFAULT NULL::varchar2, test for example:
 Replace 'j' in 'jack and jue' with 'bl' :
 
 ```
@@ -479,7 +541,7 @@ select replace('jack and jue','j') from dual;
 (1 row)
 ```
 
-21、compatible with the regexp_replace function, which is an extension of the replace function. Function: Used to perform matching and replacement through regular expressions. Supported parameters: text, text, text /text, text, text, integer/varchar2, varchar2/varchar2, varchar2 varchar2, varchar2 varchar2, for example:
+22、compatible with the regexp_replace function, which is an extension of the replace function. Function: Used to perform matching and replacement through regular expressions. Supported parameters: text, text, text /text, text, text, integer/varchar2, varchar2/varchar2, varchar2 varchar2, varchar2 varchar2, for example:
 Replace the matched number with *#:
 
 ```
@@ -519,7 +581,7 @@ select regexp_replace('01234abcd56789','012','xxx')from dual;
 (1 row)
 ```
 
-22、Compatible with regexp_substr functions, function: pick up the character substring described by the regular expression, support parameters: text, text, integer /text, text, integer, integer / text, text, integer, integer, text /varchar2, varchar2, the test cases are as follows:
+23、Compatible with regexp_substr functions, function: pick up the character substring described by the regular expression, support parameters: text, text, integer /text, text, integer, integer / text, text, integer, integer, text /varchar2, varchar2, the test cases are as follows:
 Query the 012 string starting with the first number in '012ab34':
 
 ```
@@ -569,7 +631,7 @@ select regexp_substr('Database' , 'Data') from dual;
 (1 row)s
 ```
 
-23、Compatible with regexp_instr functions, function: used to calibrate the start position of the character substring that conforms to the regular expression, support parameters: text, text, integer /text, text, integer, integer / text, text, integer, integer, text, integer / varchar2, varchar2, the test case is as follows:
+24、Compatible with regexp_instr functions, function: used to calibrate the start position of the character substring that conforms to the regular expression, support parameters: text, text, integer /text, text, integer, integer / text, text, integer, integer, text, integer / varchar2, varchar2, the test case is as follows:
 Query 'abcaBcabc' for the position of the abc substring starting from the first character:
 
 ```
@@ -620,7 +682,7 @@ SELECT regexp_instr('Database', 'Data');
 (1 row)
 ```
 
-24、Compatible with regexp_like functions, function: similar to like, used for fuzzy queries. Supported parameters: varchar2, varchar2 /varchar2, varchar2 varchar2,
+25、Compatible with regexp_like functions, function: similar to like, used for fuzzy queries. Supported parameters: varchar2, varchar2 /varchar2, varchar2 varchar2,
 First create a regexp_like table for the test case query:
 
 ```
@@ -670,7 +732,7 @@ select * from t_regexp_like where regexp_like(value,'ABC','i');
 
 ```
 
-25、Compatible with to_number functions, function: is to change some processed strings arranged in a certain format back to a numeric format, support parameters: text/text, text test cases are as follows:
+26、Compatible with to_number functions, function: is to change some processed strings arranged in a certain format back to a numeric format, support parameters: text/text, text test cases are as follows:
 Convert the string '-34,338,492' to numeric format:
 
 ```
@@ -692,7 +754,7 @@ SELECT to_number('5.01-', '9.99S');
 (1 row)
 ```
 
-26、Compatible with to_char functions, functions: convert numbers or dates to character types, support parameters: date/date, text/timestamp/timestamp, text test cases are as follows:
+27、Compatible with to_char functions, functions: convert numbers or dates to character types, support parameters: date/date, text/timestamp/timestamp, text test cases are as follows:
 To convert the current system date to character format:
 
 ```
@@ -732,7 +794,7 @@ SELECT to_char(sysdate()::timestamp,'MM-YYYY-DD');
 (1 row)
 ```
 
-27、Compatible with to_date functions, function: convert character type to date type, support parameters: text/text, text test cases are as follows:
+28、Compatible with to_date functions, function: convert character type to date type, support parameters: text/text, text test cases are as follows:
 Convert '2023/07/06' to date type:
 
 ```
@@ -753,7 +815,7 @@ SELECT to_date('-44,0201','YYYY-MM-DD');
 (1 row)
 ```
 
-28、Compatible with to_timestamp functions, functions: can store year, month, day, hour, minute, second, and can also store fractional parts of seconds. Supported parameters: text/text, text test cases are as follows:
+29、Compatible with to_timestamp functions, functions: can store year, month, day, hour, minute, second, and can also store fractional parts of seconds. Supported parameters: text/text, text test cases are as follows:
 Query '2018-11-02 12:34:56.025' output as a date:
 ```
 SELECT to_timestamp('20181102.12.34.56.025');
@@ -773,7 +835,7 @@ SELECT to_timestamp('2011,12,18 11:38 ', 'YYYY-MM-DD HH24:MI:SS');
 (1 row)
 ```
 
-29、Compatible with to_timestamp_tz functions, functions: according to the time query, the time string has T, Z and milliseconds, time zone. The test cases are as follows:
+30、Compatible with to_timestamp_tz functions, functions: according to the time query, the time string has T, Z and milliseconds, time zone. The test cases are as follows:
 Query '2016-10-9 14:10:10.123000' output as a date:
 
 
@@ -795,7 +857,7 @@ Query '10-9-2016 14:10:10.123000 +8:30' output as a date:
 (1 row)
 ```
 
-30、Compatible with to_yminterval functions, function: convert a string type to a year and month time difference type, support parameters: text, The test cases are as follows:
+31、Compatible with to_yminterval functions, function: convert a string type to a year and month time difference type, support parameters: text, The test cases are as follows:
 Query the date after two years and eight months after '20110101':
 ```
 select to_date('20110101','yyyymmdd')+to_yminterval('02-08') from dual;
@@ -805,7 +867,7 @@ select to_date('20110101','yyyymmdd')+to_yminterval('02-08') from dual;
 (1 row)
 ```
 
-31、Compatible with to_dsinterval functions, function: add a date plus a certain hour or number of days into another date, support parameters: text, test cases are as follows:
+32、Compatible with to_dsinterval functions, function: add a date plus a certain hour or number of days into another date, support parameters: text, test cases are as follows:
 Query the current system time plus the date in 9 and a half hours (currently 2023-07-06, 18:00):
 
 ```
@@ -816,7 +878,7 @@ select sysdate()+to_dsinterval('0 09:30:00')as newdate from dual;
 (1 row)
 ```
 
-32、compatible with numtodsinterval function, function: convert numbers into time interval type data. The supporting parameters: double precision, text test cases are as follows:
+33、compatible with numtodsinterval function, function: convert numbers into time interval type data. The supporting parameters: double precision, text test cases are as follows:
 Convert 100.00 hours to interval type data:
 ```
 SELECT NUMTODSINTERVAL(100.00, 'hour');
@@ -836,7 +898,7 @@ SELECT NUMTODSINTERVAL(100, 'minute');
 (1 row)
 ```
 
-33、Compatible with the numtoyminterval function, function: convert numbers into date interval type data.
+34、Compatible with the numtoyminterval function, function: convert numbers into date interval type data.
 Convert 1, year to date interval: double precision, text, the test case is as follows:
 
 ```
@@ -857,7 +919,7 @@ SELECT NUMTOYMINTERVAL(1,'month');
 (1 row)
 ```
 
-34、Compatible with the localtimestamp function, function: return the date and time in the session, support parameters: integer, add parameters to the function as precision, the test cases are as follows:
+35、Compatible with the localtimestamp function, function: return the date and time in the session, support parameters: integer, add parameters to the function as precision, the test cases are as follows:
 To return the date and time in the current session:
 
 ```
@@ -878,7 +940,7 @@ select localtimestamp(1) from dual;
 (1 row)
 ```
 
-35、Compatible with from_tz functions, functions: convert time from one time zone to another, support parameters; timestamp, text, the test case is as follows:
+36、Compatible with from_tz functions, functions: convert time from one time zone to another, support parameters; timestamp, text, the test case is as follows:
 Convert '2000-03-28 08:00:00', '3:00' to the current time zone:
 
 ```
@@ -889,7 +951,7 @@ SELECT FROM_TZ(TIMESTAMP '2000-03-28 08:00:00', '3:00') FROM DUAL;
 (1 row)
 ```
 
-36、Compatible with sys_extract_utc functions, function: convert a timestamptz to UTC time zone time. Supported parameters: timestamp with time zone The test cases are as follows:
+37、Compatible with sys_extract_utc functions, function: convert a timestamptz to UTC time zone time. Supported parameters: timestamp with time zone The test cases are as follows:
 Query conversion timestamp '2000-03-28 11:30:00.00 -8:00' to the time after UTC time zone:
 
 ```
@@ -900,7 +962,7 @@ select sys_extract_utc(timestamp '2000-03-28 11:30:00.00 -8:00') from dual;
 (1 row)
 ```
 
-37、Compatible with sessiontimezone function, function: view time zone details, test cases are as follows:
+38、Compatible with sessiontimezone function, function: view time zone details, test cases are as follows:
 To view the details of the current time zone:
 ```
 select sessiontimezone() from dual;
@@ -922,7 +984,7 @@ select sessiontimezone() from dual;
 (1 row)
 ```
 
-38、compatible with hextoraw function, function: convert the binary value represented by the string into a RAW value. Support parameters: text, the test cases are as follows:
+39、compatible with hextoraw function, function: convert the binary value represented by the string into a RAW value. Support parameters: text, the test cases are as follows:
 Convert the string 'abcdef' to a raw value:
 
 
@@ -934,7 +996,7 @@ select hextoraw('abcdef')from dual;
 (1 row)
 ```
 
-39、Compatible with uid function, function: get the instance name of the database. The test cases are as follows:
+40、Compatible with uid function, function: get the instance name of the database. The test cases are as follows:
 Get the instance name of the current database:
 
 ```
@@ -945,7 +1007,7 @@ select uid() from dual;
 (1 row)
 ```
 
-40、Compatible with USERENV function, function: return the information of the current user environment, the test cases are as follows:
+41、Compatible with USERENV function, function: return the information of the current user environment, the test cases are as follows:
 Check whether the current user is DBA, and if so, return ture:
 
 ```
@@ -966,7 +1028,7 @@ select userenv('sessionid')from dual;
 (1 row)
 ```
 
-41、Compatible with ASCIISTR function, function: input string, return ASCII characters, the test cases are as follows:
+42、Compatible with ASCIISTR function, function: input string, return ASCII characters, the test cases are as follows:
 string with only ascii chars:
 ```
  select asciistr('Hello, World!') from dual;
@@ -993,7 +1055,7 @@ string with mixed ascii and non-ascii:
 (1 row)
 ```
 
-42、Compatible with TO_MULTI_BYTE function, function: Convert half-width characters in a string to full-width characters:
+43、Compatible with TO_MULTI_BYTE function, function: Convert half-width characters in a string to full-width characters:
 input half-width characters, Convert to full-width characters:
 ```
 select to_multi_byte('1.2'::text) ;
@@ -1002,7 +1064,7 @@ select to_multi_byte('1.2'::text) ;
  １．２
 ```
 
-43、Compatible with TO_SINGLE_BYTE function, function: Convert full-width characters in a string to half-width characters:
+44、Compatible with TO_SINGLE_BYTE function, function: Convert full-width characters in a string to half-width characters:
 input full-width characters, Convert to half-width characters: 输入全角字符，转换为半角字符：
 ```
 select to_single_byte('１．２');
@@ -1011,7 +1073,7 @@ select to_single_byte('１．２');
  1.2
 ```
 
-44、Compatible with COMPOSE function,function: Combine base characters and combining marks into a composite Unicode character:
+45、Compatible with COMPOSE function,function: Combine base characters and combining marks into a composite Unicode character:
 input base character 'a' with a combining mark '768', return à：
 ```
 select compose('a'||chr(768)) from dual;
@@ -1022,7 +1084,7 @@ select compose('a'||chr(768)) from dual;
 ```
 
 
-45、ompatible with DECOMPOSE function, function: Decompose composite Unicode characters (like those with accents or special symbols) into their base characters and combining marks.
+46、ompatible with DECOMPOSE function, function: Decompose composite Unicode characters (like those with accents or special symbols) into their base characters and combining marks.
 input é, return a base character 'e' with a combining mark '301'：
 ```
 select asciistr(decompose('é')) from dual;
