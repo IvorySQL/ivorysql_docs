@@ -38,6 +38,7 @@
 |new_time
 |tz_offset
 |trunc
+|instr
 |instrb
 |substr
 |substrb
@@ -278,7 +279,68 @@ select trunc(sysdate(),'mm') from dual;
 (1 row)
 ```
 
-12、兼容instrb函数，功能：字符串查找函数，返回字符串的位置，支持参数： varchar2, text, number DEFAULT 1, number DEFAULT 1,以下为测试用例：
+12、兼容instr函数，功能：字符串查找函数，用于判断源字符串中是否包含目标字符串，并返回匹配位置。支持参数形式如下：
+
+* `instr(string, str)`
+* `instr(string, str, start_position, nth_appearance)`
+
+以下为测试用例：
+
+默认情况下返回第一次匹配的位置：
+
+```
+SELECT INSTR('database administration', 'data') FROM DUAL;
+ instr 
+-------
+     1
+(1 row)
+```
+
+指定起始位置和匹配序号：
+
+```
+SELECT INSTR('database administration', 'i', 1, 2) FROM DUAL;
+ instr 
+-------
+    15
+(1 row)
+```
+
+支持从尾部开始的反向搜索：
+
+```
+SELECT INSTR('mississippi river', 's', -5, 2) FROM DUAL;
+ instr 
+-------
+     6
+(1 row)
+```
+
+当未匹配到目标字符串时返回0：
+
+```
+SELECT INSTR('database administration', 'z') FROM DUAL;
+ instr 
+-------
+     0
+(1 row)
+```
+
+`instr` 还能像 `like` 一样用于模糊查询：
+
+```
+select * from tableName where instr(name,'helloworld')>0;
+```
+
+函数实现说明：
+
+* 查找一个字符串在另一个字符串中的位置，采用经典的暴力匹配算法。
+* 复用了 `text_instring` 函数。
+* 通过 `isByte` 参数判断当前数据库编码是否为多字节，并区分单字节与多字节处理逻辑。
+* 根据 `position` 的正负确定正向或反向搜索，并设置循环的起止位置和步长。
+* 在循环中逐字节移动并比较，与模式字符串匹配成功即返回相应位置。
+
+13、兼容instrb函数，功能：字符串查找函数，返回字符串的位置，支持参数： varchar2, text, number DEFAULT 1, number DEFAULT 1,以下为测试用例：
 返回CORPORATE FLOOR中默认第一次出现OR时字符串的位置：
 
 ```
@@ -299,7 +361,7 @@ SELECT INSTRB('CORPORATE FLOOR','OR',5,2) "Instring in bytes" FROM DUAL;
 (1 row)
 ```
 
-13、兼容substr函数，功能：截取字符串函数，以字符为单位截取，支持参数：text, integer, 测试用例如下：
+14、兼容substr函数，功能：截取字符串函数，以字符为单位截取，支持参数：text, integer, 测试用例如下：
 截取’今天天气很好’中从第五个字符开始，往后的字符串：
 
 ```
@@ -311,7 +373,7 @@ SELECT SUBSTR('今天天气很好',5) "Substring with bytes" FROM DUAL;
 (1 row)
 ```
 
-14、兼容substrb函数，功能：截取字符串函数，以字节为单位截取，支持参数：varchar2, number/varchar2, number，number,测试用例如下：
+15、兼容substrb函数，功能：截取字符串函数，以字节为单位截取，支持参数：varchar2, number/varchar2, number，number,测试用例如下：
 截取’今天天气很好’中从第五个字节开始，往后的字符串：
 
 ```
@@ -332,7 +394,7 @@ SELECT SUBSTRB('今天天气很好',5，8) "Substring with bytes" FROM DUAL;
 (1 row)
 ```
 
-15、兼容trim函数，功能：去除指定字符串的左右空格或对应数据，支持参数：varchar2 /varchar2，varchar2，测试用例如下：
+16、兼容trim函数，功能：去除指定字符串的左右空格或对应数据，支持参数：varchar2 /varchar2，varchar2，测试用例如下：
 去除'   aaa bbb ccc   '的左右空格：
 
 ```
@@ -353,7 +415,7 @@ select trim('aaa bbb ccc','aaa')trim from dual;
 (1 row)
 ```
 
-16、兼容ltrim函数，功能：去除指定字符串的左侧空格或对应数据，支持参数：varchar2 /varchar2,varchar2,测试用例如下：
+17、兼容ltrim函数，功能：去除指定字符串的左侧空格或对应数据，支持参数：varchar2 /varchar2,varchar2,测试用例如下：
 去除'   abcdefg   '的左侧空格：
 
 ```
@@ -374,7 +436,7 @@ select ltrim('abcdefg','fegab')ltrim from dual;
 (1 row)
 ```
 
-17、兼容rtrim函数，功能：去除指定字符串的右侧空格，测试用例如下：
+18、兼容rtrim函数，功能：去除指定字符串的右侧空格，测试用例如下：
 去除'   abcdefg   '的右侧空格：
 
 ```
@@ -395,7 +457,7 @@ select rtrim('abcdefg','fegab')rtrim from dual;
 (1 row)
 ```
 
-18、兼容length函数，功能：求取指定字符串字符的长度，支持参数：char/integer/varchar2测试用例如下：
+19、兼容length函数，功能：求取指定字符串字符的长度，支持参数：char/integer/varchar2测试用例如下：
 查询223的字符长度：
 
 ```
@@ -426,7 +488,7 @@ select length('ivorysql数据库') from dual;
 (1 row)
 ```
 
-19、兼容lengthb功能：求取指定字符串字节的长度，支持参数：char/bytea/varchar2测试用例如下：
+20、兼容lengthb功能：求取指定字符串字节的长度，支持参数：char/bytea/varchar2测试用例如下：
 查询'ivorysql'的字节长度:
 
 ```
@@ -457,7 +519,7 @@ select lengthb('ivorysql数据库'::varchar2) from dual;
 (1 row)
 ```
 
-20、兼容replace函数，功能：替换指定字符串中的字符或删除字符，支持参数：text, text, text/varchar2, varchar2, varchar2 DEFAULT NULL::varchar2, 测试用例如下：
+21、兼容replace函数，功能：替换指定字符串中的字符或删除字符，支持参数：text, text, text/varchar2, varchar2, varchar2 DEFAULT NULL::varchar2, 测试用例如下：
 替换'jack and jue'中的'j'为'bl'：
 
 ```
@@ -478,7 +540,7 @@ select replace('jack and jue','j') from dual;
 (1 row)
 ```
 
-21、兼容regexp_replace函数，此函数为replace函数的扩展。功能：用于通过正则表达式来进行匹配替换。支持参数：text, text, text /text, text, text, integer/varchar2, varchar2/varchar2, varchar2 varchar2, 测试用例如下：
+22、兼容regexp_replace函数，此函数为replace函数的扩展。功能：用于通过正则表达式来进行匹配替换。支持参数：text, text, text /text, text, text, integer/varchar2, varchar2/varchar2, varchar2 varchar2, 测试用例如下：
 将匹配到的数字替换为*#：
 
 ```
@@ -518,7 +580,7 @@ select regexp_replace('01234abcd56789','012','xxx')from dual;
 (1 row)
 ```
 
-22、兼容regexp_substr函数，功能：拾取合符正则表达式描述的字符子串，支持参数：text, text,integer /text, text, integer, integer/ text, text, integer, integer, text /varchar2 ,varchar2,测试用例如下：
+23、兼容regexp_substr函数，功能：拾取合符正则表达式描述的字符子串，支持参数：text, text,integer /text, text, integer, integer/ text, text, integer, integer, text /varchar2 ,varchar2,测试用例如下：
 查询'012ab34'中从第一个数开始的012字串：
 
 ```
@@ -568,7 +630,7 @@ select regexp_substr('数据库', '数据') from dual;
 (1 row)
 ```
 
-23、兼容regexp_instr函数，功能：用于标定符合正则表达式的字符子串的开始位置，支持参数：text, text,integer /text, text, integer, integer/ text, text, integer, integer, text/text, text, integer, integer, text, integer/ varchar2, varchar2,测试用例如下：
+24、兼容regexp_instr函数，功能：用于标定符合正则表达式的字符子串的开始位置，支持参数：text, text,integer /text, text, integer, integer/ text, text, integer, integer, text/text, text, integer, integer, text, integer/ varchar2, varchar2,测试用例如下：
 查询'abcaBcabc'中从第一个字符开始，出现abc子串的位置：
 
 ```
@@ -619,7 +681,7 @@ SELECT regexp_instr('数据库', '库');
 (1 row)
 ```
 
-24、兼容regexp_like函数，功能：与like类似，用于模糊查询。支持参数：varchar2, varchar2 /varchar2, varchar2 varchar2,
+25、兼容regexp_like函数，功能：与like类似，用于模糊查询。支持参数：varchar2, varchar2 /varchar2, varchar2 varchar2,
 首先创建一个regexp_like表用于测试用例查询：
 
 ```
@@ -669,7 +731,7 @@ select * from t_regexp_like where regexp_like(value,'ABC','i');
 
 ```
 
-25、兼容to_number函数，功能：是将一些处理过的按一定格式编排过的字符串变回数值型的格式，支持参数：text/text,text测试用例如下：
+26、兼容to_number函数，功能：是将一些处理过的按一定格式编排过的字符串变回数值型的格式，支持参数：text/text,text测试用例如下：
 将字符串'-34,338,492'转换为数值型格式：
 
 ```
@@ -691,7 +753,7 @@ SELECT to_number('5.01-', '9.99S');
 (1 row)
 ```
 
-26、兼容to_char函数，功能：将数字或日期转换为字符类型，支持参数：date/date,text/timestamp/timestamp,text测试用例如下：
+27、兼容to_char函数，功能：将数字或日期转换为字符类型，支持参数：date/date,text/timestamp/timestamp,text测试用例如下：
 将当前系统日期转换为字符格式：
 
 ```
@@ -731,7 +793,7 @@ SELECT to_char(sysdate()::timestamp,'MM-YYYY-DD');
 (1 row)
 ```
 
-27、兼容to_date函数，功能：将字符类型转换为日期类型，支持参数：text/text,text测试用例如下：
+28、兼容to_date函数，功能：将字符类型转换为日期类型，支持参数：text/text,text测试用例如下：
 将'2023/07/06'转换为日期类型：
 
 ```
@@ -752,7 +814,7 @@ SELECT to_date('-44,0201','YYYY-MM-DD');
 (1 row)
 ```
 
-28、兼容to_timestamp函数，功能：可以存储年、月、日、小时、分钟、秒，同时还可以存储秒的小数部分。支持参数：text/text,text测试用例如下：
+29、兼容to_timestamp函数，功能：可以存储年、月、日、小时、分钟、秒，同时还可以存储秒的小数部分。支持参数：text/text,text测试用例如下：
 查询'2018-11-02 12:34:56.025'以日期形式输出：
 
 ```
@@ -773,7 +835,7 @@ SELECT to_timestamp('2011,12,18 11:38 ', 'YYYY-MM-DD HH24:MI:SS');
 (1 row)
 ```
 
-29、兼容to_timestamp_tz函数,功能：根据时间查询，时间字符串有T,Z并有毫秒，时区。测试用例如下：
+30、兼容to_timestamp_tz函数,功能：根据时间查询，时间字符串有T,Z并有毫秒，时区。测试用例如下：
 查询'2016-10-9 14:10:10.123000'以日期形式输出：
 
 ```
@@ -794,7 +856,7 @@ SELECT to_timestamp('2011,12,18 11:38 ', 'YYYY-MM-DD HH24:MI:SS');
 (1 row)
 ```
 
-30、兼容to_yminterval函数，功能：将一个字符串类型转化为年和月的时间差类型，支持参数:text, 测试用例如下：
+31、兼容to_yminterval函数，功能：将一个字符串类型转化为年和月的时间差类型，支持参数:text, 测试用例如下：
 查询'20110101'以后两个年零八个月后的日期：
 
 ```
@@ -805,7 +867,7 @@ select to_date('20110101','yyyymmdd')+to_yminterval('02-08') from dual;
 (1 row)
 ```
 
-31、兼容to_dsinterval函数，功能：将一个日期加上一定的小时或者天数变成另外一个日期,支持参数:text,测试用例如下：
+32、兼容to_dsinterval函数，功能：将一个日期加上一定的小时或者天数变成另外一个日期,支持参数:text,测试用例如下：
 查询当前系统时间加上9个半小时后的日期（当前为2023-07-06，18：00）：
 
 ```
@@ -816,7 +878,7 @@ select sysdate()+to_dsinterval('0 09:30:00')as newdate from dual;
 (1 row)
 ```
 
-32、兼容numtodsinterval函数，功能：将数字转换成时间间隔类型的数据。支持参数:double precision, text测试用例如下：
+33、兼容numtodsinterval函数，功能：将数字转换成时间间隔类型的数据。支持参数:double precision, text测试用例如下：
 转换100.00个小时为时间间隔类型数据：
 
 ```
@@ -837,7 +899,7 @@ SELECT NUMTODSINTERVAL(100, 'minute');
 (1 row)
 ```
 
-33、兼容numtoyminterval函数，功能：将数字转换成日期间隔类型的数据。
+34、兼容numtoyminterval函数，功能：将数字转换成日期间隔类型的数据。
 支持参数：double precision,text,测试用例如下：
 转换1.00，year为日期间隔：
 
@@ -859,7 +921,7 @@ SELECT NUMTOYMINTERVAL(1,'month');
 (1 row)
 ```
 
-34、兼容localtimestamp函数，功能：返回会话中的日期和时间，支持参数：integer, 函数中增加参数为精度，测试用例如下：
+35、兼容localtimestamp函数，功能：返回会话中的日期和时间，支持参数：integer, 函数中增加参数为精度，测试用例如下：
 返回当前会话中的日期和时间：
 
 ```
@@ -880,7 +942,7 @@ select localtimestamp(1) from dual;
 (1 row)
 ```
 
-35、兼容from_tz函数，功能：将时间从一个时区转换为另一个时区，支持参数;timestamp, text ,测试用例如下：
+36、兼容from_tz函数，功能：将时间从一个时区转换为另一个时区，支持参数;timestamp, text ,测试用例如下：
 将'2000-03-28 08:00:00', '3:00'转换为当前时区：
 
 ```
@@ -891,7 +953,7 @@ SELECT FROM_TZ(TIMESTAMP '2000-03-28 08:00:00', '3:00') FROM DUAL;
 (1 row)
 ```
 
-36、兼容sys_extract_utc函数，功能：将一个timestamptz转换为UTC时区时间。支持参数:timestamp with time zone 测试用例如下：
+37、兼容sys_extract_utc函数，功能：将一个timestamptz转换为UTC时区时间。支持参数:timestamp with time zone 测试用例如下：
 查询转换timestamp '2000-03-28 11:30:00.00 -8:00'为UTC时区后的时间：
 
 ```
@@ -902,7 +964,7 @@ select sys_extract_utc(timestamp '2000-03-28 11:30:00.00 -8:00') from dual;
 (1 row)
 ```
 
-37、兼容sessiontimezone函数，功能：查看时区详细信息，测试用例如下：
+38、兼容sessiontimezone函数，功能：查看时区详细信息，测试用例如下：
 查看当前时区的详细信息：
 
 ```
@@ -925,7 +987,7 @@ select sessiontimezone() from dual;
 (1 row)
 ```
 
-38、兼容hextoraw函数，功能：将字符串表示的二进制数值转换为一个raw数值。支持参数：text,测试用例如下：
+39、兼容hextoraw函数，功能：将字符串表示的二进制数值转换为一个raw数值。支持参数：text,测试用例如下：
 将字符串'abcdef'转换为raw数值：
 
 ```
@@ -936,7 +998,7 @@ select hextoraw('abcdef')from dual;
 (1 row)
 ```
 
-39、兼容uid函数，功能：获取数据库的实例名。测试用例如下：
+40、兼容uid函数，功能：获取数据库的实例名。测试用例如下：
 获取当前数据库的实例名：
 
 ```
@@ -947,7 +1009,7 @@ select uid() from dual;
 (1 row)
 ```
 
-40、兼容USERENV函数，功能：返回当前用户环境的信息，测试用例如下：
+41、兼容USERENV函数，功能：返回当前用户环境的信息，测试用例如下：
 查看当前用户是否是dba，如果是返回ture：
 
 ```
@@ -968,7 +1030,7 @@ select userenv('sessionid')from dual;
 (1 row)
 ```
 
-41、兼容ASCIISTR函数，功能：传入字符串，返回对应的ASCII字符，测试用例如下：
+42、兼容ASCIISTR函数，功能：传入字符串，返回对应的ASCII字符，测试用例如下：
 只有ASCII字符：
 ```
  select asciistr('Hello, World!') from dual;
@@ -995,7 +1057,7 @@ select userenv('sessionid')from dual;
 (1 row)
 ```
 
-42、兼容TO_MULTI_BYTE函数, 功能：将字符串中的半角字符转换为全角字符：
+43、兼容TO_MULTI_BYTE函数, 功能：将字符串中的半角字符转换为全角字符：
 输入半角字符，转换为全角字符：
 ```
 select to_multi_byte('1.2'::text) ;
@@ -1004,7 +1066,7 @@ select to_multi_byte('1.2'::text) ;
  １．２
 ```
 
-43、兼容TO_SINGLE_BYTE函数, 功能：将字符串中的半角字符转换为全角字符
+44、兼容TO_SINGLE_BYTE函数, 功能：将字符串中的半角字符转换为全角字符
 输入全角字符，转换为半角字符：
 ```
 select to_single_byte('１．２');
@@ -1013,7 +1075,7 @@ select to_single_byte('１．２');
  1.2
 ```
 
-44、兼容COMPOSE函数,功能：将基本字符和组合标记组合一个复合Unicode字符:
+45、兼容COMPOSE函数,功能：将基本字符和组合标记组合一个复合Unicode字符:
 输入基本字符a和组合标记768, 返回法语à
 ```
 select compose('a'||chr(768)) from dual;
@@ -1024,7 +1086,7 @@ select compose('a'||chr(768)) from dual;
 ```
 
 
-45、兼容DECOMPOSE函数,功能：将复合Unicode字符（如带有重音或特殊符号的字符）分解为其基本字符和组合标记
+46、兼容DECOMPOSE函数,功能：将复合Unicode字符（如带有重音或特殊符号的字符）分解为其基本字符和组合标记
 输入法语é,返回基本字符e和组合标记301：
 ```
 select asciistr(decompose('é')) from dual;
