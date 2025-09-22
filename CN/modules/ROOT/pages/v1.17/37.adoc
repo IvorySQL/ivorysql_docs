@@ -90,14 +90,18 @@ pg_cron还允许使用 '$'表示月份的最后一天。
 ```
 # 查看所有任务
 SELECT * FROM cron.job;
+```
 
 image::p31.png[]
 
+```
 # 查看任务执行历史
 SELECT * FROM cron.job_run_details ORDER BY start_time DESC LIMIT 10;
+```
 
 image::p32.png[]
 
+```
 # 删除任务
 SELECT cron.unschedule('nightly-data-cleanup');
 

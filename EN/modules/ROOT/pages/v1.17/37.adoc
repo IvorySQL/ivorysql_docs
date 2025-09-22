@@ -89,14 +89,18 @@ pg_cron also allows using '$' to represent the last day of the month.
 ```
 # View all tasks
 SELECT * FROM cron.job;
+```
 
 image::p31.png[]
 
+```
 # View task execution history
 SELECT * FROM cron.job_run_details ORDER BY start_time DESC LIMIT 10;
+```
 
 image::p32.png[]
 
+```
 # Delete task
 SELECT cron.unschedule('nightly-data-cleanup');
 
