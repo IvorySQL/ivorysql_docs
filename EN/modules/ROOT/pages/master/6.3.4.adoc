@@ -1,0 +1,102 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= %ROWTYPE、%TYPE
+
+== Purpose
+
+IvorySQL provides Oracle-compatible PL/SQL data type functionality, including %TYPE and %ROWTYPE.
+
+== Implementation description
+
+=== If the reference changes, variables declared with %TYPE or %ROWTYPE will change accordingly
+
+This is a passive process. The current implementation records the dependency between functions (stored procedures) and tablename.columnname. When the referenced type changes, the function (stored procedure) cache is invalidated based on this dependency. As a result, when the function is called, it undergoes forced compilation, ensuring that the function retrieves the latest variable type.
+
+A field named `prostatus` is added to the system table `pg_proc` to indicate the status of a function (stored procedure), with three possible states: validate (v), invalidate (i), and N/A (n). After a function is successfully compiled, this status is set to valid.
+
+When parsing function content, the functions `plisql_parse_cwordtype`, `plisql_parse_wordrowtype`, and `plisql_parse_cwordrowtype` identify objects referenced by %TYPE and %ROWTYPE, record them in the `plisql_referenced_object` linked list, and finally add them to the `pg_depend` system table.
+
+Add a new dependency type, DEPENDENCY_TYPE = 't', to represent %TYPE or %ROWTYPE dependencies. When adding object reference relationships to the `pg_depend` system table, set the dependency type to 't'.
+
+When performing operations on a table (such as modifying the table type or deleting the table), check the `pg_depend` system table. If there exists a dependency type `deptype='t'` and the dependent object is a function, call the `plisql_free_function` function to clear the function cache and update the function status `prostatus` in the `pg_proc` system table to N/A (n).
+
+
+=== Variables declared with %TYPE inherit the constraints of the referenced variable.
+
+Add bool notnull member in structure PLiSQL_type;
+
+```
+/*
+ * Postgres data type
+ */
+typedef struct PLiSQL_type
+{
+	bool		notnull;		/* the type is built by variable%type,
+						 * isnull or notnull of the variable */
+```
+
+In the `plisql_parse_wordtype` or `plisql_parse_cwordtype` functions responsible for parsing %TYPE type functions, determine if the referenced variable type specifies a NOT NULL constraint, and set the `bool notnull` attribute of the returned `datatype` member to `true`. In the `decl_statement` grammar of the `pl_gram.y` file, assign the `notnull` attribute of the `PLiSQL_variable *var` variable based on the `bool notnull` member of `PLiSQL_type`. This way, the constraints of the referenced variable are inherited.
+
+
+=== Use table_name%ROWTYPE or view_name%ROWTYPE as the parameter type of a function / stored procedure or the return type of a function
+
+Add support of %TOWTYPE for func_type in ora_gram.y
+
+```
+| type_function_name attrs '%' ROWTYPE
+				{
+					$$ = makeTypeNameFromNameList(lcons(makeString($1), $2));
+					$$->row_type = true;
+					$$->location = @1;
+				}			
+```
+
+Add a member `bool row_type` to the `TypeName` struct to indicate whether %ROWTYPE is specified.
+
+```
+typedef struct TypeName
+{
+	bool		pct_type;	/* %TYPE specified? */
+	bool		row_type;	/* %ROWTYPE specified? */
+```	
+	
+In the `LookupTypeName` function, if the `row_type` member of `TypeName` is `TRUE`, obtain the schema name and table name from the `names` member of `TypeName`, and then retrieve the table's `typeoid`.
+
+=== Enhancement to INSERT statement
+
+In `ora_gram.y`, add new syntax to support `VALUES` without requiring parentheses '(' afterward.
+
+```
+values_clause_no_parens:
+			VALUES columnref
+				{
+					SelectStmt *n = makeNode(SelectStmt);
+					n->valuesLists = list_make1(list_make1($2));
+					n->valuesIsrow = true;
+					$$ = (Node *) n;
+				}
+```
+				
+Add a field `bool valuesIsrow` to the `SelectStmt` struct to indicate that `values` is a row.
+
+When the `transformInsertStmt` function processes the `INSERT ... VALUES` statement, if `valuesIsrow` is `true`, calls the new function `transformRowExpression` to convert `row_variable` into the equivalent `row_variable.field1, ..., row_variable.fieldN`.
+
+=== Enhancement to UPDATE statement
+
+When transforming an UPDATE statement, i.e., when calling the `transformUpdateStmt` function, if in Oracle compatibility mode, invoke the newly added `transformIvyUpdateTargetList` function. In this new function, for cases where the `origTlist` (i.e., `targetList`) does not contain a name of `row`, execute the `transformUpdateTargetList` function following the original UPDATE transform process.
+
+For cases where the `origTlist` parameter contains a name `row`, since `row` can be used as a column name in PostgreSQL but is a reserved keyword in Oracle and cannot be used as a column name, it is necessary to determine whether `row` is a column in the table being updated. If `row` is not a column in the table to be updated, call the new function `transformUpdateRowTargetList` to convert the sql statement 
+```
+UPDATE table_name SET ROW = row_variable [WHERE …]; 
+```
+into equivalent 
+```
+UPDATE table_name SET table_name.column1 = row_variable.column1, table_name.column2 = row_variable.filed2,… table_name.columnN = row_variable.columnN [WHERE …];
+```
+
+If the variable `row_variable` in the statement `UPDATE table_name SET ROW = row_variable` is not a composite type, execute the `transformUpdateTargetList` function following the original UPDATE transform process.  
+If the variable `row_variable` in the statement is a composite type, the column named `row` in the table is also a composite type, and their type OIDs match, execute the `transformUpdateTargetList` function following the original UPDATE transform process.  
+In all other cases, call the new function `transformUpdateRowTargetList` for processing.
