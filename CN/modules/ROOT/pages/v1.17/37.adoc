@@ -1,7 +1,7 @@
 
 :sectnums:
 :sectnumlevels: 5
-:imagesdir: ./images
+:imagesdir: ./_images
 
 = pg_cron 
 

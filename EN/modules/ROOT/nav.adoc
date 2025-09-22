@@ -15,6 +15,7 @@
 ** xref:v1.17/34.adoc[PGroonga]
 ** xref:v1.17/35.adoc[pgddl (DDL Extractor)]
 ** xref:v1.17/36.adoc[pgRouting]
+** xref:v1.17/37.adoc[pg_cron]
 * List of Oracle compatible features
 ** xref:v1.17/11.adoc[1、Ivorysql frame design]
 ** xref:v1.17/12.adoc[2、GUC Framework]
