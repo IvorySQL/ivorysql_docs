@@ -10,6 +10,7 @@
 ** xref:v1.17/7.adoc[开发者指南]
 ** xref:v1.17/8.adoc[运维管理指南]
 * IvorySQL生态
+** xref:v1.17/33.adoc[概述]
 ** xref:v1.17/9.adoc[PostGIS]
 ** xref:v1.17/10.adoc[pgvector]
 ** xref:v1.17/34.adoc[PGroonga]

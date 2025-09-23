@@ -35,7 +35,7 @@ tar xvf pgrouting-3.5.1.tar.gz
 cd pgrouting-3.5.1
 mkdir build
 cd build
-cmake .. -DPOSTGRESQL_PG_CONFIG=/path/to/pg_config  # eg: /usr/local/ivorysql/ivorysql-4/bin/pg_config
+cmake .. -DPOSTGRESQL_PG_CONFIG=/path/to/pg_config  # eg: /usr/local/ivorysql/ivorysql-1/bin/pg_config
 make
 sudo make install
 ```

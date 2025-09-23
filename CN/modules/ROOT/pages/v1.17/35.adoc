@@ -22,7 +22,7 @@ IvorySQL的安装包里已经集成了pgddl插件，如果使用安装包安装�
 
 ```
 cd pgddl-0.20
-# 设置PG_CONFIG环境变量值为pg_config路径，eg：/usr/local/ivorysql/ivorysql-4/bin/pg_config
+# 设置PG_CONFIG环境变量值为pg_config路径，eg：/usr/local/ivorysql/ivorysql-1/bin/pg_config
 make PG_CONFIG=/path/to/pg_config
 make PG_CONFIG=/path/to/pg_config install
 ```
