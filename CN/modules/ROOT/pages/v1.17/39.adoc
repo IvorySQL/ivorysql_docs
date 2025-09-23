@@ -16,8 +16,11 @@ VectorChord 完全兼容 pgvector 的数据类型和查询语法，确保了无�
 
 === 源码安装
 除VectorChord社区提供的安装方式以外，IvorySQL社区也提供了源码安装方式，源码安装环境为 Ubuntu 24.04(x86_64)。
+
 在编译前需要确保clang和rust已经安装：
+
 clang版本要求 >= 16, 包含libclang；
+
 rust版本要求 >= 1.89， 包含cargo
 
 [TIP]
