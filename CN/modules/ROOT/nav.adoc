@@ -17,6 +17,8 @@
 ** xref:v1.17/35.adoc[pgddl (DDL Extractor)]
 ** xref:v1.17/36.adoc[pgRouting]
 ** xref:v1.17/37.adoc[pg_cron]
+** xref:v1.17/38.adoc[pgsql-http]
+** xref:v1.17/39.adoc[vectorChord]
 * Oracle兼容功能列表
 ** xref:v1.17/11.adoc[1、Ivorysql框架设计]
 ** xref:v1.17/12.adoc[2、GUC框架]
