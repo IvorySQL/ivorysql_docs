@@ -1,7 +1,6 @@
 
 :sectnums:
 :sectnumlevels: 5
-:pgddl-version: 0.20
 
 = pgddl (DDL Extractor) 
 
@@ -22,7 +21,7 @@ IvorySQL的安装包里已经集成了pgddl插件，如果使用安装包安装�
 从https://github.com/lacanoid/pgddl/releases/tag/0.20 下载pgddl-0.20.tar.gz，解压缩。
 
 ----
-cd pgddl-{pgddl-version}
+cd pgddl-0.20
 # 设置PG_CONFIG环境变量值为pg_config路径，eg：/usr/local/ivorysql/ivorysql-1/bin/pg_config
 make PG_CONFIG=/path/to/pg_config
 make PG_CONFIG=/path/to/pg_config install

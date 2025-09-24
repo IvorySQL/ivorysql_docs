@@ -10,12 +10,16 @@
 ** xref:v1.17/7.adoc[Developer]
 ** xref:v1.17/8.adoc[Operation Management]
 * IvorySQL Ecosystem 
+** xref:v1.17/33.adoc[Overview]
 ** xref:v1.17/9.adoc[PostGIS]
 ** xref:v1.17/10.adoc[pgvector]
 ** xref:v1.17/34.adoc[PGroonga]
 ** xref:v1.17/35.adoc[pgddl (DDL Extractor)]
 ** xref:v1.17/36.adoc[pgRouting]
 ** xref:v1.17/37.adoc[pg_cron]
+** xref:v1.17/38.adoc[pgsql-http]
+** xref:v1.17/39.adoc[vectorchord]
+** xref:v1.17/40.adoc[pgvectorscale]
 * List of Oracle compatible features
 ** xref:v1.17/11.adoc[1、Ivorysql frame design]
 ** xref:v1.17/12.adoc[2、GUC Framework]
