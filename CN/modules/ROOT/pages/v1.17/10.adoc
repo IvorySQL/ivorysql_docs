@@ -1,6 +1,5 @@
 :sectnums:
 :sectnumlevels: 5
-:pgvector-version: 0.8.0
 
 = pgvector
 

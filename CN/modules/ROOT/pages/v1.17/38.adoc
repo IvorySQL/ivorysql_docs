@@ -1,7 +1,6 @@
 
 :sectnums:
 :sectnumlevels: 5
-:pgsql-http-version: 1.7.0
 
 = pgsql-http
 
