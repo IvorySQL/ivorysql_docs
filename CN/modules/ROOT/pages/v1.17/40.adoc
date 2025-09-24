@@ -1,0 +1,64 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pgvectorscale
+
+== 概述
+pgvectorscale 是 Timescale 公司推出的 PostgreSQL 扩展，旨在对流行的 pgvector 扩展进行高性能、高成本效益的补充。它专为 AI 应用中的大规模向量工作负载而设计，通过引入创新的索引算法和压缩技术，显著提升了向量相似性搜索的性能并降低了存储成本。
+
+该扩展的核心特性包括基于微软 DiskANN 研究的新索引类型 StreamingDiskANN、改进的统计二进制量化（SBQ）压缩方法，以及支持标签过滤的向量搜索功能。在基准测试中，它在处理大规模嵌入向量时展现出卓越的性能：与专用向量数据库服务相比，可实现高达 28 倍的低延迟和 16 倍的查询吞吐量，同时节省约 75% 的成本。
+
+pgvectorscale 完全兼容 pgvector 的数据类型和查询语法，确保了无缝的集成和迁移体验。它使用 Rust 语言和 PGRX 框架开发，非常适合需要在 PostgreSQL 内进行高效海量向量搜索的生产级应用。
+
+== 安装
+IvorySQL的安装包里已经集成了pgvectorscale插件，如果使用安装包安装的IvorySQL，通常不需要再手动安装pgvectorscale即可使用。其它安装方式可以参考下面的源码安装步骤。
+
+[TIP]
+环境中已经安装了IvorySQL1.17及以上版本，安装路径为/usr/local/ivorysql/ivorysql-1
+
+=== 源码安装
+
+** 安装Rust工具链
+
+```
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+** 下载pgvectorscale源码
+
+从https://github.com/timescale/pgvectorscale/releases/tag/0.8.0 下载 0.8.0的源码包 pgvectorscale-0.8.0.tar.gz
+```
+tar xvf pgvectorscale-0.8.0.tar.gz
+cd pgvectorscale-0.8.0/pgvectorscale
+```
+
+** 安装cargo-pgrx
+
+```
+cargo install --locked cargo-pgrx --version $(cargo metadata --format-version 1 | jq -r '.packages[] | select(.name == "pgrx") | .version')
+cargo pgrx init --pg14 pg_config
+```
+
+** 编译并安装扩展
+
+```
+cargo pgrx install --release
+```
+
+== 创建Extension并确认pgvectorscale版本
+
+psql 连接到数据库，执行如下命令：
+```
+ivorysql=# CREATE EXTENSION IF NOT EXISTS vectorscale CASCADE;
+CREATE EXTENSION
+
+ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'vectorscale';
+   name      | default_version | installed_version |       comment       
+-----------  +-----------------+-------------------+--------------------------------------------
+ vectorscale | 0.8.0           |  0.8.0            | diskann access method for vector search.
+(1 row)
+```
+
+== 使用
+关于pgvectorscale的使用，请参阅 https://github.com/timescale/pgvectorscale[pgvectorscale官方文档]
