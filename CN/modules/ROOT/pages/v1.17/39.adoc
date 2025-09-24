@@ -1,6 +1,7 @@
 
 :sectnums:
 :sectnumlevels: 5
+:vectorchord-version: 0.5.1
 
 = VectorChord
 

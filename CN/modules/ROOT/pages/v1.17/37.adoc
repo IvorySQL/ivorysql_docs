@@ -1,6 +1,7 @@
 
 :sectnums:
 :sectnumlevels: 5
+:pgcron-version: 1.6.0
 :imagesdir: ./_images
 
 = pg_cron 

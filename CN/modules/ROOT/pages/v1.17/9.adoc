@@ -1,6 +1,7 @@
 
 :sectnums:
 :sectnumlevels: 5
+:postgis-version: 3.4.0
 
 = PostGIS
 

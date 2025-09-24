@@ -1,6 +1,7 @@
 
 :sectnums:
 :sectnumlevels: 5
+:pgroonga-version: 4.0.1
 
 = PGroonga
 

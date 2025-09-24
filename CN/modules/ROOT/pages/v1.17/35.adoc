@@ -1,6 +1,7 @@
 
 :sectnums:
 :sectnumlevels: 5
+:pgddl-version: 0.20
 
 = pgddl (DDL Extractor) 
 

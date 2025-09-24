@@ -1,6 +1,7 @@
 
 :sectnums:
 :sectnumlevels: 5
+:pgrouting-version: 3.5.1
 
 = pgRouting
 
