@@ -1,0 +1,187 @@
+name: Pr preview
+
+on:
+  pull_request_target:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      deployments: write
+      statuses: write
+
+    steps:
+      - name: Checkout Documentation Repository (ivorysql_doc)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          path: ivorysql_doc
+
+      - name: Fetch All Relevant Branches into Local Docs Repo
+        working-directory: ./ivorysql_doc
+        run: |
+          echo "Fetching all branches from origin to update local remote-tracking branches..."
+          git fetch origin --prune --no-tags
+          
+          echo "--- Fetched Remote-Tracking Branches ---"
+          git branch -r 
+          
+      - name: Checkout Doc Builder Repository (doc_builder)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/ivory-doc-builder
+          path: ivory-doc-builder
+
+      - name: Determine Latest Version from ivorysql_docs branches
+        id: latest_version_step
+        shell: bash
+        run: |
+          echo "Detecting latest version from remote branches of ${{ github.repository_owner }}/ivorysql_docs..."
+          LATEST_VERSION_NUMBER=$( \
+            git ls-remote --heads --refs "https://github.com/${{ github.repository_owner }}/ivorysql_docs.git" 'refs/heads/v*.*' | \
+            sed 's_^[^\t]*\trefs/heads/v__g' | \
+            grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$' | \
+            sort -V | \
+            tail -n1 \
+          )
+
+          if [[ -z "$LATEST_VERSION_NUMBER" ]]; then
+            echo "::error::Could not determine latest version from branches. Please check git ls-remote command and repo accessibility."
+            exit 1
+          fi
+          
+          echo "Detected latest version number: $LATEST_VERSION_NUMBER"
+          echo "version=$LATEST_VERSION_NUMBER" >> "$GITHUB_OUTPUT"
+          
+      - name: Install yq
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+          sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
+          yq --version
+
+      - name: Modify Antora Playbooks for Local PR Build
+        working-directory: ./ivory-doc-builder
+        env:
+          DETECTED_VERSION: '${{ steps.latest_version_step.outputs.version }}'
+          START_PAGE_COMPONENT_NAME: "ivorysql-doc"
+          START_PAGE_FILE_PATH: "welcome.adoc"
+        run: |
+          PLAYBOOK_FILES=("antora-playbook-CN.yml" "antora-playbook-EN.yml")
+          NEW_LOCAL_URL="../ivorysql_doc"
+
+          for PLAYBOOK_FILE in "${PLAYBOOK_FILES[@]}"; do
+            if [ -f "$PLAYBOOK_FILE" ]; then
+              echo "--- Modifying Playbook: $PLAYBOOK_FILE ---"
+              echo "Original content of $PLAYBOOK_FILE:"
+              cat "$PLAYBOOK_FILE"
+              echo # Newline for better readability
+
+              yq -i ".content.sources[0].url = \"$NEW_LOCAL_URL\"" "$PLAYBOOK_FILE"
+
+              yq -i ".content.sources[0].branches = [\"HEAD\"]" "$PLAYBOOK_FILE"
+              
+              yq -i ".content.sources[0].edit_url = false" "$PLAYBOOK_FILE"
+              if [[ -n "$DETECTED_VERSION" ]]; then
+                NEW_START_PAGE="${START_PAGE_COMPONENT_NAME}::v${DETECTED_VERSION}/${START_PAGE_FILE_PATH}"
+                yq -i ".site.start_page = \"$NEW_START_PAGE\"" "$PLAYBOOK_FILE"
+                echo "Updated .site.start_page in $PLAYBOOK_FILE to: $NEW_START_PAGE"
+              else
+                echo "WARNING: DETECTED_VERSION is empty. Skipping start_page update for $PLAYBOOK_FILE."
+              fi
+              yq -i ".site.title = .site.title + \" (PR Preview)\"" "$PLAYBOOK_FILE"
+              echo "Modified content of $PLAYBOOK_FILE:"
+              cat "$PLAYBOOK_FILE"
+              echo "--- Finished modification for $PLAYBOOK_FILE ---"
+              echo # Newline
+            else
+              echo "WARNING: Playbook file $PLAYBOOK_FILE not found in $(pwd)."
+            fi
+          done
+
+      - name: Checkout WWW Repository (www)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/ivorysql_web
+          path: www_publish_target
+          
+      - name: Setup Ruby and Bundler
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.0'
+
+      - name: Install Asciidoctor PDF and related Gems
+        run: |
+          echo "Installing Asciidoctor PDF gems..."
+          gem install asciidoctor-pdf --version "~>2.3.19"
+          gem install rouge
+    
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.15'
+
+      - name: Install Antora CLI
+        run: |
+          echo "Installing Antora packages local..."
+          npm install --global antora@3.1.7  @antora/lunr-extension  @antora/pdf-extension  @node-rs/jieba
+
+      - name: Build English Documentation
+        working-directory: ./ivory-doc-builder
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Building English site..."
+          #mkdir -p ../www_publish_target/docs/en
+          npx antora generate --stacktrace --to-dir ../www_publish_target/docs/en antora-playbook-EN.yml
+
+      - name: Build Chinese Documentation
+        working-directory: ./ivory-doc-builder
+        run: |
+          echo "Building Chinese site..."
+          #mkdir -p ../www_publish_target/docs/cn
+          npx antora generate --stacktrace --to-dir ../www_publish_target/docs/cn antora-playbook-CN.yml
+            
+      - name: Deploy to Netlify
+        id: netlify_deploy 
+        uses: nwtgck/actions-netlify@v3.0
+        with:
+          publish-dir: './www_publish_target/docs'
+          production-branch: test
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Deploy preview for PR #${{ github.event.number }}"
+          enable-pull-request-comment: false 
+          enable-commit-comment: false 
+          enable-commit-status: true
+          alias: pr-${{ github.event.number }}-doc
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        timeout-minutes: 5
+        
+      - name: Post Custom Preview Links Comment
+        if: steps.netlify_deploy.outputs.deploy-url
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const baseUrl = '${{ steps.netlify_deploy.outputs.deploy-url }}';
+            
+            const enUrl = `${baseUrl}/en`;
+
+            const body = `
+            🚀 **IvorySQL-Docs Preview Ready**
+
+            - **Chinese Preview:** [${baseUrl}](${baseUrl})
+            - **English Preview:** [${enUrl}](${enUrl})
+            `;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
