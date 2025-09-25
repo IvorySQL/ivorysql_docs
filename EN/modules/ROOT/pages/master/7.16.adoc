@@ -1,0 +1,194 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= %ROWTYPE、%TYPE
+
+== Purpose
+
+IvorySQL provides Oracle-compatible PL/SQL data type functionality, including %TYPE and %ROWTYPE.
+
+This document aims to introduce users to the functionality of %TYPE and %ROWTYPE.
+
+== Function descriptions
+
+IvorySQL provides Oracle-compatible %TYPE and %ROWTYPE functionality, including the following content.
+
+=== If the reference changes, variables declared with %TYPE or %ROWTYPE will change accordingly.
+
+Create table and function.
+```
+CREATE TABLE t1(id int, name varchar(20));
+
+--function's parameter datatype is tablename.columnname%TYPE
+CREATE OR REPLACE FUNCTION fun1(v t1.id%TYPE) RETURN varchar AS
+BEGIN
+  RETURN v;
+END;
+/
+```
+
+The state of function is valid and function can be executed successfully. 
+```
+SELECT prostatus FROM pg_proc WHERE proname like 'fun1'; --v
+ prostatus
+-----------
+ v
+(1 row)
+
+SELECT fun1(1) FROM dual;
+ fun1
+------
+ 1
+(1 row)
+```
+
+Modifying the previously defined declaration of a reference causes the function's status to become invalid, but the function can still execute successfully.
+
+```
+ALTER TABLE t1 ALTER COLUMN id TYPE varchar(20);
+
+SELECT prostatus FROM pg_proc WHERE proname like 'fun1'; --n
+ prostatus
+-----------
+ n
+(1 row)
+
+--after changing the column id type from int to varchar, call the function again
+SELECT fun1('a') FROM dual;  --successfully
+ fun1
+------
+ a
+(1 row)
+```
+
+re-compile the function, its state become valid.
+```
+ALTER FUNCTION fun1 COMPILE;
+SELECT prostatus FROM pg_proc WHERE proname like 'fun1'; --v
+ prostatus
+-----------
+ v
+(1 row)
+```
+
+=== Variables declared with %TYPE inherit the constraints of the referenced variable.
+
+Example：
+```
+--the following testcase will fail
+DECLARE
+  name     VARCHAR(25) NOT NULL := 'Niu';
+  surname  name%TYPE ;
+BEGIN
+  raise notice 'name=%' ,name;
+  raise notice 'surname=%' ,surname;
+END;
+/
+
+ERROR:  variable "surname" must have a default value, since it's declared NOT NULL
+LINE 3:   surname  name%TYPE ;
+          ^
+```
+
+=== Use table_name%ROWTYPE or view_name%ROWTYPE as the parameter type of a function / stored procedure or the return type of a function
+
+Example：
+```
+CREATE TABLE employees(first_name varchar(20) not null, 
+last_name varchar(20) not null,
+phone_number varchar(50));
+
+INSERT INTO employees VALUES ('Steven','Niu','1-650-555-1234');
+
+CREATE OR REPLACE PROCEDURE p0(v employees%ROWTYPE) AS
+BEGIN
+  raise notice 'v.first_name = %, v.last_name = %, v.phone_number = %',
+    v.first_name, v.last_name, v.phone_number;
+END;
+/
+
+DECLARE
+  a employees%ROWTYPE;
+BEGIN
+  select * into a from employees ;
+  raise notice 'a=%', a;
+  call p0(a);
+END;
+/
+
+NOTICE:  a=(Steven,Niu,1-650-555-1234)
+NOTICE:  v.first_name = Steven, v.last_name = Niu, v.phone_number = 1-650-555-1234
+
+\df p0
+                        List of functions
+ Schema | Name | Result data type |  Argument data types   | Type 
+--------+------+------------------+------------------------+------
+ public | p0   |                  | IN v employees%ROWTYPE | proc
+(1 row)
+```
+
+=== Enhancement to INSERT statement
+
+Support inserting a variables declared with %TYPE or %ROWTYPE into table.
+
+grammar:
+```
+INSERT INTO table_name VALUES row_variable ; 
+```
+
+Example:
+```
+CREATE TABLE t1(id int, name varchar(20));
+
+DECLARE
+  v1 t1%ROWTYPE;
+BEGIN
+  FOR i IN 1 .. 5 LOOP
+    v1.id := i;
+	v1.name := 'a' || i;
+    INSERT INTO t1 VALUES v1;
+  END LOOP;
+END;
+/
+
+
+SELECT * FROM t1;
+ id | name 
+----+------
+  1 | a1
+  2 | a2
+  3 | a3
+  4 | a4
+  5 | a5
+(5 rows)
+```
+
+=== Enhancement to UPDATE statement
+
+example:
+```
+CREATE TABLE t1(id int, name varchar(20));
+
+DELETE FROM t1;
+
+DECLARE
+  v1 t1%ROWTYPE;
+  v2 t1%ROWTYPE;
+BEGIN
+  v1.id := 11; 
+  v1.name := 'abc';
+  INSERT INTO t1 VALUES v1;
+  v2.id := 22;
+  v2.name := 'new';
+  UPDATE t1 SET ROW = v2;
+END;
+/
+
+SELECT * FROM t1;
+ id | name 
+----+------
+ 22 | new
+(1 row)
+```
