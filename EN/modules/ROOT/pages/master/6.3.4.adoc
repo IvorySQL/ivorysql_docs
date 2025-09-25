@@ -43,7 +43,7 @@ In the `plisql_parse_wordtype` or `plisql_parse_cwordtype` functions responsible
 
 === Use table_name%ROWTYPE or view_name%ROWTYPE as the parameter type of a function / stored procedure or the return type of a function
 
-Add support of %TOWTYPE for func_type in ora_gram.y
+Add support of %ROWTYPE for func_type in ora_gram.y
 
 ```
 | type_function_name attrs '%' ROWTYPE
