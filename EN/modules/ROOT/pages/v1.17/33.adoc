@@ -19,7 +19,6 @@ IvorySQL, as an advanced open-source database compatible with Oracle and based o
 | xref:v1.17/36.adoc[pgRouting] | 3.5.1 | Geographic data-based path planning extension, supports shortest path, traveling salesman problem and other algorithms | Logistics planning, traffic network analysis, path optimization services
 | xref:v1.17/37.adoc[pg_cron]​ | 1.6.0 | Provides database-internal scheduled task scheduling functionality, supports regular SQL statement execution | Data cleanup, regular statistics, automated maintenance tasks
 | xref:v1.17/38.adoc[pgsql-http]​ | 1.7.0 | Allows HTTP requests to be initiated in SQL, interacting with external web services | Data collection, API integration, microservice calls
-| xref:v1.17/39.adoc[vectorchord] | 0.5.1 | Enhances vector retrieval capabilities, provides more efficient approximate nearest neighbor search algorithms | Large-scale vector retrieval, AI inference services, similarity matching
 | xref:v1.17/40.adoc[pgvectorscale] | 0.8.0 | Provides sharding and distributed extension support for vector data, improving large-scale vector processing performance | Distributed vector databases, high-concurrency vector queries
 |====
 
