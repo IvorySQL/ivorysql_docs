@@ -13,7 +13,7 @@ It should be noted that ddlx is still under development and may not yet cover al
 == Installation
 
 [TIP]
-IvorySQL 1.17 or higher version is already installed in the environment, with the installation path at /usr/local/ivorysql/ivorysql-1
+The source installation environment is Ubuntu 24.04 (x86_64). IvorySQL 1.17 or higher version is already installed in the environment, with the installation path at /usr/local/ivorysql/ivorysql-1
 
 === Source Installation
 Download pgddl-0.20.tar.gz from https://github.com/lacanoid/pgddl/releases/tag/0.20 and extract it.

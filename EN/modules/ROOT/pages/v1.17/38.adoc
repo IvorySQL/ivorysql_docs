@@ -14,7 +14,7 @@ Typical application scenarios include: real-time retrieval of external data (suc
 The pgsql-http plugin has been integrated into the IvorySQL installation package. If IvorySQL is installed using the installation package, pgsql-http can usually be used without manual installation. Other installation methods can refer to the source code installation steps below.
 
 [TIP]
-IvorySQL 1.17 and above is already installed in the environment, with the installation path at /usr/local/ivorysql/ivorysql-1
+The source installation environment is Ubuntu 24.04 (x86_64). IvorySQL 1.17 and above is already installed in the environment, with the installation path at /usr/local/ivorysql/ivorysql-1
 
 === Source Installation
 

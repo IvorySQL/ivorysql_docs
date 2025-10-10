@@ -12,7 +12,7 @@ pg_cron is an open-source scheduled task extension for PostgreSQL that allows se
 == Installation and Configuration
 
 [TIP]
-IvorySQL 1.17 and above is already installed in the environment, with the installation path at /usr/local/ivorysql/ivorysql-1
+The source installation environment is Ubuntu 24.04 (x86_64). IvorySQL 1.17 and above is already installed in the environment, with the installation path at /usr/local/ivorysql/ivorysql-1
 
 === Source Installation
 

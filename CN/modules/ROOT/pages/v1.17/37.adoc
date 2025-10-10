@@ -29,7 +29,8 @@ make install
 
 === 配置文件 (ivorysql.conf)
 
-```
+[literal]
+----
 # 共享预加载扩展
 shared_preload_libraries = 'pg_cron'
 
@@ -38,18 +39,20 @@ cron.database_name = 'ivorysql'
 
 # 允许的最大并发任务数
 cron.max_running_jobs = 5
-```
+----
 
 === 重启服务
 
-```
+[literal]
+----
 pg_ctl restart -D ./data -l logfile
-```
+----
 
 === 创建Extension并确认pg_cron版本
 
 psql 连接到数据库，执行如下命令：
-```
+[literal]
+----
 ivorysql=# CREATE extension pg_cron;
 CREATE EXTENSION
 
@@ -58,7 +61,7 @@ ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'pg_cron';
 ---------+-----------------+-------------------+---------------------------
  pg_cron | 1.6             |                   |Job scheduler for PostgreSQL
 (1 row)
-```
+----
 
 == 核心功能使用
 
