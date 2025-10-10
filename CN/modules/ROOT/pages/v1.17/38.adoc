@@ -15,7 +15,7 @@ pgsql-http 是一个为 PostgreSQL 数据库设计的开源扩展，它允许用
 IvorySQL的安装包里已经集成了pgsql-http插件，如果使用安装包安装的IvorySQL，通常不需要再手动安装pgsql-http即可使用。其它安装方式可以参考下面的源码安装步骤。
 
 [TIP]
-环境中已经安装了IvorySQL1.17及以上版本，安装路径为/usr/local/ivorysql/ivorysql-1
+源码安装环境为 Ubuntu 24.04(x86_64)，环境中已经安装了IvorySQL1.17及以上版本，安装路径为/usr/local/ivorysql/ivorysql-1
 
 === 源码安装
 

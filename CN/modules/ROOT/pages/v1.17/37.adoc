@@ -8,12 +8,12 @@
 == 概述
 在 PostgreSQL 中运行周期性任务，例如执行 VACUUM或删除旧数据，是一种常见需求。实现这一点的简单方法是配置 cron或其他外部守护进程，使其定期连接到数据库并运行命令。然而，随着数据库越来越多地作为托管服务或独立容器运行，配置和运行一个单独的守护进程通常变得不切实际。此外，很难让您的 cron任务感知故障转移，或者跨集群节点调度任务。
 
-pg_cron 是 PostgreSQL 的开源定时任务扩展，允许直接在数据库内部设置 cron 风格的任务调度，用于自动化数据维护任务(清理，聚合), 数据库健康检查，执行存储过程和自定义函数等操作。它将cron任务存储在表中，周期性任务会随着 PostgreSQL 服务器自动进行故障转移。详情可以参见https://github.com/citusdata/pg_cron[pg_cron文档]。
+pg_cron 是 PostgreSQL 的开源定时任务扩展，允许直接在数据库内部设置 cron 风格的任务调度，用于自动化数据维护任务(清理，聚合), 数据库健康检查，执行存储过程和自定义函数等操作。它将cron任务存储在表中，周期性任务会随着 PostgreSQL 服务器自动进行故障转移。详情可以参见 https://github.com/citusdata/pg_cron[pg_cron文档]。
 
 == 安装配置
 
 [TIP]
-环境中已经安装了IvorySQL1.17及以上版本，安装路径为/usr/local/ivorysql/ivorysql-1
+源码安装环境为 Ubuntu 24.04(x86_64)，环境中已经安装了IvorySQL1.17及以上版本，安装路径为/usr/local/ivorysql/ivorysql-1
 
 === 源码安装
 
