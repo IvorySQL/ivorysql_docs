@@ -1,0 +1,114 @@
+
+:sectnums:
+:sectnumlevels: 5
+:imagesdir: ./_images
+
+= pg_cron 
+
+== 概述
+在 PostgreSQL 中运行周期性任务，例如执行 VACUUM或删除旧数据，是一种常见需求。实现这一点的简单方法是配置 cron或其他外部守护进程，使其定期连接到数据库并运行命令。然而，随着数据库越来越多地作为托管服务或独立容器运行，配置和运行一个单独的守护进程通常变得不切实际。此外，很难让您的 cron任务感知故障转移，或者跨集群节点调度任务。
+
+pg_cron 是 PostgreSQL 的开源定时任务扩展，允许直接在数据库内部设置 cron 风格的任务调度，用于自动化数据维护任务(清理，聚合), 数据库健康检查，执行存储过程和自定义函数等操作。它将cron任务存储在表中，周期性任务会随着 PostgreSQL 服务器自动进行故障转移。详情可以参见 https://github.com/citusdata/pg_cron[pg_cron文档]。
+
+== 安装配置
+
+[TIP]
+源码安装环境为 Ubuntu 24.04(x86_64)，环境中已经安装了IvorySQL1.17及以上版本，安装路径为/usr/local/ivorysql/ivorysql-1
+
+=== 源码安装
+
+[literal]
+----
+# 拉取pg_cron源码
+git clone https://github.com/citusdata/pg_cron.git
+cd pg_cron
+# 将pg_config的路径设置到PATH环境变量里，eg：
+export PATH=/usr/local/ivorysql/ivorysql-1/bin/:$PATH
+make
+make install
+----
+
+=== 配置文件 (ivorysql.conf)
+
+[literal]
+----
+# 共享预加载扩展
+shared_preload_libraries = 'pg_cron'
+
+# 指定任务元数据存储库（默认当前库）
+cron.database_name = 'ivorysql'
+
+# 允许的最大并发任务数
+cron.max_running_jobs = 5
+----
+
+=== 重启服务
+
+[literal]
+----
+pg_ctl restart -D ./data -l logfile
+----
+
+=== 创建Extension并确认pg_cron版本
+
+psql 连接到数据库，执行如下命令：
+[literal]
+----
+ivorysql=# CREATE extension pg_cron;
+CREATE EXTENSION
+
+ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'pg_cron';
+   name  | default_version | installed_version |         comment         
+---------+-----------------+-------------------+---------------------------
+ pg_cron | 1.6             |                   |Job scheduler for PostgreSQL
+(1 row)
+----
+
+== 核心功能使用
+
+=== 创建定时任务
+
+```
+SELECT cron.schedule(
+    'nightly-data-cleanup',        -- 任务名称（唯一标识）
+    '0 3 * * *',                   -- cron表达式（每天UTC 3:00）
+    $$DELETE FROM logs 
+      WHERE created_at < now() - interval '30 days'$$  -- 执行SQL
+);
+```
+
+cron表达式速查表：
+
+|====
+|示例|含义
+|'0 * * * *'|每小时整点执行
+|'*/15 * * * *'|每15分钟执行
+|'0 9 * * 1-5'|工作日早9点执行
+|'0 1 1 * *'|每月1日凌晨1点执行
+|====
+
+pg_cron还允许使用 '$'表示月份的最后一天。
+
+=== 任务管理
+
+```
+# 查看所有任务
+SELECT * FROM cron.job;
+```
+
+image::p31.png[]
+
+```
+# 查看任务执行历史
+SELECT * FROM cron.job_run_details ORDER BY start_time DESC LIMIT 10;
+```
+
+image::p32.png[]
+
+```
+# 删除任务
+SELECT cron.unschedule('nightly-data-cleanup');
+
+# 暂停任务（更新状态）
+UPDATE cron.job SET active = false WHERE jobname = 'delete-job-run-details';
+```

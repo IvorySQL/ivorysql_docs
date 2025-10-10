@@ -1,0 +1,59 @@
+:sectnums:
+:sectnumlevels: 5
+
+= pgRouting
+
+== Overview
+pgRouting is an open-source geospatial routing extension library built on PostgreSQL/PostGIS databases. It endows databases with powerful network analysis capabilities, enabling them to handle complex path planning and graph theory computation problems, such as calculating the shortest path between two points, performing Traveling Salesman Problem (TSP) analysis, or computing service area coverage. It embeds routing algorithms directly into the database, thereby avoiding complex data transfer and computation at the application layer.
+
+The core advantage of this extension lies in its ability to leverage PostgreSQL's powerful data management capabilities and PostGIS's rich spatial functions to perform efficient computation on spatial network data directly within the database. This not only simplifies application development processes but also significantly improves the performance of large-scale network analysis by reducing data movement.
+
+pgRouting is widely used in logistics and distribution, traffic navigation, network analysis, urban planning, and supply chain management, among other fields. Its open-source nature has attracted continuous contributions and improvements from developers worldwide, making it one of the preferred tools for path analysis and network solving in the spatial database domain.
+
+== Installation
+
+[TIP]
+The source installation environment is Ubuntu 24.04 (x86_64). IvorySQL 1.17 or higher version is already installed in the environment, with the installation path at /usr/local/ivorysql/ivorysql-1
+
+=== Source Installation
+
+** Install dependencies
+
+It depends on perl, which is generally already installed when installing IvorySQL, so no need to install it here.
+CMake version requirement >= 3.12, Boost version >= 1.56
+[literal]
+----
+# Install dependencies
+sudo apt install cmake libboost-all-dev
+----
+
+** Compile and install
+[literal]
+----
+wget https://github.com/pgRouting/pgrouting/releases/download/v3.5.1/pgrouting-3.5.1.tar.gz
+tar xvf pgrouting-3.5.1.tar.gz
+cd pgrouting-3.5.1
+mkdir build
+cd build
+cmake .. -DPOSTGRESQL_PG_CONFIG=/path/to/pg_config  # eg: /usr/local/ivorysql/ivorysql-4/bin/pg_config
+make
+sudo make install
+----
+
+== Create Extension and Confirm pgRouting Version
+
+Connect to the database with psql and execute the following commands:
+[literal]
+----
+ivorysql=# CREATE extension pgrouting;
+CREATE EXTENSION
+
+ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'pgrouting';
+   name    | default_version | installed_version |       comment       
+-----------+-----------------+-------------------+---------------------
+ pgrouting | 3.5.1           |                   | pgRouting Extension
+(1 row)
+----
+
+== Usage
+For pgRouting usage, please refer to the https://docs.pgrouting.org/[pgRouting Official Documentation]
