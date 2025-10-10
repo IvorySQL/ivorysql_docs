@@ -22,26 +22,29 @@ IvorySQL的安装包里已经集成了pgsql-http插件，如果使用安装包�
 ** 安装依赖
 
 对libcurl有依赖，libcurl的开发文件（例如 libcurl4-openssl-dev）需要提前安装上
-```
+[literal]
+----
 #安装依赖
 sudo apt install libcurl4-openssl-dev
-```
+----
 
 ** 编译安装
 
 从https://github.com/pramsey/pgsql-http/releases/tag/v1.7.0 下载 1.7.0的源码包 pgsql-http-1.7.0.tar.gz
-```
+[literal]
+----
 tar xvf pgsql-http-1.7.0.tar.gz
 cd pgsql-http-1.7.0
 # 确保pg_config在PATH里可以访问，eg: /usr/local/ivorysql/ivorysql-1/bin/pg_config
 make
 sudo make install
-```
+----
 
 == 创建Extension并确认http版本
 
 psql 连接到数据库，执行如下命令：
-```
+[literal]
+----
 ivorysql=# CREATE extension http;
 CREATE EXTENSION
 
@@ -50,7 +53,7 @@ ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'http';
 -----------+-----------------+-------------------+-------------------------------------------------------------------------
  http      | 1.7             |  1.7              | HTTP client for PostgreSQL, allows web page retrieval inside the database.
 (1 row)
-```
+----
 
 == 使用
 关于pgsql-http的使用，请参阅 https://github.com/pramsey/pgsql-http[pgsql-http官方文档]

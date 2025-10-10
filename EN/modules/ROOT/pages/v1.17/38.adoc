@@ -21,6 +21,7 @@ The source installation environment is Ubuntu 24.04 (x86_64). IvorySQL 1.17 and 
 ** Install Dependencies
 
 It depends on libcurl, and libcurl development files (such as libcurl4-openssl-dev) need to be installed in advance
+[literal]
 ----
 # Install dependencies
 sudo apt install libcurl4-openssl-dev
@@ -29,6 +30,7 @@ sudo apt install libcurl4-openssl-dev
 ** Compile and Install
 
 Download the 1.7.0 source package pgsql-http-1.7.0.tar.gz from https://github.com/pramsey/pgsql-http/releases/tag/v1.7.0
+[literal]
 ----
 tar xvf pgsql-http-1.7.0.tar.gz
 cd pgsql-http-1.7.0
@@ -40,6 +42,7 @@ sudo make install
 == Create Extension and Confirm http Version
 
 Connect to the database with psql and execute the following commands:
+[literal]
 ----
 ivorysql=# CREATE extension http;
 CREATE EXTENSION

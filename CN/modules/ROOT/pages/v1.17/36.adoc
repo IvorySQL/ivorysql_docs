@@ -23,13 +23,15 @@ IvorySQL的安装包里已经集成了pgRouting插件，如果使用安装包安
 
 对perl有依赖，perl一般在装IvorySQL时已经装上了，这里不用再装。
 CMake版本要求 >= 3.12, Boost版本 >= 1.56
-```
+[literal]
+----
 #安装依赖
 sudo apt install cmake libboost-all-dev
-```
+----
 
 ** 编译安装
-```
+[literal]
+----
 wget https://github.com/pgRouting/pgrouting/releases/download/v3.5.1/pgrouting-3.5.1.tar.gz
 tar xvf pgrouting-3.5.1.tar.gz
 cd pgrouting-3.5.1
@@ -38,12 +40,13 @@ cd build
 cmake .. -DPOSTGRESQL_PG_CONFIG=/path/to/pg_config  # eg: /usr/local/ivorysql/ivorysql-1/bin/pg_config
 make
 sudo make install
-```
+----
 
 == 创建Extension并确认ddlx版本
 
 psql 连接到数据库，执行如下命令：
-```
+[literal]
+----
 ivorysql=# CREATE extension pgrouting;
 CREATE EXTENSION
 
@@ -52,7 +55,7 @@ ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'pgrouting';
 -----------+-----------------+-------------------+---------------------
  pgrouting | 3.5.1           |                   | pgRouting Extension
 (1 row)
-```
+----
 
 == 使用
 关于pgRouting的使用，请参阅 https://docs.pgrouting.org/[pgRouting官方文档]

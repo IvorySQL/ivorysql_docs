@@ -18,17 +18,19 @@ The source installation environment is Ubuntu 24.04 (x86_64). IvorySQL 1.17 or h
 === Source Installation
 Download pgddl-0.20.tar.gz from https://github.com/lacanoid/pgddl/releases/tag/0.20 and extract it.
 
-```
+[literal]
+----
 cd pgddl-0.20
 # Set the PG_CONFIG environment variable to the pg_config path, e.g.: /usr/local/ivorysql/ivorysql-4/bin/pg_config
 make PG_CONFIG=/path/to/pg_config
 make PG_CONFIG=/path/to/pg_config install
-```
+----
 
 == Create Extension and Confirm ddlx Version
 
 Connect to the database with psql and execute the following commands:
-```
+[literal]
+----
 ivorysql=# CREATE extension ddlx;
 CREATE EXTENSION
 
@@ -37,7 +39,7 @@ ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'ddlx';
 ------+-----------------+-------------------+-------------------------
  ddlx | 0.20            | 0.20              | DDL eXtractor functions
 (1 row)
-```
+----
 
 == Usage
 For pgddl usage, please refer to the https://github.com/lacanoid/pgddl[ddlx Official Documentation]

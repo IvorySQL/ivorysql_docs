@@ -21,35 +21,40 @@ IvorySQL的安装包里已经集成了pgvectorscale插件，如果使用安装�
 
 ** 安装Rust工具链
 
-```
+[literal]
+----
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-```
+----
 
 ** 下载pgvectorscale源码
 
 从https://github.com/timescale/pgvectorscale/releases/tag/0.8.0 下载 0.8.0的源码包 pgvectorscale-0.8.0.tar.gz
-```
+[literal]
+----
 tar xvf pgvectorscale-0.8.0.tar.gz
 cd pgvectorscale-0.8.0/pgvectorscale
-```
+----
 
 ** 安装cargo-pgrx
 
-```
+[literal]
+----
 cargo install --locked cargo-pgrx --version $(cargo metadata --format-version 1 | jq -r '.packages[] | select(.name == "pgrx") | .version')
 cargo pgrx init --pg14 pg_config
-```
+----
 
 ** 编译并安装扩展
 
-```
+[literal]
+----
 cargo pgrx install --release
-```
+----
 
 == 创建Extension并确认pgvectorscale版本
 
 psql 连接到数据库，执行如下命令：
-```
+[literal]
+----
 ivorysql=# CREATE EXTENSION IF NOT EXISTS vectorscale CASCADE;
 CREATE EXTENSION
 
@@ -58,7 +63,7 @@ ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'vectorscale';
 -----------  +-----------------+-------------------+--------------------------------------------
  vectorscale | 0.8.0           |  0.8.0            | diskann access method for vector search.
 (1 row)
-```
+----
 
 == 使用
 关于pgvectorscale的使用，请参阅 https://github.com/timescale/pgvectorscale[pgvectorscale官方文档]

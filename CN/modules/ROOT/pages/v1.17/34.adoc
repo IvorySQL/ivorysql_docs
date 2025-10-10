@@ -22,72 +22,81 @@ IvorySQL的安装包里已经集成了PGroonga插件，如果使用安装包安�
 ==== 安装 groonga
 
 ** 安装依赖 kytea
-```
+[literal]
+----
 git clone https://github.com/neubig/kytea.git
 autoreconf -i
 ./configure
 make
 sudo make install
-```
+----
 
 ** 安装依赖 libzmq
-```
+[literal]
+----
 从https://github.com/zeromq/libzmq/releases/tag/v4.3.5 下载zeromq-4.3.5.tar.gz
 tar xvf zeromq-4.3.5.tar.gz
 cd zeromq-4.3.5/
 ./configure
 make
 sudo make install
-```
+----
 
 ** 下载 groonga包，安装指定依赖
-```
+[literal]
+----
 wget https://packages.groonga.org/source/groonga/groonga-latest.tar.gz
 tar xvf groonga-15.1.5.tar.gz
 cd groonga-15.1.5
 #运行这个脚本安装依赖，支持apt和dnf包管理工具
 ./ setup.sh
-```
+----
 
 ** 编译安装
-```
+[literal]
+----
 # -S 指定groonga源码目录, -B 指定build目录，这个目录是个源码目录之外的一个只用于build的目录
 cmake -S /home/ivorysql/groonga-15.1.5 -B /home/ivorysql/groonga_build --preset=release-maximum
 cmake --build /home/ivorysql/groonga_build
 sudo cmake --install /home/ivorysql/groonga_build
 # 更新动态链接库缓存 
 sudo ldconfig
-```
+----
 
 ** 验证 groonga安装成功
-```
+[literal]
+----
 $ groonga --version
 Groonga 15.1.5 [Linux,x86_64,utf8,match-escalation-threshold=0,nfkc,mecab,message-pack,mruby,onigmo,zlib,lz4,zstandard,epoll,apache-arrow,xxhash,blosc,bfloat16,h3,simdjson,llama.cpp]
-```
+----
 
 ==== 安装 pgroonga
-```
+[literal]
+----
 wget https://packages.groonga.org/source/pgroonga/pgroonga-4.0.1.tar.gz
 tar xvf pgroonga-4.0.1.tar.gz
 cd pgroonga-4.0.1
-```
+----
 
 编译PGroonga，有个选项：HAVE_MSGPACK=1，它是用于支持WAL，使用这个选项需要安装msgpack-c 1.4.1或者更高版本。在基于Debian的平台使用libmsgpack-dev包，在CentOS 7上用msgpack-devel
-```
+[literal]
+----
 #安装依赖
 sudo apt install libmsgpack-dev
-```
+----
 
 运行make前确保pg_config命令的路径在PATH环境变量里
-```
+[literal]
+----
 make HAVE_MSGPACK=1
 make install
-```
+----
 
 == 创建Extension并确认PGroonga版本
 
 psql 连接到数据库，执行如下命令：
-```
+[literal]
+----
 ivorysql=# CREATE extension pgroonga;
 CREATE EXTENSION
 
@@ -96,7 +105,7 @@ ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'pgroonga';
 ---------+-----------------+-------------------+-------------------------------------------------------------------------------
  pgroonga| 4.0.1           | 4.0.1             | Super fast and all languages supported full text search index based on Groonga
 (1 row)
-```
+----
 
 == 使用
 关于PGroonga的使用，请参阅 https://pgroonga.github.io/tutorial[PGroonga官方文档]

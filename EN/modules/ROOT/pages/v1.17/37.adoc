@@ -16,7 +16,8 @@ The source installation environment is Ubuntu 24.04 (x86_64). IvorySQL 1.17 and 
 
 === Source Installation
 
-```
+[literal]
+----
 # Clone pg_cron source code
 git clone https://github.com/citusdata/pg_cron.git
 cd pg_cron
@@ -24,11 +25,12 @@ cd pg_cron
 export PATH=/usr/local/ivorysql/ivorysql-1/bin/:$PATH
 make
 make install
-```
+----
 
 === Configuration File (ivorysql.conf)
 
-```
+[literal]
+----
 # Shared preload extensions
 shared_preload_libraries = 'pg_cron'
 
@@ -37,18 +39,20 @@ cron.database_name = 'ivorysql'
 
 # Maximum number of concurrent tasks allowed
 cron.max_running_jobs = 5
-```
+----
 
 === Restart Service
 
-```
+[literal]
+----
 pg_ctl restart -D ./data -l logfile
-```
+----
 
 === Create Extension and Confirm pg_cron Version
 
 Connect to the database with psql and execute the following commands:
-```
+[literal]
+----
 ivorysql=# CREATE extension pg_cron;
 CREATE EXTENSION
 
@@ -57,20 +61,21 @@ ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'pg_cron';
 ---------+-----------------+-------------------+---------------------------
  pg_cron | 1.6             |                   |Job scheduler for PostgreSQL
 (1 row)
-```
+----
 
 == Core Functionality Usage
 
 === Creating Scheduled Tasks
 
-```
+[literal]
+----
 SELECT cron.schedule(
     'nightly-data-cleanup',        -- Task name (unique identifier)
     '0 3 * * *',                   -- Cron expression (daily at UTC 3:00)
     $$DELETE FROM logs 
       WHERE created_at < now() - interval '30 days'$$  -- SQL to execute
 );
-```
+----
 
 Cron expression quick reference:
 
@@ -86,24 +91,27 @@ pg_cron also allows using '$' to represent the last day of the month.
 
 === Task Management
 
-```
+[literal]
+----
 # View all tasks
 SELECT * FROM cron.job;
-```
+----
 
 image::p31.png[]
 
-```
+[literal]
+----
 # View task execution history
 SELECT * FROM cron.job_run_details ORDER BY start_time DESC LIMIT 10;
-```
+----
 
 image::p32.png[]
 
-```
+[literal]
+----
 # Delete task
 SELECT cron.unschedule('nightly-data-cleanup');
 
 # Pause task (update status)
 UPDATE cron.job SET active = false WHERE jobname = 'delete-job-run-details';
-```
+----

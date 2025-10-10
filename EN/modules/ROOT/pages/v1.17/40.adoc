@@ -20,6 +20,7 @@ The source installation environment is Ubuntu 24.04 (x86_64). IvorySQL 1.17 and 
 
 ** Install Rust Toolchain
 
+[literal]
 ----
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ----
@@ -27,6 +28,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ** Download pgvectorscale Source Code
 
 Download the 0.8.0 source package pgvectorscale-0.8.0.tar.gz from https://github.com/timescale/pgvectorscale/releases/tag/0.8.0
+[literal]
 ----
 tar xvf pgvectorscale-0.8.0.tar.gz
 cd pgvectorscale-0.8.0/pgvectorscale
@@ -34,6 +36,7 @@ cd pgvectorscale-0.8.0/pgvectorscale
 
 ** Install cargo-pgrx
 
+[literal]
 ----
 cargo install --locked cargo-pgrx --version $(cargo metadata --format-version 1 | jq -r '.packages[] | select(.name == "pgrx") | .version')
 cargo pgrx init --pg14 pg_config
@@ -41,6 +44,7 @@ cargo pgrx init --pg14 pg_config
 
 ** Compile and Install Extension
 
+[literal]
 ----
 cargo pgrx install --release
 ----
@@ -48,6 +52,7 @@ cargo pgrx install --release
 == Create Extension and Confirm pgvectorscale Version
 
 Connect to the database with psql and execute the following commands:
+[literal]
 ----
 ivorysql=# CREATE EXTENSION IF NOT EXISTS vectorscale CASCADE;
 CREATE EXTENSION

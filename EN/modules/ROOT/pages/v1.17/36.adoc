@@ -21,13 +21,15 @@ The source installation environment is Ubuntu 24.04 (x86_64). IvorySQL 1.17 or h
 
 It depends on perl, which is generally already installed when installing IvorySQL, so no need to install it here.
 CMake version requirement >= 3.12, Boost version >= 1.56
-```
+[literal]
+----
 # Install dependencies
 sudo apt install cmake libboost-all-dev
-```
+----
 
 ** Compile and install
-```
+[literal]
+----
 wget https://github.com/pgRouting/pgrouting/releases/download/v3.5.1/pgrouting-3.5.1.tar.gz
 tar xvf pgrouting-3.5.1.tar.gz
 cd pgrouting-3.5.1
@@ -36,12 +38,13 @@ cd build
 cmake .. -DPOSTGRESQL_PG_CONFIG=/path/to/pg_config  # eg: /usr/local/ivorysql/ivorysql-4/bin/pg_config
 make
 sudo make install
-```
+----
 
 == Create Extension and Confirm pgRouting Version
 
 Connect to the database with psql and execute the following commands:
-```
+[literal]
+----
 ivorysql=# CREATE extension pgrouting;
 CREATE EXTENSION
 
@@ -50,7 +53,7 @@ ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'pgrouting';
 -----------+-----------------+-------------------+---------------------
  pgrouting | 3.5.1           |                   | pgRouting Extension
 (1 row)
-```
+----
 
 == Usage
 For pgRouting usage, please refer to the https://docs.pgrouting.org/[pgRouting Official Documentation]
