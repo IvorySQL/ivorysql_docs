@@ -38,7 +38,7 @@ export PG_CONFIG=/usr/local/ivorysql/ivorysql-4/bin/pg_config
 
 ** Pull pg_vector source code
 ```
-git clone --branch v0.6.2 https://github.com/pgvector/pgvector.git
+git clone --branch v0.8.0 https://github.com/pgvector/pgvector.git
 ```
 
 ** Install pgvector

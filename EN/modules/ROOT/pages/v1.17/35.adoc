@@ -1,0 +1,45 @@
+:sectnums:
+:sectnumlevels: 5
+
+= pgddl (DDL Extractor)
+
+== Overview
+pgddl is a SQL function extension specifically designed for PostgreSQL databases. It can generate clear, formatted SQL DDL (Data Definition Language) scripts directly from the database system catalog, such as CREATE TABLE or ALTER FUNCTION. It solves the problem that PostgreSQL natively lacks commands like SHOW CREATE TABLE, allowing users to easily obtain object creation statements in a pure SQL environment without relying on external tools (such as pg_dump).
+
+This extension provides a complete solution through a set of simple SQL functions, with advantages including: requiring only SQL queries to operate, supporting flexible object filtering through WHERE clauses, and intelligently handling dependencies between objects to generate complete scripts including Drop and Create steps. This makes it particularly suitable for scenarios such as database change management, upgrade script writing, and structural auditing.
+
+It should be noted that ddlx is still under development and may not yet cover all PostgreSQL object types and advanced options. Generated scripts should always be checked and tested in non-production environments first to ensure their correctness and safety.
+
+== Installation
+
+[TIP]
+The source installation environment is Ubuntu 24.04 (x86_64). IvorySQL 1.17 or higher version is already installed in the environment, with the installation path at /usr/local/ivorysql/ivorysql-1
+
+=== Source Installation
+Download pgddl-0.20.tar.gz from https://github.com/lacanoid/pgddl/releases/tag/0.20 and extract it.
+
+[literal]
+----
+cd pgddl-0.20
+# Set the PG_CONFIG environment variable to the pg_config path, e.g.: /usr/local/ivorysql/ivorysql-4/bin/pg_config
+make PG_CONFIG=/path/to/pg_config
+make PG_CONFIG=/path/to/pg_config install
+----
+
+== Create Extension and Confirm ddlx Version
+
+Connect to the database with psql and execute the following commands:
+[literal]
+----
+ivorysql=# CREATE extension ddlx;
+CREATE EXTENSION
+
+ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'ddlx';
+ name | default_version | installed_version |         comment         
+------+-----------------+-------------------+-------------------------
+ ddlx | 0.20            | 0.20              | DDL eXtractor functions
+(1 row)
+----
+
+== Usage
+For pgddl usage, please refer to the https://github.com/lacanoid/pgddl[ddlx Official Documentation]
