@@ -24,7 +24,7 @@ IvorySQL provides Oracle-compatible NLS (National Language Support) parameter fu
 === Parameter `nls_length_semantics`
 
 In IvorySQL, data types have an attribute modifier called typmod, which provides additional information about the type. For example, in `VARCHAR(n)`, n is the type modifier. When creating or modifying table columns, you can specify the length type, such as:
-```
+```c
 	ivorysql=# create table t1(name varchar2(2 byte));
 ```
 
@@ -33,7 +33,7 @@ For columns of type `CHAR`, `VARCHAR`, or `VARCHAR2`, if the length type is not 
 Note that the `nls_length_semantics` parameter only affects newly created columns and has no impact on existing columns.
 
 In the syntax parsing file ora_gram.y, the following code converts the original `CHAR`, `VARCHAR`, or `VARCHAR2` types to oracharchar or oracharbyte based on `nls_length_semantics`.
-```
+```c
 CharacterWithLength:  character '(' Iconst ')'
 				{
 					if (ORA_PARSER == compatible_db)
@@ -67,7 +67,7 @@ CharacterWithLength:  character '(' Iconst ')'
 ```
 
 The input/output functions for the oracharchar and oracharbyte data types in IvorySQL include:
-```
+```c
 oravarcharchartypmodout() 
 oravarcharbytetypmodout() 
 oracharbytetypmodout() 
@@ -77,7 +77,7 @@ oracharchartypmodout()
 These functions call the C-language function `anychar_typmodout()`, which adjusts the output to include `BYTE` or `CHAR` based on the value of `nls_length_semantics`.
 
 Another role of `nls_length_semantics` is to limit column lengths in tables. If the original `VARCHAR` type is converted to `oracharchar`, the function `oravarcharchar()` is called, and `pg_mbcharcliplen()` calculates the character length instead of the byte length.
-```
+```c
 Datum
 oravarcharchar(PG_FUNCTION_ARGS)
 {
@@ -106,7 +106,7 @@ oravarcharchar(PG_FUNCTION_ARGS)
 === GUC Parameter `datetime_ignore_nls_mask`
 
 This parameter is defined as an int value, where the lower four bits indicate whether to ignore NLS parameter influence on the corresponding date-time formats. The mask definitions are:
-```
+```c
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02
 #define ORATIMESTAMPTZ_MASK		0x04
@@ -115,7 +115,7 @@ This parameter is defined as an int value, where the lower four bits indicate wh
 
 In the source code, this GUC parameter is used in the following functions:
 
-```
+```c
 oradate_in()
 oratimestamp_in()
 oratimestampltz_in()
@@ -127,7 +127,7 @@ If the corresponding mask is set, the native PostgreSQL processing function is c
 === GUC Parameters `nls_date_format` `nls_timestamp_format` `nls_timestamp_tz_format` 
 
 These three GUC parameters serve as format strings in the function `ora_do_to_timestamp()` for checking and parsing input strings. Their default values are:
-```
+```c
 char	   *nls_date_format = "YYYY-MM-DD";
 char	   *nls_timestamp_format = "YYYY-MM-DD HH24:MI:SS.FF6";
 char	   *nls_timestamp_tz_format = "YYYY-MM-DD HH24:MI:SS.FF6 TZH:TZM";
@@ -139,7 +139,7 @@ Setting these values to "pg" disables NLS-specific behavior, reverting to Postgr
 Currently, `nls_territory` and `nls_iso_currency` support the values CHINA and AMERICA.
 
 The default values are:
-```
+```c
 char	   *nls_territory = "AMERICA";
 char	   *nls_currency = "$";
 char	   *nls_iso_currency = "AMERICA";

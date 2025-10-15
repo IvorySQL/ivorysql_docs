@@ -27,7 +27,7 @@ IvorySQL提供了兼容Oracle的NLS参数功能，包含如下参数。
 IvorySQL中的数据类型存在一个属性修饰符 `typmod` ，是对类型的补充说明，比如在 `VARCHAR(n)` 类型中，`n` 就是类型修饰符。
 
 在创建或修改表的列时可以指定长度类型，例如:
-```
+```c
 	ivorysql=# create table t1(name varchar2(2 byte));
 ```
 
@@ -37,7 +37,7 @@ IvorySQL中的数据类型存在一个属性修饰符 `typmod` ，是对类型�
 
 在语法解析文件 ora_gram.y中，存在如下代码来根据 `nls_length_semantics` 把原本的 `char/varchar/varchar2` 类型改成 `oracharchar` 或者 `oracharbyte` ：
 
-```
+```c
 CharacterWithLength:  character '(' Iconst ')'
 				{
 					if (ORA_PARSER == compatible_db)
@@ -71,7 +71,7 @@ CharacterWithLength:  character '(' Iconst ')'
 ```
 
 IvorySQL 中数据类型 `oracharchar` 和 `oracharbyte` 的修饰符输入输出函数包括：
-```
+```c
 oravarcharchartypmodout() 
 oravarcharbytetypmodout() 
 oracharbytetypmodout()
@@ -83,7 +83,7 @@ oracharchartypmodout()
 `nls_length_semantics` 另一个作用是限制表中的列长度：
 根据上述代码在语法解析文件 ora_gram.y中，如果原本的 `varchar` 类型被转换成了 `oracharchar` 类型，则函数 `oravarcharchar()` 会被调用，而 `pg_mbcharcliplen()` 函数计算字符长度，而不是字节长度。
 
-```
+```c
 Datum
 oravarcharchar(PG_FUNCTION_ARGS)
 {
@@ -112,7 +112,7 @@ oravarcharchar(PG_FUNCTION_ARGS)
 === GUC参数 `datetime_ignore_nls_mask`
 
 这个参数被定义为一个int值，低四位分别表示是否在相应的日期时间格式上忽略NLS参数的影响，掩码定义如下：
-```
+```c
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02
 #define ORATIMESTAMPTZ_MASK		0x04
@@ -120,7 +120,7 @@ oravarcharchar(PG_FUNCTION_ARGS)
 ```
 
 在源代码中，这个GUC参数被用于下面这些函数：
-```
+```c
 oradate_in()
 oratimestamp_in()
 oratimestampltz_in()
@@ -134,7 +134,7 @@ oratimestamptz_in()
 这三个GUC参数，在函数 `ora_do_to_timestamp()` 中做为格式字符串，对输入的字符串进行格式检查与模式识别。
 
 下面是其默认值，可以通过设置其值为"pg"使其失效。"pg"表示禁用NLS特定行为，恢复为PostgreSQL的默认行为。
-```
+```c
 char	   *nls_date_format = "YYYY-MM-DD";
 char	   *nls_timestamp_format = "YYYY-MM-DD HH24:MI:SS.FF6";
 char	   *nls_timestamp_tz_format = "YYYY-MM-DD HH24:MI:SS.FF6 TZH:TZM";
@@ -146,7 +146,7 @@ char	   *nls_timestamp_tz_format = "YYYY-MM-DD HH24:MI:SS.FF6 TZH:TZM";
 
 默认值如下:
 
-```
+```c
 char	   *nls_territory = "AMERICA";
 char	   *nls_currency = "$";
 char	   *nls_iso_currency = "AMERICA";

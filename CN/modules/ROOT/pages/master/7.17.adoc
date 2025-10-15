@@ -30,7 +30,7 @@ IvorySQL提供兼容Oracle的NLS参数功能。
 
 === NLS 日期掩码设置
 示例：
-```
+```c
 ivorysql=# set ivorysql.datetime_ignore_nls_mask = 0;
 SET
 ivorysql=# select '2025-10-15 11:00:00.102030 CST'::oratimestamp ;
@@ -48,7 +48,7 @@ ivorysql=# select '2025-10-15 11:00:00.102030 CST'::oratimestamp ;
 
 === 禁用NLS日期/时间戳参数
 示例：
-```
+```c
 ivorysql=# select '2025-10-15 11:00:00.102030 '::oratimestamp ;
         oratimestamp
 ----------------------------
@@ -65,7 +65,7 @@ LINE 1: select '2025-10-15 11:00:00.102030 '::oratimestamp ;
 === 设置nls_length_semantics
 IvorySQL使用nls_length_semantics参数的值来决定长度类型，有byte和char两种值，默认为byte。
 示例：
-```
+```c
 vorysql=# alter session set nls_length_semantics = char;
 SET
 ivorysql=# create table character_tb(char_c char(6), char_b varchar2(6 byte), char_v varchar(6));
@@ -87,7 +87,7 @@ ivorysql=# select length(char_b), length(char_c), length(char_v) from character_
 ```
 === 设置NLS货币符号
 示例：
-```
+```c
 ivorysql=# show ivorysql.identifier_case_switch;
  ivorysql.identifier_case_switch
 ---------------------------------
