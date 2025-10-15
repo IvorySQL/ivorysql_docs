@@ -30,7 +30,7 @@ The following parameters are included:
 === NLS Date Mask Settings
 
 Example:
-```c
+```sql
 ivorysql=# set ivorysql.datetime_ignore_nls_mask = 0;
 SET
 ivorysql=# select '2025-10-15 11:00:00.102030 CST'::oratimestamp ;
@@ -49,7 +49,7 @@ ivorysql=# select '2025-10-15 11:00:00.102030 CST'::oratimestamp ;
 === Disabling NLS Date or Timestamp Format
 
 Example:
-```c
+```sql
 ivorysql=# select '2025-10-15 11:00:00.102030 '::oratimestamp ;
         oratimestamp
 ----------------------------
@@ -68,7 +68,7 @@ LINE 1: select '2025-10-15 11:00:00.102030 '::oratimestamp ;
 IvorySQL uses the value of the `nls_length_semantics` parameter to determine the length type, which can be either BYTE or CHAR (default is BYTE )。
 
 Example:
-```c
+```sql
 ivorysql=# alter session set nls_length_semantics = char;
 SET
 ivorysql=# create table character_tb(char_c char(6), char_b varchar2(6 byte), char_v varchar(6));
@@ -92,7 +92,7 @@ ivorysql=# select length(char_b), length(char_c), length(char_v) from character_
 === NLS Currency Symbols Settings
 
 Example:
-```c
+```sql
 ivorysql=# show ivorysql.identifier_case_switch;
  ivorysql.identifier_case_switch
 ---------------------------------
