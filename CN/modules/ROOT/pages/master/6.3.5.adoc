@@ -22,16 +22,21 @@ IvorySQL提供了兼容Oracle的NLS参数功能，包含如下参数。
 
 == 实现原理
 
-=== nls_length_semantics参数
+=== `nls_length_semantics` 参数
 
-IvorySQL中的数据类型存在一个属性修饰符typmod，是对类型的补充说明，比如在VARCHAR(n)类型中，n就是类型修饰符。在创建或修改表的列时可以指定长度类型，例如:
+IvorySQL中的数据类型存在一个属性修饰符 `typmod` ，是对类型的补充说明，比如在 `VARCHAR(n)` 类型中，`n` 就是类型修饰符。
+
+在创建或修改表的列时可以指定长度类型，例如:
 ```
 	ivorysql=# create table t1(name varchar2(2 byte));
 ```
 
-对于列类型为CHAR、VARCHAR和VARCHAR2字符型的列，当没有显式指定列的长度类型时，IvorySQL使用nls_length_semantics参数的值来决定长度类型，有byte和char两种值，默认为byte。需要特别注意的是，nls_length_semantics参数的值仅影响新创建的列，对已经存在的列不会产生任何影响。
+对于列类型为 `CHAR` 、 `VARCHAR` 和 `VARCHAR2` 字符型的列，当没有显式指定列的长度类型时，IvorySQL使用 `nls_length_semantics` 参数的值来决定长度类型，有 `byte` 和 `char` 两种值，默认为 `byte` 。
 
-在语法解析文件 ora_gram.y中，存在如下代码来根据nls_length_semantics 把原本的char/varchar/varchar2类型改成oracharchar或者oracharbyte：
+需要特别注意的是， `nls_length_semantics` 参数的值仅影响新创建的列，对已经存在的列不会产生任何影响。
+
+在语法解析文件 ora_gram.y中，存在如下代码来根据 `nls_length_semantics` 把原本的 `char/varchar/varchar2` 类型改成 `oracharchar` 或者 `oracharbyte` ：
+
 ```
 CharacterWithLength:  character '(' Iconst ')'
 				{
@@ -65,13 +70,19 @@ CharacterWithLength:  character '(' Iconst ')'
 
 ```
 
-IvorySQL 中数据类型oracharchar和oracharbyte的修饰符输入输出函数包括：
-oravarcharchartypmodout() / oravarcharbytetypmodout() / oracharbytetypmodout() / oracharchartypmodout() 
+IvorySQL 中数据类型 `oracharchar` 和 `oracharbyte` 的修饰符输入输出函数包括：
+```
+oravarcharchartypmodout() 
+oravarcharbytetypmodout() 
+oracharbytetypmodout()
+oracharchartypmodout() 
+```
 
-上面这些函数调用C语言实现的函数 anychar_typmodout() ，后者根据 nls_length_semantics 的值来调整输出的内容是否包含 byte/char 的说明。
+上面这些函数调用C语言实现的函数 `anychar_typmodout()` ，后者根据 `nls_length_semantics` 的值来调整输出的内容是否包含 `byte/char` 的说明。
 
-nls_length_semantics 另一个作用是限制表中的列长度：
-根据上述代码在语法解析文件 ora_gram.y中，如果原本的varchar类型被转换成了oracharchar类型，则函数oravarcharchar()会被调用，而pg_mbcharcliplen()函数计算字符长度，而不是字节长度。
+`nls_length_semantics` 另一个作用是限制表中的列长度：
+根据上述代码在语法解析文件 ora_gram.y中，如果原本的 `varchar` 类型被转换成了 `oracharchar` 类型，则函数 `oravarcharchar()` 会被调用，而 `pg_mbcharcliplen()` 函数计算字符长度，而不是字节长度。
+
 ```
 Datum
 oravarcharchar(PG_FUNCTION_ARGS)
@@ -98,7 +109,7 @@ oravarcharchar(PG_FUNCTION_ARGS)
 }
 ```
 
-=== GUC参数datetime_ignore_nls_mask
+=== GUC参数 `datetime_ignore_nls_mask`
 
 这个参数被定义为一个int值，低四位分别表示是否在相应的日期时间格式上忽略NLS参数的影响，掩码定义如下：
 ```
@@ -109,13 +120,19 @@ oravarcharchar(PG_FUNCTION_ARGS)
 ```
 
 在源代码中，这个GUC参数被用于下面这些函数：
-oradate_in()、oratimestamp_in()、oratimestampltz_in()以及oratimestamptz_in()。
+```
+oradate_in()
+oratimestamp_in()
+oratimestampltz_in()
+oratimestamptz_in()
+```
 
 如果相应的掩码被设置，则调用原生PG的处理函数，否则调用兼容代码并忽略NLS格式。
 
-=== GUC参数 nls_date_format/nls_timestamp_format/nls_timestamp_tz_format 
+=== GUC参数 `nls_date_format` `nls_timestamp_format` `nls_timestamp_tz_format` 
 
-这三个GUC参数，在函数 ora_do_to_timestamp() 中做为格式字符串，对输入的字符串进行格式检查与模式识别。
+这三个GUC参数，在函数 `ora_do_to_timestamp()` 中做为格式字符串，对输入的字符串进行格式检查与模式识别。
+
 下面是其默认值，可以通过设置其值为"pg"使其失效。"pg"表示禁用NLS特定行为，恢复为PostgreSQL的默认行为。
 ```
 char	   *nls_date_format = "YYYY-MM-DD";
@@ -123,17 +140,20 @@ char	   *nls_timestamp_format = "YYYY-MM-DD HH24:MI:SS.FF6";
 char	   *nls_timestamp_tz_format = "YYYY-MM-DD HH24:MI:SS.FF6 TZH:TZM";
 ```
 
-=== GUC参数 nls_currency/nls_iso_currency/nls_territory
+=== GUC参数 `nls_currency` `nls_iso_currency` `nls_territory`
 
-目前nls_territory和nls_iso_currency支持CHINA与AMERICA两个值
+目前，`nls_territory` 和 `nls_iso_currency` 支持CHINA与AMERICA两个值。
+
+默认值如下:
 
 ```
 char	   *nls_territory = "AMERICA";
 char	   *nls_currency = "$";
 char	   *nls_iso_currency = "AMERICA";
 ```
-这三个参数将在oracle兼容函数to_number()中被使用。
+
+这三个参数将在oracle兼容函数 `to_number()` 中被使用。
 [NOTE]
 ====
-`to_number()`函数尚未实现。
+`to_number()` 函数尚未实现。
 ====
