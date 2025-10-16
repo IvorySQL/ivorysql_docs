@@ -124,7 +124,7 @@ oratimestamptz_in()
 
 If the corresponding mask is set, the native PostgreSQL processing function is called; otherwise, the compatibility code is invoked, and NLS formats are ignored.
 
-=== GUC Parameters `nls_date_format` `nls_timestamp_format` `nls_timestamp_tz_format` 
+=== GUC Parameters `nls_date_format`/`nls_timestamp_format`/`nls_timestamp_tz_format`
 
 These three GUC parameters serve as format strings in the function `ora_do_to_timestamp()` for checking and parsing input strings. Their default values are:
 ```c
@@ -134,7 +134,7 @@ char	   *nls_timestamp_tz_format = "YYYY-MM-DD HH24:MI:SS.FF6 TZH:TZM";
 ```
 Setting these values to "pg" disables NLS-specific behavior, reverting to PostgreSQL's default behavior.
 
-=== GUC Parameters `nls_currency` `nls_iso_currency` `nls_territory`
+=== GUC Parameters `nls_currency`/`nls_iso_currency`/`nls_territory`
 
 Currently, `nls_territory` and `nls_iso_currency` support the values CHINA and AMERICA.
 

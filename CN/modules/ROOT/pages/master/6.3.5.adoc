@@ -129,7 +129,7 @@ oratimestamptz_in()
 
 如果相应的掩码被设置，则调用原生PG的处理函数，否则调用兼容代码并忽略NLS格式。
 
-=== GUC参数 `nls_date_format` `nls_timestamp_format` `nls_timestamp_tz_format` 
+=== GUC参数 `nls_date_format`/`nls_timestamp_format`/`nls_timestamp_tz_format`
 
 这三个GUC参数，在函数 `ora_do_to_timestamp()` 中做为格式字符串，对输入的字符串进行格式检查与模式识别。
 
@@ -140,7 +140,7 @@ char	   *nls_timestamp_format = "YYYY-MM-DD HH24:MI:SS.FF6";
 char	   *nls_timestamp_tz_format = "YYYY-MM-DD HH24:MI:SS.FF6 TZH:TZM";
 ```
 
-=== GUC参数 `nls_currency` `nls_iso_currency` `nls_territory`
+=== GUC参数 `nls_currency`/`nls_iso_currency`/`nls_territory`
 
 目前，`nls_territory` 和 `nls_iso_currency` 支持CHINA与AMERICA两个值。
 
