@@ -20,25 +20,6 @@ PGroonga 应运而生，它是一个 PostgreSQL 的扩展插件，将 ​​Groo
 
 ==== 安装 groonga
 
-** 安装依赖 kytea
-```
-git clone https://github.com/neubig/kytea.git
-autoreconf -i
-./configure
-make
-sudo make install
-```
-
-** 安装依赖 libzmq
-```
-从https://github.com/zeromq/libzmq/releases/tag/v4.3.5 下载zeromq-4.3.5.tar.gz
-tar xvf zeromq-4.3.5.tar.gz
-cd zeromq-4.3.5/
-./configure
-make
-sudo make install
-```
-
 ** 下载 groonga包，安装指定依赖
 ```
 wget https://packages.groonga.org/source/groonga/groonga-latest.tar.gz

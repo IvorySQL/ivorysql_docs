@@ -19,25 +19,6 @@ IvorySQL 4.6 or higher version is already installed in the environment, with the
 
 ==== Install groonga
 
-** Install dependency kytea
-```
-git clone https://github.com/neubig/kytea.git
-autoreconf -i
-./configure
-make
-sudo make install
-```
-
-** Install dependency libzmq
-```
-Download zeromq-4.3.5.tar.gz from https://github.com/zeromq/libzmq/releases/tag/v4.3.5
-tar xvf zeromq-4.3.5.tar.gz
-cd zeromq-4.3.5/
-./configure
-make
-sudo make install
-```
-
 ** Download groonga package and install specified dependencies
 ```
 wget https://packages.groonga.org/source/groonga/groonga-latest.tar.gz
