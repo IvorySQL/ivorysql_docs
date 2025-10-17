@@ -25,6 +25,7 @@
 **** xref:master/6.3.3.adoc[RowID]
 **** xref:master/6.3.2.adoc[OUT 参数]
 **** xref:master/6.3.4.adoc[%TYPE、%ROWTYPE]
+**** xref:master/6.3.5.adoc[NLS 参数]
 *** xref:master/6.4.adoc[国标GB18030]
 ** Oracle兼容功能列表
 *** xref:master/7.1.adoc[1、框架设计]
@@ -43,6 +44,7 @@
 *** xref:master/7.14.adoc[14、RowID]
 *** xref:master/7.15.adoc[15、OUT 参数]
 *** xref:master/7.16.adoc[16、%TYPE、%ROWTYPE]
+*** xref:master/7.17.adoc[17、NLS 参数]
 ** IvorySQL贡献指南
 *** xref:master/8.1.adoc[社区贡献指南]
 *** xref:master/8.2.adoc[asciidoc语法快速参考]
