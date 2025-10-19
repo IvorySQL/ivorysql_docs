@@ -1,0 +1,261 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= PL/iSQL函数与存储过程
+
+== 目的
+
+PostgreSQL支持函数(FUNCTION)和存储过程(PROCEDURE)，但是在语法上和Oracle有差异，为了让Oracle的PLSQL语句可以执行在IvorySQL上执行，也就是“语法兼容”，IvorySQL采取这样的解决方案：如果Oracle的子句在IvorySQL中存在相同功能的子句，则直接映射为对应的IvorySQL子句，否则只实现其语法，不实现其功能。
+
+== 实现说明
+
+PL/iSQL是IvorySQL中的过程语言名称，专门用来兼容Oracle的PLSQL语句。为了兼容Oracle风格的函数与存储过程语法，需要对psql客户端工具、SQL端以及PL/iSQL端做相应处理。
+
+=== 客户端工具psql
+
+Oracle的sqlplus工具使用斜线(/)来结束函数和存储过程，IvorySQL的客户端工具psql需要兼容同样的语法，也就是说我们常规的遇到分号发送语句给服务端的机制，当遇到Oracle风格的函数和存储过程命令时失效，改为使用斜线(/)发送命令。
+
+为此在PsqlScanStateData结构体中增加如下字段：
+```
+	bool		cancel_semicolon_terminator; /* not send command when semicolon found */
+
+	/*
+	 * State to track boundaries of Oracle ANONYMOUS BLOCK.
+	 * Case 1: Statements starting with << ident >> is Oracle anonymous block.
+	 */
+	int		token_count;			/* # of tokens, not blank or newline since start of statement */
+	bool		anonymous_label_start;	    /* T if the first token is "<<" */
+	bool		anonymous_label_ident;	/* T if the second token is an identifier */
+	bool		anonymous_label_end;	    /* T if the third token is ">>" */
+
+	/*
+	 * Case 2: DECLARE BEGIN ... END is Oracle anonymous block syntax.
+	 * DECLARE can also be a PostgreSQL cursor declaration statement, we need to tell this.
+	 */
+	bool		maybe_anonymous_declare_start;	/* T if the first token is DECLARE */
+	int		token_cursor_idx;		/* the position of keyword CURSOR in SQL statement */
+
+	/*
+	 * Case 3: DECLARE BEGIN ... END is Oracle anonymous block syntax.
+	 * BEGIN can also be a PostgreSQL transaction statement.
+	 */
+	bool		maybe_anonymous_begin_start;	/* T if the first token is BEGIN */
+
+```
+
+同时修改ora_psqlscan.l，添加和修改相应的词法规则, 以下是代码片段示例：
+```
+{
+	if (is_oracle_slash(cur_state, cur_state->scanline))
+	{
+		/* Terminate lexing temporarily */
+		cur_state->cancel_semicolon_terminator = false;
+		cur_state->maybe_anonymous_declare_start = false;
+		cur_state->maybe_anonymous_begin_start = false;
+		cur_state->anonymous_label_start = false;
+		cur_state->anonymous_label_ident = false;
+		cur_state->anonymous_label_end = false;
+		cur_state->start_state = YY_START;
+		cur_state->token_count = 0;
+		cur_state->token_cursor_idx = 0;
+		cur_state->identifier_count = 0;
+		cur_state->begin_depth = 0;
+		cur_state->ora_plsql_expect_end_symbol = END_SYMBOL_INVALID;
+		return LEXRES_SEMI;
+	}
+	ECHO;
+```
+
+Psql工具需要检测斜线/的含义，避免将注释等部分的斜线判定为结束符，为此在oracle_fe_utils/ora_psqlscan.l文件中增加一个单独的接口is_oracle_slash来检测：
+```
+bool
+is_oracle_slash(PsqlScanState state, const char *line)
+{
+	bool result = false;
+
+	switch (state->start_state)
+	{
+		case INITIAL:
+		case xqs:	/* treat these like INITIAL */
+			{
+				int len, i;
+				bool has_slash = false;
+
+				len = strlen(line);
+				for (i = 0; i < len; i++)
+				{
+					/* allow special char */
+					if (line[i] == '\t' ||
+						line[i] == '\n' ||
+						line[i] == '\r' ||
+						line[i] == ' ')
+						continue;
+
+					if (line[i] == '/')
+					{
+						if (has_slash)
+							break;
+						has_slash = true;
+						continue;
+					}
+					/* others */
+					break;
+				}
+
+				if (i == len && has_slash)
+					result = true;
+			}
+			break;
+		default:
+			break;
+	}
+
+	return result;
+}
+
+```
+
+=== SQL端
+
+SQL端要能够识别函数和存储过程的创建语法，这是通过修改ora_base_yylex来实现的。这个函数预取并缓存token，如果是Oracle语法格式则组织一个SCONST发送给PLSQL端，否则从堆栈中获取之前预读的token，按照原生PG的逻辑进行处理。
+
+在ora_base_yy_extra_type数据结构中增加如下字段：
+```
+	/*
+	 * The native PG only cache one-token info include yylloc, yylval and token
+	 * number in yyextra, IvorySQL cache multiple tokens info using two arrays. 
+	 */
+	int max_pushbacks;		/* the max size of cache array */
+	int loc_pushback; 		/* # of used tokens */
+	int	num_pushbacks;		/* # of cached tokens */
+	int	*pushback_token;			/* token number array */
+	TokenAuxData *pushback_auxdata; /* auxdata array */
+
+	OraBodyStyle body_style;
+	int          body_start;
+	int          body_level;
+```
+
+增加token堆栈的操作接口：
+|====
+| push_back_token
+| forward_token
+| ora_internal_yylex
+| internal_yylex
+|====
+
+ora_base_yylex函数中在创建函数、过程、匿名块时会预读部分token，使用上述结构缓存到堆栈中，是为了构造一个Oracle PL/SQL语法的SCONST发送给PL/iSQL端去处理。具体请参考源代码。
+
+
+=== PL/iSQL端
+
+该部分主要修改了pl_gram.y文件，以实现兼容PLSQL的函数和存储过程语法，在不影响PG原生的PL/pgSQL的前提下去兼容Oracle PL/SQL语法形式，如下是DECLARE部分兼容的代码示例，更多请参考IvorySQL源代码。
+
+```
+/*
+ * The declaration section of the outermost block in Oracle does not have the DECLARE keyword.
+ */
+ora_outermost_pl_block: ora_decl_sect K_BEGIN proc_sect exception_sect K_END opt_label
+					{
+						PLiSQL_stmt_block *new;
+
+						new = palloc0(sizeof(PLiSQL_stmt_block));
+
+						new->cmd_type	= PLISQL_STMT_BLOCK;
+						new->lineno		= plisql_location_to_lineno(@2);
+						new->stmtid		= ++plisql_curr_compile->nstatements;
+						new->label		= $1.label;
+						new->n_initvars = $1.n_initvars;
+						new->initvarnos = $1.initvarnos;
+						new->body		= $3;
+						new->exceptions	= $4;
+
+						check_labels($1.label, $6, @6);
+						plisql_ns_pop();
+
+						$$ = (PLiSQL_stmt *)new;
+					}
+				;
+
+ora_decl_sect: opt_block_label opt_ora_decl_start opt_ora_decl_stmts
+				{
+						if ($2)
+						{
+								if ($1 == NULL)
+								{
+										plisql_ns_push(NULL, PLISQL_LABEL_BLOCK);
+								}
+						}
+				}
+				opt_ora_decl_stmts
+				{
+						if ($4)
+						{
+								plisql_IdentifierLookup = IDENTIFIER_LOOKUP_NORMAL;
+								$$.label          = ($1 == NULL ?  plisql_curr_compile->namelabel : $1);
+								if ($2 && $1 == NULL)
+										$$.popname = true; 
+								else
+										$$.popname = false;
+								/* Remember variables declared in decl_stmts */
+								$$.n_initvars = plisql_add_initdatums(&($$.initvarnos));
+						}
+						else
+						{
+								plisql_IdentifierLookup = IDENTIFIER_LOOKUP_NORMAL;
+								$$.label          = ($1 == NULL ?  plisql_curr_compile->namelabel : $1);
+								$$.n_initvars = 0;
+								if ($2 && $1 == NULL)
+										$$.popname = true; 
+								else
+										$$.popname = false;
+								$$.initvarnos = NULL; 
+						}
+				}
+                ;
+
+opt_ora_decl_start: K_DECLARE
+					{
+						/* Forget any variables created before block */
+						plisql_add_initdatums(NULL);
+						/*
+						 * Disable scanner lookup of identifiers while
+						 * we process the decl_stmts
+						 */
+						plisql_IdentifierLookup = IDENTIFIER_LOOKUP_DECLARE;
+						$$ = true;
+					}
+				| /*EMPTY*/
+					{
+						/* Forget any variables created before block */
+						plisql_add_initdatums(NULL);
+						/*
+						 * Disable scanner lookup of identifiers while
+						 * we process the decl_stmts
+						 */
+						plisql_IdentifierLookup = IDENTIFIER_LOOKUP_DECLARE;
+						$$ = false;
+					}
+				;
+
+opt_ora_decl_stmts:
+				ora_decl_stmts
+					{
+						$$ = true;
+					}
+				| /*EMPTY*/
+					{
+						$$ = false;
+					}
+
+ora_decl_stmts: ora_decl_stmts ora_decl_stmt
+				| ora_decl_stmt
+				;
+
+ora_decl_stmt: decl_statement
+				;
+
+```
+

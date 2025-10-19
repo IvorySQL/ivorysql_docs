@@ -1,0 +1,563 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= PL/iSQL函数与存储过程
+
+== 目的
+
+PostgreSQL支持函数(FUNCTION)和存储过程(PROCEDURE)，但是在语法上和Oracle有差异，为了让Oracle的PLSQL语句可以执行在IvorySQL上执行，也就是“语法兼容”，IvorySQL采取这样的解决方案：如果Oracle的子句在IvorySQL中存在相同功能的子句，则直接映射为对应的IvorySQL子句，否则只实现其语法，不实现其功能。
+
+== 兼容支持
+
+具体的Oracle兼容支持包括以下几个方面：
+
+=== 1.CREATE FUNCTION语法支持EDITIONABLE/NONEDITIONABLE
+
+```
+CREATE or replace FUNCTION ora_func RETURN integer AS
+BEGIN    
+    RETURN 1;
+END;
+/
+CREATE FUNCTION
+
+select ora_func() from dual;
+ ora_func 
+----------
+        1
+(1 row)
+```
+
+=== 2.CREATE FUNCTION语法支持RETURN, IS关键字，无需指定语言
+
+```
+CREATE or replace EDITIONABLE FUNCTION ora_func RETURN integer IS
+BEGIN
+    RETURN 1;
+END;
+/
+```
+
+=== 3.CREATE FUNCTION语法函数没有参数，函数名后面不带()
+
+```
+CREATE or replace FUNCTION ora_func RETURN integer
+SHARING = METADATA
+IS
+BEGIN
+    RETURN 1;
+END;
+/
+```
+
+=== 4.CREATE FUNCTION参数个数增加，最大值可在configure时指定
+
+```
+configure --help
+	--with-max-funarg=MAXFUNARG
+```
+
+=== 5.CREATE FUNCTION语法中END; 在psql中以/结束
+
+```
+CREATE or replace EDITIONABLE FUNCTION ora_func RETURN integer IS
+BEGIN
+    RETURN 1;
+END;
+/
+```
+
+=== 6.CREATE FUNCTION语法变量声明前面没有DECLARE关键字
+
+```
+CREATE OR REPLACE
+FUNCTION ora_func (num1 IN int, num2 IN int)
+RETURN int
+AS
+ num3 int :=10;
+ num4 int :=10;
+ num5 int;
+BEGIN
+ num3 := num1 + num2;
+ num4 := num1 * num2;
+ num5 := num3 * num4;
+RETURN num5;
+END;
+/
+CREATE FUNCTION
+
+select ora_func(5,9)from dual;
+ ora_func
+----------
+      630
+(1 row)
+```
+
+=== 7.CREATE FUNCTION语法支持OUT 参数NOCOPY功能
+
+```
+CREATE OR REPLACE FUNCTION test_nocopy(a IN int, b OUT NOCOPY int, c IN OUT NOCOPY int)
+RETURN int
+IS
+BEGIN 
+   b := a;
+   c := a;
+   return 1;
+END;
+/
+```
+
+=== 8.CREATE FUNCTION语法支持sharing_clause子句
+
+```
+CREATE or replace FUNCTION ora_func RETURN integer
+SHARING = METADATA
+IS
+BEGIN
+    RETURN 1;
+END;
+/
+
+CREATE or replace FUNCTION ora_func RETURN integer
+SHARING = NONE
+IS
+BEGIN
+    RETURN 1;
+END;
+/
+```
+
+=== 9.CREATE FUNCTION语法支持invoker_rights_clause，默认权限改成DR（DEFINER）
+
+```
+CREATE or replace FUNCTION ora_func RETURN integer
+SHARING = NONE AUTHID CURRENT_USER
+IS
+BEGIN
+    RETURN 1;
+END;
+/
+CREATE or replace FUNCTION ora_func RETURN integer
+SHARING = NONE AUTHID DEFINER
+IS
+BEGIN
+    RETURN 1;
+END;
+/
+```
+
+=== 10.CREATE FUNCTION语法支持ACCESSIBLE BY
+
+```
+CREATE or replace FUNCTION ora_func RETURN integer
+SHARING = NONE AUTHID DEFINER ACCESSIBLE BY ( B )
+IS
+BEGIN
+    RETURN 1;
+END;
+/
+CREATE or replace FUNCTION ora_func RETURN integer
+SHARING = NONE AUTHID DEFINER ACCESSIBLE BY ( A.B )
+IS
+BEGIN
+    RETURN 1;
+END;
+/
+CREATE or replace FUNCTION ora_func RETURN integer
+SHARING = NONE AUTHID DEFINER ACCESSIBLE BY ( FUNCTION A.B )
+IS
+BEGIN
+    RETURN 1;
+END;
+/
+CREATE or replace FUNCTION ora_func RETURN integer
+SHARING = NONE AUTHID DEFINER
+ACCESSIBLE BY ( FUNCTION A.B, PROCEDURE C.D )
+IS
+BEGIN
+    RETURN 1;
+END;
+/
+CREATE or replace FUNCTION ora_func RETURN integer
+SHARING = NONE AUTHID DEFINER
+ACCESSIBLE BY ( FUNCTION A.B, PROCEDURE C.D, PACKAGE E,
+TRIGGER F, TYPE G )
+IS
+BEGIN
+    RETURN 1;
+END;
+/
+```
+
+=== 11.CREATE FUNCTION语法支持DEFAULT COLLATION
+
+```
+CREATE or replace FUNCTION ora_func RETURN integer
+SHARING = NONE AUTHID DEFINER
+ACCESSIBLE BY ( FUNCTION A.B, PROCEDURE C.D )
+DEFAULT COLLATION USING_NLS_COMP
+IS
+BEGIN
+    RETURN 1;
+END;
+/
+```
+
+=== 12.CREATE FUNCTION语法支持deterministic_clause，功能与IvorySQL的IMMUTABLE相同
+
+```
+CREATE or replace FUNCTION ora_func RETURN integer
+SHARING = NONE AUTHID DEFINER
+ACCESSIBLE BY ( FUNCTION A.B, PROCEDURE C.D )
+DEFAULT COLLATION USING_NLS_COMP
+DETERMINISTIC
+IS
+BEGIN
+    RETURN 1;
+END;
+/
+```
+
+=== 13.CREATE FUNCTION语法支持parallel_enable_clause，功能与IvorySQL的PARALLEL SAFE相同
+
+```
+CREATE or replace FUNCTION ora_func RETURN integer
+SHARING = NONE AUTHID DEFINER
+ACCESSIBLE BY ( FUNCTION A.B, PROCEDURE C.D )
+DEFAULT COLLATION USING_NLS_COMP
+DETERMINISTIC
+PARALLEL_ENABLE
+IS
+BEGIN
+    RETURN 1;
+END;
+/
+```
+
+=== 14.CREATE FUNCTION语法支持result_cache_clause子句
+
+```
+CREATE or replace FUNCTION ora_func RETURN integer
+SHARING = NONE AUTHID DEFINER
+ACCESSIBLE BY ( FUNCTION A.B, PROCEDURE C.D )
+DEFAULT COLLATION USING_NLS_COMP
+DETERMINISTIC
+PARALLEL_ENABLE ( PARTITION A BY RANGE ( B, C ) CLUSTER A BY ( E,F ) )
+RESULT_CACHE
+IS
+BEGIN
+    RETURN 1;
+END;
+/
+CREATE or replace FUNCTION ora_func RETURN integer
+SHARING = NONE AUTHID DEFINER
+ACCESSIBLE BY ( FUNCTION A.B, PROCEDURE C.D )
+DEFAULT COLLATION USING_NLS_COMP
+DETERMINISTIC
+PARALLEL_ENABLE ( PARTITION A BY RANGE ( B, C ) CLUSTER A BY ( E,F ) )
+RESULT_CACHE RELIES_ON ()
+IS
+BEGIN
+    RETURN 1;
+END;
+/
+CREATE or replace FUNCTION ora_func RETURN integer
+SHARING = NONE AUTHID DEFINER
+ACCESSIBLE BY ( FUNCTION A.B, PROCEDURE C.D )
+DEFAULT COLLATION USING_NLS_COMP
+DETERMINISTIC
+PARALLEL_ENABLE ( PARTITION A BY RANGE ( B, C ) CLUSTER A BY ( E,F ) )
+RESULT_CACHE RELIES_ON ( data_source1, data_source2)
+IS
+BEGIN
+    RETURN 1;
+END;
+/
+```
+
+=== 15.CREATE FUNCTION语法支持aggregate_clause子句
+
+```
+CREATE or replace FUNCTION ora_func RETURN integer
+SHARING = NONE AUTHID DEFINER
+ACCESSIBLE BY ( FUNCTION A.B, PROCEDURE C.D )
+DEFAULT COLLATION USING_NLS_COMP
+DETERMINISTIC
+PARALLEL_ENABLE ( PARTITION A BY RANGE ( B, C ) CLUSTER A BY ( E,F ) )
+RESULT_CACHE RELIES_ON ( data_source1, data_source2)
+AGGREGATE USING pg_catalog.int4
+IS
+BEGIN
+    RETURN 1;
+END;
+/
+CREATE or replace FUNCTION ora_func RETURN integer
+SHARING = NONE AUTHID DEFINER
+ACCESSIBLE BY ( FUNCTION A.B, PROCEDURE C.D )
+DEFAULT COLLATION USING_NLS_COMP
+DETERMINISTIC
+PARALLEL_ENABLE ( PARTITION A BY RANGE ( B, C ) CLUSTER A BY ( E,F ) )
+RESULT_CACHE RELIES_ON ( data_source1, data_source2)
+AGGREGATE USING int
+IS
+BEGIN
+    RETURN 1;
+END;
+/
+```
+
+=== 16.CREATE FUNCTION语法支持pipelined_clause子句
+
+```
+CREATE or replace FUNCTION ora_func RETURN integer
+SHARING = NONE AUTHID DEFINER
+ACCESSIBLE BY ( FUNCTION A.B, PROCEDURE C.D )
+DEFAULT COLLATION USING_NLS_COMP
+DETERMINISTIC
+PARALLEL_ENABLE ( PARTITION A BY RANGE ( B, C ) CLUSTER A BY ( E,F ) )
+RESULT_CACHE RELIES_ON ( data_source1, data_source2)
+AGGREGATE USING int
+PIPELINED
+IS
+BEGIN
+    RETURN 1;
+END;
+/
+```
+
+=== 17.CREATE FUNCTION语法支持sql_macro_clause子句
+
+```
+CREATE or replace FUNCTION ora_func RETURN integer
+SHARING = NONE AUTHID DEFINER
+ACCESSIBLE BY ( FUNCTION A.B, PROCEDURE C.D )
+DEFAULT COLLATION USING_NLS_COMP
+DETERMINISTIC
+PARALLEL_ENABLE ( PARTITION A BY RANGE ( B, C ) CLUSTER A BY ( E,F ) )
+RESULT_CACHE RELIES_ON ( data_source1, data_source2)
+AGGREGATE USING int
+PIPELINED TABLE POLYMORPHIC USING pg_catalog.int4
+SQL_MACRO
+IS
+BEGIN
+    RETURN 1;
+END;
+/
+```
+
+=== 18.ALTER FUNCTION语法兼容
+
+```
+alter function public.test_func noneditionable;
+alter function test_func compile;
+alter function test_func compile debug;
+alter function test_func compile debug sd = mv;
+alter function test_func compile debug reuse settings;
+```
+
+=== 19.CREATE PROCEDURE语法支持EDITIONABLE/NONEDITIONABLE
+
+```
+CREATE OR REPLACE EDITIONABLE PROCEDURE ora_procedure
+IS
+        p integer := 20;
+begin
+        raise notice '%', p;
+end;
+/
+
+CREATE OR REPLACE NONEDITIONABLE PROCEDURE ora_procedure
+IS
+        p integer := 20;
+begin
+        raise notice '%', p;
+end;
+/
+```
+
+=== 20.CREATE PROCEDURE语法函数没有参数，函数名后面不带()
+
+```
+CREATE OR REPLACE EDITIONABLE PROCEDURE ora_procedure
+IS
+        p integer := 20;  
+begin
+        raise notice '%', p;
+end;
+/
+```
+
+=== 21.CREATE PROCEDURE语法中END; 在psql中以/结束
+
+```
+CREATE OR REPLACE EDITIONABLE PROCEDURE ora_procedure
+IS
+        p integer := 20;  
+begin
+        raise notice '%', p;
+end;
+/
+```
+
+=== 22.CREATE PROCEDURE语法支持sharing_clause子句
+
+```
+CREATE OR REPLACE PROCEDURE ora_procedure
+SHARING = METADATA
+IS
+        p integer := 20;
+begin
+        raise notice '%', p;
+end;
+/
+CREATE OR REPLACE PROCEDURE ora_procedure
+SHARING = NONE
+IS
+        p integer := 20;
+begin
+        raise notice '%', p;
+end;
+/
+```
+
+=== 23.CREATE PROCEDURE语法支持DEFAULT COLLATION子句
+
+```
+CREATE OR REPLACE PROCEDURE ora_procedure
+SHARING = METADATA
+DEFAULT COLLATION USING_NLS_COMP
+IS
+        p integer := 20;
+begin
+        raise notice '%', p;
+end;
+/
+```
+
+=== 24.CREATE PROCEDURE语法支持invoker_rights_clause子句
+
+```
+CREATE OR REPLACE PROCEDURE ora_procedure
+SHARING = METADATA
+DEFAULT COLLATION USING_NLS_COMP
+AUTHID CURRENT_USER
+IS
+        p integer := 20;
+begin
+        raise notice '%', p;
+end;
+/
+CREATE OR REPLACE PROCEDURE ora_procedure
+SHARING = METADATA
+DEFAULT COLLATION USING_NLS_COMP
+AUTHID DEFINER
+IS
+        p integer := 20;
+begin
+        raise notice '%', p;
+end;
+/
+```
+
+=== 25.CREATE PROCEDURE语法支持ACCESSIBLE BY子句
+
+```
+CREATE OR REPLACE PROCEDURE ora_procedure
+SHARING = METADATA
+DEFAULT COLLATION USING_NLS_COMP
+AUTHID CURRENT_USER
+ACCESSIBLE BY ( B )
+IS
+        p integer := 20;
+begin
+        raise notice '%', p;
+end;
+/
+CREATE OR REPLACE PROCEDURE ora_procedure
+SHARING = METADATA
+DEFAULT COLLATION USING_NLS_COMP
+AUTHID CURRENT_USER
+ACCESSIBLE BY ( A.B )
+IS
+        p integer := 20;
+begin
+        raise notice '%', p;
+end;
+/
+CREATE OR REPLACE PROCEDURE ora_procedure
+SHARING = METADATA
+DEFAULT COLLATION USING_NLS_COMP
+AUTHID CURRENT_USER
+ACCESSIBLE BY ( FUNCTION A.B )
+IS
+        p integer := 20;
+begin
+        raise notice '%', p;
+end;
+/
+CREATE OR REPLACE PROCEDURE ora_procedure
+SHARING = METADATA
+DEFAULT COLLATION USING_NLS_COMP
+AUTHID CURRENT_USER
+ACCESSIBLE BY ( FUNCTION A.B, PROCEDURE C.D )
+IS
+        p integer := 20;
+begin
+        raise notice '%', p;
+end;
+/
+CREATE OR REPLACE PROCEDURE ora_procedure
+SHARING = METADATA
+DEFAULT COLLATION USING_NLS_COMP
+AUTHID CURRENT_USER
+ACCESSIBLE BY ( FUNCTION A.B, PROCEDURE C.D, PACKAGE E, TRIGGER F, TYPE G )
+IS
+        p integer := 20;
+begin
+        raise notice '%', p;
+end;
+/
+```
+
+=== 26.ALTER PROCEDURE语法兼容
+
+```
+alter procedure test_proc editionable;
+alter procedure public.test_proc noneditionable;
+alter procedure test_proc compile;
+alter procedure test_proc compile debug;
+alter procedure test_proc compile debug sd = mv;
+alter procedure test_proc compile debug reuse settings;
+```
+
+=== 27.存储过程和函数没有参数，SELECT调用支持不带（）
+
+```
+create or replace function f_noparentheses
+return int is
+begin
+return 11;
+end;
+/
+select f_noparentheses from dual;
+
+create or replace procedure protest
+as 
+begin
+raise notice 'protest';
+end;
+/  
+CALL protest();
+```
+
+=== 28.函数和存储过程相关的视图
+
+```
+相关视图位于文件 contrib/ivorysql_ora/src/sysview/sysview--1.0.sql 中，包括DBA_PROCEDURES，ALL_PROCEDURES，USER_PROCEDURES，DBA_SOURCE，ALL_SOURCE，USER_SOURCE，DBA_ARGUMENTS，ALL_ARGUMENTS，USER_ARGUMENTS等。
+```
+
+=== 29.支持--和/**/两种注释方法。
+
+=== 30.pg_dump备份SQL脚本文件的备份格式时，在函数的定义最后增加一个斜线 /。
