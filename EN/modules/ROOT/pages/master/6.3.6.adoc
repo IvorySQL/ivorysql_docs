@@ -15,7 +15,7 @@ PL/iSQL is the name of the procedural language in IvorySQL, specifically designe
 
 === Client tool psql
 
-Oracle's sqlplus tool uses a slash (/) to terminate functions and stored procedures. IvorySQL's client tool, psql, needs to be compatible with this same syntax. This means that the conventional mechanism—where statements are sent to the server upon encountering a semicolon—becomes ineffective when dealing with Oracle-style function and stored procedure commands; instead, a slash (/) is used to send the commands.
+Oracle's sqlplus tool uses a slash (/) to terminate functions and stored procedures. IvorySQL's client tool, psql, needs to be compatible with the same syntax. This means that the conventional mechanism—where statements are sent to the server upon encountering a semicolon—becomes ineffective when dealing with Oracle-style function and stored procedure commands; instead, a slash (/) is used to send the commands.
 
 To this end the following fields are added to the PsqlScanStateData structure:
 ```

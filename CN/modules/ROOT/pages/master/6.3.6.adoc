@@ -7,7 +7,7 @@
 
 == 目的
 
-PostgreSQL支持函数(FUNCTION)和存储过程(PROCEDURE)，但是在语法上和Oracle有差异，为了让Oracle的PLSQL语句可以执行在IvorySQL上执行，也就是“语法兼容”，IvorySQL采取这样的解决方案：如果Oracle的子句在IvorySQL中存在相同功能的子句，则直接映射为对应的IvorySQL子句，否则只实现其语法，不实现其功能。
+PostgreSQL支持函数(FUNCTION)和存储过程(PROCEDURE)，但是在语法上和Oracle有差异，为了让Oracle的PLSQL语句可以在IvorySQL上执行，也就是“语法兼容”，IvorySQL采取这样的解决方案：如果Oracle的子句在IvorySQL中存在相同功能的子句，则直接映射为对应的IvorySQL子句，否则只实现其语法，不实现其功能。
 
 == 实现说明
 
@@ -17,7 +17,7 @@ PL/iSQL是IvorySQL中的过程语言名称，专门用来兼容Oracle的PLSQL语
 
 Oracle的sqlplus工具使用斜线(/)来结束函数和存储过程，IvorySQL的客户端工具psql需要兼容同样的语法，也就是说我们常规的遇到分号发送语句给服务端的机制，当遇到Oracle风格的函数和存储过程命令时失效，改为使用斜线(/)发送命令。
 
-为此在PsqlScanStateData结构体中增加如下字段：
+为此在 PsqlScanStateData 结构体中增加如下字段：
 ```
 	bool		cancel_semicolon_terminator; /* not send command when semicolon found */
 
@@ -45,7 +45,7 @@ Oracle的sqlplus工具使用斜线(/)来结束函数和存储过程，IvorySQL�
 
 ```
 
-同时修改ora_psqlscan.l，添加和修改相应的词法规则, 以下是代码片段示例：
+同时修改 ora_psqlscan.l，添加和修改相应的词法规则, 以下是代码片段示例：
 ```
 {
 	if (is_oracle_slash(cur_state, cur_state->scanline))
@@ -146,12 +146,12 @@ SQL端要能够识别函数和存储过程的创建语法，这是通过修改or
 | internal_yylex
 |====
 
-ora_base_yylex函数中在创建函数、过程、匿名块时会预读部分token，使用上述结构缓存到堆栈中，是为了构造一个Oracle PL/SQL语法的SCONST发送给PL/iSQL端去处理。具体请参考源代码。
+ora_base_yylex函数中在创建函数、过程、匿名块时会预读部分token，使用上述结构缓存到堆栈中，是为了构造一个符合Oracle PL/SQL语法的SCONST发送给PL/iSQL端去处理。具体请参考源代码。
 
 
 === PL/iSQL端
 
-该部分主要修改了pl_gram.y文件，以实现兼容PLSQL的函数和存储过程语法，在不影响PG原生的PL/pgSQL的前提下去兼容Oracle PL/SQL语法形式，如下是DECLARE部分兼容的代码示例，更多请参考IvorySQL源代码。
+该部分主要修改了pl_gram.y文件，以兼容PLSQL的函数和存储过程语法，在不影响PG原生的PL/pgSQL的前提下去兼容Oracle PL/SQL语法形式，如下是DECLARE部分兼容的代码示例，更多请参考IvorySQL源代码。
 
 ```
 /*

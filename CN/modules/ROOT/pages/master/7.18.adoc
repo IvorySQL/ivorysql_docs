@@ -7,30 +7,29 @@
 
 == 目的
 
-PostgreSQL支持函数(FUNCTION)和存储过程(PROCEDURE)，但是在语法上和Oracle有差异，为了让Oracle的PLSQL语句可以执行在IvorySQL上执行，也就是“语法兼容”，IvorySQL采取这样的解决方案：如果Oracle的子句在IvorySQL中存在相同功能的子句，则直接映射为对应的IvorySQL子句，否则只实现其语法，不实现其功能。
+PostgreSQL支持函数(FUNCTION)和存储过程(PROCEDURE)，但是在语法上和Oracle有差异，为了让Oracle的PLSQL语句可以在IvorySQL上执行，也就是“语法兼容”，IvorySQL采取这样的解决方案：如果Oracle的子句在IvorySQL中存在相同功能的子句，则直接映射为对应的IvorySQL子句，否则只实现其语法，不实现其功能。
 
 == 兼容支持
 
 具体的Oracle兼容支持包括以下几个方面：
 
-=== 1.CREATE FUNCTION语法支持EDITIONABLE/NONEDITIONABLE
+=== CREATE FUNCTION 语法支持 EDITIONABLE/NONEDITIONABLE
 
 ```
-CREATE or replace FUNCTION ora_func RETURN integer AS
+CREATE or replace EDITIONABLE FUNCTION ora_func RETURN integer AS
+BEGIN   
+    RETURN 1;
+END;
+/
+
+CREATE or replace NONEDITIONABLE FUNCTION ora_func RETURN integer IS
 BEGIN    
     RETURN 1;
 END;
 /
-CREATE FUNCTION
-
-select ora_func() from dual;
- ora_func 
-----------
-        1
-(1 row)
 ```
 
-=== 2.CREATE FUNCTION语法支持RETURN, IS关键字，无需指定语言
+=== CREATE FUNCTION 语法支持 RETURN/IS 关键字，无需指定语言
 
 ```
 CREATE or replace EDITIONABLE FUNCTION ora_func RETURN integer IS
@@ -40,7 +39,7 @@ END;
 /
 ```
 
-=== 3.CREATE FUNCTION语法函数没有参数，函数名后面不带()
+=== CREATE FUNCTION 语法函数没有参数，函数名后面不带()
 
 ```
 CREATE or replace FUNCTION ora_func RETURN integer
@@ -52,14 +51,14 @@ END;
 /
 ```
 
-=== 4.CREATE FUNCTION参数个数增加，最大值可在configure时指定
+=== CREATE FUNCTION 参数个数增加，最大值可在configure时指定
 
 ```
 configure --help
 	--with-max-funarg=MAXFUNARG
 ```
 
-=== 5.CREATE FUNCTION语法中END; 在psql中以/结束
+=== CREATE FUNCTION 语法中 END; 在psql中以/结束
 
 ```
 CREATE or replace EDITIONABLE FUNCTION ora_func RETURN integer IS
@@ -69,7 +68,7 @@ END;
 /
 ```
 
-=== 6.CREATE FUNCTION语法变量声明前面没有DECLARE关键字
+=== CREATE FUNCTION 语法变量声明前面没有 DECLARE 关键字
 
 ```
 CREATE OR REPLACE
@@ -95,7 +94,7 @@ select ora_func(5,9)from dual;
 (1 row)
 ```
 
-=== 7.CREATE FUNCTION语法支持OUT 参数NOCOPY功能
+=== CREATE FUNCTION 语法支持 OUT 参数 NOCOPY 功能
 
 ```
 CREATE OR REPLACE FUNCTION test_nocopy(a IN int, b OUT NOCOPY int, c IN OUT NOCOPY int)
@@ -109,7 +108,7 @@ END;
 /
 ```
 
-=== 8.CREATE FUNCTION语法支持sharing_clause子句
+=== CREATE FUNCTION 语法支持 sharing 子句
 
 ```
 CREATE or replace FUNCTION ora_func RETURN integer
@@ -129,7 +128,7 @@ END;
 /
 ```
 
-=== 9.CREATE FUNCTION语法支持invoker_rights_clause，默认权限改成DR（DEFINER）
+=== CREATE FUNCTION 语法支持 invoker_rights (AUTHID) 子句，默认权限改成 DR（DEFINER）
 
 ```
 CREATE or replace FUNCTION ora_func RETURN integer
@@ -139,6 +138,7 @@ BEGIN
     RETURN 1;
 END;
 /
+
 CREATE or replace FUNCTION ora_func RETURN integer
 SHARING = NONE AUTHID DEFINER
 IS
@@ -148,7 +148,7 @@ END;
 /
 ```
 
-=== 10.CREATE FUNCTION语法支持ACCESSIBLE BY
+=== CREATE FUNCTION 语法支持 ACCESSIBLE BY
 
 ```
 CREATE or replace FUNCTION ora_func RETURN integer
@@ -191,7 +191,7 @@ END;
 /
 ```
 
-=== 11.CREATE FUNCTION语法支持DEFAULT COLLATION
+=== CREATE FUNCTION 语法支持 DEFAULT COLLATION
 
 ```
 CREATE or replace FUNCTION ora_func RETURN integer
@@ -205,7 +205,7 @@ END;
 /
 ```
 
-=== 12.CREATE FUNCTION语法支持deterministic_clause，功能与IvorySQL的IMMUTABLE相同
+=== CREATE FUNCTION 语法支持 deterministic 子句，功能与 IvorySQL 的 IMMUTABLE 相同
 
 ```
 CREATE or replace FUNCTION ora_func RETURN integer
@@ -220,7 +220,7 @@ END;
 /
 ```
 
-=== 13.CREATE FUNCTION语法支持parallel_enable_clause，功能与IvorySQL的PARALLEL SAFE相同
+=== CREATE FUNCTION 语法支持 parallel_enable 子句，功能与 IvorySQL 的 PARALLEL SAFE 相同
 
 ```
 CREATE or replace FUNCTION ora_func RETURN integer
@@ -236,7 +236,7 @@ END;
 /
 ```
 
-=== 14.CREATE FUNCTION语法支持result_cache_clause子句
+=== CREATE FUNCTION 语法支持 result_cache 子句
 
 ```
 CREATE or replace FUNCTION ora_func RETURN integer
@@ -277,7 +277,7 @@ END;
 /
 ```
 
-=== 15.CREATE FUNCTION语法支持aggregate_clause子句
+=== CREATE FUNCTION 语法支持 aggregate 子句
 
 ```
 CREATE or replace FUNCTION ora_func RETURN integer
@@ -308,7 +308,7 @@ END;
 /
 ```
 
-=== 16.CREATE FUNCTION语法支持pipelined_clause子句
+=== CREATE FUNCTION 语法支持 pipelined 子句
 
 ```
 CREATE or replace FUNCTION ora_func RETURN integer
@@ -327,7 +327,7 @@ END;
 /
 ```
 
-=== 17.CREATE FUNCTION语法支持sql_macro_clause子句
+=== CREATE FUNCTION 语法支持 sql_macro 子句
 
 ```
 CREATE or replace FUNCTION ora_func RETURN integer
@@ -347,7 +347,7 @@ END;
 /
 ```
 
-=== 18.ALTER FUNCTION语法兼容
+=== ALTER FUNCTION 语法兼容
 
 ```
 alter function public.test_func noneditionable;
@@ -357,7 +357,7 @@ alter function test_func compile debug sd = mv;
 alter function test_func compile debug reuse settings;
 ```
 
-=== 19.CREATE PROCEDURE语法支持EDITIONABLE/NONEDITIONABLE
+=== CREATE PROCEDURE 语法支持 EDITIONABLE / NONEDITIONABLE
 
 ```
 CREATE OR REPLACE EDITIONABLE PROCEDURE ora_procedure
@@ -377,7 +377,7 @@ end;
 /
 ```
 
-=== 20.CREATE PROCEDURE语法函数没有参数，函数名后面不带()
+=== CREATE PROCEDURE 语法函数没有参数，函数名后面不带()
 
 ```
 CREATE OR REPLACE EDITIONABLE PROCEDURE ora_procedure
@@ -389,10 +389,10 @@ end;
 /
 ```
 
-=== 21.CREATE PROCEDURE语法中END; 在psql中以/结束
+=== CREATE PROCEDURE 语法中 END; 在psql中以 / 结束
 
 ```
-CREATE OR REPLACE EDITIONABLE PROCEDURE ora_procedure
+CREATE OR REPLACE PROCEDURE ora_procedure
 IS
         p integer := 20;  
 begin
@@ -401,7 +401,7 @@ end;
 /
 ```
 
-=== 22.CREATE PROCEDURE语法支持sharing_clause子句
+=== CREATE PROCEDURE 语法支持 sharing 子句
 
 ```
 CREATE OR REPLACE PROCEDURE ora_procedure
@@ -422,7 +422,7 @@ end;
 /
 ```
 
-=== 23.CREATE PROCEDURE语法支持DEFAULT COLLATION子句
+=== CREATE PROCEDURE 语法支持 DEFAULT COLLATION 子句
 
 ```
 CREATE OR REPLACE PROCEDURE ora_procedure
@@ -436,7 +436,7 @@ end;
 /
 ```
 
-=== 24.CREATE PROCEDURE语法支持invoker_rights_clause子句
+=== CREATE PROCEDURE 语法支持 invoker_rights (AUTHID) 子句
 
 ```
 CREATE OR REPLACE PROCEDURE ora_procedure
@@ -461,7 +461,7 @@ end;
 /
 ```
 
-=== 25.CREATE PROCEDURE语法支持ACCESSIBLE BY子句
+=== CREATE PROCEDURE 语法支持 ACCESSIBLE BY 子句
 
 ```
 CREATE OR REPLACE PROCEDURE ora_procedure
@@ -521,7 +521,7 @@ end;
 /
 ```
 
-=== 26.ALTER PROCEDURE语法兼容
+=== ALTER PROCEDURE 语法兼容
 
 ```
 alter procedure test_proc editionable;
@@ -532,7 +532,7 @@ alter procedure test_proc compile debug sd = mv;
 alter procedure test_proc compile debug reuse settings;
 ```
 
-=== 27.存储过程和函数没有参数，SELECT调用支持不带（）
+=== 存储过程和函数没有参数，SELECT调用支持不带 ()
 
 ```
 create or replace function f_noparentheses
@@ -552,12 +552,12 @@ end;
 CALL protest();
 ```
 
-=== 28.函数和存储过程相关的视图
+=== 函数和存储过程相关的视图
 
 ```
 相关视图位于文件 contrib/ivorysql_ora/src/sysview/sysview--1.0.sql 中，包括DBA_PROCEDURES，ALL_PROCEDURES，USER_PROCEDURES，DBA_SOURCE，ALL_SOURCE，USER_SOURCE，DBA_ARGUMENTS，ALL_ARGUMENTS，USER_ARGUMENTS等。
 ```
 
-=== 29.支持--和/**/两种注释方法。
+=== 支持--和/**/两种注释方法
 
-=== 30.pg_dump备份SQL脚本文件的备份格式时，在函数的定义最后增加一个斜线 /。
+=== pg_dump备份SQL脚本文件的备份格式时，在函数的定义最后增加一个斜线 /

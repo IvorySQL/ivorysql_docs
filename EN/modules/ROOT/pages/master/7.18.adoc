@@ -13,23 +13,22 @@ PostgreSQL supports functions and stored procedures, but there are syntax differ
 
 The specific Oracle compatibility support includes the following aspects:
 
-=== 1. EDITIONABLE/NONEDITIONABLE is supported in CREATE FUNCTION syntax
+=== EDITIONABLE/NONEDITIONABLE is supported in CREATE FUNCTION syntax
 ```
-CREATE or replace FUNCTION ora_func RETURN integer AS
+CREATE or replace EDITIONABLE FUNCTION ora_func RETURN integer AS
+BEGIN   
+    RETURN 1;
+END;
+/
+
+CREATE or replace NONEDITIONABLE FUNCTION ora_func RETURN integer IS
 BEGIN    
     RETURN 1;
 END;
 /
-CREATE FUNCTION
-
-select ora_func() from dual;
- ora_func 
-----------
-        1
-(1 row)
 ```
 
-=== 2. Keyword 'RETURN' and 'IS' are supported in CREATE FUNCTION syntax
+=== Keyword 'RETURN' and 'IS' are supported in CREATE FUNCTION syntax
 ```
 CREATE or replace EDITIONABLE FUNCTION ora_func RETURN integer IS
 BEGIN
@@ -38,7 +37,7 @@ END;
 /
 ```
 
-=== 3. In the CREATE FUNCTION syntax, a function can have no parameters, and no parentheses () after the function name
+=== In the CREATE FUNCTION syntax, a function can have no parameters, and no parentheses () after the function name
 ```
 CREATE or replace FUNCTION ora_func RETURN integer
 SHARING = METADATA
@@ -49,13 +48,13 @@ END;
 /
 ```
 
-=== 4. Increase the number of parameters in CREATE FUNCTION syntax, the max value can be specified by configure command
+=== Increase the number of parameters in CREATE FUNCTION syntax, the max value can be specified by configure command
 ```
 configure --help
 	--with-max-funarg=MAXFUNARG
 ```
 
-=== 5. Psql uses slash (/) as terminator of statement in CREATE FUNCTION syntax
+=== Psql uses slash (/) as terminator of statement in CREATE FUNCTION syntax
 ```
 CREATE or replace EDITIONABLE FUNCTION ora_func RETURN integer IS
 BEGIN
@@ -64,7 +63,7 @@ END;
 /
 ```
 
-=== 6. No DECLARE keyword before variable in CREATE FUNCTION syntax
+=== No DECLARE keyword before variable in CREATE FUNCTION syntax
 ```
 CREATE OR REPLACE
 FUNCTION ora_func (num1 IN int, num2 IN int)
@@ -89,7 +88,7 @@ select ora_func(5,9)from dual;
 (1 row)
 ```
 
-=== 7. Support NOCOPY for OUT parameter in CREATE FUNCTION syntax
+=== Support NOCOPY for OUT parameter in CREATE FUNCTION syntax
 ```
 CREATE OR REPLACE FUNCTION test_nocopy(a IN int, b OUT NOCOPY int, c IN OUT NOCOPY int)
 RETURN int
@@ -102,7 +101,7 @@ END;
 /
 ```
 
-=== 8. Support sharing_clause clause in CREATE FUNCTION syntax 
+=== Support sharing clause in CREATE FUNCTION syntax 
 ```
 CREATE or replace FUNCTION ora_func RETURN integer
 SHARING = METADATA
@@ -121,7 +120,7 @@ END;
 /
 ```
 
-=== 9. Support invoker_rights_clause in CREATE FUNCTION syntax，and change default permission to be DR（DEFINER）
+=== Support invoker_rights (AUTHID) in CREATE FUNCTION syntax，and change default permission to be DR（DEFINER）
 ```
 CREATE or replace FUNCTION ora_func RETURN integer
 SHARING = NONE AUTHID CURRENT_USER
@@ -139,7 +138,7 @@ END;
 /
 ```
 
-=== 10. Support ACCESSIBLE BY in CREATE FUNCTION syntax 
+=== Support ACCESSIBLE BY in CREATE FUNCTION syntax 
 ```
 CREATE or replace FUNCTION ora_func RETURN integer
 SHARING = NONE AUTHID DEFINER ACCESSIBLE BY ( B )
@@ -181,7 +180,7 @@ END;
 /
 ```
 
-=== 11. Support DEFAULT COLLATION in CREATE FUNCTION syntax 
+=== Support DEFAULT COLLATION in CREATE FUNCTION syntax 
 ```
 CREATE or replace FUNCTION ora_func RETURN integer
 SHARING = NONE AUTHID DEFINER
@@ -194,7 +193,7 @@ END;
 /
 ```
 
-=== 12. Support deterministic_clause in CREATE FUNCTION syntax
+=== Support deterministic clause in CREATE FUNCTION syntax
 ```
 CREATE or replace FUNCTION ora_func RETURN integer
 SHARING = NONE AUTHID DEFINER
@@ -208,7 +207,7 @@ END;
 /
 ```
 
-=== 13. Support parallel_enable_clause in CREATE FUNCTION syntax
+=== Support parallel_enable clause in CREATE FUNCTION syntax
 ```
 CREATE or replace FUNCTION ora_func RETURN integer
 SHARING = NONE AUTHID DEFINER
@@ -223,7 +222,7 @@ END;
 /
 ```
 
-=== 14. Support result_cache_clause clause in CREATE FUNCTION syntax 
+=== Support result_cache clause in CREATE FUNCTION syntax 
 ```
 CREATE or replace FUNCTION ora_func RETURN integer
 SHARING = NONE AUTHID DEFINER
@@ -263,7 +262,7 @@ END;
 /
 ```
 
-=== 15. Support aggregate_clause clause in CREATE FUNCTION syntax 
+=== Support aggregate clause in CREATE FUNCTION syntax 
 ```
 CREATE or replace FUNCTION ora_func RETURN integer
 SHARING = NONE AUTHID DEFINER
@@ -293,7 +292,7 @@ END;
 /
 ```
 
-=== 16. Support pipelined_clause in CREATE FUNCTION syntax 
+=== Support pipelined clause in CREATE FUNCTION syntax 
 ```
 CREATE or replace FUNCTION ora_func RETURN integer
 SHARING = NONE AUTHID DEFINER
@@ -311,7 +310,7 @@ END;
 /
 ```
 
-=== 17. Support sql_macro_clause in CREATE FUNCTION syntax 
+=== Support sql_macro clause in CREATE FUNCTION syntax 
 ```
 CREATE or replace FUNCTION ora_func RETURN integer
 SHARING = NONE AUTHID DEFINER
@@ -330,7 +329,7 @@ END;
 /
 ```
 
-=== 18. Compatibility with ALTER FUNCTION syntax 
+=== Compatibility with ALTER FUNCTION syntax 
 ```
 alter function public.test_func noneditionable;
 alter function test_func compile;
@@ -339,7 +338,7 @@ alter function test_func compile debug sd = mv;
 alter function test_func compile debug reuse settings;
 ```
 
-=== 19. Support EDITIONABLE/NONEDITIONABLE in CREATE PROCEDURE syntax
+=== Support EDITIONABLE/NONEDITIONABLE in CREATE PROCEDURE syntax
 ```
 CREATE OR REPLACE EDITIONABLE PROCEDURE ora_procedure
 IS
@@ -358,7 +357,7 @@ end;
 /
 ```
 
-=== 20. In the CREATE FUNCTION syntax, a procedure can have no parameters, and no parentheses () after the function name
+=== In the CREATE PROCEDURE syntax, a procedure can have no parameters, and no parentheses () after the procedure name
 ```
 CREATE OR REPLACE EDITIONABLE PROCEDURE ora_procedure
 IS
@@ -369,7 +368,7 @@ end;
 /
 ```
 
-=== 21. Psql uses slash (/) as terminator of statement in CREATE PROCEDURE syntax
+=== Psql uses slash (/) as terminator of statement in CREATE PROCEDURE syntax
 ```
 CREATE OR REPLACE EDITIONABLE PROCEDURE ora_procedure
 IS
@@ -380,7 +379,7 @@ end;
 /
 ```
 
-=== 22. Support sharing_clause in CREATE PROCEDURE syntax 
+=== Support sharing clause in CREATE PROCEDURE syntax 
 ```
 CREATE OR REPLACE PROCEDURE ora_procedure
 SHARING = METADATA
@@ -400,7 +399,7 @@ end;
 /
 ```
 
-=== 23. Support DEFAULT COLLATION clause in CREATE PROCEDUREsyntax 
+=== Support DEFAULT COLLATION clause in CREATE PROCEDURE syntax 
 ```
 CREATE OR REPLACE PROCEDURE ora_procedure
 SHARING = METADATA
@@ -413,7 +412,7 @@ end;
 /
 ```
 
-=== 24. Support invoker_rights_clause in CREATE PROCEDURE syntax 
+=== Support invoker_rights clause (AUTHID) in CREATE PROCEDURE syntax 
 ```
 CREATE OR REPLACE PROCEDURE ora_procedure
 SHARING = METADATA
@@ -437,7 +436,7 @@ end;
 /
 ```
 
-=== 25. Support ACCESSIBLE BY clause in CREATE PROCEDURE syntax 
+=== Support ACCESSIBLE BY clause in CREATE PROCEDURE syntax 
 ```
 CREATE OR REPLACE PROCEDURE ora_procedure
 SHARING = METADATA
@@ -496,7 +495,7 @@ end;
 /
 ```
 
-=== 26. Compatibility with ALTER PROCEDURE syntax 
+=== Compatibility with ALTER PROCEDURE syntax 
 ```
 alter procedure test_proc editionable;
 alter procedure public.test_proc noneditionable;
@@ -506,7 +505,7 @@ alter procedure test_proc compile debug sd = mv;
 alter procedure test_proc compile debug reuse settings;
 ```
 
-=== 27. Function and procedure can have no parameter
+=== Function and procedure can have no parameter
 ```
 create or replace function f_noparentheses
 return int is
@@ -525,12 +524,12 @@ end;
 CALL protest();
 ```
 
-=== 28. Views related with function and stored procedure
+=== Views related with function and stored procedure
 ```
 They can be found in file contrib/ivorysql_ora/src/sysview/sysview--1.0.sql.  
 Including DBA_PROCEDURES, ALL_PROCEDURES, USER_PROCEDURES, DBA_SOURCE, ALL_SOURCE, USER_SOURCE, DBA_ARGUMENTS, ALL_ARGUMENTS, USER_ARGUMENTS etc.
 ```
 
-=== 29. Support (--) and (/* */) 
+=== Support (--) and (/* */) 
 
-=== 30. pg_dump adds one slash (/) at the end of definition of function/procedure when backup SQL file
+=== pg_dump adds one slash (/) at the end of definition of function/procedure when backup SQL file
