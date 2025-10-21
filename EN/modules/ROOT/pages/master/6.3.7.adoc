@@ -1,0 +1,113 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= Nested Subfunctions
+
+== Objective
+
+- Nested subfunctions refer to functions or procedures defined inside another function, stored procedure, or anonymous block; they are also called subprocs or inner functions.
+- Parent functions are the outer functions, stored procedures, or anonymous blocks that host nested subfunctions and are responsible for invoking them during execution.
+
+== Implementation Notes
+
+=== 1. Syntax Recognition for Nested Subfunctions
+
+==== 1. Detecting Nested Definitions
+
+When a `DECLARE` block contains a `function ... is/as begin ... end` construct, `pl_gram.y` calls `plisql_build_subproc_function()` (similar to creating a regular function and updating the entry in `pg_proc`):
+
+. Create a `PLiSQL_subproc_function` entry in the parent `PLiSQL_function`'s `subprocfuncs[]` array to store the name, arguments, return type, and other attributes, and record the index `fno` as the identifier of this subfunction.
+. Call `plisql_check_subprocfunc_properties()` to validate the combination of declaration and definition attributes.
+
+==== 2. Storing Datum Entries
+
+Nested subfunctions share the parent's datum table. During compilation, `PLiSQL_function->datums` describes variables and record fields inside the subfunction, while `PLiSQL_execstate->datums` keeps the runtime values.
+
+==== 3. Preserving Polymorphic Templates
+
+If the subfunction uses polymorphic parameters, the parser stores its source code in `subprocfunc->src` and sets `has_poly_argument` to `true` so that the executor can recompile it for each distinct argument type.
+
+=== 2. Recompiling the Parent Program
+
+. The parent `PLiSQL_function` gains a `subprocfuncs` array, each element being the `PLiSQL_subproc_function` created earlier.
+. Each `PLiSQL_subproc_function` has a `HTAB *poly_tab` pointer that is initialized on the first compilation when `has_poly_argument` is `true`. The hash key is `PLiSQL_func_hashkey`, which records the subfunction's `fno` and input argument types; the value is the compiled `PLiSQL_function *` execution context.
+
+=== 3. Name Resolution During Invocation
+
+. PostgreSQL builds a `ParseState` structure during compilation. `plisql_subprocfunc_ref()` locates the parent `PLiSQL_function` through `ParseState->p_subprocfunc_hook()` and calls `plisql_ns_lookup()` to gather all `fno` values for subfunctions sharing the same name, then selects the best match based on argument count and types.
+. When `FuncExpr` nodes are created, the subfunction call is tagged for later execution: `function_from = FUNC_FROM_SUBPROCFUNC`, `parent_func` points to the parent `PLiSQL_function`, and `funcid = fno`.
+. In `plisql_call_handler()`, when `function_from == FUNC_FROM_SUBPROCFUNC`, the runtime fetches the appropriate `PLiSQL_subproc_function` via the pair `(parent_func, fno)`:
+.. For non-polymorphic subfunctions, reuse the precompiled action tree stored in `subprocfunc->function`.
+.. For polymorphic subfunctions, probe `poly_tab`; if there is no cached plan, call `plisql_dynamic_compile_subproc()` to compile one and store it in the cache.
+. Before execution, `plisql_init_subprocfunc_globalvar()` forks relevant entries from the parent's datum table so the subfunction can access the latest parent variables without polluting the parent scope. After execution, `plisql_assign_out_subprocfunc_globalvar()` writes back the necessary variables.
+
+== Module Design
+
+=== PL/iSQL Grammar Extensions
+
+- `pl_gram.y` adds productions for subprocedure declarations and nested definitions, and records metadata such as `lastoutvardno` and subprocedure descriptors.
+- Nested subfunctions can reference variables from the parent scope, other subprocedures, and user-defined types.
+
+Whenever a `function ... is/as begin ... end` construct is seen inside a `DECLARE` block, `pl_gram.y` invokes `plisql_build_subproc_function()`:
+
+. Insert a `PLiSQL_subproc_function` entry into the parent `PLiSQL_function->subprocfuncs[]`, storing the name, arguments, return type, and other attributes, and assign an index `fno`.
+. Call `plisql_check_subprocfunc_properties()` to verify that declarations and definitions are consistent and to prevent duplicate or missing declarations from introducing semantic errors.
+
+=== Datum Storage
+
+The parent program's datum tables hold the variables accessible to nested subfunctions during compilation and execution:
+
+. `PLiSQL_function->datums` preserves the variable and record metadata visible during compilation.
+. `PLiSQL_execstate->datums` carries the live values at runtime.
+
+=== Polymorphic Templates
+
+When a subfunction contains polymorphic arguments, the parser will:
+
+. Copy the subfunction source text into `subprocfunc->src`.
+. Set `has_poly_argument = true` to prepare for dynamic recompilation based on actual argument types.
+
+=== Parent Recompilation
+
+- The parent `PLiSQL_function` includes a `subprocfuncs` array, with each element corresponding to a `PLiSQL_subproc_function`.
+- Each `PLiSQL_subproc_function` maintains an optional `HTAB *poly_tab`; when `has_poly_argument` is `true`, the cache is initialized on the first compile. Keys are `PLiSQL_func_hashkey` (subfunction `fno` plus argument types), and values are the compiled `PLiSQL_function` plans.
+
+=== Parser Hooks
+
+During compilation, PostgreSQL creates a `ParseState`. `plisql_subprocfunc_ref()` plugs into `ParseState->p_subprocfunc_hook`, reusing the namespace lookup logic to gather candidates. `plisql_get_subprocfunc_detail()` then chooses the best match based on argument count, types, and named parameters, enabling overloaded dispatch.
+
+=== FuncExpr Annotation
+
+When constructing `FuncExpr` nodes, the compiler attaches metadata so the executor can recognize nested calls:
+
+- `function_from = FUNC_FROM_SUBPROCFUNC`.
+- `parent_func` references the owning `PLiSQL_function`.
+- `funcid = fno`, enabling direct lookup of the subfunction definition.
+
+=== Nested Subfunction Lookup
+
+- `plisql_subprocfunc_ref()` implements `ParseState->p_subprocfunc_hook` and reuses the namespace search to find nested subfunctions.
+- `plisql_get_subprocfunc_detail()` applies matching rules for argument count, type, and naming to pick the optimal overload.
+
+=== Execution Path
+
+. `plisql_call_handler()` checks `function_from`; if it is a nested subfunction, the handler locates `PLiSQL_subproc_function` via `(parent_func, fno)`.
+. For regular subfunctions, reuse the cached plan stored in `subprocfunc->function`.
+. For polymorphic subfunctions, consult `poly_tab`; on a miss, call `plisql_dynamic_compile_subproc()` to build and cache a specialized plan.
+
+=== Variable Synchronization
+
+- `plisql_init_subprocfunc_globalvar()` copies the relevant entries from the parent datum table before the subfunction runs to expose the latest state.
+- `plisql_assign_out_subprocfunc_globalvar()` writes back OUT/INOUT variables after execution to keep parent and child scopes consistent without mutual pollution.
+
+=== Statement Dispatch in psql
+
+- `psqlscan.l` adjusts the push/pop logic of `proc_func_define_level` and `begin_depth` so the nested subfunction body is transmitted to the SQL engine as a whole.
+- Statements are sent only when the nesting depth returns to zero and a semicolon is reached, avoiding partial dispatch of subfunction blocks.
+
+=== Retrieving Return Information on the SQL Side
+
+- Regular functions obtain metadata via `funcid` from `pg_proc`; nested subfunctions rely on `FuncExpr.parent_func`, which holds the parent `PLiSQL_function`.
+- A set of callback pointers (registered through `plisql_register_internal_func()`) allows the SQL layer to fetch nested subfunction names, return types, and OUT parameter information on demand.

@@ -1,0 +1,83 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= 兼容Oracle 嵌套子函数
+
+== 1.目的
+
+- 在 IvorySQL 中使用 Oracle 风格嵌套子函数。
+
+== 2.功能说明
+
+- 支持在匿名块、函数或过程内部声明与调用子函数/子过程，作用域限定在父块内。
+- 子函数可读取及更新父级变量，也可定义自身局部变量；父级无法直接访问子函数内部状态。
+- 支持重载解析机制，按参数个数、类型或命名区分同名子程序。
+
+== 3.测试用例
+
+[source,sql]
+----
+DO $$
+DECLARE
+  v_result integer;
+  FUNCTION inner_square(p_value integer) RETURN integer IS
+  BEGIN
+    RAISE NOTICE 'inner_square called';
+    RETURN p_value * p_value;
+  END;
+BEGIN
+  v_result := inner_square(10);
+  RAISE NOTICE 'result=%', v_result;
+END;
+$$ LANGUAGE plisql;
+----
+
+[source,sql]
+----
+DO $$
+DECLARE
+  v_base_multiplier  integer := 20;
+  v_audit_counter    integer := 0;
+  v_result integer;
+  FUNCTION inner_square(p_value integer) RETURN integer IS
+  BEGIN
+    RAISE NOTICE 'inner_square called';
+    v_audit_counter := v_audit_counter + 1;
+    RETURN v_base_multiplier * p_value;
+  END;
+BEGIN
+  v_result := inner_square(10);
+  RAISE NOTICE 'result=%', v_result;
+  RAISE NOTICE 'v_audit_counter=%', v_audit_counter;
+END;
+$$ LANGUAGE plisql;
+----
+
+[source,sql]
+----
+-- Polymorphic nested function specializing on argument type
+DO $$
+DECLARE
+  v_last_notice text := 'none';
+
+  FUNCTION describe_value(p_input anyelement) RETURN text IS
+  BEGIN
+    v_last_notice := format('polymorphic dispatch with %s', pg_typeof(p_input));
+    RETURN v_last_notice;
+  END;
+
+  FUNCTION describe_value(p_input anyarray, p_element anyelement) RETURN text IS
+  BEGIN
+    v_last_notice := format('array dispatch with %s', pg_typeof(p_input)::text);
+    RETURN v_last_notice;
+  END;
+BEGIN
+  RAISE NOTICE '%', describe_value(100);
+  RAISE NOTICE '%', describe_value('IvorySQL'::text); -- explicit cast avoids ambiguous literal
+  RAISE NOTICE '%', describe_value(ARRAY[1,2,3], NULL::int); -- extra arg guides anyarray resolution
+  RAISE NOTICE 'last notice=%', v_last_notice;
+END;
+$$ LANGUAGE plisql;
+----
