@@ -1,0 +1,88 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+
+= **功能概述**
+
+IvorySQL提供兼容Oracle内置函数`SYS_CONTEXT('namespace', 'parameter' [, length ])`,
+返回当前时刻与给定上下文关联参数的值，可以在SQL和PLSQL语言中使用。
+
+== 实现原理
+
+SYS_CONTEXT的实现原理是通过动态查询系统表与postgres的内置函数，确保结果的实时性，
+使用 SECURITY INVOKER 确保函数以调用者的权限执行，避免权限提升问题。
+该方法的实现逻辑如下：
+```sql
+CREATE OR REPLACE FUNCTION sys.sys_context(a varchar2, b varchar2)
+RETURNS varchar2 AS $$
+DECLARE
+	res varchar2;
+BEGIN
+	IF upper(a) = 'USERENV' THEN
+	  CASE upper(b)
+		  WHEN 'CURRENT_SCHEMA' THEN
+			SELECT current_schema() INTO res;
+		  WHEN 'LANG' THEN
+			SELECT sys.get_lang() INTO res;
+		  ...
+		  ELSE
+			RAISE EXCEPTION 'invalid USERENV parameter: %', b;
+	  END CASE;
+	ELSIF upper(a) = 'SYS_SESSION_ROLES' THEN
+		CASE upper(b)
+			WHEN 'LOGIN' THEN
+				SELECT CASE WHEN rolcanlogin = 't' THEN 'TRUE' ELSE 'FALSE' END INTO res FROM pg_roles WHERE oid = current_user::regrole::oid;
+...
+			ELSE
+				RAISE EXCEPTION 'invalid SYS_SESSION_ROLES parameter: %', b;
+		END CASE;
+	ELSE
+	  SELECT current_setting(a||'.'||b, true) INTO res;
+	END IF;
+	RETURN res;
+END;
+$$ LANGUAGE plisql SECURITY INVOKER;
+```
+== USERENV支持的参数
+[cols="2,8"]
+|====
+|*参数名称*|*返回值*
+|CURRENT_SCHEMA | 当前活动默认模式的名称。在会话期间，可以通过 ALTER SESSION SET CURRENT_SCHEMA 语句更改该值。该值也可能在会话期间发生变化，以反映任何活动定义者权限对象的所有者。如果直接在视图定义的正文中使用，那么将返回在执行使用视图的游标时使用的默认模式。
+|CURRENT_SCHEMAID | 当前活动的默认模式的标识符。
+|SESSION_USER | 当前session的用户
+会话用户（登录用户）的名称。在数据库会话期间，随着 Real Application Security 会话的附加或分离，该名称可能会发生变化。对于企业用户，返回模式。对于其他用户，返回数据库用户名。如果数据库会话当前附加了 Real Application Security 会话，则返回用户 XS$NULL。
+|SESSION_USERID | 当前session的用户ID。
+|PROXY_USER | 代表 SESSION_USER 打开当前会话的数据库用户名称。
+|PROXY_USERID | 代表 SESSION_USER 打开当前会话的数据库用户的标识符。
+|CURRENT_USER | 当前会话中执行操作的用户。
+|CURRENT_USERID | 当前会话中执行操作的用户标识符。
+|CURRENT_EDITION_NAME | 当前版本的名字。
+|CLIENT_PROGRAM_NAME | 客户端程序的名称。
+|====
+[cols="2,8"]
+|====
+|*参数名称*|*返回值*
+|IP_ADDRESS | 客户端的IP地址。
+|HOST | 客户端主机的名称。
+|ISDBA | 如果当前用户是数据库管理员，则返回TRUE。
+|LANG | 语言的缩写名称，比现有的 “LANGUAGE ”参数更简短。
+|LANGUAGE | 当前会话的使用的语言和地区，以及数据库字符集，格式为：language_territory.characterset。
+|NLS_DATE_FORMAT | 当前session的日期格式。
+|PLATFORM_SLASH | 在用户的平台上用作文件路径分隔符的斜线字符（Unix或Linux是’/’，Windows是’\’）。
+|DB_NAME | 当前连接的CDB的名称。
+|SID | 当前会话的系统标识符。
+|SESSIONID | 审计会话标识符。不能在分布式 SQL 语句中使用此属性。
+|CLIENT_INFO | 返回最多 64 字节的用户会话信息，应用程序可使用 DBMS_APPLICATION_INFO 包存储这些信息。
+|ENTRYID | 当前审计条目编号。审计条目编号序列在细粒度审计记录和常规审计记录之间共享。不能在分布式 SQL 语句中使用此属性。只有通过标准或细粒度审计的审计处理程序才能看到正确的审计条目标识符。
+|TERMINAL | 当前会话客户端的操作系统标识符。在分布式 SQL 语句中，该属性返回本地会话的标识符。在分布式环境中，仅支持远程 SELECT 语句，不支持远程 INSERT、UPDATE 或 DELETE 操作。(此参数的返回长度可能因操作系统而异)。
+|====
+== SYS_SESSION_ROLES支持的参数
+[cols="2,8"]
+|====
+|*参数名称*|*返回值*
+|DBA | 如果当前用户是数据库管理员，则返回TRUE。
+|LOGIN | 如果当前用户是登录角色，则返回TRUE。
+|CREATEROLE | 如果当前session的用户具有创建角色的权限，则返回TRUE。
+|CREATEDB | 如果当前session的用户具有创建数据库的权限，则返回TRUE。
+|====
