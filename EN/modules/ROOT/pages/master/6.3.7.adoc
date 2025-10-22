@@ -12,29 +12,29 @@
 
 == Implementation Notes
 
-=== 1. Syntax Recognition for Nested Subfunctions
+=== Syntax Recognition for Nested Subfunctions
 
-==== 1. Detecting Nested Definitions
+==== Detecting Nested Definitions
 
 When a `DECLARE` block contains a `function ... is/as begin ... end` construct, `pl_gram.y` calls `plisql_build_subproc_function()` (similar to creating a regular function and updating the entry in `pg_proc`):
 
 . Create a `PLiSQL_subproc_function` entry in the parent `PLiSQL_function`'s `subprocfuncs[]` array to store the name, arguments, return type, and other attributes, and record the index `fno` as the identifier of this subfunction.
 . Call `plisql_check_subprocfunc_properties()` to validate the combination of declaration and definition attributes.
 
-==== 2. Storing Datum Entries
+==== Storing Datum Entries
 
 Nested subfunctions share the parent's datum table. During compilation, `PLiSQL_function->datums` describes variables and record fields inside the subfunction, while `PLiSQL_execstate->datums` keeps the runtime values.
 
-==== 3. Preserving Polymorphic Templates
+==== Preserving Polymorphic Templates
 
 If the subfunction uses polymorphic parameters, the parser stores its source code in `subprocfunc->src` and sets `has_poly_argument` to `true` so that the executor can recompile it for each distinct argument type.
 
-=== 2. Recompiling the Parent Program
+=== Recompiling the Parent Program
 
 . The parent `PLiSQL_function` gains a `subprocfuncs` array, each element being the `PLiSQL_subproc_function` created earlier.
 . Each `PLiSQL_subproc_function` has a `HTAB *poly_tab` pointer that is initialized on the first compilation when `has_poly_argument` is `true`. The hash key is `PLiSQL_func_hashkey`, which records the subfunction's `fno` and input argument types; the value is the compiled `PLiSQL_function *` execution context.
 
-=== 3. Name Resolution During Invocation
+=== Name Resolution During Invocation
 
 . PostgreSQL builds a `ParseState` structure during compilation. `plisql_subprocfunc_ref()` locates the parent `PLiSQL_function` through `ParseState->p_subprocfunc_hook()` and calls `plisql_ns_lookup()` to gather all `fno` values for subfunctions sharing the same name, then selects the best match based on argument count and types.
 . When `FuncExpr` nodes are created, the subfunction call is tagged for later execution: `function_from = FUNC_FROM_SUBPROCFUNC`, `parent_func` points to the parent `PLiSQL_function`, and `funcid = fno`.

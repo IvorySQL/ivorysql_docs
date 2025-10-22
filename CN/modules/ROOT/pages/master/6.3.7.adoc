@@ -12,29 +12,29 @@
 
 == 实现说明
 
-=== 一、嵌套子函数语法识别
+=== 嵌套子函数语法识别
 
-==== 1. 识别嵌套写法
+==== 识别嵌套写法
 
 当 `DECLARE` 块里出现 `function ... is/as begin ... end` 结构时，`pl_gram.y` 会调用 `plisql_build_subproc_function()`（对应创建普通函数，这一阶段相当于在 `pg_proc` 中更新 catalog 中的注册信息）：
 
 . 在 `PLiSQL_function` 的 `subprocfuncs[]` 数组中创建 `PLiSQL_subproc_function` 结构，记录名称、参数、返回类型、属性等，获得一个下标 `fno` 作为该子函数的标识。
 . 调用 `plisql_check_subprocfunc_properties()` 校验声明与定义的合法组合。
 
-==== 2. 数据项保存
+==== 数据项保存
 
 保存到父函数的 `datum` 表：编译期的 `PLiSQL_function->datums` 描述子函数里的变量、记录字段，`PLiSQL_execstate->datums` 保存着执行过程中的变量。
 
-==== 3. 保存多态函数模板
+==== 保存多态函数模板
 
 如果子函数里使用了多态参数，在语法阶段保存到 `subprocfunc->src`，同时将 `has_poly_argument` 设成 `true`，执行时按不同实参类型重新编译。
 
-=== 二、父函数重新编译
+=== 父函数重新编译
 
 . 父函数的 `PLiSQL_function` 结构多了一个 `subprocfuncs` 数组，里面每个元素就是刚才创建的 `PLiSQL_subproc_function`。
 . 子函数结构体 `PLiSQL_subproc_function` 有一个哈希表指针 `HTAB *poly_tab`，默认为空。当子函数里使用了多态函数时，`has_poly_argument` 为 `true`，则会在初次编译时初始化 `poly_tab`。`poly_tab` 的 key 是 `PLiSQL_func_hashkey`，记录着子函数的 `fno`、输入参数类型等； value 是编译好的 `PLiSQL_function *`（`plisql` 函数的执行上下文）。
 
-=== 三、调用时解析
+=== 调用时解析
 
 . 编译过程中，`pg` 解析器会生成一个 `ParseState` 结构，`plisql_subprocfunc_ref()` 会通过 `ParseState->p_subprocfunc_hook()` 找到父函数的 `PLiSQL_function`，调用 `plisql_ns_lookup()` 找到所有同名子函数的 `fno`，根据参数个数、类型找到最合适的多态函数。
 . `FuncExpr` 结构构造时会对子函数进行标记，方便后期执行阶段识别：`function_from = FUNC_FROM_SUBPROCFUNC`，`parent_func` 指向父级 `PLiSQL_function`，`funcid = fno`。

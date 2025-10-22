@@ -5,17 +5,17 @@
 
 = Oracle-Compatible Nested Subfunctions
 
-== 1. Objective
+== Objective
 
 - Using Oracle-style nested subfunctions in IvorySQL.
 
-== 2. Feature Description
+== Feature Description
 
 - Allows declaring and invoking subfunctions or subprocedures inside anonymous blocks, functions, or procedures, with scope limited to the parent block.
 - Nested subfunctions can read and update variables defined in the parent scope while introducing their own local variables; the parent scope cannot directly access the subfunction's internal state.
 - Supports overloading resolution that distinguishes homonymous subfunctions by argument count, data type, or named parameters.
 
-== 3. Test Cases
+== Test Cases
 
 [source,sql]
 ----
