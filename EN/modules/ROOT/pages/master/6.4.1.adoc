@@ -1,0 +1,91 @@
+:sectnums:
+:sectnumlevels: 5
+
+= **Feature Overview**
+
+IvorySQL provides compatibility with the Oracle built-in function `SYS_CONTEXT('namespace', 'parameter' [, length ])`,
+which returns the value of the parameter associated with the given context at the current moment. It can be used in both SQL and PL/SQL languages.
+
+== Implementation Principle
+
+The implementation principle of `SYS_CONTEXT` involves dynamically querying system tables and PostgreSQL's built-in functions to ensure real-time results.
+It uses `SECURITY INVOKER` to ensure the function executes with the caller's permissions, avoiding privilege escalation issues.
+The implementation logic is as follows:
+
+```sql
+CREATE OR REPLACE FUNCTION sys.sys_context(a varchar2, b varchar2)
+RETURNS varchar2 AS $$
+DECLARE
+    res varchar2;
+BEGIN
+    IF upper(a) = 'USERENV' THEN
+      CASE upper(b)
+          WHEN 'CURRENT_SCHEMA' THEN
+            SELECT current_schema() INTO res;
+          WHEN 'LANG' THEN
+            SELECT sys.get_lang() INTO res;
+          ...
+          ELSE
+            RAISE EXCEPTION 'invalid USERENV parameter: %', b;
+      END CASE;
+    ELSIF upper(a) = 'SYS_SESSION_ROLES' THEN
+        CASE upper(b)
+            WHEN 'LOGIN' THEN
+                SELECT CASE WHEN rolcanlogin = 't' THEN 'TRUE' ELSE 'FALSE' END INTO res FROM pg_roles WHERE oid = current_user::regrole::oid;
+...
+            ELSE
+                RAISE EXCEPTION 'invalid SYS_SESSION_ROLES parameter: %', b;
+        END CASE;
+    ELSE
+      SELECT current_setting(a||'.'||b, true) INTO res;
+    END IF;
+    RETURN res;
+END;
+$$ LANGUAGE plisql SECURITY INVOKER;
+```
+== Parameters Supported by USERENV
+
+[cols="3,7"] 
+|==== 
+|Parameter Name|Return Value
+|CURRENT_SCHEMA | The name of the currently active default schema. This value may change during the duration of a session through use of an ALTER SESSION SET CURRENT_SCHEMA statement. This may also change during the duration of a session to reflect the owner of any active definer's rights object. When used directly in the body of a view definition, this returns the default schema used when executing the cursor that is using the view; it does not respect views used in the cursor as being definer's rights.
+|CURRENT_SCHEMAID | Identifier of the currently active default schema.
+|SESSION_USER | The name of the session user (the user who logged on). This may change during the duration of a database session as Real Application Security sessions are attached or detached. For enterprise users, returns the schema. For other users, returns the database user name. If a Real Application Security session is currently attached to the database session, returns user XS$NULL.
+|SESSION_USERID | The identifier of the session user (the user who logged on).
+|PROXY_USER | Name of the database user who opened the current session on behalf of SESSION_USER.
+|PROXY_USERID | Identifier of the database user who opened the current session on behalf of SESSION_USER.
+|CURRENT_USER | The name of the database user whose privileges are currently active. This may change during the duration of a database session as Real Application Security sessions are attached or detached, or to reflect the owner of any active definer's rights object. When no definer's rights object is active, CURRENT_USER returns the same value as SESSION_USER. When used directly in the body of a view definition, this returns the user that is executing the cursor that is using the view; it does not respect views used in the cursor as being definer's rights. For enterprise users, returns schema. If a Real Application Security user is currently active, returns user XS$NULL.
+|CURRENT_USERID | The identifier of the database user whose privileges are currently active.
+|CURRENT_EDITION_NAME | The name of the current edition.
+|CLIENT_PROGRAM_NAME | The name of the program used for the database session.
+|====
+
+[cols="3,7"] 
+|==== 
+|Parameter Name|Return Value
+|IP_ADDRESS | The IP address of the client.
+|HOST | Name of the host machine from which the client has connected.
+|ISDBA | Returns TRUE if the user has been authenticated as having DBA privileges either through the operating system or through a password file.
+|LANG | The abbreviated name for the language, a shorter form than the existing 'LANGUAGE' parameter.
+|LANGUAGE | The language and territory currently used by your session, along with the database character set, in this form:language_territory.characterset
+|NLS_DATE_FORMAT | The date format for the session.
+|PLATFORM_SLASH | The slash character that is used as the file path delimiter for your platform.
+|DB_NAME | Name of the database as specified in the DB_NAME initialization parameter.
+|SID | 	
+The session ID.
+|SESSIONID | The auditing session identifier. You cannot use this attribute in distributed SQL statements.
+|CLIENT_INFO | Returns up to 64 bytes of user session information that can be stored by an application using the DBMS_APPLICATION_INFO package. 
+|ENTRYID | The current audit entry number. The audit entryid sequence is shared between fine-grained audit records and regular audit records. You cannot use this attribute in distributed SQL statements. The correct auditing entry identifier can be seen only through an audit handler for standard or fine-grained audit.
+|TERMINAL | The operating system identifier for the client of the current session. In distributed SQL statements, this attribute returns the identifier for your local session. In a distributed environment, this is supported only for remote SELECT statements, not for remote INSERT, UPDATE, or DELETE operations. (The return length of this parameter may vary by operating system.)
+|====
+
+== Parameters Supported by SYS_SESSION_ROLES
+
+[cols="3,7"] 
+|==== 
+|Parameter Name|Return Value 
+|DBA | Returns TRUE if the current user is a database administrator. 
+|LOGIN | Returns TRUE if the current user is a login role. 
+|CREATEROLE | Returns TRUE if the current session's user has the privilege to create roles. 
+|CREATEDB | Returns TRUE if the current session's user has the privilege to create databases. 
+|====
