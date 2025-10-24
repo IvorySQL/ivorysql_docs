@@ -25,6 +25,7 @@
 *** xref:master/6.3.2.adoc[OUT Parameter]
 *** xref:master/6.3.4.adoc[%Type & %Rowtype]
 *** xref:master/6.3.5.adoc[NLS Parameters]
+*** xref:master/6.3.6.adoc[Function and stored procedure]
 ** xref:master/6.4.adoc[GB18030 Character Set]
 * List of Oracle compatible features
 ** xref:master/7.1.adoc[1、Ivorysql frame design]
