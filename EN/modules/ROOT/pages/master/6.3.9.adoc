@@ -1,0 +1,48 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= Quoted Identifier Case Conversion
+
+== Purpose
+
+To meet Oracle's quoted identifier case compatibility requirements, IvorySQL has designed three case conversion modes for quoted identifiers.
+
+== Implementation Details
+
+If the parameter `-C` is appended during database initialization, with values of `normal/interchange/lowercase`, the `Intidb.c->main()` function in the code will process this parameter and set the global variable `caseswitchmode` according to the parameter value. Then the `initdb` command will start a `postgres` process in `-boot` mode to set up the `template1` template database, while passing the parameter `-C ivorysql.identifier_case_switch=caseswitchmode` to the new process.
+
+This newly started backend process will write the `identifier_case_switch` information to the `pg_control` file through the following code:
+
+```
+BootstrapModeMain() -> BootStrapXLOG();
+	/* save database compatible level value */
+	ControlFile->dbmode = bootstrap_database_mode;
+	ControlFile->casemode = identifier_case_switch;  		
+	
+	/* some additional ControlFile fields are set in WriteControlFile() */
+	WriteControlFile();
+```
+
+When a user starts the database using the `pg_ctl` command, the `postmaster` process will read the contents of the `pg_control` file. The code call path is:
+
+```
+PostmasterMain()-->SetCaseGucOption()-->GetCaseSwitchModeFromControl()
+```
+
+After reading the parameter value, the `SetConfigOption()` function is called to assign the value.
+
+When each new backend process starts, since it is forked from the `postmaster` process, it automatically has the same `ivorysql.identifier_case_switch` parameter value. First, it processes the `startup` packet, and if it contains `database` or `user` parameters, the parameter values are processed accordingly based on `identifier_case_switch`.
+
+The source code is:
+
+```
+BackendMain()->BackendInitialize()-->ProcessStartupPacket()
+```
+
+Additionally, when processing user SQL statements, if they contain identifiers, the same processing is performed. The code is distributed in:
+SplitIdentifierString(), quoteOneName() and SplitGUCList() functions.
+
+
+
