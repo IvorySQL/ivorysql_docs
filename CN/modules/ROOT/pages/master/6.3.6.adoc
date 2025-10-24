@@ -11,7 +11,7 @@
 
 == 实现说明
 
-如果在数据库初始化时附加了参数 `-C`，值可以为 `normal/interchange/lowercase`，则代码中 `Intidb.c-->main()` 函数会处理该参数，根据参数值设置全局变量 `caseswitchmode`。然后 `initdb` 命令会以 `-boot` 模式启动一个 `psotgres` 进程用于设置 `template1` 模板数据库，同时赋予参数 `-C ivorysql.identifier_case_switch=caseswitchmode` 给新进程。
+如果在数据库初始化时附加了参数 `-C`，值可以为 `normal/interchange/lowercase`，则代码中 `Intidb.c->main()` 函数会处理该参数，根据参数值设置全局变量 `caseswitchmode`。然后 `initdb` 命令会以 `-boot` 模式启动一个 `psotgres` 进程用于设置 `template1` 模板数据库，同时赋予参数 `-C ivorysql.identifier_case_switch=caseswitchmode` 给新进程。
 
 这个新启动的后端进程会通过下面的代码将 `identifier_case_switch` 信息写入 `pg_control` 文件：
 
@@ -42,8 +42,6 @@ BackendMain()->BackendInitialize()-->ProcessStartupPacket()
 ```
 
 另外，在处理用户的 SQL 语句时，如果包含标识符，也会进行同样的处理，代码分布在：
-
-```
 SplitIdentifierString()，quoteOneName() 和 SplitGUCList() 这几个函数中。
-```
+
 
