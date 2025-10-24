@@ -46,7 +46,6 @@
 *** xref:master/7.15.adoc[15、OUT 参数]
 *** xref:master/7.16.adoc[16、%TYPE、%ROWTYPE]
 *** xref:master/7.17.adoc[17、NLS 参数]
-*** xref:master/7.18.adoc[18、函数与存储过程]
 ** IvorySQL贡献指南
 *** xref:master/8.1.adoc[社区贡献指南]
 *** xref:master/8.2.adoc[asciidoc语法快速参考]
