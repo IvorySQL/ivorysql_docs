@@ -1,0 +1,116 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= NLS 参数
+
+== 目的
+
+NLS 是 National Language Support（国家语言支持）的缩写，指的是 Oracle 提供的本地化支持功能。
+
+IvorySQL提供兼容Oracle的NLS参数功能。
+
+== 功能说明
+
+包含如下参数：
+
+[cols="3,7"]
+|====
+|*参数名称*|*功能描述*
+|ivorysql.datetime_ignore_nls_mask | 表示日期格式是否忽略NLS参数影响，默认为0。
+|nls_length_semantics | 兼容Oracle的同名参数，表示char/varchar/varchar2的类型修饰符的大小单位是字节还是字符。
+|nls_date_format | 表示默认的日期格式，可以通过show命令查看，默认为‘YYYY-MM-DD’。
+|nls_timestamp_format | 兼容Oracle的同名参数，控制带时间的日期格式。
+|nls_timestamp_tz_format | 兼容Oracle的同名参数，控制带时区的日期时间格式。
+|nls_territory | 兼容Oracle的同名参数，指定数据库的默认区域。
+|nls_iso_currency | 兼容Oracle的同名参数，指定的国家和区域制定唯一的货币符号。
+|nls_currency | 兼容Oracle的同名参数，指定显示本地货币的符号，对应数字字符串格式中占位符L。
+|====
+
+=== NLS 日期掩码设置
+示例：
+```sql
+ivorysql=# set ivorysql.datetime_ignore_nls_mask = 0;
+SET
+ivorysql=# select '2025-10-15 11:00:00.102030 CST'::oratimestamp ;
+ERROR:  datetime format picture ends before converting entire input string
+LINE 1: select '2025-10-15 11:00:00.102030 CST'::oratimestamp ;
+               ^
+ivorysql=# set ivorysql.datetime_ignore_nls_mask = 2;
+SET
+ivorysql=# select '2025-10-15 11:00:00.102030 CST'::oratimestamp ;
+        oratimestamp
+----------------------------
+ 2025-10-15 11:00:00.102030
+(1 row)
+```
+
+=== 禁用NLS日期/时间戳参数
+示例：
+```sql
+ivorysql=# select '2025-10-15 11:00:00.102030 '::oratimestamp ;
+        oratimestamp
+----------------------------
+ 2025-10-15 11:00:00.102030
+(1 row)
+
+ivorysql=# set nls_timestamp_format="pg";
+SET
+ivorysql=# select '2025-10-15 11:00:00.102030 '::oratimestamp ;
+ERROR:  date format not recognized
+LINE 1: select '2025-10-15 11:00:00.102030 '::oratimestamp ;
+               ^
+```
+=== 设置nls_length_semantics
+IvorySQL使用nls_length_semantics参数的值来决定长度类型，有byte和char两种值，默认为byte。
+示例：
+```sql
+vorysql=# alter session set nls_length_semantics = char;
+SET
+ivorysql=# create table character_tb(char_c char(6), char_b varchar2(6 byte), char_v varchar(6));
+CREATE TABLE
+ivorysql=# insert into character_tb values('中文测试数据', '123456', '成功');
+INSERT 0 1
+ivorysql=# select * from character_tb ;
+    char_c    | char_b | char_v
+--------------+--------+--------
+ 中文测试数据 | 123456 | 成功
+(1 row)
+
+ivorysql=# select length(char_b), length(char_c), length(char_v) from character_tb;
+ length | length | length
+--------+--------+--------
+      6 |      6 |      2
+(1 row)
+
+```
+=== 设置NLS货币符号
+示例：
+```sql
+ivorysql=# show ivorysql.identifier_case_switch;
+ ivorysql.identifier_case_switch
+---------------------------------
+ interchange
+(1 row)
+
+ivorysql=# set nls_currency to "CHINA";
+SET
+ivorysql=# show nls_currency;
+ nls_currency
+--------------
+ CHINA
+(1 row)
+
+ivorysql=# set nls_currency to "China";
+SET
+ivorysql=# show nls_currency;
+ nls_currency
+--------------
+ China
+(1 row)
+```
+[NOTE]
+====
+nls_currency和nls_iso_currency的行为，受兼容oracle大小写特性 `identifier_case_switch` 影响
+====
