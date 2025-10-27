@@ -5,20 +5,20 @@
 
 = Force View
 
-== 1.目的
+== 目的
 
 - 本文档解释 IvorySQL 中 Force View 的用途，帮助用户在依赖对象尚未就绪时仍可创建强制视图占位并保持与 Oracle 行为一致。
-- Force View 支持 Oracle 迁移，可通过自动或显式编译在依赖满足后快速恢复为普通视图。
+- Force View 可支持在依赖表尚未准备好的情况下进行视图迁移，在依赖满足后通过自动或显式编译快速恢复为普通视图。
 
-== 2.功能说明
+== 功能说明
 
 - `CREATE [OR REPLACE] FORCE VIEW`：即使查询引用了不存在的表或函数，也会创建视图占位对象并保存原始 SQL，提示“View created with compilation errors”。
 - 自动编译：访问 Force View 时会尝试重新编译；成功后变为普通视图，失败则报错 `view "<schema>.<name>" has errors`。
 - 依赖失效回退：当普通视图因依赖对象被删除或结构变更而失效时，系统会自动将其转化为 Force View，保留最后一次有效定义以便后续恢复。
 
-== 3.测试用例
+== 测试用例
 
-=== 3.1 创建缺失依赖的 Force View
+=== 创建缺失依赖的 Force View
 
 [source,sql]
 ----
@@ -28,7 +28,7 @@ SELECT c_id, c_name FROM missing_customer;
 -- 期望输出：WARNING: View created with compilation errors
 ----
 
-=== 3.2 自动编译并恢复为普通视图
+=== 自动编译并恢复为普通视图
 
 [source,sql]
 ----
@@ -44,7 +44,7 @@ SELECT * FROM fv_customer;
 -- 成功时视图转换为普通视图并返回数据
 ----
 
-=== 3.3 显式编译与失败回退
+=== 显式编译与失败回退
 
 [source,sql]
 ----
