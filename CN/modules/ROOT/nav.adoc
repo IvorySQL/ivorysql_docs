@@ -26,6 +26,7 @@
 **** xref:master/6.3.2.adoc[OUT 参数]
 **** xref:master/6.3.4.adoc[%TYPE、%ROWTYPE]
 **** xref:master/6.3.5.adoc[NLS 参数]
+**** xref:master/6.3.6.adoc[函数与存储过程]
 *** xref:master/6.4.adoc[国标GB18030]
 ** Oracle兼容功能列表
 *** xref:master/7.1.adoc[1、框架设计]

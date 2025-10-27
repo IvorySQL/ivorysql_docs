@@ -1,0 +1,262 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= PL/iSQL function and stored procedure
+
+== Purpose
+
+PostgreSQL supports functions and stored procedures, but there are syntax differences between PostgreSQL and Oracle. To enable Oracle's PL/SQL statements to run on IvorySQL—i.e., to achieve "syntax compatibility"—IvorySQL adopts the following solution: If an Oracle clause has a counterpart clause with the same function in IvorySQL, it is directly mapped to the corresponding IvorySQL clause; otherwise, only the syntax of the Oracle clause is implemented, while its function is not.
+
+== Implementation description
+
+PL/iSQL is the name of the procedural language in IvorySQL, specifically designed to be compatible with Oracle's PL/SQL statements. To achieve compatibility with Oracle-style syntax for functions and stored procedures, corresponding adjustments need to be made to the psql client tool, the SQL layer, and the PL/iSQL layer.
+
+=== Client tool psql
+
+Oracle's sqlplus tool uses a slash (/) to terminate functions and stored procedures. IvorySQL's client tool, psql, needs to be compatible with the same syntax. This means that the conventional mechanism—where statements are sent to the server upon encountering a semicolon—becomes ineffective when dealing with Oracle-style function and stored procedure commands; instead, a slash (/) is used to send the commands.
+
+To this end the following fields are added to the PsqlScanStateData structure:
+```
+	bool		cancel_semicolon_terminator; /* not send command when semicolon found */
+
+	/*
+	 * State to track boundaries of Oracle ANONYMOUS BLOCK.
+	 * Case 1: Statements starting with << ident >> is Oracle anonymous block.
+	 */
+	int		token_count;			/* # of tokens, not blank or newline since start of statement */
+	bool		anonymous_label_start;	    /* T if the first token is "<<" */
+	bool		anonymous_label_ident;	/* T if the second token is an identifier */
+	bool		anonymous_label_end;	    /* T if the third token is ">>" */
+
+	/*
+	 * Case 2: DECLARE BEGIN ... END is Oracle anonymous block syntax.
+	 * DECLARE can also be a PostgreSQL cursor declaration statement, we need to tell this.
+	 */
+	bool		maybe_anonymous_declare_start;	/* T if the first token is DECLARE */
+	int		token_cursor_idx;		/* the position of keyword CURSOR in SQL statement */
+
+	/*
+	 * Case 3: DECLARE BEGIN ... END is Oracle anonymous block syntax.
+	 * BEGIN can also be a PostgreSQL transaction statement.
+	 */
+	bool		maybe_anonymous_begin_start;	/* T if the first token is BEGIN */
+
+```
+
+Meanwhile, modify ora_psqlscan.l and add or update the corresponding lexical rules. 
+Below is a code snippet example:
+```
+{
+	if (is_oracle_slash(cur_state, cur_state->scanline))
+	{
+		/* Terminate lexing temporarily */
+		cur_state->cancel_semicolon_terminator = false;
+		cur_state->maybe_anonymous_declare_start = false;
+		cur_state->maybe_anonymous_begin_start = false;
+		cur_state->anonymous_label_start = false;
+		cur_state->anonymous_label_ident = false;
+		cur_state->anonymous_label_end = false;
+		cur_state->start_state = YY_START;
+		cur_state->token_count = 0;
+		cur_state->token_cursor_idx = 0;
+		cur_state->identifier_count = 0;
+		cur_state->begin_depth = 0;
+		cur_state->ora_plsql_expect_end_symbol = END_SYMBOL_INVALID;
+		return LEXRES_SEMI;
+	}
+	ECHO;
+```
+
+The psql tool needs to detect the meaning of the slash (/), to avoid identifying slashes in comments and other parts as terminators. To this end, a separate interface is_oracle_slash is added in the oracle_fe_utils/ora_psqlscan.l file for detection.
+```
+bool
+is_oracle_slash(PsqlScanState state, const char *line)
+{
+	bool result = false;
+
+	switch (state->start_state)
+	{
+		case INITIAL:
+		case xqs:	/* treat these like INITIAL */
+			{
+				int len, i;
+				bool has_slash = false;
+
+				len = strlen(line);
+				for (i = 0; i < len; i++)
+				{
+					/* allow special char */
+					if (line[i] == '\t' ||
+						line[i] == '\n' ||
+						line[i] == '\r' ||
+						line[i] == ' ')
+						continue;
+
+					if (line[i] == '/')
+					{
+						if (has_slash)
+							break;
+						has_slash = true;
+						continue;
+					}
+					/* others */
+					break;
+				}
+
+				if (i == len && has_slash)
+					result = true;
+			}
+			break;
+		default:
+			break;
+	}
+
+	return result;
+}
+
+```
+
+=== SQL layer
+
+The SQL layer needs to be able to recognize the creation syntax for functions and stored procedures, and this is achieved by modifying ora_base_yylex. This function prefetches and caches tokens: if the token follows Oracle syntax, it organizes an SCONST and sends it to the PL/SQL layer; otherwise, it retrieves the previously preread tokens from the stack and processes them according to the native PostgreSQL logic.
+
+The following fields are added to the ora_base_yy_extra_type structure:
+```
+	/*
+	 * The native PG only cache one-token info include yylloc, yylval and token
+	 * number in yyextra, IvorySQL cache multiple tokens info using two arrays. 
+	 */
+	int max_pushbacks;		/* the max size of cache array */
+	int loc_pushback; 		/* # of used tokens */
+	int	num_pushbacks;		/* # of cached tokens */
+	int	*pushback_token;			/* token number array */
+	TokenAuxData *pushback_auxdata; /* auxdata array */
+
+	OraBodyStyle body_style;
+	int          body_start;
+	int          body_level;
+```
+
+Add operation interfaces for the token stack:
+|====
+| push_back_token
+| forward_token
+| ora_internal_yylex
+| internal_yylex
+|====
+
+In the ora_base_yylex function, when creating functions, procedures, or anonymous blocks, some tokens are preread. These tokens are cached into the stack using the aforementioned structure, and this is done to construct an SCONST that conforms to Oracle PL/SQL syntax and send it to the PL/iSQL layer for processing. For details, please refer to the source code.
+
+
+=== PL/iSQL layer
+
+This part mainly modifies the pl_gram.y file to achieve compatibility with the syntax of PL/SQL functions and stored procedures. It enables compatibility with Oracle PL/SQL syntax forms without affecting PostgreSQL's native PL/pgSQL. Below is a code example for the compatibility of the DECLARE section; for more details, please refer to the IvorySQL source code.
+
+```
+/*
+ * The declaration section of the outermost block in Oracle does not have the DECLARE keyword.
+ */
+ora_outermost_pl_block: ora_decl_sect K_BEGIN proc_sect exception_sect K_END opt_label
+					{
+						PLiSQL_stmt_block *new;
+
+						new = palloc0(sizeof(PLiSQL_stmt_block));
+
+						new->cmd_type	= PLISQL_STMT_BLOCK;
+						new->lineno		= plisql_location_to_lineno(@2);
+						new->stmtid		= ++plisql_curr_compile->nstatements;
+						new->label		= $1.label;
+						new->n_initvars = $1.n_initvars;
+						new->initvarnos = $1.initvarnos;
+						new->body		= $3;
+						new->exceptions	= $4;
+
+						check_labels($1.label, $6, @6);
+						plisql_ns_pop();
+
+						$$ = (PLiSQL_stmt *)new;
+					}
+				;
+
+ora_decl_sect: opt_block_label opt_ora_decl_start opt_ora_decl_stmts
+				{
+						if ($2)
+						{
+								if ($1 == NULL)
+								{
+										plisql_ns_push(NULL, PLISQL_LABEL_BLOCK);
+								}
+						}
+				}
+				opt_ora_decl_stmts
+				{
+						if ($4)
+						{
+								plisql_IdentifierLookup = IDENTIFIER_LOOKUP_NORMAL;
+								$$.label          = ($1 == NULL ?  plisql_curr_compile->namelabel : $1);
+								if ($2 && $1 == NULL)
+										$$.popname = true; 
+								else
+										$$.popname = false;
+								/* Remember variables declared in decl_stmts */
+								$$.n_initvars = plisql_add_initdatums(&($$.initvarnos));
+						}
+						else
+						{
+								plisql_IdentifierLookup = IDENTIFIER_LOOKUP_NORMAL;
+								$$.label          = ($1 == NULL ?  plisql_curr_compile->namelabel : $1);
+								$$.n_initvars = 0;
+								if ($2 && $1 == NULL)
+										$$.popname = true; 
+								else
+										$$.popname = false;
+								$$.initvarnos = NULL; 
+						}
+				}
+                ;
+
+opt_ora_decl_start: K_DECLARE
+					{
+						/* Forget any variables created before block */
+						plisql_add_initdatums(NULL);
+						/*
+						 * Disable scanner lookup of identifiers while
+						 * we process the decl_stmts
+						 */
+						plisql_IdentifierLookup = IDENTIFIER_LOOKUP_DECLARE;
+						$$ = true;
+					}
+				| /*EMPTY*/
+					{
+						/* Forget any variables created before block */
+						plisql_add_initdatums(NULL);
+						/*
+						 * Disable scanner lookup of identifiers while
+						 * we process the decl_stmts
+						 */
+						plisql_IdentifierLookup = IDENTIFIER_LOOKUP_DECLARE;
+						$$ = false;
+					}
+				;
+
+opt_ora_decl_stmts:
+				ora_decl_stmts
+					{
+						$$ = true;
+					}
+				| /*EMPTY*/
+					{
+						$$ = false;
+					}
+
+ora_decl_stmts: ora_decl_stmts ora_decl_stmt
+				| ora_decl_stmt
+				;
+
+ora_decl_stmt: decl_statement
+				;
+
+```
+
