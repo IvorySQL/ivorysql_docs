@@ -1,0 +1,126 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= Force View
+
+== 目的
+
+- Force View 提供 Oracle 兼容的 `CREATE [OR REPLACE] FORCE VIEW` 与 `ALTER VIEW ... COMPILE` 行为，允许开发者先落地视图占位，再在依赖补齐后恢复正常执行。
+- 系统将原始 SQL 及标识符大小写模式写入专属目录项，依赖恢复时可自动或手动编译为普通视图，且保持 Oracle 风格的告警与错误提示。
+
+== 实现说明
+
+PG在删除基表时，如果有视图依赖于此基表，则不允许删除，需要使用cascade 关键字全部删除；Oracle删除基表时，允许直接删除基表，而保留force view并将force view 转为无效状态，且创建普通视图后，也可以删除此视图的基表，但把视图转为无效状态。
+
+为了支持新的语法，需要增加对应的语法规则。且FORCE VIEW的状态在多个session之间是共享的，新增一张系统表用来存储FORCE VIEW的相关信息。
+
+=== 语法与解析入口
+
+==== Force View 语法支持
+
+- `src/backend/oracle_parser/ora_gram.y` 注册 Force View 关键字。
+- 语法阶段为 `ViewStmt->force` 赋值，并在 `AlterTableStmt` 阶段生成 `AT_ForceViewCompile` 选项。
+- 解析阶段保留 `ViewStmt->stmt_literal`，后续占位时需要复用原始文本。
+
+```
+/* Insert or update the pg_force_view catalog as needed */
+if (need_store)
+{
+	......
+
+	StoreForceViewQuery(address.objectId, stmt->replace, ident_case, stmt->stmt_literal ? stmt->stmt_literal : queryString);
+}
+```
+
+==== AST 字段扩展
+
+- `src/include/nodes/parsenodes.h` 为 `ViewStmt` 增加 `bool force`、`char *stmt_literal` 字段。
+- `AT_ForceViewCompile` 在 `parsenodes.h` 与 `tablecmds.c` 成对定义，确保 `ALTER VIEW ... COMPILE` 进入 AlterTable 流程。
+- `parse_analyze` 仍按普通路径执行，Force 模式只在解析报错后介入。
+
+==== 解析入口
+
+- `DefineView()`（`src/backend/commands/view.c`）统一处理普通与 Force 视图。
+- 代码在 `PG_TRY/PG_CATCH` 包裹下先尝试普通解析，捕获语义错误后根据 `stmt->force` 决定是否进入Force View 流程。
+- 成功解析继续调用 `StoreViewQuery()` 写入 `_RETURN` 规则，失败则进入 Force View 分支，保证视图对象仍然存在。
+
+=== Force View 元数据
+
+==== `pg_force_view` 目录
+
+- `src/include/catalog/pg_force_view.h` 定义目录表，字段包含视图 OID (`fvoid`)、标识符大小写模式 (`ident_case`)、原始 SQL 文本 (`source`)。
+- 唯一索引 `pg_force_view_fvoid_index` 搭配 syscache `FORCEVIEWOID`（`src/include/catalog/syscache_info.h`）实现按视图 OID 查找。
+- 目录表开启 TOAST，长 SQL 文本不会被截断，可覆盖复杂迁移脚本。
+
+```
+CATALOG(pg_force_view,9120,ForceViewRelationId)
+{
+    /* oid of force view */
+	Oid			fvoid;
+
+    /* see IDENT_CASE__xxx constants below */
+	char		ident_case;
+
+#ifdef CATALOG_VARLEN			/* variable-length fields start here */
+
+    /* sql definition */
+	text		source;
+#endif
+} FormData_pg_force_view;
+```
+==== 视图状态
+
+- `bool rel_is_force_view(Oid relid)` 位于 `src/backend/commands/view.c`，通过判断 `_RETURN` 规则是否存在确认视图是否处于 Force 状态。
+- Force View 仍登记为 `relkind = RELKIND_VIEW`，避免额外兼容分支。
+- `pg_class.relhasrules` 在占位状态设置为 `false`，配合作为判断依据。
+
+=== 创建与替换流程
+
+==== 普通 view
+
+- `DefineView()` 在解析成功后调用 `DefineVirtualRelation()` 写入 `pg_class`、`pg_attribute` 等结构。
+- `StoreViewQuery()` 生成 `_RETURN` 规则并维护依赖关系。
+- 该路径不会触及 `pg_force_view`，视图完成后立即可用。
+
+==== Force view
+
+- `CreateForceVirtualPlaceholder()`（`src/backend/commands/view.c`）负责生成或复用占位视图：
+  - 若视图不存在，调用 `DefineVirtualRelation()` 建立基础对象，但不写入 `_RETURN` 规则。
+  - 若已有 Force View，复用当前记录，更新列定义或清理旧元数据。
+  - 若已有普通视图且声明了 `OR REPLACE`，调用 `make_view_invalid()` 失效原视图，再写入新的占位定义。
+- `StoreForceViewQuery()` 将 `stmt_literal` 与当前 `ivorysql.identifier_case_switch` 持久化到 `pg_force_view`，以便后续恢复大小写语义。
+- 视图占位完成后向客户端返回 `WARNING: View created with compilation errors`，提示仍处于不可用状态。
+
+=== 依赖失效与回退
+
+==== 主动失效逻辑
+
+- `make_view_invalid()` 在依赖对象被 DROP/ALTER 等操作影响时调用。
+- 函数删除 `_RETURN` 规则、清理 `pg_depend` 依赖、重置 `pg_class.relhasrules` 并清空 `pg_attribute` 列信息。
+- 同步生成 `CREATE FORCE VIEW ... AS <pg_get_viewdef>` 文本写入 `pg_force_view`，`ident_case` 设置为 `IDENT_CASE_UNDEFINE` 表示该文本由系统构造。
+
+==== 失效后的可见行为
+
+- 视图仍然存在并可在元数据中枚举，但实际访问会触发 Force 判定。
+- `_RETURN` 缺失导致执行器在打开视图时调用 `compile_force_view()`，若编译仍失败则抛出 `view "<schema>.<name>" has errors`。
+- 用户可通过 `ALTER VIEW ... COMPILE` 或再次 `CREATE OR REPLACE FORCE VIEW` 来恢复。
+
+=== 自动与主动编译
+
+==== 自动编译触发点
+
+- `parse_relation.c` 的 `addRangeTableEntry()` 和 `parse_clause.c` 的目标关系打开逻辑在判定 Force View 后调用 `compile_force_view()`。
+- 该函数重新执行 `raw_parser` 与 `parse_analyze`，成功则再安装 `_RETURN` 规则，失败直接终止当前语句。
+
+==== 主动编译
+
+- `AT_ForceViewCompile` 在 `tablecmds.c` Phase 2 阶段执行，先申请 `AccessExclusiveLock` 再调用 `compile_force_view()`。
+- 成功编译返回常规 `ALTER VIEW` 完成信息；失败打印 `WARNING: View altered with compilation errors`，视图仍保持占位。
+
+==== 列校验与元数据更新
+
+- `compile_force_view()` 读取 `pg_force_view.source` 并构造 `ViewStmt`，随后调用 `compile_force_view_internal()`。
+- 函数通过 `checkViewColumns()` 比对旧列，允许新增列但禁止类型不兼容的替换；新增列由 `AT_AddColumnToView()` 完成。
+- `_RETURN` 规则由 `StoreViewQuery()` 重新生成，最后 `DeleteForceView()` 删除目录项，视图恢复为普通状态。

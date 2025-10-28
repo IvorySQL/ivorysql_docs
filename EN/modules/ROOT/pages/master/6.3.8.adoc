@@ -1,0 +1,125 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= Force View
+
+== Purpose
+
+- Force View offers Oracle-compatible `CREATE [OR REPLACE] FORCE VIEW` and `ALTER VIEW ... COMPILE` behavior, allowing developers to persist a placeholder view even when dependencies are missing and then switch it back to a normal view once dependencies are available.
+- The system records the original SQL text and identifier case mode in a dedicated catalog entry so that automatic or manual recompilation can restore the view with Oracle-style warnings and error reporting.
+
+== Implementation Description
+
+In PostgreSQL, a base table referenced by a view cannot be dropped unless `CASCADE` is used. Oracle, however, allows the base table to be dropped while retaining the Force View and marking it as invalid. To align with Oracle semantics, IvorySQL introduces new grammar rules and a catalog that stores Force View metadata so that the Force state can be shared across sessions.
+
+=== Grammar and Parsing Entry Points
+
+==== Force View Syntax Support
+
+- Register the Force View keywords in `src/backend/oracle_parser/ora_gram.y`.
+- Set `ViewStmt->force` during the grammar phase, and generate the `AT_ForceViewCompile` option when parsing `AlterTableStmt`.
+- Preserve `ViewStmt->stmt_literal` for later reuse when the placeholder is materialized.
+
+```
+/* Insert or update the pg_force_view catalog as needed */
+if (need_store)
+{
+	......
+
+	StoreForceViewQuery(address.objectId, stmt->replace, ident_case, stmt->stmt_literal ? stmt->stmt_literal : queryString);
+}
+```
+
+==== AST Field Extensions
+
+- Add `bool force` and `char *stmt_literal` to `ViewStmt` in `src/include/nodes/parsenodes.h`.
+- Define `AT_ForceViewCompile` consistently between `parsenodes.h` and `tablecmds.c` so that `ALTER VIEW ... COMPILE` flows into the regular alter-table machinery.
+- `parse_analyze` still follows the native path; Force mode intervenes only after a parsing error occurs.
+
+==== Parsing Entry
+
+- `DefineView()` in `src/backend/commands/view.c` now handles both normal and Force views.
+- The function first attempts normal parsing inside a `PG_TRY/PG_CATCH`; if the semantic analysis fails, it checks `stmt->force` to decide whether to enter the Force View branch.
+- On success it continues to `StoreViewQuery()`; on failure it falls back to the Force View logic so that the view object still exists.
+
+=== Force View Metadata
+
+==== `pg_force_view` Catalog
+
+- `src/include/catalog/pg_force_view.h` defines the catalog table, whose fields include the view OID (`fvoid`), identifier case (`ident_case`), and the original SQL text (`source`).
+- The unique index `pg_force_view_fvoid_index` plus the syscache `FORCEVIEWOID` (declared in `src/include/catalog/syscache_info.h`) enable lookups by view OID.
+- The catalog enables TOAST so lengthy SQL definitions are preserved in full, covering complex migration scripts.
+
+```
+CATALOG(pg_force_view,9120,ForceViewRelationId)
+{
+    /* oid of force view */
+	Oid			fvoid;
+
+    /* see IDENT_CASE__xxx constants below */
+	char		ident_case;
+
+#ifdef CATALOG_VARLEN			/* variable-length fields start here */
+
+    /* sql definition */
+	text		source;
+#endif
+} FormData_pg_force_view;
+```
+
+==== View State
+
+- `bool rel_is_force_view(Oid relid)` in `src/backend/commands/view.c` determines whether a view is in Force state by checking whether the `_RETURN` rule exists.
+- Force views still register as `relkind = RELKIND_VIEW`, avoiding extra compatibility branches.
+- `pg_class.relhasrules` is set to `false` while in placeholder mode, which becomes part of the detection logic.
+
+=== Creation and Replacement Flow
+
+==== Normal View
+
+- After successful parsing, `DefineView()` calls `DefineVirtualRelation()` to populate `pg_class`, `pg_attribute`, and related catalogs.
+- `StoreViewQuery()` generates the `_RETURN` rule and records dependencies.
+- This path never touches `pg_force_view`; the view is immediately ready for use.
+
+==== Force View
+
+- `CreateForceVirtualPlaceholder()` in `src/backend/commands/view.c` creates or reuses a placeholder view:
+  - If the view does not exist, it calls `DefineVirtualRelation()` to create the base object without a `_RETURN` rule.
+  - If a Force View already exists, it reuses the current record and updates column definitions or cleans up legacy metadata.
+  - If a normal view exists and `OR REPLACE` is specified, it invokes `make_view_invalid()` to invalidate the old definition before installing the placeholder.
+- `StoreForceViewQuery()` persists `stmt_literal` and the current `ivorysql.identifier_case_switch` to `pg_force_view` so identifier case semantics can be restored later.
+- After the placeholder is created, the client receives `WARNING: View created with compilation errors`, indicating the view cannot yet be used.
+
+=== Dependency Invalidations and Rollback
+
+==== Active Invalidation Logic
+
+- `make_view_invalid()` is triggered when dependencies are dropped, altered, or otherwise compromised.
+- The routine removes the `_RETURN` rule, clears `pg_depend` entries, resets `pg_class.relhasrules`, and truncates `pg_attribute` column metadata.
+- It also captures `CREATE FORCE VIEW ... AS <pg_get_viewdef>` and saves it in `pg_force_view`, while setting `ident_case` to `IDENT_CASE_UNDEFINE` to indicate the SQL is system-generated.
+
+==== Observable Behavior After Invalidation
+
+- The view remains visible in metadata catalogs but runtime access detects the Force flag.
+- Because `_RETURN` is missing, the executor calls `compile_force_view()` when opening the view; if compilation fails, it raises `view "<schema>.<name>" has errors`.
+- Users can recover by issuing `ALTER VIEW ... COMPILE` or `CREATE OR REPLACE FORCE VIEW` once dependencies are ready.
+
+=== Automatic and Manual Compilation
+
+==== Automatic Compilation Triggers
+
+- `addRangeTableEntry()` in `parse_relation.c` and the target-relation open logic in `parse_clause.c` call `compile_force_view()` after detecting a Force view.
+- The function reruns `raw_parser` and `parse_analyze`; on success it reinstalls the `_RETURN` rule, and on failure it aborts the statement with the encountered error.
+
+==== Manual Compilation
+
+- `AT_ForceViewCompile` executes during phase 2 in `tablecmds.c`, acquiring `AccessExclusiveLock` before invoking `compile_force_view()`.
+- Successful compilation behaves like a normal `ALTER VIEW`; failures emit `WARNING: View altered with compilation errors`, and the view stays in placeholder mode.
+
+==== Column Checks and Metadata Updates
+
+- `compile_force_view()` reads `pg_force_view.source`, rebuilds a `ViewStmt`, and calls `compile_force_view_internal()`.
+- The routine uses `checkViewColumns()` to compare legacy columns, allowing additions but rejecting incompatible type changes; new columns are applied through `AT_AddColumnToView()`.
+- `_RETURN` is regenerated via `StoreViewQuery()`, and `DeleteForceView()` removes the catalog record so the view becomes a standard one again.
