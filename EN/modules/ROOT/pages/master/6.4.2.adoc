@@ -44,7 +44,7 @@ AS $$
 $$ LANGUAGE sql STRICT;
 ```
 
-== Supported Parameters for USERENV
+== Supported parameters
 
 [cols="3,7"] 
 |==== 

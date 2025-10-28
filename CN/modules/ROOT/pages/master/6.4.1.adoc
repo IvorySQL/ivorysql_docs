@@ -8,6 +8,12 @@
 IvorySQL提供兼容Oracle内置函数`SYS_CONTEXT('namespace', 'parameter' [, length ])`,
 返回当前时刻与给定上下文关联参数的值，可以在SQL和PLSQL语言中使用。
 
+提供以下命名空间：
+
+* USERENV​ - 用于描述当前会话。
+
+* SYS_SESSION_ROLES​ - 指示某个特定角色在当前会话中是否已启用。
+
 == 实现原理
 
 SYS_CONTEXT的实现原理是通过动态查询系统表与postgres的内置函数，确保结果的实时性，
@@ -44,7 +50,7 @@ BEGIN
 END;
 $$ LANGUAGE plisql SECURITY INVOKER;
 ```
-== USERENV支持的参数
+== 命名空间USERENV支持的参数
 [cols="2,8"]
 |====
 |*参数名称*|*返回值*
@@ -77,7 +83,7 @@ $$ LANGUAGE plisql SECURITY INVOKER;
 |ENTRYID | 当前审计条目编号。审计条目编号序列在细粒度审计记录和常规审计记录之间共享。不能在分布式 SQL 语句中使用此属性。只有通过标准或细粒度审计的审计处理程序才能看到正确的审计条目标识符。
 |TERMINAL | 当前会话客户端的操作系统标识符。在分布式 SQL 语句中，该属性返回本地会话的标识符。在分布式环境中，仅支持远程 SELECT 语句，不支持远程 INSERT、UPDATE 或 DELETE 操作。(此参数的返回长度可能因操作系统而异)。
 |====
-== SYS_SESSION_ROLES支持的参数
+== 命名空间SYS_SESSION_ROLES支持的参数
 [cols="2,8"]
 |====
 |*参数名称*|*返回值*

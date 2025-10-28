@@ -6,6 +6,12 @@
 IvorySQL provides compatibility with the Oracle built-in function `SYS_CONTEXT('namespace', 'parameter' [, length ])`,
 which returns the value of the parameter associated with the given context at the current moment. It can be used in both SQL and PL/SQL languages.
 
+IvorySQL provides the following built-in namespaces:
+
+* USERENV - Describes the current session. 
+
+* SYS_SESSION_ROLES - Indicates whether a specified role is currently enabled for the session. 
+
 == Implementation Principle
 
 The implementation principle of `SYS_CONTEXT` involves dynamically querying system tables and PostgreSQL's built-in functions to ensure real-time results.
@@ -43,7 +49,7 @@ BEGIN
 END;
 $$ LANGUAGE plisql SECURITY INVOKER;
 ```
-== Parameters Supported by USERENV
+== Parameters supported by namespace `USERENV`
 
 [cols="3,7"] 
 |==== 
@@ -79,7 +85,7 @@ The session ID.
 |TERMINAL | The operating system identifier for the client of the current session. In distributed SQL statements, this attribute returns the identifier for your local session. In a distributed environment, this is supported only for remote SELECT statements, not for remote INSERT, UPDATE, or DELETE operations. (The return length of this parameter may vary by operating system.)
 |====
 
-== Parameters Supported by SYS_SESSION_ROLES
+== Parameters supported by namespace `SYS_SESSION_ROLES`
 
 [cols="3,7"] 
 |==== 
