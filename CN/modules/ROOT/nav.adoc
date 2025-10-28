@@ -13,8 +13,12 @@
 *** xref:master/4.4.adoc[运维管理指南]
 *** xref:master/4.5.adoc[迁移指南]
 ** IvorySQL生态
-*** xref:master/5.1.adoc[PostGIS]
+*** xref:master/5.0.adoc[概述]
 *** xref:master/5.2.adoc[pgvector]
+*** xref:master/5.3.adoc[pgddl(DDL Extractor)]
+*** xref:master/5.4.adoc[pg_cron]
+*** xref:master/5.5.adoc[pgsql-http]
+*** xref:master/5.6.adoc[plpgsql_check]
 ** IvorySQL架构设计
 *** 查询处理
 **** xref:master/6.1.1.adoc[双parser]

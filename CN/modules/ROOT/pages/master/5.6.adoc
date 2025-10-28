@@ -1,0 +1,79 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= plpgsql_check
+
+== 概述
+在 PostgreSQL 数据库开发过程中，编写存储过程和函数时往往难以在运行前发现代码中的语法错误、类型不匹配、未定义变量等潜在问题。传统方式需要等到函数实际执行时才能发现这些错误，这不仅增加了调试成本，也可能在生产环境中引发意外故障。
+
+plpgsql_check 是一个专为 PostgreSQL 的 PL/pgSQL 语言设计的静态代码分析工具（Linter），它能够在不实际执行函数的情况下，对存储过程和函数的源代码进行深度检查。该工具可以提前发现语法错误、类型不匹配、未使用的变量、性能问题、安全隐患等多种代码质量问题，帮助开发者在开发阶段就确保代码的正确性和健壮性。详情可以参见 https://github.com/okbob/plpgsql_check[plpgsql_check官方文档]。
+
+== 安装
+
+[TIP]
+源码安装环境为 Ubuntu 24.04(x86_64)，环境中已经安装了IvorySQL5及以上版本，安装路径为/usr/local/ivorysql/ivorysql-5
+
+=== 源码安装
+
+[literal]
+----
+# 从https://github.com/okbob/plpgsql_check/releases/tag/v2.8.3 下载 2.8.3的源码包 plpgsql_check-2.8.3.tar.gz
+tar xvf plpgsql_check-2.8.3.tar.gz
+cd plpgsql_check-2.8.3
+# 将pg_config的路径设置到PATH环境变量里，eg：
+export PATH=/usr/local/ivorysql/ivorysql-5/bin/:$PATH
+make USE_PGXS=1 clean
+make USE_PGXS=1 all
+sudo make USE_PGXS=1 install
+----
+
+== 创建Extension并确认plpgsql_check版本
+
+psql 连接到数据库，执行如下命令：
+[literal]
+----
+ivorysql=# CREATE EXTENSION plpgsql_check;
+CREATE EXTENSION
+
+ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'plpgsql_check';
+     name      | default_version | installed_version |                      comment                      
+---------------+-----------------+-------------------+---------------------------------------------------
+ plpgsql_check | 2.8             | 2.8               | extended check for plpgsql functions
+(1 row)
+----
+
+== 使用
+
+=== 检查单个函数
+
+[literal]
+----
+-- 创建一个示例函数
+CREATE OR REPLACE FUNCTION test_function(p_id integer)
+RETURNS text AS $$
+DECLARE
+    v_name text;
+    v_unused integer;  -- 未使用的变量
+BEGIN
+    SELECT name INTO v_name FROM users WHERE id = p_id;
+    RETURN v_naem;  -- 拼写错误
+END;
+$$ LANGUAGE plpgsql;
+
+-- 使用 plpgsql_check 检查函数
+SELECT * FROM plpgsql_check_function('test_function(integer)');
+----
+
+检查结果示例：
+[literal]
+----
+                    plpgsql_check_function                    
+--------------------------------------------------------------
+ error:42601:7:assignment:target variable "v_naem" is undefined
+ warning:00000:4:DECLARE:unused variable "v_unused"
+(2 rows)
+----
+
+更多详细使用方法和高级特性，请参阅 https://github.com/okbob/plpgsql_check[plpgsql_check官方文档]。
+

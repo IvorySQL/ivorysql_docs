@@ -1,0 +1,59 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pgsql-http
+
+== 概述
+pgsql-http 是一个为 PostgreSQL 数据库设计的开源扩展，它允许用户直接在数据库内部发起 HTTP 请求，扮演了一个内置 Web 客户端的角色。该扩展的核心目的是打通数据库与外部 Web 服务之间的壁垒，使得通过简单的 SQL 函数调用即可与外部 Web 服务、API 端点进行交互，无需依赖外部应用程序或中间件。
+
+借助此扩展，开发者可以在 SQL 查询、触发器或存储过程中直接获取网络数据（GET）、提交数据（POST/PUT）、更新（PATCH）或删除（DELETE）远程资源。它提供了丰富的功能，包括设置请求头、自动处理 URL 编码、发送 JSON 数据以及解析响应状态、头部和内容，极大简化了将外部数据集成到数据库操作中的流程。
+
+其典型应用场景包括：实时获取外部数据（如汇率、天气信息）并存入表；在数据变更时通过触发器自动通知微服务；对数据库中的数据进行清洗后直接提交至外部 API 等。它为构建以数据库为中心的集成应用提供了强大而灵活的解决方案。
+
+== 安装
+IvorySQL的安装包里已经集成了pgsql-http插件，如果使用安装包安装的IvorySQL，通常不需要再手动安装pgsql-http即可使用。其它安装方式可以参考下面的源码安装步骤。
+
+[TIP]
+源码安装环境为 Ubuntu 24.04(x86_64)，环境中已经安装了IvorySQL5及以上版本，安装路径为/usr/local/ivorysql/ivorysql-5
+
+=== 源码安装
+
+** 安装依赖
+
+对libcurl有依赖，libcurl的开发文件（例如 libcurl4-openssl-dev）需要提前安装上
+[literal]
+----
+#安装依赖
+sudo apt install libcurl4-openssl-dev
+----
+
+** 编译安装
+
+从https://github.com/pramsey/pgsql-http/releases/tag/v1.7.0 下载 1.7.0的源码包 pgsql-http-1.7.0.tar.gz
+[literal]
+----
+tar xvf pgsql-http-1.7.0.tar.gz
+cd pgsql-http-1.7.0
+# 确保pg_config在PATH里可以访问，eg: /usr/local/ivorysql/ivorysql-5/bin/pg_config
+make
+sudo make install
+----
+
+== 创建Extension并确认http版本
+
+psql 连接到数据库，执行如下命令：
+[literal]
+----
+ivorysql=# CREATE extension http;
+CREATE EXTENSION
+
+ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'http';
+   name    | default_version | installed_version |       comment       
+-----------+-----------------+-------------------+-------------------------------------------------------------------------
+ http      | 1.7             |  1.7              | HTTP client for PostgreSQL, allows web page retrieval inside the database.
+(1 row)
+----
+
+== 使用
+关于pgsql-http的使用，请参阅 https://github.com/pramsey/pgsql-http[pgsql-http官方文档]
