@@ -11,7 +11,7 @@
 ** xref:master/4.3.adoc[Developer]
 ** xref:master/4.4.adoc[Operation Management]
 ** xref:master/4.5.adoc[Migration]
-* IvorySQL Ecosystem 
+* IvorySQL Ecosystem
 ** xref:master/5.1.adoc[PostGIS]
 ** xref:master/5.2.adoc[pgvector]
 * IvorySQL Architecture Design
@@ -26,6 +26,7 @@
 *** xref:master/6.3.4.adoc[%Type & %Rowtype]
 *** xref:master/6.3.5.adoc[NLS Parameters]
 *** xref:master/6.3.6.adoc[Function and stored procedure]
+*** xref:master/6.3.7.adoc[Nested Subfunctions]
 ** xref:master/6.4.adoc[GB18030 Character Set]
 * List of Oracle compatible features
 ** xref:master/7.1.adoc[1、Ivorysql frame design]
@@ -45,6 +46,7 @@
 ** xref:master/7.15.adoc[15、OUT Parameter]
 ** xref:master/7.16.adoc[16、%Type & %Rowtype]
 ** xref:master/7.17.adoc[17、NLS Parameters]
+** xref:master/7.19.adoc[19、Nested Subfunctions]
 * xref:master/8.adoc[Community contribution]
 * xref:master/9.adoc[Tool Reference]
 * xref:master/10.adoc[FAQ]
