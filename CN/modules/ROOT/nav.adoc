@@ -30,6 +30,7 @@
 **** xref:master/6.3.7.adoc[嵌套子函数]
 **** xref:master/6.3.8.adoc[Force View]
 **** xref:master/6.3.9.adoc[大小写转换]
+**** xref:master/6.3.10.adoc[sys_guid 函数]
 *** xref:master/6.4.adoc[国标GB18030]
 *** 内置函数
 **** xref:master/6.4.1.adoc[sys_context]
@@ -55,6 +56,7 @@
 *** xref:master/7.17.adoc[17、NLS 参数]
 *** xref:master/7.18.adoc[18、Force View]
 *** xref:master/7.19.adoc[19、嵌套子函数]
+*** xref:master/7.20.adoc[20、sys_guid 函数]
 ** IvorySQL贡献指南
 *** xref:master/8.1.adoc[社区贡献指南]
 *** xref:master/8.2.adoc[asciidoc语法快速参考]

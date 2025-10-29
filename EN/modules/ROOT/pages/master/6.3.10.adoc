@@ -1,0 +1,21 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= sys_guid() function
+
+== Purpose
+
+IvorySQL's sys_guid() is a powerful random number generation function that generates and returns a 16-byte database-level unique identifier (raw value).
+
+== Implementation Description
+
+The sys_guid() function of IvorySQL is implemented by modifying the code of the uuid-ossp plugin. To make full use of various underlying libraries of uuid, the following logic is adopted:
+
+1. If the uuid-ossp exists in the system, uuid_make() will be used;
+2. If the uuid-e2fs exists in the system, uuid_generate_random() will be used；
+3. Otherwise use arc4random()；
+
+Meanwhile modify the code so that IvorySQL can load uuid-ossp extension automatically.
+
