@@ -23,38 +23,42 @@ HNSW (Hierarchical Navigating Small World) 是一种基于图的索引算法，�
 == 安装
 [TIP]
 ====
-环境中已经安装了IvorySQL4.5及以上版本，安装路径为/usr/local/ivorysql/ivorysql-4
+环境中已经安装了IvorySQL5及以上版本，安装路径为/usr/local/ivorysql/ivorysql-5
 ====
 
 === 源码安装
 
 ** 设置PG_CONFIG环境变量
-```
-export PG_CONFIG=/usr/local/ivorysql/ivorysql-4/bin/pg_config
-```
+[literal]
+----
+export PG_CONFIG=/usr/local/ivorysql/ivorysql-5/bin/pg_config
+----
 
 ** 拉取pg_vector源码
-```
-git clone --branch v0.6.2 https://github.com/pgvector/pgvector.git
-```
+[literal]
+----
+git clone --branch v0.8.1 https://github.com/pgvector/pgvector.git
+----
 
 ** 安装 pgvector
-```
+[literal]
+----
 cd pgvector
 
 sudo --preserve-env=PG_CONFIG make
 sudo --preserve-env=PG_CONFIG make install
-```
+----
 
 ** 创建pgvector扩展
-```
-[ivorysql@localhost ivorysql-4]$ psql
-psql (17.5)
+[literal]
+----
+[ivorysql@localhost ivorysql-5]$ psql
+psql (18.0)
 Type "help" for help.
 
 ivorysql=# create extension vector;
 CREATE EXTENSION
-```
+----
 至此，pgvector扩展安装已完成。
 更多用例，请参考 https://github.com/pgvector/pgvector?tab=readme-ov-file#getting-started[pgvector文档]
 
@@ -66,7 +70,8 @@ CREATE EXTENSION
 
 === 数据类型
 
-```
+[literal]
+----
 ivorysql=# CREATE TABLE items5 (id bigserial PRIMARY KEY, name varchar2(20), num number(20), embedding bit(3));
 CREATE TABLE
 ivorysql=# INSERT INTO items5 (name, num, embedding) VALUES ('1st oracle data',0, '000'), ('2nd oracle data', 111, '111');
@@ -76,11 +81,12 @@ ivorysql=# SELECT * FROM items5 ORDER BY bit_count(embedding # '101') LIMIT 5;
 ----+-----------------+-----+-----------
   2 | 2nd oracle data | 111 | 111
   1 | 1st oracle data | 0   | 000
-```
+----
 
 === 匿名块
 
-```
+[literal]
+----
 ivorysql=# declare
 i vector(3) := '[1,2,3]';
 begin
@@ -89,10 +95,11 @@ end;
 ivorysql-# /
 NOTICE:  [1,2,3]
 DO
-```
+----
 
 === 存储过程（PROCEDURE）
-```
+[literal]
+----
 ivorysql=# CREATE OR REPLACE PROCEDURE ora_procedure()
 AS
 p vector(3) := '[4,5,6]';
@@ -104,10 +111,11 @@ CREATE PROCEDURE
 ivorysql=# call ora_procedure();
 NOTICE:  [4,5,6]
 CALL
-```
+----
 
 ==== 函数（FUNCTION）
-```
+[literal]
+----
 ivorysql=# CREATE OR REPLACE FUNCTION AddVector(a vector(3), b vector(3))
 RETURN vector(3)
 IS
@@ -121,4 +129,4 @@ ivorysql=# SELECT AddVector('[1,2,3]','[4,5,6]') FROM DUAL;
 ----------------
  [5,7,9]
 (1 row)
-```
+----
