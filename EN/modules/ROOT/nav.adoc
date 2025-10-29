@@ -28,6 +28,8 @@
 *** xref:master/6.3.6.adoc[Function and stored procedure]
 *** xref:master/6.3.7.adoc[Nested Subfunctions]
 *** xref:master/6.3.8.adoc[Force View]
+*** xref:master/6.3.9.adoc[Case Conversion]
+** xref:master/6.4.adoc[GB18030 Character Set]
 ** Built-in Functions
 *** xref:master/6.4.1.adoc[sys_context]
 *** xref:master/6.4.2.adoc[userenv]
