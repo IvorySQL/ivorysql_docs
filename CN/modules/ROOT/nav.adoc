@@ -31,6 +31,10 @@
 **** xref:master/6.3.8.adoc[Force View]
 **** xref:master/6.3.9.adoc[大小写转换]
 *** xref:master/6.4.adoc[国标GB18030]
+*** 内置函数
+**** xref:master/6.4.1.adoc[sys_context]
+**** xref:master/6.4.2.adoc[userenv]
+*** xref:master/6.5.adoc[国标GB18030]
 ** Oracle兼容功能列表
 *** xref:master/7.1.adoc[1、框架设计]
 *** xref:master/7.2.adoc[2、GUC框架]
