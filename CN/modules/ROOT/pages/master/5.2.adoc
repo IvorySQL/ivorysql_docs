@@ -29,18 +29,21 @@ HNSW (Hierarchical Navigating Small World) 是一种基于图的索引算法，�
 === 源码安装
 
 ** 设置PG_CONFIG环境变量
++
 [literal]
 ----
 export PG_CONFIG=/usr/local/ivorysql/ivorysql-5/bin/pg_config
 ----
 
 ** 拉取pg_vector源码
++
 [literal]
 ----
 git clone --branch v0.8.1 https://github.com/pgvector/pgvector.git
 ----
 
 ** 安装 pgvector
++
 [literal]
 ----
 cd pgvector
@@ -50,6 +53,7 @@ sudo --preserve-env=PG_CONFIG make install
 ----
 
 ** 创建pgvector扩展
++
 [literal]
 ----
 [ivorysql@localhost ivorysql-5]$ psql

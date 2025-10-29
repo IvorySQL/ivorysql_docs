@@ -32,18 +32,21 @@ The IvorySQL 5(above version) has been installed in the environment, and the ins
 === Source Code Installation
 
 ** Setting PG_CONFIG 
++
 [literal]
 ----
 export PG_CONFIG=/usr/local/ivorysql/ivorysql-5/bin/pg_config
 ----
 
 ** Pull pg_vector source code
++
 [literal]
 ----
 git clone --branch v0.8.1 https://github.com/pgvector/pgvector.git
 ----
 
 ** Install pgvector
++
 [literal]
 ----
 cd pgvector
@@ -53,6 +56,7 @@ sudo --preserve-env=PG_CONFIG make install
 ----
 
 ** Create pgvector extension
++
 [literal]
 ----
 [ivorysql@localhost ivorysql-4]$ psql
