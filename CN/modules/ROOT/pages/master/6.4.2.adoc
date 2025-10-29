@@ -1,0 +1,57 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+
+= **功能概述**
+
+IvorySQL提供兼容Oracle内置函数`USERENV('parameter')`,用于返回当前会话的相关信息。
+这是一个遗留函数，建议使用 SYS_CONTEXT 函数及其内置的 USERENV 命名空间来获取当前功能。
+
+== 实现原理
+
+`USERENV` 通过Bison规则解析函数调用，检查参数合法性并映射到对应的具体SQL函数。
+解析规则在 `ora_gram.y` 中实现，逻辑如下：
+```c
+USERENV '(' Sconst ')'
+	{
+		char *normalized_param = downcase_identifier($3, strlen($3), true, true);
+
+		#define CHECK_AND_CALL(param, func_name) \
+			if (strcmp(normalized_param, param) == 0) \
+				$$ = (Node *) makeFuncCall(OracleSystemFuncName(func_name), NIL, COERCE_EXPLICIT_CALL, @1);
+
+		CHECK_AND_CALL("client_info", "get_client_info")
+		else CHECK_AND_CALL("entryid", "get_entryid")
+		else CHECK_AND_CALL("terminal", "get_terminal")
+		else CHECK_AND_CALL("isdba", "get_isdba")
+		else CHECK_AND_CALL("lang", "get_lang")
+		else CHECK_AND_CALL("language", "get_language")
+		else CHECK_AND_CALL("sessionid", "get_sessionid")
+		else CHECK_AND_CALL("sid", "get_sid")
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						errmsg("invalid USERENV parameter: \"%s\".", $3)));
+		#undef CHECK_AND_CALL
+	}
+```
+具体功能则是在 `builtin_functions--1.0.sql` 中实现。例如：
+```sql
+CREATE OR REPLACE FUNCTION sys.get_language() 
+RETURNS varchar2 
+AS $$
+	SELECT (regexp_split_to_array(current_setting('lc_monetary'), '\.'))[1]||'.'||pg_client_encoding();
+$$ LANGUAGE sql STRICT;
+```
+
+== USERENV支持的参数
+[cols="2,8"]
+|====
+|*参数名称*|*返回值*
+|sid | 当前session的用户ID。
+|sessionid | 返回审计会话标识符。
+|language | 返回数据库当前会话的语言、地域和字符集。
+|lang | 返回ISO缩写语言名称。
+|isdba | 如果用户已经被认证为管理员;或者是通过操作系统或口令文件具有管理员特权的，返回“TRUE"，否则返回"FALSE"。
+|====
