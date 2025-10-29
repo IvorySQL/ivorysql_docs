@@ -1,0 +1,66 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= Force View
+
+== 目的
+
+- 本文档解释 IvorySQL 中 Force View 的用途，帮助用户在依赖对象尚未就绪时仍可创建强制视图占位并保持与 Oracle 行为一致。
+- Force View 可支持在依赖表尚未准备好的情况下进行视图迁移，在依赖满足后通过自动或显式编译快速恢复为普通视图。
+
+== 功能说明
+
+- `CREATE [OR REPLACE] FORCE VIEW`：即使查询引用了不存在的表或函数，也会创建视图占位对象并保存原始 SQL，提示“View created with compilation errors”。
+- 自动编译：访问 Force View 时会尝试重新编译；成功后变为普通视图，失败则报错 `view "<schema>.<name>" has errors`。
+- 依赖失效回退：当普通视图因依赖对象被删除或结构变更而失效时，系统会自动将其转化为 Force View，保留最后一次有效定义以便后续恢复。
+
+== 测试用例
+
+=== 创建缺失依赖的 Force View
+
+[source,sql]
+----
+-- 引用不存在的基础表，验证可成功创建占位
+CREATE FORCE VIEW fv_customer AS
+SELECT c_id, c_name FROM missing_customer;
+-- 期望输出：WARNING: View created with compilation errors
+----
+
+=== 自动编译并恢复为普通视图
+
+[source,sql]
+----
+-- 先补齐依赖对象
+CREATE TABLE missing_customer(
+  c_id   int primary key,
+  c_name text
+);
+INSERT INTO missing_customer VALUES (1, 'Alice');
+
+-- 访问 Force View 时自动尝试编译
+SELECT * FROM fv_customer;
+-- 成功时视图转换为普通视图并返回数据
+----
+
+=== 显式编译与失败回退
+
+[source,sql]
+----
+-- 再次让视图失效：重建定义为 Force View
+CREATE OR REPLACE FORCE VIEW fv_customer AS
+SELECT c_id, upper(c_name) AS c_name FROM missing_customer_v2;
+
+-- 显式编译：依赖仍缺少，保持 Force View 状态并输出 WARNING
+ALTER VIEW fv_customer COMPILE;
+-- 期望输出：WARNING: View altered with compilation errors
+
+-- 补齐依赖后再次编译
+CREATE TABLE missing_customer_v2(
+  c_id   int,
+  c_name text
+);
+ALTER VIEW fv_customer COMPILE;
+-- 期望输出：ALTER VIEW 成功，视图恢复为普通视图
+----
