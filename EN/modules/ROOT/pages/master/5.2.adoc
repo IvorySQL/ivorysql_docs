@@ -26,38 +26,46 @@ HNSW (Hierarchical Navigating Small World) is a graph-based indexing algorithm c
 == Installation
 [TIP]
 ====
-The IvorySQL 4.5(above version) has been installed in the environment, and the installation path is /usr/local/ivorysql/ivorysql-4
+The IvorySQL 5(above version) has been installed in the environment, and the installation path is /usr/local/ivorysql/ivorysql-5
 ====
 
 === Source Code Installation
 
 ** Setting PG_CONFIG 
-```
-export PG_CONFIG=/usr/local/ivorysql/ivorysql-4/bin/pg_config
-```
++
+[literal]
+----
+export PG_CONFIG=/usr/local/ivorysql/ivorysql-5/bin/pg_config
+----
 
 ** Pull pg_vector source code
-```
-git clone --branch v0.6.2 https://github.com/pgvector/pgvector.git
-```
++
+[literal]
+----
+git clone --branch v0.8.1 https://github.com/pgvector/pgvector.git
+----
 
 ** Install pgvector
-```
++
+[literal]
+----
 cd pgvector
 
 sudo --preserve-env=PG_CONFIG make
 sudo --preserve-env=PG_CONFIG make install
-```
+----
 
 ** Create pgvector extension
-```
++
+[literal]
+----
 [ivorysql@localhost ivorysql-4]$ psql
-psql (17.5)
+psql (18.0)
 Type "help" for help.
 
 ivorysql=# create extension vector;
 CREATE EXTENSION
-```
+----
 Now, pgvector is installed completely.
 For more usage cases, please refer to https://github.com/pgvector/pgvector?tab=readme-ov-file#getting-started[pgvector document]
 
@@ -68,7 +76,8 @@ We suggest users to test using port 1521, using the command: psql -p 1521.
 
 === Data Type
 
-```
+[literal]
+----
 ivorysql=# CREATE TABLE items5 (id bigserial PRIMARY KEY, name varchar2(20), num number(20), embedding bit(3));
 CREATE TABLE
 ivorysql=# INSERT INTO items5 (name, num, embedding) VALUES ('1st oracle data',0, '000'), ('2nd oracle data', 111, '111');
@@ -78,11 +87,12 @@ ivorysql=# SELECT * FROM items5 ORDER BY bit_count(embedding # '101') LIMIT 5;
 ----+-----------------+-----+-----------
   2 | 2nd oracle data | 111 | 111
   1 | 1st oracle data | 0   | 000
-```
+----
 
 === Anonymous Block
 
-```
+[literal]
+----
 ivorysql=# declare
 i vector(3) := '[1,2,3]';
 begin
@@ -91,10 +101,11 @@ end;
 ivorysql-# /
 NOTICE:  [1,2,3]
 DO
-```
+----
 
 === PROCEDURE
-```
+[literal]
+----
 ivorysql=# CREATE OR REPLACE PROCEDURE ora_procedure()
 AS
 p vector(3) := '[4,5,6]';
@@ -106,10 +117,11 @@ CREATE PROCEDURE
 ivorysql=# call ora_procedure();
 NOTICE:  [4,5,6]
 CALL
-```
+----
 
 ==== FUNCTION
-```
+[literal]
+----
 ivorysql=# CREATE OR REPLACE FUNCTION AddVector(a vector(3), b vector(3))
 RETURN vector(3)
 IS
@@ -123,4 +135,4 @@ ivorysql=# SELECT AddVector('[1,2,3]','[4,5,6]') FROM DUAL;
 ----------------
  [5,7,9]
 (1 row)
-```
+----
