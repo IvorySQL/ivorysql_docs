@@ -1,0 +1,36 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= sys_guid() function
+
+== Purpose
+
+IvorySQL's sys_guid() is a powerful random number generation function that generates and returns a 16-byte database-level unique identifier (raw value).
+
+== Usage example
+
+```
+highgo=# select sys_guid() from dual;
+              sys_guid              
+------------------------------------
+ \x3ed9426c8a093442a38bea09a74f44a1
+(1 row)
+```
+
+== The sys_guid function can generate default values for primary keys when creating a table
+
+```
+create table student
+(
+student_id raw(16) default sys_guid() primary key,
+student_name varchar2(100) not null
+);
+```
+
+== The primary key is automatically populated when new data is added
+
+```
+insert into student(student_name) values ('Steven');
+```

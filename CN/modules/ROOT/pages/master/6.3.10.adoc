@@ -1,0 +1,21 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= sys_guid() 函数
+
+== 目的
+
+IvorySQL的sys_guid() 是一个强大的随机数产生函数，它产生并返回一个由16个字节组成的数据库级别唯一的标识符(原始值)。
+
+== 实现说明
+
+IvorySQL的sys_guid()函数通过修改插件uuid-ossp的代码实现。为了充分利用uuid的多种基础库，采用如下逻辑：
+
+1. 如果系统有uuid-ossp，就使用uuid_make();
+2. 如果系统有uuid-e2fs，就使用 uuid_generate_random();
+3. 否则就调用 arc4random();
+
+同时修改代码使得IvorySQL能够自动载入uuid-ossp插件。
+
