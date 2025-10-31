@@ -5,8 +5,8 @@
 
 = **功能概述**
 
-IvorySQL提供兼容Oracle内置函数`USERENV('parameter')`,用于返回当前会话的相关信息。
-这是一个遗留函数，建议使用 SYS_CONTEXT 函数及其内置的 USERENV 命名空间来获取当前功能。
+IvorySQL提供兼容Oracle内置函数 ```USERENV('parameter')``` ,用于返回当前会话的相关信息。
+这是一个遗留函数，建议使用 `SYS_CONTEXT` 函数及其内置的 `USERENV` 命名空间来获取当前功能。
 
 == 实现原理
 
