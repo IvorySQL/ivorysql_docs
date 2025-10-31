@@ -19,6 +19,7 @@
 *** xref:master/5.4.adoc[pg_cron]
 *** xref:master/5.5.adoc[pgsql-http]
 *** xref:master/5.6.adoc[plpgsql_check]
+*** xref:master/5.7.adoc[pgroonga]
 ** IvorySQL架构设计
 *** 查询处理
 **** xref:master/6.1.1.adoc[双parser]
@@ -34,7 +35,6 @@
 **** xref:master/6.3.7.adoc[嵌套子函数]
 **** xref:master/6.3.8.adoc[Force View]
 **** xref:master/6.3.9.adoc[大小写转换]
-*** xref:master/6.4.adoc[国标GB18030]
 *** 内置函数
 **** xref:master/6.4.1.adoc[sys_context]
 **** xref:master/6.4.2.adoc[userenv]

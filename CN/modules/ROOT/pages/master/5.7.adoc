@@ -1,0 +1,94 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= PGroonga
+
+== 概述
+PostgreSQL 内置了全文搜索功能，但在处理​​大规模数据​​、​​复杂查询​​以及​​非英语语言（特别是中日韩等 CJK 语言）​​ 时，其功能和性能可能无法满足高性能应用的需求。
+
+PGroonga 应运而生，它是一个 PostgreSQL 的扩展插件，将 ​​Groonga​​ 这款高性能的全功能全文搜索引擎与 PostgreSQL 数据库深度融合。Groonga 本身是一个优秀的开源搜索引擎，以其极致的速度和丰富的功能著称，尤其擅长处理多语言文本。PGroonga 的使命就是将 Groonga 的强大能力无缝地带入 PostgreSQL 的世界，为用户提供远超原生全文搜索的体验。
+
+== 安装
+[NOTE]
+IvorySQL的安装包里已经集成了PGroonga插件，如果使用安装包安装的IvorySQL，通常不需要再手动安装PGroonga，直接跳过安装步骤即可。
+
+用户可从 https://pgroonga.github.io/install[PGroonga package安装] 页面选择适合自己的方式进行PGroonga安装。
+
+IvorySQL社区提供则补充源码安装步骤，以PGroonga v4.0.4为例。
+
+=== 安装依赖
+
+环境
+```  
+  操作系统：Ubuntu 24.04
+  CPU架构：x86_64
+  IvorySQL: v5.0
+```
+
+==== 安装 msgpack-c
+
+编译PGroonga，有个配置选项：HAVE_MSGPACK=1，它是用于支持WAL，使用这个选项需要安装msgpack-c 1.4.1或者更高版本。
+
+```
+  sudo apt install libmsgpack-dev
+```
+==== 安装 Groonga
+
+确保Groonga >= 14.0.0
+
+```
+  sudo apt install groonga libgroonga-dev
+```
+验证Groonga安装成功
+```bash
+highgo@ubuntu:~/work/IvorySQL/inst$ groonga --version
+  Groonga 15.1.7 [Linux,x86_64,utf8,match-escalation-threshold=0,nfkc,mecab,message-pack,mruby,onigmo,zlib,lz4,zstandard,epoll,apache-arrow,xxhash,blosc,h3,simdjson,llama.cpp]
+```
+
+
+=== 编译安装PGroonga
+
+==== 下载解压源码
+
+```bash
+  wget https://packages.groonga.org/source/pgroonga/pgroonga-4.0.4.tar.gz
+  tar xvf pgroonga-4.0.4.tar.gz
+  cd pgroonga-4.0.4
+```
+==== 编译
+运行make前确保`pg_config`命令的路径在`PATH`环境变量里，例如IvorySQL安装的路径是`~/work/IvorySQL/inst`，则环境变量设置如下：
+
+```bash
+  export PGHOME=~/work/IvorySQL/inst
+  export PGDATA=$PGHOME/data
+  export PATH=$PGHOME/bin:$PATH
+```
+然后执行以下命令进行编译和安装：
+```bash
+  make HAVE_MSGPACK=1
+  make install
+```
+
+== 创建Extension并确认PGroonga版本
+
+
+psql 连接到数据库的pg模式下，执行命令：
+```sql
+postgres=# CREATE extension pgroonga;
+CREATE EXTENSION
+postgres=# SELECT * FROM pg_available_extensions WHERE name = 'pgroonga';
+   name   | default_version | installed_version |                                    comment
+----------+-----------------+-------------------+--------------------------------------------------------------------------------
+ pgroonga | 4.0.4           | 4.0.4             | Super fast and all languages supported full text search index based on Groonga
+(1 row)
+
+postgres=# select version();
+                                    version
+--------------------------------------------------------------------------------
+ PostgreSQL (IvorySQL 5.0) 18.0 on x86_64-linux, compiled by gcc-13.3.0, 64-bit
+(1 row)
+```
+
+== 使用
+关于PGroonga的使用，请参阅 https://pgroonga.github.io/tutorial[PGroonga官方文档]

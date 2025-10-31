@@ -18,6 +18,7 @@
 ** xref:master/5.4.adoc[pg_cron]
 ** xref:master/5.5.adoc[pgsql-http]
 ** xref:master/5.6.adoc[plpgsql_check]
+** xref:master/5.7.adoc[pgroonga]
 * IvorySQL Architecture Design
 ** Query Processing
 *** xref:master/6.1.1.adoc[Dual Parser]
@@ -33,7 +34,6 @@
 *** xref:master/6.3.7.adoc[Nested Subfunctions]
 *** xref:master/6.3.8.adoc[Force View]
 *** xref:master/6.3.9.adoc[Case Conversion]
-** xref:master/6.4.adoc[GB18030 Character Set]
 ** Built-in Functions
 *** xref:master/6.4.1.adoc[sys_context]
 *** xref:master/6.4.2.adoc[userenv]
