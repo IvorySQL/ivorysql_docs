@@ -18,7 +18,7 @@
 
 == Test Cases
 
-[source,sql]
+[literal]
 ----
 -- Create test table
 ivorysql=# create table abc (id int);
@@ -38,14 +38,14 @@ INSERT 0 1
 -- Query table data, displays as NULL
 ivorysql=# select * from abc;
  id
-----
+\----
 
 (1 row)
 
 -- Query using IS NULL condition
 ivorysql=# select * from abc where id is null;
  id
-----
+\----
 
 (1 row)
 ----

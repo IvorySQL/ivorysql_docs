@@ -18,7 +18,7 @@
 
 == 测试用例
 
-[source,sql]
+[literal]
 ----
 -- 创建测试表
 ivorysql=# create table abc (id int);
@@ -38,14 +38,14 @@ INSERT 0 1
 -- 查询表数据,显示为NULL
 ivorysql=# select * from abc;
  id
-----
+\----
 
 (1 row)
 
 -- 使用IS NULL条件查询
 ivorysql=# select * from abc where id is null;
  id
-----
+\----
 
 (1 row)
 ----
