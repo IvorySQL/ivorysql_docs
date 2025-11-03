@@ -61,6 +61,7 @@
 *** xref:master/7.18.adoc[18、Force View]
 *** xref:master/7.19.adoc[19、嵌套子函数]
 *** xref:master/7.20.adoc[20、sys_guid 函数]
+*** xref:master/7.21.adoc[21、空字符串转null]
 ** IvorySQL贡献指南
 *** xref:master/8.1.adoc[社区贡献指南]
 *** xref:master/8.2.adoc[asciidoc语法快速参考]

@@ -12,7 +12,7 @@ IvorySQL的sys_guid() 是一个强大的随机数产生函数，它产生并返�
 == 使用示例
 
 ```
-highgo=# select sys_guid() from dual;
+ivorysql=# select sys_guid() from dual;
               sys_guid              
 ------------------------------------
  \x3ed9426c8a093442a38bea09a74f44a1
