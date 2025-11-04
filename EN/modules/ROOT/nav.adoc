@@ -34,7 +34,7 @@
 *** xref:master/6.3.8.adoc[Force View]
 *** xref:master/6.3.9.adoc[Case Conversion]
 *** xref:master/6.3.10.adoc[sys_guid Function]
-** xref:master/6.4.adoc[GB18030 Character Set]
+*** xref:master/6.3.11.adoc[Empty String to NULL]
 ** Built-in Functions
 *** xref:master/6.4.1.adoc[sys_context]
 *** xref:master/6.4.2.adoc[userenv]

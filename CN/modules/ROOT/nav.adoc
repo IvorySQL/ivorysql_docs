@@ -35,7 +35,7 @@
 **** xref:master/6.3.8.adoc[Force View]
 **** xref:master/6.3.9.adoc[大小写转换]
 **** xref:master/6.3.10.adoc[sys_guid 函数]
-*** xref:master/6.4.adoc[国标GB18030]
+**** xref:master/6.3.11.adoc[空字符串转null]
 *** 内置函数
 **** xref:master/6.4.1.adoc[sys_context]
 **** xref:master/6.4.2.adoc[userenv]
