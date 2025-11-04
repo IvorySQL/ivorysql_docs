@@ -26,7 +26,7 @@ Setup Environment
 ``` 
 ==== Install msgpack-c
 
-When compiling PGroonga with `HAVE_MSGPACK=1`, which is used to support WAL. Enabling this option requires installing msgpack-c 1.4.1 or later.
+When compile PGroonga, there is an option: `HAVE_MSGPACK=1`, which is used to support WAL. Enabling this option requires installing msgpack-c 1.4.1 or newer version.
 ```bash
   sudo apt install libmsgpack-dev
 ```
@@ -81,6 +81,10 @@ postgres=# SELECT * FROM pg_available_extensions WHERE name = 'pgroonga';
 (1 row)
 
 postgres=# select version();
+                                    version
+--------------------------------------------------------------------------------
+ PostgreSQL (IvorySQL 5.0) 18.0 on x86_64-linux, compiled by gcc-13.3.0, 64-bit
+(1 row)
 ```
 
 == Usage
