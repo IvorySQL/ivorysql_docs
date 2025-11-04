@@ -1,0 +1,170 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= CALL INTO
+
+== 目的
+
+当前，PostgreSQL数据库的CALL语句存在以下限制：
+
+- 不支持INTO子句；
+- 无法调用有返回值的函数；
+- 无法将结果赋值给客户端变量（即 Oracle 中的绑定变量 / host variables）。
+
+为提升对 Oracle 的兼容性，IvorySQL 实现了对 CALL func(...) INTO :var; 语法的支持，允许用户通过绑定变量（如 :x）接收函数返回值，并在行为（如精度检查、错误处理）上与 Oracle 保持一致。
+
+== 整体设计思路
+
+由于 PostgreSQL/IvorySQL 本身不支持 SQL 层直接向客户端变量赋值，因此本方案采用 “客户端重写 + 服务端协同” 的方式实现：
+
+- 当 CALL 语句包含绑定变量（如 :x）时：
+
+	客户端将其重写为一个特殊的匿名 PL 块（DO $$ ... $$）；
+	使用扩展查询协议发送，以便传递参数类型和精度信息；
+	服务端执行该匿名块，并将结果返回给客户端；
+	客户端再将结果写入对应的绑定变量。
+
+- 当 CALL 语句不含绑定变量时：
+
+	行为与原生 PostgreSQL 完全一致，使用简单查询协议，不做任何重写。
+
+== 实现原理
+=== 交互式终端
+为了在接口中兼容CALL [INTO]语句，需将其转换为匿名PL/SQL块，并借助匿名块对OUT参数的支持来实现功能等价。这就要求get_parameter_description函数能够正确识别CALL语句，并在遇到CALL INTO时，返回重写后的PL语句。
+相应地，get_hostvariables例程需要将这些信息（如是否为 CALL 语句、是否包含INTO、重写后的语句等）保存到HostVariable结构中。HostVariable的定义如下：
+```
+typedef struct HostVariable
+{
+	HostVariableEntry *hostvars;
+	int		length;
+	bool	isdostmt;
+	bool	iscallstmt;	// 是否来自 CALL 语句
+	char	*convertcall; 	// 重写后的语句
+} HostVariable;
+```
+=== 服务端
+在服务端需要修改语法解析器部分，在ora_gram.y中添加CALL INTO语法规则，并在action部分生成重写后的PL语句，如“x := add(1,2);”
+```
+CallStmt:	CALL func_application
+				{
+					CallStmt *n = makeNode(CallStmt);
+					n->funccall = castNode(FuncCall, $2);
+					$$ = (Node *)n;
+				}
+			| CALL func_application INTO ORAPARAM
+				{
+					CallStmt *n = makeNode(CallStmt);
+					OraParamRef *hostvar = makeNode(OraParamRef);
+					char	*callstr = NULL;
+					n->funccall = castNode(FuncCall, $2);
+					hostvar->number = 0;
+					hostvar->location = @4;
+					hostvar->name = $4;
+					n->hostvariable = hostvar;
+					callstr = pnstrdup(pg_yyget_extra(yyscanner)->core_yy_extra.scanbuf + @2, @3 - @2);
+					n->callinto = psprintf("%s := %s;", $4, callstr);
+					pfree(callstr);
+					$$ = (Node *)n;
+				}
+		;
+```
+CallStmt结构需要保存INTO子句和转换后的PL语句
+```
+typedef struct CallStmt
+{
+  NodeTag   type;
+  FuncCall  *funccall;    /* from the parser */
+  FuncExpr  *funcexpr;    /* transformed call, with only input args */
+  List    *outargs;    /* transformed output-argument expressions */
+  OraParamRef *hostvariable; /* only used for get_parameter_description() */
+  char    *callinto;    /* rewrite CALL INTO to a PL assign stmt */
+} CallStmt;
+```
+
+为区分普通 DO 语句和由 CALL 转换而来的匿名块，语法中新增GENERATED FROM CALL关键字：
+```
+opt_do_from_where:
+			GENERATED FROM CALL			{ $$ = true; }
+			| /*EMPTY*/					{ $$ = false; }
+		;
+```
+生成的 DoStmt 节点将设置 do_from_call = true，供执行器识别。
+```
+typedef struct DoStmt
+{
+  NodeTag   type;
+  List    *args;      /* List of DefElem nodes */
+  List    *paramsmode;  /* List of parameters mode */
+  List    *paramslen;   /* List of length for parameter datatypes */
+  bool    do_from_call;  /* True if DoStmt is come from CallStmt */
+} DoStmt;
+```
+在IVY接口中，占位符信息是通过一个名为get_parameter_description的集合返回函数（SRF）获取的。该函数需要能够识别输入语句的类型，并在遇到CALL INTO语句时，返回重写后的PL/SQL赋值语句。
+为此，IvorySQL对该函数的返回结构（TupleDesc）进行了扩展：新增了一个hint 字段，专门用于返回CALL INTO语句重写后的PL代码；对于其他类型的语句，该字段保持为NULL。
+此外，原函数结果集的第一条元组的第一个字段原本仅用true/false来区分语句是否为匿名块。为了更准确地识别语句类型（尤其是CALL语句），现已将其修改为返回对应解析树的 CommandTag。
+所有这些元数据信息最终会被封装到一个用户上下文结构中，以便在 SRF 函数的多次调用之间高效传递和复用。
+```
+{
+    OraParamExtralData *extral;
+    const char     *cmdtag;
+    char        *callintoexpr;
+} outparam_fctx;
+```
+接口层
+CALL涉及的ivy前缀的接口包括：
+
+IvyStmtExecute
+
+IvyStmtExecute2
+
+IvyexecPreparedStatement
+
+IvyexecPreparedStatement2
+
+在上述接口中，用户传入的CALL [INTO]语句会被重写为一种“特殊”的匿名块语句。为了明确标识这类由CALL转换而来的匿名块，在接口的语句类型定义中新增了一种专用类型。该类型的作用是在IvyHandleDostmt中正确识别此类语句，并生成形如 DO $$...$$ USING … -- GENERATED FROM CALL 的执行语句。
+```
+typedef enum IvyStmtType
+{
+	IVY_STMT_UNKNOW,
+	IVY_STMT_DO,
+	IVY_STMT_DOFROMCALL, /* new statementt ype */
+	IVY_STMT_DOHANDLED,
+	IVY_STMT_OTHERS
+} IvyStmtType;
+```
+在重写 CALL 语句时，如果遇到调用函数的 CALL INTO 语句，接口需要对绑定变量的顺序进行内部调整。这一调整对用户是完全透明的：用户在绑定参数时，只需按照 CALL 语句中出现的顺序操作即可——即 INTO 子句中的变量在原语句中位于最后。
+
+然而，在重写生成的特殊匿名块中，该 INTO 变量会作为赋值表达式的左值（即第一个参数）出现。因此，接口必须在内部将绑定顺序正确调整，确保执行逻辑与用户预期一致。
+
+所有涉及此逻辑的接口例程都需要实现这一处理，相关例程如下：
+
+Ivyreplacenamebindtoposition
+
+Ivyreplacenamebindtoposition2
+
+Ivyreplacenamebindtoposition3
+
+在IvyexecPreparedStatement 和 IvyexecPreparedStatement2 这类接口中，用户需要显式提供每个参数的 paramvalues、paramlengths、paramformats 和 parammode。对于 CALL 语句，这些参数数组中的元素顺序必须根据重写后的匿名块结构进行位置调整，以确保绑定与执行逻辑一致。
+
+其中，IvyexecPreparedStatement2 更为特殊：它要求用户额外提供一个 IvyBindOutInfo* 类型的输出绑定列表。该列表不仅用于绑定 OUT 参数，还被 IvyAssignPLISQLOutParameter 在获取 PL/SQL 过程返回结果时用来识别每个 OUT 参数的数据类型。因此，在处理 CALL语句时，接口会先对用户传入的 IvyBindOutInfo*列表进行位置重排（将INTO对应的输出变量移至首位），再将其写入IvyPreparedStatement语句句柄中，供后续赋值使用。
+
+关于输出参数的精度处理：当CALL语句中的输出绑定变量与实际返回值的精度不匹配时，系统可能报错，也可能自动截断——具体行为取决于绑定变量的数据类型是否与过程/函数声明的参数类型完全一致。
+在PL/SQL inline handler中，每个OUT参数的精确数据类型均可通过ParamListInfo在绑定阶段获取。如果当前执行的匿名块是由CALL语句转换而来的特殊DoStmt，那么在执行赋值时，系统会进行如下判断：
+
+若ParamListInfo中记录的类型与函数/存储过程形参的类型完全相同，则采用强制类型转换赋值；
+否则，采用隐式类型转换赋值。
+
+这一机制旨在兼容Oracle的行为，确保在类型不完全匹配时仍能安全、合理地完成赋值。
+```
+-- 原始 CALL语句：
+CALL my_func(:in1, :in2) INTO :out;
+-- 重写为：
+do $$BEGIN
+  :out := my_func(:in1, :in2);
+END$$ using
+  out INOUT, in1 INOUT, in2 INOUT
+  paramslength -1,-1,-1
+GENERATED FROM CALL;
+```

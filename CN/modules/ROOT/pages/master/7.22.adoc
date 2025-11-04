@@ -1,0 +1,199 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= 兼容Oracle的CALL INTO
+
+== 目的
+
+- IvorySQL中的CALL语句支持调用单独的函数存储过程，也可以是在包或对象类型中的函数和存储过程。CALL调用函数增加INTO子句语法，插入的目标是一个host variable。
+
+== 功能说明
+
+- CALL支持调用单独的或定义在包中函数和存储过程。
+- CALL调用函数时，增加INTO子句语法，插入的目标是一个host variable。
+- CALL调用无参或全取默认值的函数/存储过程不能省略空括号。
+- CALL在调用函数和存储过程时的参数或INTO子句中支持引用绑定变量。
+- CALL语句中OUT参数对应的绑定变量支持对精度和数据类型的验证。
+- 输出绑定变量不允许被重复绑定。
+
+== 测试用例
+
+=== call into调用函数，并插入host variable
+[source,sql]
+----
+-- 创建函数
+ivorysql=# create or replace function f_defs(a number default 1314)
+ivorysql-# return number
+ivorysql-# is
+ivorysql-# begin
+ivorysql-# raise notice '%', a;
+ivorysql-# return a;
+ivorysql-# end;
+ivorysql-# /
+CREATE FUNCTION
+-- 声明绑定变量
+ivorysql=# variable x number
+-- 调用函数并获取返回值
+ivorysql=# call f_defs() into :x;
+NOTICE: 1314
+
+Call completed.
+
+ivorysql=# print x
+  X   
+------
+ 1314
+----
+
+=== call调用包中的存储过程
+[source,sql]
+----
+ivorysql=# create table tb1(c1 int);
+CREATE TABLE
+-- 创建包规范
+ivorysql=# create or replace package pkg is
+ivorysql-# var1 integer;
+ivorysql-# procedure test_p ;
+ivorysql-# end;
+ivorysql-# /
+CREATE PACKAGE
+-- 创建包体
+ivorysql=# create or replace package body pkg is
+ivorysql-# procedure test_p is
+ivorysql-# begin
+ivorysql-# insert into tb1 values(1);
+ivorysql-# end;
+ivorysql-# begin
+ivorysql-# var1 := 2;
+ivorysql-# end;
+ivorysql-# /
+CREATE PACKAGE BODY
+-- 调用包中的过程
+ivorysql=# call pkg.test_p();
+CALL
+ivorysql=# select * from tb1;
+ c1 
+-----
+  1
+(1 row)
+----
+
+=== 无参和默认参数调用
+[source,sql]
+----
+-- 创建带默认参数函数
+ivorysql=# CREATE OR REPLACE FUNCTION default_arg_func(p_num NUMBER DEFAULT 100) RETURN NUMBER AS
+ivorysql-# BEGIN
+ivorysql-#   RETURN p_num + 5;
+ivorysql-# END;
+ivorysql-# /
+CREATE FUNCTION
+-- 正确调用默认参数函数（必须带括号）
+ivorysql=# VARIABLE default_result NUMBER;
+ivorysql=# CALL default_arg_func() INTO :default_result; -- 使用默认值100
+
+Call completed.
+
+ivorysql=# PRINT default_result;
+ DEFAULT_RESULT 
+----------------
+ 105
+
+-- 带参数调用
+ivorysql=# CALL default_arg_func(200) INTO :default_result;
+
+Call completed.
+
+ivorysql=# PRINT default_result;
+ DEFAULT_RESULT 
+----------------
+ 205
+----
+
+=== 在参数或INTO子句中引用绑定变量
+[source,sql]
+----
+-- 设置输入绑定变量
+ivorysql=# VARIABLE input_num NUMBER = 7;
+-- 使用绑定变量作为参数调用函数
+ivorysql=# VARIABLE func_result NUMBER;
+ivorysql=# CALL stand_alone_func(:input_num) INTO :func_result;
+
+Call completed.
+
+ivorysql=# PRINT func_result;
+ FUNC_RESULT 
+-------------
+ 14
+----
+
+=== CALL语句中OUT参数支持精度和数据类型验证
+[source,sql]
+----
+-- 创建带OUT参数的过程
+ivorysql=# CREATE OR REPLACE PROCEDURE out_param_proc(
+ivorysql(#   p_in IN VARCHAR2,
+ivorysql(#   p_out OUT VARCHAR2,
+ivorysql(#   p_num_out OUT NUMBER
+ivorysql(# ) AS
+ivorysql-# BEGIN
+ivorysql-#   p_out := p_in || ' processed';
+ivorysql-#   p_num_out := LENGTH(p_in);
+ivorysql-# END;
+ivorysql-# /
+CREATE PROCEDURE
+-- 测试OUT参数类型匹配
+ivorysql=# VARIABLE out_var VARCHAR2(50);
+ivorysql=# VARIABLE num_var NUMBER;
+ivorysql=# CALL out_param_proc('Test input', :out_var, :num_var);
+
+Call completed.
+
+ivorysql=# PRINT out_var;
+       OUT_VAR        
+----------------------
+ Test input processed
+
+ivorysql=# PRINT num_var;
+ NUM_VAR 
+---------
+ 10
+
+-- 测试OUT参数精度不足（会截断）
+ivorysql=# VARIABLE short_out VARCHAR2(5);
+ivorysql=# CALL out_param_proc('Long input string', :short_out, :num_var);
+
+Call completed.
+
+ivorysql=# PRINT short_out;
+ SHORT_OUT 
+-----------
+ Long 
+
+-- 测试类型不匹配（会报错）
+ivorysql=# VARIABLE wrong_type NUMBER;
+ivorysql=# CALL out_param_proc('Test', :wrong_type, :num_var);
+ERROR:  invalid input syntax for type numeric: "Test processed"
+----
+
+=== 输出绑定变量不允许重复绑定
+[source,sql]
+----
+-- 准备绑定变量
+ivorysql=# VARIABLE dup_var VARCHAR2(100);
+-- 尝试重复绑定（会报错）
+ivorysql=# CALL out_param_func('Test', :dup_var) INTO :dup_var;  
+ERROR:  output parameter cannot be a duplicate bind
+-- 正确做法：使用不同的绑定变量
+ivorysql=# VARIABLE out1 VARCHAR2(100);
+ivorysql=# CALL out_param_proc('Correct usage', :out1, :num_var);
+
+Call completed.
+
+ivorysql=# PRINT out1;
+          OUT1           
+-------------------------
+ Correct usage processed
+----
