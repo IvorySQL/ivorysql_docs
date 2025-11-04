@@ -12,7 +12,7 @@ IvorySQL's sys_guid() is a powerful random number generation function that gener
 == Usage example
 
 ```
-highgo=# select sys_guid() from dual;
+ivorysql=# select sys_guid() from dual;
               sys_guid              
 ------------------------------------
  \x3ed9426c8a093442a38bea09a74f44a1
