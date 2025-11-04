@@ -42,14 +42,12 @@ make install USE_PGXS=1 PG_CONFIG=$PGHOME/bin/pg_config
 === 注册扩展前的基础配置
 
 1. 修改 `ivorysql.conf`，启用插件并设置常用参数：
-
-[source,conf]
 ----
 shared_preload_libraries = 'pgaudit'   # 需实例重启生效
 pgaudit.log = 'read, write, ddl'       # 审计范围示例，可按需调整
 ----
 
-2. 重启数据库实例，使共享库配置生效。
+重启数据库实例，使共享库配置生效。
 
 === 创建扩展并验证
 
@@ -86,7 +84,6 @@ DELETE FROM audit_demo WHERE id = 1;
 tail -f $PGDATA/log/*.log | grep 'AUDIT:'
 ----
 
-
 [source,text]
 ----
 2025-10-31 15:56:32.113 CST [11451] LOG:  AUDIT: SESSION,1,1,DDL,CREATE SEQUENCE,SEQUENCE,public.audit_demo_id_seq,"CREATE TABLE audit_demo(id serial PRIMARY KEY, info text)",<not logged>
@@ -105,6 +102,6 @@ tail -f $PGDATA/log/*.log | grep 'AUDIT:'
 ivorysql=# SHOW pgaudit.log_parameter;
 pgaudit.log_parameter
 -----------------------
-off
+on
 (1 row)
 ----
