@@ -15,7 +15,7 @@ IvorySQL的安装包里已经集成了PGroonga插件，如果使用安装包安�
 
 用户可从 https://pgroonga.github.io/install[PGroonga package安装] 页面选择适合自己的方式进行PGroonga安装。
 
-IvorySQL社区提供则补充源码安装步骤，以PGroonga v4.0.4为例。
+IvorySQL社区提供了源码安装步骤，下面以PGroonga v4.0.4为例进行演示。
 
 === 安装依赖
 

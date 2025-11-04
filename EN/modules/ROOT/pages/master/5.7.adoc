@@ -14,7 +14,7 @@ The PGroonga plugin is already included in the IvorySQL installation package. If
 
 You can choose their preferred installation method for PGroonga from the https://pgroonga.github.io/install[PGroonga package installation] page.
 
-The IvorySQL community also provides supplementary source code installation steps, using PGroonga v4.0.4 as an example.
+The IvorySQL community provides source code installation steps, demonstrated below using PGroonga v4.0.4 as an example.
 
 === Dependencies
 
