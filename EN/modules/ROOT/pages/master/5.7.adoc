@@ -41,8 +41,6 @@ The commands above expect the environment variable `PGHOME` to point to the inst
 === Baseline Configuration Before Registering the Extension
 
 1. Modify `ivorysql.conf` to load the plugin and configure common parameters:
-
-   [source,conf]
    ----
    shared_preload_libraries = 'pgaudit'   # Requires an instance restart
    pgaudit.log = 'read, write, ddl'       # Sample audit scope; adjust as needed
@@ -85,8 +83,6 @@ If the returned `installed_version` matches the expected release, the extension 
    tail -f $PGDATA/log/*.log | grep 'AUDIT:'
    ----
 
-   Example output:
-
    [source,text]
    ----
    2025-10-31 15:56:32.113 CST [11451] LOG:  AUDIT: SESSION,1,1,DDL,CREATE SEQUENCE,SEQUENCE,public.audit_demo_id_seq,"CREATE TABLE audit_demo(id serial PRIMARY KEY, info text)",<not logged>
@@ -106,6 +102,6 @@ If the returned `installed_version` matches the expected release, the extension 
    ivorysql=# SHOW pgaudit.log_parameter;
    pgaudit.log_parameter
    -----------------------
-   off
+   on
    (1 row)
    ----
