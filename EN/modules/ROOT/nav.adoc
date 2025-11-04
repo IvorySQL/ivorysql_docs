@@ -12,7 +12,8 @@
 ** xref:master/4.4.adoc[Operation Management]
 ** xref:master/4.5.adoc[Migration]
 * IvorySQL Ecosystem
-** xref:master/5.0.adoc[Overview] 
+** xref:master/5.0.adoc[Overview]
+** xref:master/5.1.adoc[postgis]
 ** xref:master/5.2.adoc[pgvector]
 ** xref:master/5.3.adoc[pgddl(DDL Extractor)]
 ** xref:master/5.4.adoc[pg_cron]
