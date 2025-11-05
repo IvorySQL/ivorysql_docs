@@ -35,6 +35,7 @@ sudo apt install \
 ----
 
 ** 安装 PostGIS
++
 [literal]
 ----
 $ wget https://download.osgeo.org/postgis/source/postgis-3.5.4.tar.gz
