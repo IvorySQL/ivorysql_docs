@@ -36,6 +36,7 @@
 **** xref:master/6.3.8.adoc[Force View]
 **** xref:master/6.3.9.adoc[大小写转换]
 **** xref:master/6.3.10.adoc[sys_guid 函数]
+**** xref:master/6.3.11.adoc[空字符串转null]
 *** 内置函数
 **** xref:master/6.4.1.adoc[sys_context]
 **** xref:master/6.4.2.adoc[userenv]
@@ -61,6 +62,7 @@
 *** xref:master/7.18.adoc[18、Force View]
 *** xref:master/7.19.adoc[19、嵌套子函数]
 *** xref:master/7.20.adoc[20、sys_guid 函数]
+*** xref:master/7.21.adoc[21、空字符串转null]
 ** IvorySQL贡献指南
 *** xref:master/8.1.adoc[社区贡献指南]
 *** xref:master/8.2.adoc[asciidoc语法快速参考]
