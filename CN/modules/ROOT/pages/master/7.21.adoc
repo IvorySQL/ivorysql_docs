@@ -1,0 +1,51 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= 兼容Oracle 空字符串转NULL
+
+== 目的
+
+- 在 IvorySQL 的 Oracle 兼容模式下,支持将空字符串转换成NULL进行存储,提供与Oracle数据库一致的行为。
+
+== 功能说明
+
+- Oracle兼容模式下支持将空字符串转换成NULL进行存储。
+- 通过参数 `ivorysql.enable_emptystring_to_null` 控制该特性,默认值为 `on`。
+- 当该参数开启时,插入空字符串会自动转换为NULL值存储。
+- 可以通过 `IS NULL` 条件查询到转换后的NULL值。
+
+== 测试用例
+
+[literal]
+----
+-- 创建测试表
+ivorysql=# create table abc (id int);
+CREATE TABLE
+
+-- 查看空字符串转NULL参数状态
+ivorysql=# show ivorysql.enable_emptystring_to_null;
+ ivorysql.enable_emptystring_to_NULL
+-------------------------------------
+ on
+(1 row)
+
+-- 插入空字符串
+ivorysql=# insert into abc values('');
+INSERT 0 1
+
+-- 查询表数据,显示为NULL
+ivorysql=# select * from abc;
+ id
+\----
+
+(1 row)
+
+-- 使用IS NULL条件查询
+ivorysql=# select * from abc where id is null;
+ id
+\----
+
+(1 row)
+----

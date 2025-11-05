@@ -1,0 +1,52 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= Oracle Compatible Empty String to NULL
+
+== Purpose
+
+- In IvorySQL's Oracle compatibility mode, support converting empty strings to NULL for storage, providing behavior consistent with Oracle Database.
+
+== Feature Description
+
+- Oracle compatibility mode supports converting empty strings to NULL for storage.
+- The feature is controlled by parameter `ivorysql.enable_emptystring_to_null`, with default value `on`.
+- When this parameter is enabled, inserting an empty string will automatically convert it to NULL value for storage.
+- NULL values after conversion can be queried using the `IS NULL` condition.
+
+== Test Cases
+
+[literal]
+----
+-- Create test table
+ivorysql=# create table abc (id int);
+CREATE TABLE
+
+-- Check empty string to NULL parameter status
+ivorysql=# show ivorysql.enable_emptystring_to_null;
+ ivorysql.enable_emptystring_to_NULL
+-------------------------------------
+ on
+(1 row)
+
+-- Insert empty string
+ivorysql=# insert into abc values('');
+INSERT 0 1
+
+-- Query table data, displays as NULL
+ivorysql=# select * from abc;
+ id
+\----
+
+(1 row)
+
+-- Query using IS NULL condition
+ivorysql=# select * from abc where id is null;
+ id
+\----
+
+(1 row)
+----
+

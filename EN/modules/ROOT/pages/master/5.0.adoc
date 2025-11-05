@@ -17,6 +17,7 @@ IvorySQL, as an advanced open-source database compatible with Oracle and based o
 | xref:master/5.4.adoc[pg_cron]​ | 1.6.0 | Provides database-internal scheduled task scheduling functionality, supports regular SQL statement execution | Data cleanup, regular statistics, automated maintenance tasks
 | xref:master/5.5.adoc[pgsql-http]​ | 1.7.0 | Allows HTTP requests to be initiated in SQL, interacting with external web services | Data collection, API integration, microservice calls
 | xref:master/5.6.adoc[plpgsql_check] | 2.8 | Provides static analysis functionality for PL/pgSQL code, can detect potential errors during development | Stored procedure development, code quality checking, debugging and optimization
+| xref:master/5.7.adoc[pgroonga] | 4.0.4 | Provides full-text search functionality for non-English languages, meeting the needs of high-performance applications | Full-text search capabilities for languages like Chinese, Japanese, and Korean
 |====
 
 These plugins have all been tested and adapted by the IvorySQL team to ensure stable operation in the IvorySQL environment. Users can select appropriate plugins based on business needs to further enhance the capabilities and flexibility of the database system.

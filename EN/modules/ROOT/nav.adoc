@@ -18,7 +18,8 @@
 ** xref:master/5.4.adoc[pg_cron]
 ** xref:master/5.5.adoc[pgsql-http]
 ** xref:master/5.6.adoc[plpgsql_check]
-** xref:master/5.8.adoc[PgAudit]
+** xref:master/5.7.adoc[pgroonga]
+** xref:master/5.8.adoc[pgaudit]
 * IvorySQL Architecture Design
 ** Query Processing
 *** xref:master/6.1.1.adoc[Dual Parser]
@@ -34,7 +35,8 @@
 *** xref:master/6.3.7.adoc[Nested Subfunctions]
 *** xref:master/6.3.8.adoc[Force View]
 *** xref:master/6.3.9.adoc[Case Conversion]
-** xref:master/6.4.adoc[GB18030 Character Set]
+*** xref:master/6.3.10.adoc[sys_guid Function]
+*** xref:master/6.3.11.adoc[Empty String to NULL]
 ** Built-in Functions
 *** xref:master/6.4.1.adoc[sys_context]
 *** xref:master/6.4.2.adoc[userenv]
@@ -59,6 +61,8 @@
 ** xref:master/7.17.adoc[17、NLS Parameters]
 ** xref:master/7.18.adoc[18、Force View]
 ** xref:master/7.19.adoc[19、Nested Subfunctions]
+** xref:master/7.20.adoc[20、sys_guid Function]
+** xref:master/7.21.adoc[21、Empty String to NULL]
 * xref:master/8.adoc[Community contribution]
 * xref:master/9.adoc[Tool Reference]
 * xref:master/10.adoc[FAQ]

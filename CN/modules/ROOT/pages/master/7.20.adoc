@@ -1,0 +1,36 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= sys_guid() 函数
+
+== 目的
+
+IvorySQL的sys_guid() 是一个强大的随机数产生函数，它产生并返回一个由16个字节组成的数据库级别唯一的标识符(原始值)。
+
+== 使用示例
+
+```
+ivorysql=# select sys_guid() from dual;
+              sys_guid              
+------------------------------------
+ \x3ed9426c8a093442a38bea09a74f44a1
+(1 row)
+```
+
+== sys_guid函数在建表时可以作为主键
+
+```
+create table student
+(
+student_id raw(16) default sys_guid() primary key,
+student_name varchar2(100) not null
+);
+```
+
+== 新增数据时自动填充主键
+
+```
+insert into student(student_name) values ('Steven');
+```
