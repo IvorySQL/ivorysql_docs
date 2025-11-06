@@ -1,0 +1,148 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= plpgsql_check
+
+== Overview
+system_stats is a Postgres extension that provides functions to access system level statistics that can be used for monitoring.
+
+== Installation
+
+[TIP]
+The source code installation environment is Ubuntu 24.04 (x86_64), in which IvorySQL 5 or a later version has been installed. The installation path is /usr/local/ivorysql/ivorysql-5.
+
+=== Source Code Installation
+
+[literal]
+----
+# download source code package from: https://github.com/EnterpriseDB/system_stats/releases/tag/v3.2
+unzip v3.2.zip
+cd system_stats-3.2
+
+# compile and install the extension
+make PG_CONFIG=/usr/local/ivorysql/ivorysql-5/bin/pg_config
+make PG_CONFIG=/usr/local/ivorysql/ivorysql-5/bin/pg_config install
+----
+
+== Create extension and confirm the version
+
+connect the database with psql in Oracle compatible mode and execute the following commands:
+
+[literal]
+----
+ivorysql=# CREATE EXTENSION system_stats;
+CREATE EXTENSION
+
+ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'system_stats';
+     name     | default_version | installed_version |                    comment                    
+--------------+-----------------+-------------------+-----------------------------------------------
+ system_stats | 3.0             | 3.0               | EnterpriseDB system statistics for PostgreSQL
+(1 row)
+----
+
+== 使用
+
+[literal]
+----
+ivorysql=> select pg_sys_os_info() from dual;
+                              pg_sys_os_info                              
+--------------------------------------------------------------------------
+ ("""Ubuntu 24.04.1 LTS""                                                +
+ ","Linux 6.14.0-29-generic",Ubuntu,"(none)",5568,292,532,x86_64,,864122)
+(1 row)
+
+
+
+ivorysql=> select pg_sys_cpu_info() from dual;
+                                                           pg_sys_cpu_info                                                           
+-------------------------------------------------------------------------------------------------------------------------------------
+ (GenuineIntel,"GenuineIntel model 154 family 6","12th Gen Intel(R) Core(TM) i7-1260P",,0,2,1,x86_64,2496000000,,,,48,32,1280,18432)
+(1 row)
+
+
+ivorysql=> select pg_sys_cpu_usage_info() from dual;
+ pg_sys_cpu_usage_info 
+-----------------------
+ (0,0,0,100,0,0,0,,,,)
+(1 row)
+
+
+ivorysql=> select pg_sys_memory_info() from dual;
+                                pg_sys_memory_info                                 
+-----------------------------------------------------------------------------------
+ (4055482368,3911159808,144322560,4055887872,233725952,3822161920,2638602240,,,,,)
+(1 row)
+
+
+ivorysql=> select pg_sys_io_analysis_info() from dual;
+                    pg_sys_io_analysis_info                    
+---------------------------------------------------------------
+ (loop0,15,0,21504,0,1,0)
+ (loop1,1362,0,27916288,0,680,0)
+ (loop2,175,0,3354624,0,131,0)
+ (loop3,141,0,1827840,0,83,0)
+ (loop4,918,0,32752640,0,212,0)
+ (loop5,156,0,2617344,0,67,0)
+ (loop6,3707,0,131992576,0,828,0)
+ (loop7,243,0,4321280,0,95,0)
+ (fd0,0,0,0,0,0,0)
+ (sda,639286,1580583,26547332096,240138948608,402702,2744653)
+ (sda1,561,0,22966272,0,61,0)
+ (sda2,636820,1580583,26491053056,240138948608,402316,2744653)
+ (sr0,87,0,3219456,0,45,0)
+ (sr1,0,0,0,0,0,0)
+ (loop8,228,0,2491392,0,120,0)
+ (loop10,2333,0,36571136,0,1628,0)
+ (loop9,3730,0,66532352,0,3973,0)
+ (loop11,87,0,709632,0,50,0)
+ (loop12,156,0,1948672,0,52,0)
+ (loop14,2579,0,97446912,0,2083,0)
+ (loop13,30,0,102400,0,14,0)
+ (loop15,82,0,1189888,0,117,0)
+ (loop16,1357,0,28335104,0,500,0)
+ (loop17,110,0,2187264,0,93,0)
+ (loop18,129,0,2355200,0,28,0)
+ (loop19,110,0,2202624,0,55,0)
+(26 rows)
+
+
+ivorysql=> select pg_sys_disk_info() from dual;
+                                 pg_sys_disk_info                                 
+----------------------------------------------------------------------------------
+ (/,/dev/sda2,,,ext4,105086115840,50903396352,48797392896,6553600,619735,5933865)
+(1 row)
+
+
+ivorysql=> select pg_sys_load_avg_info() from dual;
+ pg_sys_load_avg_info 
+----------------------
+ (0,0,0,)
+(1 row)
+
+
+ivorysql=> select pg_sys_process_info() from dual;
+ pg_sys_process_info 
+---------------------
+ (294,1,201,0,0)
+(1 row)
+
+
+ivorysql=> select pg_sys_network_info() from dual;
+                             pg_sys_network_info                             
+-----------------------------------------------------------------------------
+ (lo,127.0.0.1,1071575,5643,0,0,1071575,5643,0,0,0)
+ (ens33,192.168.198.128,619877515,1490961,0,161,5540250106,4345449,0,0,1000)
+(2 rows)
+
+
+ivorysql=> select pg_sys_cpu_memory_by_process() from dual;
+                     pg_sys_cpu_memory_by_process                      
+-----------------------------------------------------------------------
+ (1,"(systemd)",864793,0,0.34,13840384)
+ (2,"(kthreadd)",864793,0,0,0)
+ (3,"(pool_workqueue_release)",864793,0,0,0)
+ (4,"(kworker/R-rcu_gp)",864793,0,0,0)
+......
+----
+
