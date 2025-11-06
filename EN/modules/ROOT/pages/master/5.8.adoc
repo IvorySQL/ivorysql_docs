@@ -1,0 +1,107 @@
+:sectnums:
+:sectnumlevels: 5
+
+= PgAudit
+
+== Overview
+
+PgAudit is an auditing extension for IvorySQL that produces traceable log records for critical operations such as DDL, DML, and DCL. With the audit trail, database administrators can meet compliance requirements, quickly detect abnormal behavior, and identify accountability and impact scope when incidents occur.
+
+== Key Features
+
+* *Comprehensive auditing*: Captures `SELECT`, `INSERT`, `UPDATE`, `DELETE`, DDL commands, privilege changes, and more to build a complete activity timeline.
+* *Flexible scope control*: Supports global, role-based, and object-level auditing, allowing fine-grained configuration by user, role, schema, or operation type.
+* *Seamless integration*: Reuses PostgreSQL's standard logging subsystem and works with tools like `syslog` and `logrotate`, aligning with existing log ingestion and analysis pipelines.
+* *Compliance ready*: Generates structured audit logs suitable for meeting regulatory requirements in finance, government, and other regulated industries.
+* *Security enhancement*: Records and inspects database activity to surface unauthorized access, anomalous DML, or potential data leakage risks in time.
+* *Operations insight*: Helps replay operational actions, locate performance bottlenecks, and support SQL tuning and incident troubleshooting.
+
+== Installation and Deployment
+
+=== Prerequisites
+
+* A IvorySQL installation (recommended version aligned with the targeted PgAudit release).
+* Build toolchain: `gcc`, `make`, `tar`, etc.
+* Database superuser privileges to modify `ivorysql.conf` and restart the instance.
+
+=== Compile and Install PgAudit
+
+Taking PgAudit 18.0 as an example:
+
+[source,shell]
+----
+wget https://github.com/pgaudit/pgaudit/archive/refs/tags/18.0.tar.gz
+tar -xf 18.0.tar.gz
+cd pgaudit-18.0
+make install USE_PGXS=1 PG_CONFIG=$PGHOME/bin/pg_config
+----
+
+The commands above expect the environment variable `PGHOME` to point to the installed IvorySQL home directory. After installation, `pgaudit.so` will be placed in IvorySQL's extension directory.
+
+=== Baseline Configuration Before Registering the Extension
+
+1. Modify `ivorysql.conf` to load the plugin and configure common parameters:
+   ----
+   shared_preload_libraries = 'pgaudit'   # Requires an instance restart
+   pgaudit.log = 'read, write, ddl'       # Sample audit scope; adjust as needed
+   ----
+
+2. Restart or reload the database instance so the shared library configuration takes effect.
+
+=== Create the Extension and Verify
+
+[source,sql]
+----
+CREATE EXTENSION IF NOT EXISTS pgaudit;
+SELECT name,
+       default_version,
+       installed_version,
+       comment
+  FROM pg_available_extensions
+ WHERE name = 'pgaudit';
+----
+
+If the returned `installed_version` matches the expected release, the extension has been installed successfully.
+
+== Usage
+
+Execute the following SQL sample:
+
+   [source,sql]
+   ----
+   CREATE TABLE audit_demo(id serial PRIMARY KEY, info text);
+   INSERT INTO audit_demo(info) VALUES ('pgaudit test');
+   SELECT * FROM audit_demo;
+   UPDATE audit_demo SET info = 'pgaudit update' WHERE id = 1;
+   DELETE FROM audit_demo WHERE id = 1;
+   ----
+
+Check the audit logs on the database server:
+
+[source,shell]
+----
+tail -f $PGDATA/log/*.log | grep 'AUDIT:'
+----
+
+[source,text]
+----
+2025-10-31 15:56:32.113 CST [11451] LOG:  AUDIT: SESSION,1,1,DDL,CREATE SEQUENCE,SEQUENCE,public.audit_demo_id_seq,"CREATE TABLE audit_demo(id serial PRIMARY KEY, info text)",<not logged>
+2025-10-31 15:56:32.113 CST [11451] LOG:  AUDIT: SESSION,1,1,DDL,CREATE TABLE,TABLE,public.audit_demo,"CREATE TABLE audit_demo(id serial PRIMARY KEY, info text)",<not logged>
+2025-10-31 15:56:32.113 CST [11451] LOG:  AUDIT: SESSION,1,1,DDL,CREATE INDEX,INDEX,public.audit_demo_pkey,"CREATE TABLE audit_demo(id serial PRIMARY KEY, info text)",<not logged>
+2025-10-31 15:56:32.113 CST [11451] LOG:  AUDIT: SESSION,1,1,DDL,ALTER SEQUENCE,SEQUENCE,public.audit_demo_id_seq,"CREATE TABLE audit_demo(id serial PRIMARY KEY, info text)",<not logged>
+2025-10-31 15:56:32.117 CST [11451] LOG:  AUDIT: SESSION,2,1,WRITE,INSERT,,,INSERT INTO audit_demo(info) VALUES ('pgaudit test'),<not logged>
+2025-10-31 15:56:32.121 CST [11451] LOG:  AUDIT: SESSION,3,1,READ,SELECT,,,SELECT * FROM audit_demo,<not logged>
+2025-10-31 15:56:32.122 CST [11451] LOG:  AUDIT: SESSION,4,1,WRITE,UPDATE,,,UPDATE audit_demo SET info = 'pgaudit update' WHERE id = 1,<not logged>
+2025-10-31 15:56:32.127 CST [11451] LOG:  AUDIT: SESSION,5,1,WRITE,DELETE,,,DELETE FROM audit_demo WHERE id = 1,<not logged>
+----
+
+To record parameter values as well, enable `pgaudit.log_parameter = 'on'`:
+
+[source,text]
+----
+ivorysql=# SHOW pgaudit.log_parameter;
+pgaudit.log_parameter
+-----------------------
+on
+(1 row)
+----

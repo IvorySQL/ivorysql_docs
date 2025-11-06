@@ -20,6 +20,8 @@
 *** xref:master/5.5.adoc[pgsql-http]
 *** xref:master/5.6.adoc[plpgsql_check]
 *** xref:master/5.7.adoc[pgroonga]
+*** xref:master/5.8.adoc[pgaudit]
+*** xref:master/5.9.adoc[pgrouting]
 ** IvorySQL架构设计
 *** 查询处理
 **** xref:master/6.1.1.adoc[双parser]
