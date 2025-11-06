@@ -96,7 +96,7 @@ tail -f $PGDATA/log/*.log | grep 'AUDIT:'
 2025-10-31 15:56:32.127 CST [11451] LOG:  AUDIT: SESSION,5,1,WRITE,DELETE,,,DELETE FROM audit_demo WHERE id = 1,<not logged>
 ----
 
--- 若想记录参数的值，打开`pgaudit.log_parameter = 'on'`，效果如下：
+若想记录参数的值，打开`pgaudit.log_parameter = 'on'`，效果如下：
 [source,text]
 ----
 ivorysql=# SHOW pgaudit.log_parameter;
