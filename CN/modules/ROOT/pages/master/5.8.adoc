@@ -41,7 +41,7 @@ make install USE_PGXS=1 PG_CONFIG=$PGHOME/bin/pg_config
 
 === 注册扩展前的基础配置
 
-1. 修改 `ivorysql.conf`，启用插件并设置常用参数：
+修改 `ivorysql.conf`，启用插件并设置常用参数：
 ----
 shared_preload_libraries = 'pgaudit'   # 需实例重启生效
 pgaudit.log = 'read, write, ddl'       # 审计范围示例，可按需调整
@@ -66,7 +66,7 @@ SELECT name,
 
 == 使用
 
-1. 执行如下sql示例：
+执行如下sql示例：
 
 [source,sql]
 ----
@@ -77,7 +77,7 @@ UPDATE audit_demo SET info = 'pgaudit update' WHERE id = 1;
 DELETE FROM audit_demo WHERE id = 1;
 ----
 
-2. 在数据库服务器上查看审计日志：
+在数据库服务器上查看审计日志：
 
 [source,shell]
 ----

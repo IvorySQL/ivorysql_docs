@@ -65,7 +65,7 @@ If the returned `installed_version` matches the expected release, the extension 
 
 == Usage
 
-1. Execute the following SQL sample:
+Execute the following SQL sample:
 
    [source,sql]
    ----
@@ -76,7 +76,7 @@ If the returned `installed_version` matches the expected release, the extension 
    DELETE FROM audit_demo WHERE id = 1;
    ----
 
-2. Check the audit logs on the database server:
+Check the audit logs on the database server:
 
    [source,shell]
    ----
