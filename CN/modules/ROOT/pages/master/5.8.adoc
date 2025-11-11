@@ -2,7 +2,7 @@
 :sectnums:
 :sectnumlevels: 5
 
-= plpgsql_check
+= system_stats
 
 == 概述
 system_stats 是一个 PostgreSQL 扩展，提供用于访问系统级统计信息的函数，可用于监控场景。

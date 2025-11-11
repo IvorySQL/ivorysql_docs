@@ -2,7 +2,7 @@
 :sectnums:
 :sectnumlevels: 5
 
-= plpgsql_check
+= system_stats
 
 == Overview
 system_stats is a Postgres extension that provides functions to access system level statistics that can be used for monitoring.
