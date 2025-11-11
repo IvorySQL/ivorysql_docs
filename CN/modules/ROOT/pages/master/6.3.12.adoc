@@ -21,10 +21,10 @@
 
 - 当 CALL 语句包含绑定变量（如 :x）时：
 
-	客户端将其重写为一个特殊的匿名 PL 块（DO $$ ... $$）；
-	使用扩展查询协议发送，以便传递参数类型和精度信息；
-	服务端执行该匿名块，并将结果返回给客户端；
-	客户端再将结果写入对应的绑定变量。
+  客户端将其重写为一个特殊的匿名 PL 块（DO $$ ... $$）；
+  使用扩展查询协议发送，以便传递参数类型和精度信息；
+  服务端执行该匿名块，并将结果返回给客户端；
+  客户端再将结果写入对应的绑定变量。
 
 - 当 CALL 语句不含绑定变量时：
 
@@ -32,7 +32,7 @@
 
 == 实现原理
 === 交互式终端
-为了在接口中兼容CALL [INTO]语句，需将其转换为匿名PL/SQL块，并借助匿名块对OUT参数的支持来实现功能等价。这就要求get_parameter_description函数能够正确识别CALL语句，并在遇到CALL INTO时，返回重写后的PL语句。
+为了在接口中兼容CALL [INTO]语句，需将其转换为匿名PL/iSQL块，并借助匿名块对OUT参数的支持来实现功能等价。这就要求get_parameter_description函数能够正确识别CALL语句，并在遇到CALL INTO时，返回重写后的PL语句。
 相应地，get_hostvariables例程需要将这些信息（如是否为 CALL 语句、是否包含INTO、重写后的语句等）保存到HostVariable结构中。HostVariable的定义如下：
 ```
 typedef struct HostVariable
@@ -101,7 +101,7 @@ typedef struct DoStmt
   bool    do_from_call;  /* True if DoStmt is come from CallStmt */
 } DoStmt;
 ```
-在IVY接口中，占位符信息是通过一个名为get_parameter_description的集合返回函数（SRF）获取的。该函数需要能够识别输入语句的类型，并在遇到CALL INTO语句时，返回重写后的PL/SQL赋值语句。
+在IVY接口中，占位符信息是通过一个名为get_parameter_description的集合返回函数（SRF）获取的。该函数需要能够识别输入语句的类型，并在遇到CALL INTO语句时，返回重写后的PL/iSQL赋值语句。
 为此，IvorySQL对该函数的返回结构（TupleDesc）进行了扩展：新增了一个hint 字段，专门用于返回CALL INTO语句重写后的PL代码；对于其他类型的语句，该字段保持为NULL。
 此外，原函数结果集的第一条元组的第一个字段原本仅用true/false来区分语句是否为匿名块。为了更准确地识别语句类型（尤其是CALL语句），现已将其修改为返回对应解析树的 CommandTag。
 所有这些元数据信息最终会被封装到一个用户上下文结构中，以便在 SRF 函数的多次调用之间高效传递和复用。
@@ -148,10 +148,10 @@ Ivyreplacenamebindtoposition3
 
 在IvyexecPreparedStatement 和 IvyexecPreparedStatement2 这类接口中，用户需要显式提供每个参数的 paramvalues、paramlengths、paramformats 和 parammode。对于 CALL 语句，这些参数数组中的元素顺序必须根据重写后的匿名块结构进行位置调整，以确保绑定与执行逻辑一致。
 
-其中，IvyexecPreparedStatement2 更为特殊：它要求用户额外提供一个 IvyBindOutInfo* 类型的输出绑定列表。该列表不仅用于绑定 OUT 参数，还被 IvyAssignPLISQLOutParameter 在获取 PL/SQL 过程返回结果时用来识别每个 OUT 参数的数据类型。因此，在处理 CALL语句时，接口会先对用户传入的 IvyBindOutInfo*列表进行位置重排（将INTO对应的输出变量移至首位），再将其写入IvyPreparedStatement语句句柄中，供后续赋值使用。
+其中，IvyexecPreparedStatement2 更为特殊：它要求用户额外提供一个 IvyBindOutInfo* 类型的输出绑定列表。该列表不仅用于绑定 OUT 参数，还被 IvyAssignPLISQLOutParameter 在获取 PL/iSQL 过程返回结果时用来识别每个 OUT 参数的数据类型。因此，在处理 CALL语句时，接口会先对用户传入的 IvyBindOutInfo*列表进行位置重排（将INTO对应的输出变量移至首位），再将其写入IvyPreparedStatement语句句柄中，供后续赋值使用。
 
 关于输出参数的精度处理：当CALL语句中的输出绑定变量与实际返回值的精度不匹配时，系统可能报错，也可能自动截断——具体行为取决于绑定变量的数据类型是否与过程/函数声明的参数类型完全一致。
-在PL/SQL inline handler中，每个OUT参数的精确数据类型均可通过ParamListInfo在绑定阶段获取。如果当前执行的匿名块是由CALL语句转换而来的特殊DoStmt，那么在执行赋值时，系统会进行如下判断：
+在PL/iSQL inline handler中，每个OUT参数的精确数据类型均可通过ParamListInfo在绑定阶段获取。如果当前执行的匿名块是由CALL语句转换而来的特殊DoStmt，那么在执行赋值时，系统会进行如下判断：
 
 若ParamListInfo中记录的类型与函数/存储过程形参的类型完全相同，则采用强制类型转换赋值；
 否则，采用隐式类型转换赋值。

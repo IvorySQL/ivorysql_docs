@@ -32,7 +32,7 @@ Since PostgreSQL/IvorySQL inherently does not support direct assignment to clien
 
 == Implementation Details
 === psql
-To ensure compatibility with the CALL [INTO] statement in the interface, it must be converted into an anonymous PL/SQL block, leveraging the support for OUT parameters in anonymous blocks to achieve functional equivalence.
+To ensure compatibility with the CALL [INTO] statement in the interface, it must be converted into an anonymous PL/iSQL block, leveraging the support for OUT parameters in anonymous blocks to achieve functional equivalence.
 
 This requires the get_parameter_description function to correctly identify CALL statements and, when encountering CALL INTO, return the rewritten PL statement.
 
@@ -103,7 +103,7 @@ typedef struct DoStmt
   bool    do_from_call;  /* True if DoStmt is come from CallStmt */
 } DoStmt;
 ```
-In the IVY interface, placeholder information is obtained through a Set-Returning Function (SRF) called get_parameter_description. This function needs to identify the type of input statement and return the rewritten PL/SQL assignment statement when encountering CALL INTO statements.
+In the IVY interface, placeholder information is obtained through a Set-Returning Function (SRF) called get_parameter_description. This function needs to identify the type of input statement and return the rewritten PL/iSQL assignment statement when encountering CALL INTO statements.
 
 To achieve this, IvorySQL has extended the return structure (TupleDesc) of this function: a new hint field has been added specifically to return the rewritten PL code for CALL INTO statements; for other types of statements, this field remains NULL.
 
@@ -155,11 +155,11 @@ Ivyreplacenamebindtoposition3
 
 In interfaces such as IvyexecPreparedStatement and IvyexecPreparedStatement2, users must explicitly provide paramvalues, paramlengths, paramformats, and parammode for each parameter. For CALL statements, the order of elements in these parameter arrays must be adjusted according to the rewritten anonymous block structure to ensure binding consistency with the execution logic.
 
-Among them, IvyexecPreparedStatement2 is more specialized: it requires users to additionally provide an output binding list of type IvyBindOutInfo*. This list is not only used to bind OUT parameters but is also utilized by IvyAssignPLISQLOutParameter to identify the data type of each OUT parameter when retrieving PL/SQL procedure results. Therefore, when processing CALL statements, the interface first reorders the user-provided IvyBindOutInfo* list (moving the INTO-bound output variable to the first position) and then writes it into the IvyPreparedStatement statement handle for subsequent assignment.
+Among them, IvyexecPreparedStatement2 is more specialized: it requires users to additionally provide an output binding list of type IvyBindOutInfo*. This list is not only used to bind OUT parameters but is also utilized by IvyAssignPLISQLOutParameter to identify the data type of each OUT parameter when retrieving PL/iSQL procedure results. Therefore, when processing CALL statements, the interface first reorders the user-provided IvyBindOutInfo* list (moving the INTO-bound output variable to the first position) and then writes it into the IvyPreparedStatement statement handle for subsequent assignment.
 
 Regarding precision handling for output parameters: When there is a mismatch between the precision of an output binding variable in a CALL statement and the actual returned value, the system may either raise an error or automatically truncate—the specific behavior depends on whether the data type of the binding variable exactly matches the parameter type declared in the procedure/function.
 
-In the PL/SQL inline handler, the precise data type of each OUT parameter can be obtained through ParamListInfo during the binding phase. If the currently executed anonymous block is a special DoStmt converted from a CALL statement, the system performs the following checks during assignment:
+In the PL/iSQL inline handler, the precise data type of each OUT parameter can be obtained through ParamListInfo during the binding phase. If the currently executed anonymous block is a special DoStmt converted from a CALL statement, the system performs the following checks during assignment:
 
 If the type recorded in ParamListInfo exactly matches the formal parameter type of the function/stored procedure, a forced type conversion is applied for assignment.
 Otherwise, an implicit type conversion is used for assignment.
