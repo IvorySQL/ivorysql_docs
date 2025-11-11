@@ -22,6 +22,7 @@
 *** xref:master/5.7.adoc[pgroonga]
 *** xref:master/5.8.adoc[pgaudit]
 *** xref:master/5.9.adoc[pgrouting]
+*** xref:master/5.10.adoc[system_stats]
 ** IvorySQL架构设计
 *** 查询处理
 **** xref:master/6.1.1.adoc[双parser]

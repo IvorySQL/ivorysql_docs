@@ -21,6 +21,7 @@
 ** xref:master/5.7.adoc[pgroonga]
 ** xref:master/5.8.adoc[pgaudit]
 ** xref:master/5.9.adoc[pgrouting]
+** xref:master/5.10.adoc[system_stats]
 * IvorySQL Architecture Design
 ** Query Processing
 *** xref:master/6.1.1.adoc[Dual Parser]
