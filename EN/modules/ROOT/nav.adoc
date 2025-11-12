@@ -39,6 +39,7 @@
 *** xref:master/6.3.9.adoc[Case Conversion]
 *** xref:master/6.3.10.adoc[sys_guid Function]
 *** xref:master/6.3.11.adoc[Empty String to NULL]
+*** xref:master/6.3.12.adoc[CALL INTO]
 ** Built-in Functions
 *** xref:master/6.4.1.adoc[sys_context]
 *** xref:master/6.4.2.adoc[userenv]
@@ -65,6 +66,7 @@
 ** xref:master/7.19.adoc[19、Nested Subfunctions]
 ** xref:master/7.20.adoc[20、sys_guid Function]
 ** xref:master/7.21.adoc[21、Empty String to NULL]
+** xref:master/7.22.adoc[22、CALL INTO]
 * xref:master/8.adoc[Community contribution]
 * xref:master/9.adoc[Tool Reference]
 * xref:master/10.adoc[FAQ]
