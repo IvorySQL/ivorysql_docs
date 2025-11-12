@@ -1,0 +1,199 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= Compatible with Oracle's CALL INTO
+
+== Objective
+
+- In IvorySQL, the CALL statement supports invoking standalone function stored procedures, as well as functions and stored procedures within packages or object types. The CALL syntax for invoking functions adds an INTO clause, where the insertion target is a host variable.
+
+== Feature Description
+
+- CALL supports invoking standalone functions and stored procedures, as well as those defined within packages.
+- When using CALL to invoke functions, the INTO clause syntax is added, with the insertion target being a host variable.
+- When calling functions/stored procedures with no parameters or all default values, empty parentheses cannot be omitted.
+- CALL supports referencing bind variables in parameters or the INTO clause when invoking functions and stored procedures.
+- The binding variables corresponding to OUT parameters in the CALL statement support validation of precision and data types.
+- Output binding variables are not allowed to be repeatedly bound.
+
+== Test Cases
+
+=== Call INTO invokes a function and inserts the result into a host variable.
+[source,sql]
+----
+-- Create function
+ivorysql=# create or replace function f_defs(a number default 1314)
+ivorysql-# return number
+ivorysql-# is
+ivorysql-# begin
+ivorysql-# raise notice '%', a;
+ivorysql-# return a;
+ivorysql-# end;
+ivorysql-# /
+CREATE FUNCTION
+-- Declare bind variable
+ivorysql=# variable x number
+-- Call the function and retrieve the return value
+ivorysql=# call f_defs() into :x;
+NOTICE: 1314
+
+Call completed.
+
+ivorysql=# print x
+  X   
+------
+ 1314
+----
+
+=== Call the stored procedure in the package
+[source,sql]
+----
+ivorysql=# create table tb1(c1 int);
+CREATE TABLE
+-- Create package specification
+ivorysql=# create or replace package pkg is
+ivorysql-# var1 integer;
+ivorysql-# procedure test_p ;
+ivorysql-# end;
+ivorysql-# /
+CREATE PACKAGE
+-- Create package body
+ivorysql=# create or replace package body pkg is
+ivorysql-# procedure test_p is
+ivorysql-# begin
+ivorysql-# insert into tb1 values(1);
+ivorysql-# end;
+ivorysql-# begin
+ivorysql-# var1 := 2;
+ivorysql-# end;
+ivorysql-# /
+CREATE PACKAGE BODY
+-- Call the procedure in the package
+ivorysql=# call pkg.test_p();
+CALL
+ivorysql=# select * from tb1;
+ c1 
+-----
+  1
+(1 row)
+----
+
+=== Call with no parameters or default parameters
+[source,sql]
+----
+-- Create a function with default parameters
+ivorysql=# CREATE OR REPLACE FUNCTION default_arg_func(p_num NUMBER DEFAULT 100) RETURN NUMBER AS
+ivorysql-# BEGIN
+ivorysql-#   RETURN p_num + 5;
+ivorysql-# END;
+ivorysql-# /
+CREATE FUNCTION
+-- Correctly call a function with default parameters (must include parentheses)
+ivorysql=# VARIABLE default_result NUMBER;
+ivorysql=# CALL default_arg_func() INTO :default_result; -- Use the default value of 100
+
+Call completed.
+
+ivorysql=# PRINT default_result;
+ DEFAULT_RESULT 
+----------------
+ 105
+
+-- Call with parameters
+ivorysql=# CALL default_arg_func(200) INTO :default_result;
+
+Call completed.
+
+ivorysql=# PRINT default_result;
+ DEFAULT_RESULT 
+----------------
+ 205
+----
+
+=== Reference bind variables in parameters or INTO clauses
+[source,sql]
+----
+-- Set input bind variables
+ivorysql=# VARIABLE input_num NUMBER = 7;
+-- Call a function using bind variables as parameters
+ivorysql=# VARIABLE func_result NUMBER;
+ivorysql=# CALL stand_alone_func(:input_num) INTO :func_result;
+
+Call completed.
+
+ivorysql=# PRINT func_result;
+ FUNC_RESULT 
+-------------
+ 14
+----
+
+=== The OUT parameters in CALL statements support precision and data type validation
+[source,sql]
+----
+-- Create a procedure with OUT parameters
+ivorysql=# CREATE OR REPLACE PROCEDURE out_param_proc(
+ivorysql(#   p_in IN VARCHAR2,
+ivorysql(#   p_out OUT VARCHAR2,
+ivorysql(#   p_num_out OUT NUMBER
+ivorysql(# ) AS
+ivorysql-# BEGIN
+ivorysql-#   p_out := p_in || ' processed';
+ivorysql-#   p_num_out := LENGTH(p_in);
+ivorysql-# END;
+ivorysql-# /
+CREATE PROCEDURE
+-- Test OUT parameter type matching
+ivorysql=# VARIABLE out_var VARCHAR2(50);
+ivorysql=# VARIABLE num_var NUMBER;
+ivorysql=# CALL out_param_proc('Test input', :out_var, :num_var);
+
+Call completed.
+
+ivorysql=# PRINT out_var;
+       OUT_VAR        
+----------------------
+ Test input processed
+
+ivorysql=# PRINT num_var;
+ NUM_VAR 
+---------
+ 10
+
+-- Test insufficient OUT parameter precision (will be truncated)
+ivorysql=# VARIABLE short_out VARCHAR2(5);
+ivorysql=# CALL out_param_proc('Long input string', :short_out, :num_var);
+
+Call completed.
+
+ivorysql=# PRINT short_out;
+ SHORT_OUT 
+-----------
+ Long 
+
+-- Test type mismatch (will throw an error)
+ivorysql=# VARIABLE wrong_type NUMBER;
+ivorysql=# CALL out_param_proc('Test', :wrong_type, :num_var);
+ERROR:  invalid input syntax for type numeric: "Test processed"
+----
+
+=== Output binding variables do not allow duplicate binding.
+[source,sql]
+----
+-- Prepare binding variables
+ivorysql=# VARIABLE dup_var VARCHAR2(100);
+-- Attempting duplicate binding (will throw an error)
+ivorysql=# CALL out_param_func('Test', :dup_var) INTO :dup_var;  
+ERROR:  output parameter cannot be a duplicate bind
+-- Correct approach: Use different binding variables
+ivorysql=# VARIABLE out1 VARCHAR2(100);
+ivorysql=# CALL out_param_proc('Correct usage', :out1, :num_var);
+
+Call completed.
+
+ivorysql=# PRINT out1;
+          OUT1           
+-------------------------
+ Correct usage processed
+----

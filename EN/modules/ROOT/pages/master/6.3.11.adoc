@@ -1,0 +1,73 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= Empty String to NULL Conversion
+
+== Purpose
+
+In Oracle databases, empty strings ('') are treated as NULL values, which is an important Oracle feature. To maintain compatibility with this Oracle behavior, IvorySQL provides the empty string to NULL conversion functionality. When this feature is enabled, empty strings in SQL statements are automatically converted to NULL values, ensuring behavioral consistency for Oracle applications running on IvorySQL.
+
+== Implementation
+
+The parameter `ivorysql.enable_emptystring_to_NULL` corresponds to the GUC variable `enable_emptystring_to_NULL`.
+
+In the file `ora_scan.l`, you can see how this variable is used:
+
+[source,c]
+----
+case xe:
+    yylval->str = litbufdup(yyscanner);
+    if (strcmp(yylval->str, "") == 0 &&
+        ORA_PARSER == compatible_db &&
+        enable_emptystring_to_NULL)
+    {
+        return NULL_P;
+    }
+    return SCONST;
+----
+
+Where `xe` represents strings enclosed in quotes:
+
+----
+<xe> extended quoted strings (support backslash escape sequences)
+----
+
+The logic of the above code is that during lexical analysis, if an empty string is encountered and the empty-to-NULL conversion feature is enabled, it returns `NULL_P`; otherwise, it returns `SCONST`.
+
+In the grammar analysis file `ora_gram.y`, the statement `insert into abc values('');` is parsed as follows:
+
+[source,c]
+----
+values_clause:
+    VALUES '(' expr_list ')'
+    {
+        SelectStmt *n = makeNode(SelectStmt);
+
+        n->valuesLists = list_make1($3);
+        $$ = (Node *) n;
+    }
+
+expr_list:      a_expr
+        {
+            $$ = list_make1($1);
+        }
+
+a_expr:       c_expr                      { $$ = $1; }
+
+c_expr:       AexprConst                  { $$ = $1; }
+
+AexprConst: Iconst
+       | Sconst
+           {
+               $$ = makeStringConst($1, @1);
+           }
+       | NULL_P
+           {
+               $$ = makeNullAConst(@1);
+           }
+----
+
+The above code constructs corresponding nodes to handle `NULL_P` or `SCONST` returned from the lexical analysis.
+

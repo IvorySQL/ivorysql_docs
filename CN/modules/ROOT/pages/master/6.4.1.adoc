@@ -5,7 +5,7 @@
 
 = **功能概述**
 
-IvorySQL提供兼容Oracle内置函数`SYS_CONTEXT('namespace', 'parameter' [, length ])`,
+IvorySQL提供兼容Oracle内置函数 ```SYS_CONTEXT('namespace', 'parameter' [, length ])``` ,
 返回当前时刻与给定上下文关联参数的值，可以在SQL和PLSQL语言中使用。
 
 提供以下命名空间：
@@ -16,8 +16,8 @@ IvorySQL提供兼容Oracle内置函数`SYS_CONTEXT('namespace', 'parameter' [, l
 
 == 实现原理
 
-SYS_CONTEXT的实现原理是通过动态查询系统表与postgres的内置函数，确保结果的实时性，
-使用 SECURITY INVOKER 确保函数以调用者的权限执行，避免权限提升问题。
+`SYS_CONTEXT` 的实现原理是通过动态查询系统表与postgres的内置函数，确保结果的实时性，
+使用 `SECURITY INVOKER` 确保函数以调用者的权限执行，避免权限提升问题。
 该方法的实现逻辑如下：
 ```sql
 CREATE OR REPLACE FUNCTION sys.sys_context(a varchar2, b varchar2)

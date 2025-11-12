@@ -3,7 +3,7 @@
 
 = **Feature Overview**
 
-IvorySQL provides compatibility with Oracle's built-in function `USERENV('parameter')`, which is used to return information about the current session.
+IvorySQL provides compatibility with Oracle's built-in function ```USERENV('parameter')```, which is used to return information about the current session.
 This is a legacy function, and IvorySQL recommends taht you can use the `SYS_CONTEXT` function with its built-in `USERENV` namespace for current functionality.
 
 == Implementation Principle

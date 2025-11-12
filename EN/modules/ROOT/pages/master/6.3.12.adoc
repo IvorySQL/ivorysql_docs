@@ -1,0 +1,177 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= CALL INTO
+
+== Purpose
+
+Currently, PostgreSQL's CALL statement has the following limitations:
+
+- Does not support the INTO clause;
+- Cannot call functions that return values;
+- Cannot assign results to client-side variables (i.e., Oracle's binding variables / host variables).
+
+To enhance compatibility with Oracle, IvorySQL has implemented support for the CALL func(...) INTO :var; syntax, allowing users to receive function return values through binding variables (e.g., :x). This behavior (including precision checks and error handling) aligns with Oracle's standards.
+
+== Overall Design Approach
+
+Since PostgreSQL/IvorySQL inherently does not support direct assignment to client-side variables at the SQL level, this solution adopts a "client-side rewriting + server-side collaboration" approach:
+
+- When the CALL statement includes binding variables (e.g., :x):
+
+	The client rewrites it into a special anonymous PL block (DO $$ ... $$);
+	Sends it using the extended query protocol to transmit parameter type and precision information;
+	The server executes this anonymous block and returns the result to the client;
+	The client then writes the result to the corresponding binding variable.
+
+- When the CALL statement does not contain binding variables:
+
+	The behavior remains fully consistent with native PostgreSQL, using the simple query protocol without any rewriting.
+
+== Implementation Details
+=== psql
+To ensure compatibility with the CALL [INTO] statement in the interface, it must be converted into an anonymous PL/iSQL block, leveraging the support for OUT parameters in anonymous blocks to achieve functional equivalence.
+
+This requires the get_parameter_description function to correctly identify CALL statements and, when encountering CALL INTO, return the rewritten PL statement.
+
+Correspondingly, the get_hostvariables routine needs to store this information (such as whether it is a CALL statement, whether it includes INTO, the rewritten statement, etc.) in the HostVariable structure. The definition of HostVariable is as follows:
+```
+typedef struct HostVariable
+{
+	HostVariableEntry *hostvars;
+	int		length;
+	bool	isdostmt;
+	bool	iscallstmt;	// Whether it is from a CALL statement
+	char	*convertcall; 	// Rewritten statement
+} HostVariable;
+```
+=== Server-side
+On the server side, modifications are required in the syntax parser section. Add CALL INTO grammar rules in ora_gram.y, and generate rewritten PL statements in the action section, such as "x := add(1,2);".
+```
+CallStmt:	CALL func_application
+				{
+					CallStmt *n = makeNode(CallStmt);
+					n->funccall = castNode(FuncCall, $2);
+					$$ = (Node *)n;
+				}
+			| CALL func_application INTO ORAPARAM
+				{
+					CallStmt *n = makeNode(CallStmt);
+					OraParamRef *hostvar = makeNode(OraParamRef);
+					char	*callstr = NULL;
+					n->funccall = castNode(FuncCall, $2);
+					hostvar->number = 0;
+					hostvar->location = @4;
+					hostvar->name = $4;
+					n->hostvariable = hostvar;
+					callstr = pnstrdup(pg_yyget_extra(yyscanner)->core_yy_extra.scanbuf + @2, @3 - @2);
+					n->callinto = psprintf("%s := %s;", $4, callstr);
+					pfree(callstr);
+					$$ = (Node *)n;
+				}
+		;
+```
+The CallStmt structure needs to store the INTO clause and the converted PL statement.
+```
+typedef struct CallStmt
+{
+  NodeTag   type;
+  FuncCall  *funccall;    /* from the parser */
+  FuncExpr  *funcexpr;    /* transformed call, with only input args */
+  List    *outargs;    /* transformed output-argument expressions */
+  OraParamRef *hostvariable; /* only used for get_parameter_description() */
+  char    *callinto;    /* rewrite CALL INTO to a PL assign stmt */
+} CallStmt;
+```
+To distinguish between regular DO statements and anonymous blocks converted from CALL statements, a new keyword GENERATED FROM CALL is added to the syntax.
+```
+opt_do_from_where:
+			GENERATED FROM CALL			{ $$ = true; }
+			| /*EMPTY*/					{ $$ = false; }
+		;
+```
+The generated DoStmt node will set do_from_call = true for executor identification.
+```
+typedef struct DoStmt
+{
+  NodeTag   type;
+  List    *args;      /* List of DefElem nodes */
+  List    *paramsmode;  /* List of parameters mode */
+  List    *paramslen;   /* List of length for parameter datatypes */
+  bool    do_from_call;  /* True if DoStmt is come from CallStmt */
+} DoStmt;
+```
+In the IVY interface, placeholder information is obtained through a Set-Returning Function (SRF) called get_parameter_description. This function needs to identify the type of input statement and return the rewritten PL/iSQL assignment statement when encountering CALL INTO statements.
+
+To achieve this, IvorySQL has extended the return structure (TupleDesc) of this function: a new hint field has been added specifically to return the rewritten PL code for CALL INTO statements; for other types of statements, this field remains NULL.
+
+Additionally, the first field of the first tuple in the original function result set previously used only true/false to distinguish whether the statement was an anonymous block. To more accurately identify statement types (especially CALL statements), it has now been modified to return the corresponding parse tree's CommandTag.
+
+All these metadata details are ultimately encapsulated into a user context structure to enable efficient passing and reuse across multiple invocations of the SRF function.
+```
+{
+    OraParamExtralData *extral;
+    const char     *cmdtag;
+    char        *callintoexpr;
+} outparam_fctx;
+```
+=== Interface layer
+The IVY-prefixed interfaces involved in CALL include:
+
+IvyStmtExecute
+
+IvyStmtExecute2
+
+IvyexecPreparedStatement
+
+IvyexecPreparedStatement2
+
+In the aforementioned interfaces, user-provided CALL [INTO] statements are rewritten into a "special" anonymous block statement. To clearly identify such anonymous blocks converted from CALL statements, a dedicated type has been added to the statement type definitions of the interface.
+
+The purpose of this type is to correctly recognize such statements in IvyHandleDostmt and generate execution statements in the form of:DO $$...$$ USING … -- GENERATED FROM CALL  
+```
+typedef enum IvyStmtType
+{
+	IVY_STMT_UNKNOW,
+	IVY_STMT_DO,
+	IVY_STMT_DOFROMCALL, /* new statementt ype */
+	IVY_STMT_DOHANDLED,
+	IVY_STMT_OTHERS
+} IvyStmtType;
+```
+When rewriting CALL statements, if encountering a CALL INTO statement that invokes a function, the interface needs to internally adjust the order of bound variables. This adjustment is completely transparent to users: when binding parameters, users only need to follow the order in which the variables appear in the CALL statement—that is, the variable in the INTO clause is positioned last in the original statement.
+
+However, in the rewritten special anonymous block, this INTO variable will appear as the left-hand side (i.e., the first parameter) of an assignment expression. Therefore, the interface must internally adjust the binding order correctly to ensure the execution logic matches the user's expectations.
+
+All interface routines involved in this logic must implement this handling. The relevant routines are as follows:
+
+Ivyreplacenamebindtoposition
+
+Ivyreplacenamebindtoposition2
+
+Ivyreplacenamebindtoposition3
+
+In interfaces such as IvyexecPreparedStatement and IvyexecPreparedStatement2, users must explicitly provide paramvalues, paramlengths, paramformats, and parammode for each parameter. For CALL statements, the order of elements in these parameter arrays must be adjusted according to the rewritten anonymous block structure to ensure binding consistency with the execution logic.
+
+Among them, IvyexecPreparedStatement2 is more specialized: it requires users to additionally provide an output binding list of type IvyBindOutInfo*. This list is not only used to bind OUT parameters but is also utilized by IvyAssignPLISQLOutParameter to identify the data type of each OUT parameter when retrieving PL/iSQL procedure results. Therefore, when processing CALL statements, the interface first reorders the user-provided IvyBindOutInfo* list (moving the INTO-bound output variable to the first position) and then writes it into the IvyPreparedStatement statement handle for subsequent assignment.
+
+Regarding precision handling for output parameters: When there is a mismatch between the precision of an output binding variable in a CALL statement and the actual returned value, the system may either raise an error or automatically truncate—the specific behavior depends on whether the data type of the binding variable exactly matches the parameter type declared in the procedure/function.
+
+In the PL/iSQL inline handler, the precise data type of each OUT parameter can be obtained through ParamListInfo during the binding phase. If the currently executed anonymous block is a special DoStmt converted from a CALL statement, the system performs the following checks during assignment:
+
+If the type recorded in ParamListInfo exactly matches the formal parameter type of the function/stored procedure, a forced type conversion is applied for assignment.
+Otherwise, an implicit type conversion is used for assignment.
+This mechanism is designed to be compatible with Oracle's behavior, ensuring safe and reasonable assignment even when types do not fully match.
+```
+-- Original CALL statement:
+CALL my_func(:in1, :in2) INTO :out;
+-- Rewritten as:
+do $$BEGIN
+  :out := my_func(:in1, :in2);
+END$$ using
+  out INOUT, in1 INOUT, in2 INOUT
+  paramslength -1,-1,-1
+GENERATED FROM CALL;
+```

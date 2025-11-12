@@ -18,6 +18,9 @@ IvorySQL 作为一款兼容 Oracle 且基于 PostgreSQL 的高级开源数据库
 | xref:master/5.4.adoc[pg_cron]​ | 1.6.0 | 提供数据库内部的定时任务调度功能，支持定期执行SQL语句 | 数据清理、定期统计、自动化维护任务
 | xref:master/5.5.adoc[pgsql-http]​ | 1.7.0 | 允许在SQL中发起HTTP请求，与外部Web服务进行交互 | 数据采集、API集成、微服务调用
 | xref:master/5.6.adoc[plpgsql_check] | 2.8 | 提供PL/pgSQL代码的静态分析功能，可在开发阶段发现潜在错误 | 存储过程开发、代码质量检查、调试优化
+| xref:master/5.7.adoc[pgroonga] | 4.0.4 | 提供​非英语语言全文搜索功能，满足高性能应用的需求 | 中日韩等语言的全文搜索功能
+| xref:master/5.8.adoc[pgaudit] | 18.0 | 提供细粒度的审计功能，记录数据库操作日志，便于安全审计和合规性检查 | 数据库安全审计、合规性检查、审计报告生成
+| xref:master/5.9.adoc[pgrouting] | 3.8.0 | 提供地理空间数据的路由计算功能，支持多种算法和数据格式 | 地理空间分析、路径规划、物流优化
 |====
 
 这些插件均经过 IvorySQL 团队的测试和适配，确保在 IvorySQL 环境下稳定运行。用户可以根据业务需求选择合适的插件，进一步提升数据库系统的能力和灵活性。

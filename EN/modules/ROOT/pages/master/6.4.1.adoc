@@ -3,7 +3,7 @@
 
 = **Feature Overview**
 
-IvorySQL provides compatibility with the Oracle built-in function `SYS_CONTEXT('namespace', 'parameter' [, length ])`,
+IvorySQL provides compatibility with the Oracle built-in function ```SYS_CONTEXT('namespace', 'parameter' [, length ])```,
 which returns the value of the parameter associated with the given context at the current moment. It can be used in both SQL and PL/SQL languages.
 
 IvorySQL provides the following built-in namespaces:
