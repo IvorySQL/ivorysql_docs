@@ -1,0 +1,15 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= **芯片架构适配**
+
+IvorySQL适配如下CPU架构：
+
+|====
+| 序号 | 架构名称  | 厂商名称  | 安装包下载链接  
+| 1 | X86 |  Intel、AMD | https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.6/IvorySQL-4.6-adc1923-20250904.amd64.deb[IvorySQL-5.0-adc1923-20250904.amd64.deb] <br> https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.6/IvorySQL-4.6-adc1923-20250904.x86_64.rpm[IvorySQL-5.0-adc1923-20250904.x86_64.rpm]
+| 2 | ARM | 飞腾、鲲鹏 | https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.6/IvorySQL-4.6-adc1923-20250904.aarch64.rpm[IvorySQL-5.0-adc1923-20250904.aarch64.rpm] <br> https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.6/IvorySQL-4.6-adc1923-20250904.arm64.deb[IvorySQL-5.0-adc1923-20250904.arm64.deb]
+| 3 | MIPS | MIPS | https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.6/IvorySQL-4.6-adc1923-20250904.mips64el.deb[IvorySQL-5.0-adc1923-20250904.mips64el.deb] <br> https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.6/IvorySQL-4.6-adc1923-20250904.mips64el.rpm[IvorySQL-5.0-adc1923-20250904.mips64el.rpm]
+| 4 | Loongarch | 龙芯 |  https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.6/IvorySQL-4.6-adc1923-20250909.loongarch64.deb[IvorySQL-5.0-adc1923-20250909.loongarch64.deb] <br> https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.6/IvorySQL-4.6-adc1923-20250909.loongarch64.rpm[IvorySQL-5.0-adc1923-20250909.loongarch64.rpm]
+|====
