@@ -16,6 +16,12 @@
       <div class="swiper-slide">
         <img src="https://picsum.photos/800/400?random=3" alt="风景图片3">
       </div>
+      <div class="swiper-slide">
+        <img src="https://picsum.photos/800/400?random=4" alt="风景图片4">
+      </div>
+      <div class="swiper-slide">
+        <img src="https://picsum.photos/800/400?random=5" alt="风景图片5">
+      </div>
     </div>
     <!-- 分页器 -->
     <div class="swiper-pagination"></div>
@@ -27,35 +33,67 @@
 
 <script>
 var swiper = new Swiper('.swiper-container', {
+  // 确保一次只显示一张幻灯片
+  slidesPerView: 1,
+  slidesPerGroup: 1,
+  spaceBetween: 0,
+  
+  // 循环播放
   loop: true,
+  
+  // 自动播放设置
   autoplay: {
-    delay: 3000,
+    delay: 4000, // 4秒切换
     disableOnInteraction: false,
   },
+  
+  // 分页器
   pagination: {
     el: '.swiper-pagination',
     clickable: true,
+    dynamicBullets: true,
   },
+  
+  // 导航按钮
   navigation: {
     nextEl: '.swiper-button-next',
     prevEl: '.swiper-button-prev',
   },
+  
+  // 切换效果 - 使用淡入淡出而不是滑动
+  effect: 'fade',
+  fadeEffect: {
+    crossFade: true
+  },
+  
+  // 速度控制
+  speed: 800,
 });
 </script>
 
 <style>
 /* 容器样式 - 限制宽度不遮挡导航栏 */
 .image-carousel-container {
-  max-width: 75%; /* 调整为适合的宽度 */
+  max-width: 75%;
   margin: 20px auto;
   padding: 0 15px;
 }
 
 .swiper-container {
   width: 100%;
-  height: 350px; /* 稍微降低高度 */
+  height: 400px;
   border-radius: 8px;
+  overflow: hidden; /* 确保内容不会溢出 */
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* 确保每个幻灯片占据整个容器 */
+.swiper-slide {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .swiper-slide img {
@@ -65,42 +103,78 @@ var swiper = new Swiper('.swiper-container', {
   border-radius: 6px;
 }
 
-/* 响应式设计 - 在小屏幕上全宽度 */
+/* 淡入淡出效果增强 */
+.swiper-container-fade .swiper-slide {
+  pointer-events: none;
+}
+.swiper-container-fade .swiper-slide-active {
+  pointer-events: auto;
+}
+
+/* 导航按钮样式 */
+.swiper-button-next,
+.swiper-button-prev {
+  background-color: rgba(255,255,255,0.8);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: #333;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  transition: all 0.3s ease;
+}
+
+.swiper-button-next:after,
+.swiper-button-prev:after {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.swiper-button-next:hover,
+.swiper-button-prev:hover {
+  background-color: rgba(255,255,255,0.95);
+  transform: scale(1.05);
+}
+
+/* 分页器样式 */
+.swiper-pagination {
+  bottom: 15px !important;
+}
+
+.swiper-pagination-bullet {
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  opacity: 0.7;
+  transition: all 0.3s ease;
+}
+
+.swiper-pagination-bullet-active {
+  background: #007bff;
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+/* 响应式设计 */
 @media (max-width: 768px) {
   .image-carousel-container {
-    max-width: 100%;
+    max-width: 95%;
     padding: 0 10px;
   }
   
   .swiper-container {
     height: 300px;
   }
-}
-
-/* 导航按钮样式调整 */
-.swiper-button-next,
-.swiper-button-prev {
-  background-color: rgba(255,255,255,0.7);
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  color: #333;
-}
-
-.swiper-button-next:after,
-.swiper-button-prev:after {
-  font-size: 18px;
-}
-
-/* 分页器样式 */
-.swiper-pagination-bullet {
-  background: #fff;
-  opacity: 0.7;
-}
-
-.swiper-pagination-bullet-active {
-  background: #007bff;
-  opacity: 1;
+  
+  .swiper-button-next,
+  .swiper-button-prev {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .swiper-button-next:after,
+  .swiper-button-prev:after {
+    font-size: 16px;
+  }
 }
 </style>
 ++++
