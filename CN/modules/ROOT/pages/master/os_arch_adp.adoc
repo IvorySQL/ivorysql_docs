@@ -11,8 +11,8 @@ IvorySQL适配如下操作系统：
 |====
 | 序号 | 操作系统名称  |  证书查看 
 | 1 | 银河麒麟 V11 | image:kylin-v11.jpg[role=thumb]
-| 2 | openKylin 2.0 | image:kylin-v11.jpg[align=center] 
-| 3 | deppin V20 | image:kylin-v11.jpg[height=80] 
-| 4 | 龙蜥 OpenAnolis 23 |  
+| 2 | openKylin 2.0 | image:openKylin-2.0.png[align=center] 
+| 3 | deppin V20 | image:deepin-20.png[height=80] 
+| 4 | 龙蜥 OpenAnolis 23 | image:OpenAnolis-23.jpg[] 
 |====
 
