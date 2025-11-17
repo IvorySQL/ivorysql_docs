@@ -1,6 +1,7 @@
 
 :sectnums:
 :sectnumlevels: 5
+:imagesdir: ./_images
 
 = **操作系统适配**
 
@@ -8,7 +9,7 @@ IvorySQL适配如下操作系统：
 
 |====
 | 序号 | 操作系统名称  |  证书查看 
-| 1 | 银河麒麟 V11 | image::kylin-v11.jpg[]
+| 1 | 银河麒麟 V11 | image::kylin-v11.jpg[role=thumb]
 | 2 | openKylin 2.0 |  
 | 3 | deppin V20 |  
 | 4 | 龙蜥 OpenAnolis 23 |  
