@@ -5,7 +5,7 @@
 = **芯片架构适配**
 
 IvorySQL适配如下CPU架构：
-
+[cols="8h,~,~,~"]
 |====
 | 序号 | 架构名称  | 厂商名称  | 安装包下载链接  
 | 1 | X86 |  Intel、AMD、兆芯、海光 | https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.6/IvorySQL-4.6-adc1923-20250904.amd64.deb[deb], https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_4.6/IvorySQL-4.6-adc1923-20250904.x86_64.rpm[rpm]
