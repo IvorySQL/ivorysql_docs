@@ -7,7 +7,7 @@
 = **操作系统适配**
 
 IvorySQL适配如下操作系统：
-[%autowidth]
+[%autowidth.stretch]
 |====
 | 序号 | 操作系统名称  |  证书查看 
 | 1 | 银河麒麟高级服务器操作系统 V11 | image:kylin-v11.jpg[width=20%,link={imagesdir}/kylin-v11.jpg]
