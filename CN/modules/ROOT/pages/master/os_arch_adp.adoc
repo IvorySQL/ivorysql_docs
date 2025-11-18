@@ -7,12 +7,12 @@
 = **操作系统适配**
 
 IvorySQL适配如下操作系统：
-[cols="8h,~,~"]
+[cols="8h,100h,~"]
 |====
-| 序号 | 操作系统名称  |  证书查看 
-| 1  | 银河麒麟高级服务器操作系统 V11 | image:kylin-v11.jpg[width=20%,link={imagesdir}/kylin-v11.jpg]
-| 2  | openKylin 2.0 SP1 | image:openKylin-2.0.png[width=20%,link={imagesdir}/openKylin-2.0.png] 
-| 3  | deppin (深度操作系统) 20 | image:deepin-20.png[width=20%,link={imagesdir}/deepin-20.png]
-| 4  | OpenAnolis OS (龙蜥操作系统) 23 | image:OpenAnolis-23.jpg[width=20%,link={imagesdir}/OpenAnolis-23.jpg] 
+| 序号 | 操作系统名称 | 证书查看 
+| 1 | 银河麒麟高级服务器操作系统 V11 | image:kylin-v11.jpg[width=20%,link={imagesdir}/kylin-v11.jpg]
+| 2 | openKylin 2.0 SP1 | image:openKylin-2.0.png[width=20%,link={imagesdir}/openKylin-2.0.png] 
+| 3 | deppin (深度操作系统) 20 | image:deepin-20.png[width=20%,link={imagesdir}/deepin-20.png]
+| 4 | OpenAnolis OS (龙蜥操作系统) 23 | image:OpenAnolis-23.jpg[width=20%,link={imagesdir}/OpenAnolis-23.jpg] 
 |====
 
