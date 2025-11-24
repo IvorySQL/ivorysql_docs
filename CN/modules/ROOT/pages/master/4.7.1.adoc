@@ -22,11 +22,8 @@ IvorySQL Cloud平台，目前支持Linux系统下的安装，以下为各部分�
 [width="99%",cols="<28%,72%",options="header",]
 |===
 |*组件* |*安装包*
-|前端 a|
-[arabic]
-. ivory-cloud-web
-
-|后端 |（1）ivory-cloud
+|前端 | ivory-cloud-web
+|后端 | ivory-cloud
 |K8S集群 a|
 [arabic]
 . ivory-operator
