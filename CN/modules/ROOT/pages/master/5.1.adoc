@@ -8,7 +8,7 @@
 IvorySQL原生100%兼容PostgreSQL,因此，PostGIS可以完美适配IvorySQL。
 
 == 安装
-根据开发环境，用户可从 https://postgis.net/documentation/getting_started/#installing-postgis[PostGIS安装] 页面选择适合自己的方式进行安装PostGIS安装。
+根据开发环境，用户可从 https://postgis.net/documentation/getting_started/#installing-postgis[PostGIS安装] 页面选择适合自己的方式进行安装PostGIS。
 
 === 源码安装
 除PostGIS社区提供的安装方式以外，IvorySQL社区也提供了源码安装方式，源码安装环境为 Ubuntu 24.04(x86_64)。

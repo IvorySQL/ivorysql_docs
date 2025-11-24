@@ -94,7 +94,8 @@ Set environment variables; Load environment variables; Because ORACLE must be de
 
 ```
 export ORACLE_HOME=/usr/lib/oracle/18.3/client64
-# tar -zxvf DBD-Oracle-1.76.tar.gz # source /home/postgres/.bashrc
+# tar -zxvf DBD-Oracle-1.76.tar.gz 
+# source /home/postgres/.bashrc
 # cd DBD-Oracle-1.76
 # perl Makefile.PL
 # make

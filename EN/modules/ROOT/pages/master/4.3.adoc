@@ -2108,10 +2108,10 @@ action:
     | DROP [ COLUMN ] ( column_name [, ... ] )
 
 add_coldef:
-    cloumn_name data_type
+    column_name data_type
 
 modify_coldef:
-    cloumn_name data_type alter_using
+    column_name data_type alter_using
 
 alter_using:
     USING expression
@@ -2120,7 +2120,7 @@ alter_using:
 #### **parameters**
 
 `name` Table name.
-`cloumn_name` Column name.
+`column_name` Column name.
 `data_type` Column type.
 `expression` The value expression.
 `ADD keyword` Adds a column to the table, either one or more columns.
@@ -3582,7 +3582,7 @@ DETAIL:  Key (b)=(11) already exists.
 
 When appending a new table to a partitioned table with a globally unique index, the system performs a duplicate check on all existing partitions. If a duplicate item is found in an existing partition that matches a tuple in the appended table, an error is raised and the append fails.
 
-Appending requires a sharedlock on all existing partitions. If one of the partitions is doing a concurrent INSERT, the append will wait for it to complete first. This can be improved in a future release
+Appending requires a SHARE LOCK on all existing partitions. If one of the partitions is doing a concurrent INSERT, the append will wait for it to complete first. This can be improved in a future release
 
 #### Example
 

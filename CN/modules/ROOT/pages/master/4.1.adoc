@@ -210,7 +210,7 @@ $ initdb -D /opt/IvorySQL-4.5/data
 $ pg_ctl -D /opt/IvorySQL-4.5/data -l ivory.log start 
 ```
 
-其中-D参数用来指定数据库的数据目录，如果<<配置环境变量>> 配置了PGDATA，则该参数可以省略。-l参数用来指定日志目录。更多参数使用方法，请使用pg_ctl --help命令获取。
+其中-D参数用来指定数据库的数据目录，如果<<配置环境变量>> 配置了PGDATA，则该参数可以省略。-l参数用来指定日志文件。更多参数使用方法，请使用pg_ctl --help命令获取。
 
 
 查看确认数据库启动成功：

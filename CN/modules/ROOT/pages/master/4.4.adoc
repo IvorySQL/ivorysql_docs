@@ -75,7 +75,7 @@ mv /usr/local/pgsql /usr/local/pgsql.old
 8.最后利用新版本的psql命令还原数据：
 
 ```
-/usr/local/pqsql/bin/psql -d postgres -f outputfile
+/usr/local/pgsql/bin/psql -d postgres -f outputfile
 ```
 
 为了减少停机时间，可以将新版本的IvorySQL安装到另一个目录，同时使用不同的端口启动服务。然后同时执行数据库的导出和导入：

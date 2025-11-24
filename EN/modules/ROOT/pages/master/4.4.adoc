@@ -67,7 +67,7 @@ Or stop the background service by other means.
 
 8.Finally, using the new version of the psql command to restore the data.
 
-    /usr/local/pqsql/bin/psql -d postgres -f outputfile
+    /usr/local/pgsql/bin/psql -d postgres -f outputfile
 
 To reduce downtime, you can install the new version of IvorySQL to another directory, while starting the service using a different port. Then perform both the export and import of the database.
 

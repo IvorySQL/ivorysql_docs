@@ -1638,7 +1638,7 @@ SELECT * FROM tbl WHERE (a > 'foo') COLLATE "C";
 
 ==== 标量子查询
 
-一个标量子查询是一种圆括号内的普通 `SELECT` 查询，它刚好返回一行一列（关于书写查询可见 http://www.postgresql.org/docs/17/queries.html[第 7 章]）。`SELECT`查询被执行并且该单一返回值被使用在周围的值表达式中。将一个返回超过一行或一列的查询作为一个标量子查询使用是一种错误（但是如果在一次特定执行期间该子查询没有返回行则不是错误，该标量结果被当做为空）。该子查询可以从周围的查询中引用变量，这些变量在该子查询的任何一次计算中都将作为常量。对于其他涉及子查询的表达式还可见 http://www.postgresql.org/docs/17/functions-subquery.html[第 9.23 节]。
+一个标量子查询是一种圆括号内的普通 `SELECT` 查询，它刚好返回一行一列（关于书写查询可见 http://www.postgresql.org/docs/17/queries.html[第 7 章]）。`SELECT`查询被执行并且该单一返回值被使用在周围的值表达式中。将一个返回超过一行或一列的查询作为一个标量子查询使用是一种错误（但是如果在一次特定执行期间该子查询没有返回行则不是错误，该标量结果被当作为空）。该子查询可以从周围的查询中引用变量，这些变量在该子查询的任何一次计算中都将作为常量。对于其他涉及子查询的表达式还可见 http://www.postgresql.org/docs/17/functions-subquery.html[第 9.23 节]。
 
 例如，下列语句会寻找每个州中最大的城市人口：
 
@@ -1989,10 +1989,10 @@ action:
     | DROP [ COLUMN ] ( column_name [, ... ] )
 
 add_coldef:
-    cloumn_name data_type
+    column_name data_type
 
 modify_coldef:
-    cloumn_name data_type alter_using
+    column_name data_type alter_using
 
 alter_using:
     USING expression
@@ -2002,7 +2002,7 @@ alter_using:
 
 `name` 表名.
 
-`cloumn_name` 列名.
+`column_name` 列名.
 
 `data_type` 列类型.
 
@@ -3549,7 +3549,7 @@ DETAIL:  Key (b)=(11) already exists.
 
 将新表附加到具有全局唯一索引的分区表时，系统将对所有现有分区进行重复检查。 如果在现有分区中发现与附加表中的元组匹配的重复项，则会引发错误并且附加失败。
 
-附加需要所有现有分区上的共享锁（sharedlock）。 如果其中一个分区正在进行并发 INSERT，则附加将等待它先完成。 这可以在未来的版本中改进
+附加需要所有现有分区上的共享锁（SHARE LOCK）。 如果其中一个分区正在进行并发 INSERT，则附加将等待它先完成。 这可以在未来的版本中改进
 
 ==== 示例
 

@@ -21,7 +21,7 @@
 |            | dropuser                  | dropuser移除一个已有的IvorySQL用户。只有超级用户以及具有 `CREATEROLE` 特权的用户能够移除IvorySQL用户（要移除一个超级用户，你必须自己是一个超级用户）。dropuser是SQL命令 http://www.postgresql.org/docs/17/sql-droprole.html[DROP ROLE] 的一个包装器。在通过这个工具和其他方法访问服务器来删除用户之间没有实质性的区别。 
 |            | ecpg                      | `ecpg` 是用于 C 程序的嵌入式 SQL 预处理器。它通过将 SQL 调用替换为特殊函数调用把带有嵌入式 SQL 语句的 C 程序转换为普通 C 代码。输出文件可以被任何 C 编译器工具链处理。`ecpg` 将把命令行中给出的每一个输入文件转换为相应的 C 输出文件。 如果输入文件名没有任何扩展名，则假定为 `.pgc`。文件扩展名将由 `.c` 替换以构造输出文件名。 但是输出文件名可以使用 `-o` 选项覆盖。如果输入文件名只是 `-`，`ecpg` 从标准输入 读取程序（并写入标准输出，除非用 `-o` 重写）。 
 |            | pg_amcheck          | pg_amcheck支持对一个或多个数据库运行 http://www.postgresql.org/docs/17/amcheck.html[amcheck] 的损坏检查函数，并提供选项来选择要检查的模式、表和索引、要执行的检查类型以及是否并行执行检查，如果是，按并行数建立连接并使用。当前仅支持表关系和btree索引。其他关系类型将自动跳过。如果指定了 `dbname`，则它应该是要检查的单个数据库的名称，并且不应该存在其他数据库选择选项。否则，如果存在任何数据库选择选项，将检查所有匹配的数据库。如果不存在此类选项，将选中默认数据库。数据库选择选项包括 `--all`，`--database` 和 `--exclude-database`。它们还包括 `--relation`，`--exclude-relation`， `--table`，`--exclude-table`，`--index`，和 `--exclude-index`，但仅当这些选项与三段式模式一起使用时（例如，`mydb*.myschema*.myrel*`）。最后，它们包括 `--schema` 和 `--exclude-schema` 当这些选项与两段式模式一起使用时（例如 `mydb*.myschema*` ）。 
-|            | pg_basebackup             | pg_basebackup被用于获得一个正在运行的IvorySQL数据库集簇的基础备份。获得这些备份不会影响数据库的其他客户端，并且可以被用于时间点恢复，以及用作一个日志传送或流复制后备服务器的开始点。pg_basebackup对数据库群集的文件进行精确复制，同时确保服务器自动进入和退出备份模式。备份总是从整个数据库集簇获得，不可能备份单个数据库或数据库对象。关于选择性备份，必须使用一个像 http://www.postgresql.org/docs/17/app-pgdump.html[pg_dump] 的工具。备份通过一个使用复制协议常规IvorySQL连接制作。该连接必须由一个具有 `REPLICATION` 权限或者具有超级用户权限的用户ID建立，并且 http://www.postgresql.org/docs/17/auth-pg-hba-conf.html[`pg_hba.conf`]必须允许该复制连接。该服务器还必须被配置，使 http://www.postgresql.org/docs/17/runtime-config-replication.html#GUC-MAX-WAL-SENDERS[max_wal_senders] 设置得足够高以提供至少一个walsender用于备份以及一个用于WAL流（如果使用流）。在同一时间可以有多个 `pg_basebackup` 运行，但是从性能的角度来说，只进行一次备份并且复制结果通常更好。pg_basebackup不仅能从主控机也能从后备机创建一个基础备份。要从后备机获得一个备份，设置后备机让它能接受复制连接（也就是，设置 `max_wal_senders` 和 http://www.postgresql.org/docs/17/runtime-config-replication.html#GUC-HOT-STANDBY[hot_standby]，并且适当配置其 `pg_hba.conf` ）。你将也需要在主控机上启用 http://www.postgresql.org/docs/17/runtime-config-wal.html#GUC-FULL-PAGE-WRITES[full_page_writes]。注意在来自后备机的备份中有一些限制：不会在被备份的数据库集簇中创建备份历史文件。 pg_basebackup不能强制备用服务器在备份结束时切换到新的WAL文件。 当正在使用 `-X none` 时，如果服务器上的写活动比较低，pg_basebackup可能需要等待很长时间，以便切换和归档备份所需要的最后的WAL文件。 在这种情况下，在主服务器上运行 `pg_switch_wal` 以触发立即的WAL文件切换可能是有用的。 如果在备份期间后备机被提升为主控机，备份会失败。 备份所需的所有 WAL 记录必须包含足够的全页写，这要求你在主控机上启用 `full_page_writes` 并且不使用一个类似pg_compresslog的工具以 `archive_command` 从 WAL 文件中移除全页写。每当pg_basebackup进行基本备份时，服务器的 `pg_stat_progress_basebackup` 视图将报告备份的进度。 
+|            | pg_basebackup             | pg_basebackup被用于获得一个正在运行的IvorySQL数据库集簇的基础备份。获得这些备份不会影响数据库的其他客户端，并且可以被用于时间点恢复，以及用作一个日志传送或流复制后备服务器的开始点。pg_basebackup对数据库群集的文件进行精确复制，同时确保服务器自动进入和退出备份模式。备份总是从整个数据库集簇获得，不可能备份单个数据库或数据库对象。关于选择性备份，必须使用一个像 http://www.postgresql.org/docs/17/app-pgdump.html[pg_dump] 的工具。备份通过一个使用复制协议常规IvorySQL连接制作。该连接必须由一个具有 `REPLICATION` 权限或者具有超级用户权限的用户ID建立，并且 http://www.postgresql.org/docs/17/auth-pg-hba-conf.html[`pg_hba.conf`]必须允许该复制连接。该服务器还必须被配置，使 http://www.postgresql.org/docs/17/runtime-config-replication.html#GUC-MAX-WAL-SENDERS[max_wal_senders] 设置得足够高以提供至少一个walsender用于备份以及一个用于WAL流（如果使用流）。在同一时间可以有多个 `pg_basebackup` 运行，但是从性能的角度来说，只进行一次备份并且复制结果通常更好。pg_basebackup不仅能从主控机也能从后备机创建一个基础备份。要从后备机获得一个备份，设置后备机让它能接受复制连接（也就是，设置 `max_wal_senders` 和 http://www.postgresql.org/docs/17/runtime-config-replication.html#GUC-HOT-STANDBY[hot_standby]，并且适当配置其 `pg_hba.conf` ）。你将也需要在主控机上启用 http://www.postgresql.org/docs/17/runtime-config-wal.html#GUC-FULL-PAGE-WRITES[full_page_writes]。注意在来自后备机的备份中有一些限制：不会在被备份的数据库集簇中创建备份历史文件。 pg_basebackup不能强制后备服务器在备份结束时切换到新的WAL文件。 当正在使用 `-X none` 时，如果服务器上的写活动比较低，pg_basebackup可能需要等待很长时间，以便切换和归档备份所需要的最后的WAL文件。 在这种情况下，在主服务器上运行 `pg_switch_wal` 以触发立即的WAL文件切换可能是有用的。 如果在备份期间后备机被提升为主控机，备份会失败。 备份所需的所有 WAL 记录必须包含足够的全页写，这要求你在主控机上启用 `full_page_writes` 并且不使用一个类似pg_compresslog的工具以 `archive_command` 从 WAL 文件中移除全页写。每当pg_basebackup进行基本备份时，服务器的 `pg_stat_progress_basebackup` 视图将报告备份的进度。 
 |            | pgbench                   | pgbench是一种在IvorySQL上运行基准测试的简单程序。它可能在并发的数据库会话中一遍一遍地运行相同序列的 SQL 命令，并且计算平均事务率（每秒的事务数）。默认情况下，pgbench会测试一种基于 TPC-B 但是要更宽松的场景，其中在每个事务中涉及五个 `SELECT`、 `UPDATE` 以及 `INSERT` 命令。但是，通过编写自己的事务脚本文件很容易用来测试其他情况。 
 |            | pg_config                 | pg_config工具打印当前安装版本的IvorySQL的配置参数。它的设计目的之一是便于想与IvorySQL交互的软件包能够找到所需的头文件和库。 
 |            | pg_dump                   | pg_dumppg_dump是用于备份一种IvorySQL数据库的工具。即使数据库正在被并发使用，它也能创建一致的备份。pg_dump不阻塞其他用户访问数据库（读取或写入）。pg_dump只转储单个数据库。要备份一个集簇或者集簇中 对于所有数据库公共的全局对象（例如角色和表空间），应使用 http://www.postgresql.org/docs/17/app-pg-dumpall.html[pg_dumpall]。转储可以被输出到脚本或归档文件格式。脚本转储是包含 SQL 命令的纯文本文件，它们可以用来重构数据库到它被转储时的状态。要从这样一个脚本恢复，将它输入到 http://www.postgresql.org/docs/17/app-psql.html[psql]。脚本文件甚至可以被用来在其他机器和其他架构上重构数据库。在经过一些修改后，甚至可以在其他 SQL 数据库产品上重构数据库。另一种可选的归档文件格式必须与 http://www.postgresql.org/docs/17/app-pgrestore.html[pg_restore] 配合使用来重建数据库。它们允许pg_restore能选择恢复什么，或者甚至在恢复之前对条目重排序。归档文件格式被设计为在架构之间可移植。当使用归档文件格式之一并与pg_restore组合时，pg_dump提供了一种灵活的归档和传输机制。pg_dump可以被用来备份整个数据库，然后pg_restore可以被用来检查归档并/或选择数据库的哪些部分要被恢复。最灵活的输出文件格式是“自定义”格式（ `-Fc` ）和“目录”格式（ `-Fd` ）。它们允许选择和重排序所有已归档项、支持并行恢复并且默认是压缩的。“目录”格式是唯一一种支持并行转储的格式。当运行pg_dump时，我们应该检查输出中有没有任何警告（打印在标准错误上） 
@@ -899,7 +899,7 @@ pg_basebackup — 获得一个IvorySQL集簇的一个基础备份
 
 - `-R` `--write-recovery-conf`
 
-创建一个 http://www.postgresql.org/docs/17/warm-standby.html#FILE-STANDBY-SIGNAL[`standby.signal`] 文件，并将连接设置附加到目标目录（或使用tar格式的基本存档文件中）的 `postgresql.auto.conf` 文件中。 这样可以简化使用备份结果设置备用服务器的过程。 `postgresql.auto.conf` 文件将记录连接设置（如果有）以及pg_basebackup所使用的复制槽，这样流复制后面就会使用相同的设置。
+创建一个 http://www.postgresql.org/docs/17/warm-standby.html#FILE-STANDBY-SIGNAL[`standby.signal`] 文件，并将连接设置附加到目标目录（或使用tar格式的基本存档文件中）的 `postgresql.auto.conf` 文件中。 这样可以简化使用备份结果设置后备服务器的过程。 `postgresql.auto.conf` 文件将记录连接设置（如果有）以及pg_basebackup所使用的复制槽，这样流复制后面就会使用相同的设置。
 
 - `-T *olddir*=*newdir*` `--tablespace-mapping=*olddir*=*newdir*`
 
@@ -3778,7 +3778,7 @@ pg_checksums — 在IvorySQL数据库集簇中启用、禁用或检查数据校�
 
 在大型集簇中启用校验和的时间可能很长。在此操作期间，写到数据目录的集簇或其它程序必须是未启动的，否则可能出现数据丢失。
 
-当复制设置与执行关系文件块的直接拷贝的工具（例如 http://www.postgresql.org/docs/17/app-pgrewind.html[pg_rewind]）一起使用时，启用和禁用校验和会导致以不正确校验和形式出现的页面损坏，如果未在所有节点上执行一致的操作的话。故在复制设置中启用或禁用校验和时，推荐一致地切换所有集簇之前停止所有集簇。此外销毁所有备用数据库，在主数据库上执行操作，最后从头开始重建备用服务器，也是安全的。
+当复制设置与执行关系文件块的直接拷贝的工具（例如 http://www.postgresql.org/docs/17/app-pgrewind.html[pg_rewind]）一起使用时，启用和禁用校验和会导致以不正确校验和形式出现的页面损坏，如果未在所有节点上执行一致的操作的话。故在复制设置中启用或禁用校验和时，推荐一致地切换所有集簇之前停止所有集簇。此外销毁所有备用数据库，在主数据库上执行操作，最后从头开始重建后备服务器，也是安全的。
 
 如果在启用或禁用校验和时异常终止或杀掉pg_checksums，那么集簇的数据校验和配置保持不变，pg_checksums可以重新运行以执行相同操作。
 
@@ -4079,7 +4079,7 @@ pg_rewind — 把一个IvorySQL数据目录与另一个从该目录中复制出�
 
 如果在处理时pg_rewind失败，则目标的数据目录很可能不在可恢复的状态。在这种情况下，推荐创建一个新的备份。
 
-由于 pg_rewind 完全从源复制配置文件，因此可能需要在重新启动目标服务器之前更正用于恢复的配置，特别是当目标服务器作为源的备用服务器重新引入时。 如果在倒带操作完成后重新启动服务器但未配置恢复，则目标可能会再次与主服务器分离。
+由于 pg_rewind 完全从源复制配置文件，因此可能需要在重新启动目标服务器之前更正用于恢复的配置，特别是当目标服务器作为源的后备服务器重新引入时。 如果在倒带操作完成后重新启动服务器但未配置恢复，则目标可能会再次与主服务器分离。
 
 如果pg_rewind发现它无法直接写入的文件，它将立刻失败。例如当源服务器和目标服务器为只读的SSL密钥及证书使用相同的文件映射，就会发生这种情况。如果在目标服务器上存在这样的文件，推荐在运行pg_rewind之前移除它们。在做了rewind之后，一些那样的文件可能已经被从源服务器拷贝，这样就有必要移除已经拷贝的数据并且恢复到rewind之前使用的链接集合。
 

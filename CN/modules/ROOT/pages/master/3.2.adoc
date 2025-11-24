@@ -49,7 +49,7 @@ postgres   27093  0.0  0.0  30096  2752 ?        Ss   11:34   0:00 postgres: ser
 
 .提示
 ****
-Solaris需要特别的处理。你必需使用`/usr/ucb/ps`而不是`/bin/ps`。 你还必需使用两个`w`标志，而不是一个。另外，你对`postgres`命令的最初调用必须用一个比服务器进程提供的短的`ps`状态显示。如果你没有满足全部三个要求，每个服务器进程的`ps`输出将是原始的`postgres`命令行。 command line。
+Solaris需要特别的处理。你必需使用`/usr/ucb/ps`而不是`/bin/ps`。 你还必需使用两个`w`标志，而不是一个。另外，你对`postgres`命令的最初调用必须用一个比服务器进程提供的短的`ps`状态显示。如果你没有满足全部三个要求，每个服务器进程的`ps`输出将是原始的`postgres`命令行。
 ****
 
 === 统计收集器
@@ -148,7 +148,7 @@ IvorySQL也支持报告有关系统正在干什么的 动态信息，例如当�
 | `pid` | `integer` | 这个后端的进程 ID               
 | `leader_pid` | `integer` | 并行组组长的进程ID，如果该进程是并行查询工作者。如果该进程是一个并行组的组长或不参与并行查询，则为`NULL`。 
 | `usesysid` | `oid` | 登录到这个后端的用户的 OID          
-| `usename` | `name` | 登录到这个后端的用户的 OID          
+| `usename` | `name` | 登录到这个后端的用户的 名称          
 | `application_name` | `text` | 连接到这个后端的应用的名称      
 | `client_addr` | `inet` | 连接到这个后端的客户端的 IP 地址。如果这个字段为空，它表示客户端通过服务器机器上的一个 Unix 套接字连接或者这是一个内部进程，如自动清理。 
 | `client_hostname` | `text` | 已连接的客户端的主机名，由 `client_addr` 的反向 DNS 查找报告。 这个字段将只对 IP 连接非空，并且只有log_hostname被启用时才会非空。 
@@ -461,32 +461,33 @@ SELECT pid, wait_event_type, wait_event FROM pg_stat_activity WHERE wait_event i
 
 ==== `pg_stat_replication`
 
-`pg_stat_replication`视图将在每个WAL发送方进程中包含一行，显示关于复制到发送方连接的备用服务器的统计信息。 只有直接连接的备用设备被列出;没有关于下游备用服务器的信息。
+`pg_stat_replication`视图将在每个WAL发送方进程中包含一行，显示关于复制到发送方连接的后备服务器的统计信息。 只有直接连接的备用设备被列出;没有关于下游后备服务器的信息。
 
 **表14.`pg_stat_replication` 视图**
 |====
-| 列类型描述
-|`pid` `integer`一个 WAL 发送进程的进程 ID           
-|     `usesysid` `oid`登录到这个 WAL 发送进程的用户的 OID      
-|     `usename` `name`登录到这个 WAL 发送进程的用户的名称      
-| `application_name` `text`连接到这个 WAL 发送进程的应用的名称 
-| `client_addr` `inet`连接到这个 WAL 发送进程的客户端的 IP 地址。 如果这个域为空，它表示该客户端通过服务器机器上的一个Unix 套接字连接。 
-| `client_hostname` `text`连接上的客户端的主机名，由一次对`client_addr`的逆向 DNS 查找报告。 这个域将只对 IP 连接非空，并且只有在 log_hostname被启用时非空。 
-| `client_port` `integer`客户端用来与这个 WAL 发送进程通讯的 TCP 端口号，如果使用 Unix 套接字则为`-1` 
-| `backend_start` `timestamp with time zone`这个进程开始的时间，即客户端是何时连接到这个WAL 发送进程的。 
-| `backend_xmin` `xid`由hot_standby_feedback报告的这个后备机的`xmin`水平线。 
-| `state` `text`当前的 WAL 发送进程状态。 可能的值是：`startup`: 这个WAL发送器正在启动。`catchup`: 这个WAL发送者连接的备用服务器正在赶上主服务器。`streaming`: 在其连接的备用服务器赶上主服务器之后，这个WAL发送方正在流化变化。`backup`: 这个WAL发送器正在发送一个备份。`stopping`: 这个WAL发送器正在停止。 
-| `sent_lsn` `pg_lsn`在这个连接上发送的最后一个预写式日志的位置 
-| `write_lsn` `pg_lsn`被这个后备服务器写入到磁盘的最后一个预写式日志的位置 
-| `flush_lsn` `pg_lsn`被这个后备服务器刷入到磁盘的最后一个预写式日志的位置 
-| `replay_lsn` `pg_lsn`被重放到这个后备服务器上的数据库中的最后一个预写式日志的位置 
-| `write_lag` `interval`从本地刷新近期的WAL与接收到此备用服务器已写入WAL的通知(但尚未刷新或应用它)之间的时间经过。 如果将此服务器配置为同步备用服务器，则可以使用此参数来衡量在提交时`synchronous_commit`级别`remote_write`所导致的延迟。
-| `flush_lag` `interval`在本地刷写近期的WAL与接收到后备服务器已经写入并且刷写它（但还没有应用）的通知之间流逝的时间。 如果这台服务器被配置为一个同步后备，这可以用来计量在提交时`synchronous_commit`的级别`on`所导致的延迟。
-| `replay_lag` `interval`在本地刷写近期的WAL与接收到后备服务器已经写入它、刷写它并且应用它的通知之间流逝的时间。 如果这台服务器被配置为一个同步后备，这可以用来计量在提交时`synchronous_commit`的级别`remote_apply`所导致的延迟。
-| `sync_priority` `integer`在基于优先的同步复制中，这台后备服务器被选为同步后备的优先级。在基于规定数量的同步复制中，这个值没有效果。
-| `sync_state` `text`这一台后备服务器的同步状态。 可能的值是：`async`: 这台后备服务器是异步的。`potential`: 这台后备服务器现在是异步的，但可能在当前的同步后备失效时变成同步的。`sync`: 这台后备服务器是同步的。`quorum`: 这台后备服务器被当做规定数量后备服务器的候选。
-| `reply_time` `带时区的时间戳`从备用服务器收到的最后一条回复信息的发送时间
+| 列 | 类型 | 描述
+| `pid` | `integer` | 一个 WAL 发送进程的进程 ID           
+| `usesysid` | `oid` | 登录到这个 WAL 发送进程的用户的 OID      
+| `usename` | `name` | 登录到这个 WAL 发送进程的用户的名称      
+| `application_name` | `text` | 连接到这个 WAL 发送进程的应用的名称 
+| `client_addr` | `inet` | 连接到这个 WAL 发送进程的客户端的 IP 地址。 如果这个域为空，它表示该客户端通过服务器机器上的一个Unix 套接字连接。 
+| `client_hostname` | `text` | 连接上的客户端的主机名，由一次对`client_addr`的逆向 DNS 查找报告。 这个域将只对 IP 连接非空，并且只有在 log_hostname被启用时非空。 
+| `client_port` | `integer` | 客户端用来与这个 WAL 发送进程通讯的 TCP 端口号，如果使用 Unix 套接字则为`-1` 
+| `backend_start` | `timestamp with time zone` | 这个进程开始的时间，即客户端是何时连接到这个WAL 发送进程的。 
+| `backend_xmin` | `xid` | 由hot_standby_feedback报告的这个后备机的`xmin`水平线。 
+| `state` | `text` | 当前的 WAL 发送进程状态。 可能的值是：`startup`: 这个WAL发送器正在启动。`catchup`: 这个WAL发送者连接的后备服务器正在赶上主服务器。`streaming`: 在其连接的后备服务器赶上主服务器之后，这个WAL发送方正在流化变化。`backup`: 这个WAL发送器正在发送一个备份。`stopping`: 这个WAL发送器正在停止。 
+| `sent_lsn` | `pg_lsn` | 在这个连接上发送的最后一个预写式日志的位置 
+| `write_lsn` | `pg_lsn` | 被这个后备服务器写入到磁盘的最后一个预写式日志的位置 
+| `flush_lsn` | `pg_lsn` | 被这个后备服务器刷入到磁盘的最后一个预写式日志的位置 
+| `replay_lsn` | `pg_lsn` | 被重放到这个后备服务器上的数据库中的最后一个预写式日志的位置 
+| `write_lag` | `interval` | 从本地刷新近期的WAL与接收到此后备服务器已写入WAL的通知(但尚未刷新或应用它)之间的时间经过。 如果将此服务器配置为同步后备服务器，则可以使用此参数来衡量在提交时`synchronous_commit`级别`remote_write`所导致的延迟。
+| `flush_lag` | `interval` | 在本地刷写近期的WAL与接收到后备服务器已经写入并且刷写它（但还没有应用）的通知之间流逝的时间。 如果这台服务器被配置为一个同步后备，这可以用来计量在提交时`synchronous_commit`的级别`on`所导致的延迟。
+| `replay_lag` | `interval` | 在本地刷写近期的WAL与接收到后备服务器已经写入它、刷写它并且应用它的通知之间流逝的时间。 如果这台服务器被配置为一个同步后备，这可以用来计量在提交时`synchronous_commit`的级别`remote_apply`所导致的延迟。
+| `sync_priority` | `integer` | 在基于优先的同步复制中，这台后备服务器被选为同步后备的优先级。在基于规定数量的同步复制中，这个值没有效果。
+| `sync_state` | `text` | 这一台后备服务器的同步状态。 可能的值是：`async`: 这台后备服务器是异步的。`potential`: 这台后备服务器现在是异步的，但可能在当前的同步后备失效时变成同步的。`sync`: 这台后备服务器是同步的。`quorum`: 这台后备服务器被当做规定数量后备服务器的候选。
+| `reply_time` | `带时区的时间戳` | 从后备服务器收到的最后一条回复信息的发送时间
 |====
+
 
 `pg_stat_replication`视图中报告的滞后时间近期的WAL被写入、刷写并且重放以及发送器知道这一切所花的时间的度量。如果远程服务器被配置为一台同步后备，这些时间表示由每一种同步提交级别所带来（或者是可能带来）的提交延迟。对于一台异步后备，`replay_lag`列是最近的事务变得对查询可见的延迟时间的近似值。如果后备服务器已经完全追上了发送服务器并且没有WAL活动，在短时间内将继续显示最近测到的滞后时间，再然后就会显示为NULL。
 
@@ -503,22 +504,22 @@ SELECT pid, wait_event_type, wait_event FROM pg_stat_activity WHERE wait_event i
 
 **表15.`pg_stat_wal_receiver` 视图**
 |====
-|列类型描述
-|`pid` `integer`WAL接收器进程的进程ID             
-|             `status` `text`WAL接收进程的活动状态             
-| `receive_start_lsn` `pg_lsn`WAL接收器启动时使用的第一个写前日志位置 
-| `receive_start_tli` `integer`WAL接收器启动时使用的第一个时间线数字 
-| `written_lsn` `pg_lsn`已经接收并写入磁盘的最后一个预写式日志位置，但没有刷入。这不能用于数据完整性检查。 
-| `flushed_lsn` `pg_lsn`已经接收并刷入到磁盘的最后一个预写式日志位置，该字段的初始值是启动WAL接收器时使用的第一个日志位置 
-| `received_tli` `integer`接收并刷入到磁盘的最后一个预写式日志位置的时间线数字，该字段的初始值为启动WAL接收器时使用的第一个日志位置的时间线数字 
-| `last_msg_send_time` `timestamp with time zone`从源头WAL发送器收到的最后一条信息的发送时间 
-| `last_msg_receipt_time` `timestamp with time zone`从源头WAL发送器收到的最后一条信息的接收时间 
-| `latest_end_lsn` `pg_lsn`向源头WAL发送器报告的最后的预写式日志位置 
-| `latest_end_time` `timestamp with time zone`向源头WAL发送方报告的最后一次写前日志位置的时间 
-|      `slot_name` `text`这个WAL接收器使用的复制槽的名称       
-| `sender_host` `text`这个WAL接收器连接到的IvorySQL实例的主机。 这可以是主机名、IP地址，或者目录路径，如果连接是通过Unix套接字进行的。(路径的情况可以区分，因为它总是以`/`开头的绝对路径。) 
-| `sender_port` `integer`这个WAL接收器连接的IvorySQL实例的端口号。 
-| `conninfo` `text`这个WAL接收器使用的连接字符串，对安全敏感的字段进行了模糊处理。
+|列|类型|描述
+|pid|integer|WAL接收器进程的进程ID
+|status|text|WAL接收进程的活动状态
+|receive_start_lsn|pg_lsn|WAL接收器启动时使用的第一个写前日志位置
+|receive_start_tli|integer|WAL接收器启动时使用的第一个时间线数字
+|written_lsn|pg_lsn|已经接收并写入磁盘的最后一个预写式日志位置，但没有刷入。这不能用于数据完整性检查。
+|flushed_lsn|pg_lsn|已经接收并刷入到磁盘的最后一个预写式日志位置，该字段的初始值是启动WAL接收器时使用的第一个日志位置
+|received_tli|integer|接收并刷入到磁盘的最后一个预写式日志位置的时间线数字，该字段的初始值为启动WAL接收器时使用的第一个日志位置的时间线数字
+|last_msg_send_time|timestamp with time zone|从源头WAL发送器收到的最后一条信息的发送时间
+|last_msg_receipt_time|timestamp with time zone|从源头WAL发送器收到的最后一条信息的接收时间
+|latest_end_lsn|pg_lsn|向源头WAL发送器报告的最后的预写式日志位置
+|latest_end_time|timestamp with time zone|向源头WAL发送方报告的最后一次写前日志位置的时间
+|slot_name|text|这个WAL接收器使用的复制槽的名称
+|sender_host|text|这个WAL接收器连接到的IvorySQL实例的主机。这可以是主机名、IP地址，或者目录路径，如果连接是通过Unix套接字进行的。(路径的情况可以区分，因为它总是以/开头的绝对路径。)
+|sender_port|integer|这个WAL接收器连接的IvorySQL实例的端口号。
+|conninfo|text|这个WAL接收器使用的连接字符串，对安全敏感的字段进行了模糊处理。
 |====
 
 ==== `pg_stat_subscription`
@@ -527,16 +528,16 @@ SELECT pid, wait_event_type, wait_event FROM pg_stat_activity WHERE wait_event i
 
 **表16.`pg_stat_subscription` 视图**
 |====
-|列类型描述
-|`subid` `oid`订阅的OID             
-| `subname` `name`订阅的名称                 
-| `pid` `integer`订阅工作者进程的进程ID      
-| `relid` `oid`工作器正在同步的关系的OID;Null用于主应用工作器  
-| `received_lsn` `pg_lsn`接收到的最后一个预写式日志位置，该字段的初始值为0 
-| `last_msg_send_time` `timestamp with time zone`从WAL发送器收到的最后一条信息的发送时间 
-| `last_msg_receipt_time` `timestamp with time zone`从WAL发送器收到的最后一条信息的接收时间 
-| `latest_end_lsn` `pg_lsn`向WAL发送器报告的最后预写式日志位置 
-| `latest_end_time` `timestamp with time zone`向WAL发送器报告的最后一次预写式日志位置的时间
+|列|类型|描述
+|subid|oid|订阅的OID
+|subname|name|订阅的名称
+|pid|integer|订阅工作者进程的进程ID
+|relid|oid|工作器正在同步的关系的OID;Null用于主应用工作器
+|received_lsn|pg_lsn|接收到的最后一个预写式日志位置，该字段的初始值为0
+|last_msg_send_time|timestamp with time zone|从WAL发送器收到的最后一条信息的发送时间
+|last_msg_receipt_time|timestamp with time zone|从WAL发送器收到的最后一条信息的接收时间
+|latest_end_lsn|pg_lsn|向WAL发送器报告的最后预写式日志位置
+|latest_end_time|timestamp with time zone|向WAL发送器报告的最后一次预写式日志位置的时间
 |====
 
 ==== `pg_stat_ssl`
@@ -545,15 +546,16 @@ SELECT pid, wait_event_type, wait_event FROM pg_stat_activity WHERE wait_event i
 
 **表17.`pg_stat_ssl` 视图**
 |====
-| `pid` `integer`后端或WAL发送器进程ID                         
-| `ssl` `boolean`如果在此连接上使用SSL，则为真                 
-| `version` `text`使用SSL的版本，如果此连接上没有使用SSL则为NULL 
-| `cipher` `text`正在使用的SSL密码的名称，如果此连接上没有使用SSL则为NULL 
-| `bits` `integer`使用的加密算法中的位数，如果此连接上没有使用SSL则为NULL 
-| `compression` `boolean`如果使用SSL压缩则为真，否则为假，如果此连接未使用SSL则为NULL 
-| `client_dn` `text`区别名称(DN，Distinguished Name)字段与使用的客户端证书，如果没有提供客户端证书或在此连接上没有使用SSL，则为NULL。 如果DN字段长于`NAMEDATALEN`(标准构建中为64个字符)，则该字段将被截断。 
-| `client_serial` `numeric`客户端证书的序列号，如果没有提供客户端证书或在此连接上没有使用SSL，则为NULL。 证书序列号和证书颁发者的组合唯一标识一个证书(除非颁发者错误地重用序列号)。 
-| `issuer_dn` `text`客户端证书颁发者的区别名称(DN，Distinguished Name)，如果没有提供客户端证书或在此连接上没有使用SSL，则为NULL。该字段像`client_dn`一样被截断。
+|列|类型|描述
+|pid|integer|后端或WAL发送器进程ID
+|ssl|boolean|如果在此连接上使用SSL，则为真
+|version|text|使用SSL的版本，如果此连接上没有使用SSL则为NULL
+|cipher|text|正在使用的SSL密码的名称，如果此连接上没有使用SSL则为NULL
+|bits|integer|使用的加密算法中的位数，如果此连接上没有使用SSL则为NULL
+|compression|boolean|如果使用SSL压缩则为真，否则为假，如果此连接未使用SSL则为NULL
+|client_dn|text|区别名称(DN，Distinguished Name)字段与使用的客户端证书，如果没有提供客户端证书或在此连接上没有使用SSL，则为NULL。 如果DN字段长于NAMEDATALEN(标准构建中为64个字符)，则该字段将被截断。
+|client_serial|numeric|客户端证书的序列号，如果没有提供客户端证书或在此连接上没有使用SSL，则为NULL。 证书序列号和证书颁发者的组合唯一标识一个证书(除非颁发者错误地重用序列号)。
+|issuer_dn|text|客户端证书颁发者的区别名称(DN，Distinguished Name)，如果没有提供客户端证书或在此连接上没有使用SSL，则为NULL。该字段像client_dn一样被截断。
 |====
 
 ==== `pg_stat_gssapi`
@@ -562,11 +564,11 @@ SELECT pid, wait_event_type, wait_event FROM pg_stat_activity WHERE wait_event i
 
 **表18.`pg_stat_gssapi` 视图**
 |====
-| 列类型描述 
-| `pid` `integer`后端进程ID  
-| `gss_authenticated` `boolean`如果此连接使用了GSSAPI身份验证，则为True 
-| `principal` `text`用于验证此连接的主体，如果未使用GSSAPI对此连接进行身份验证，则为NULL。 如果主体长度超过`NAMEDATALEN`(标准构建中为64个字符)，则该字段被截断。 
-| `encrypted` `boolean`如果在此连接上使用了GSSAPI加密，则为真
+|列|类型|描述
+|`pid`|`integer`|后端进程ID  
+|`gss_authenticated`|`boolean`|如果此连接使用了GSSAPI身份验证，则为True 
+|`principal`|`text`|用于验证此连接的主体，如果未使用GSSAPI对此连接进行身份验证，则为NULL。 如果主体长度超过`NAMEDATALEN`(标准构建中为64个字符)，则该字段被截断。 
+|`encrypted`|`boolean`|如果在此连接上使用了GSSAPI加密，则为真
 |====
 
 ==== `pg_stat_archiver`
@@ -575,14 +577,14 @@ SELECT pid, wait_event_type, wait_event FROM pg_stat_activity WHERE wait_event i
 
 **表19.`pg_stat_archiver` 视图**
 |====
-| 列类型描述
-| `archived_count` `bigint`已成功存档的WAL文件数         
-| `last_archived_wal` `text`最后一个成功存档的WAL文件的名称   
-| `last_archived_time` `timestamp with time zone`最后一次成功存档操作的时间 
-| `failed_count` `bigint`记录WAL文件归档失败次数               
-| `last_failed_wal` `text`最后一次失败的存档操作的WAL文件的名称 
-| `last_failed_time` `timestamp with time zone`上次存档操作失败的时间 
-| `stats_reset` `timestamp with time zone`这些统计数据最后一次重置的时间
+|列|类型|描述
+|`archived_count`|`bigint`|已成功存档的WAL文件数         
+|`last_archived_wal`|`text`|最后一个成功存档的WAL文件的名称   
+|`last_archived_time`|`timestamp with time zone`|最后一次成功存档操作的时间 
+|`failed_count`|`bigint`|记录WAL文件归档失败次数               
+|`last_failed_wal`|`text`|最后一次失败的存档操作的WAL文件的名称 
+|`last_failed_time`|`timestamp with time zone`|上次存档操作失败的时间 
+|`stats_reset`|`timestamp with time zone`|这些统计数据最后一次重置的时间
 |====
 
 ==== `pg_stat_bgwriter`
@@ -591,18 +593,18 @@ SELECT pid, wait_event_type, wait_event FROM pg_stat_activity WHERE wait_event i
 
 **表20.`pg_stat_bgwriter` 视图**
 |====
-| 列类型描述
-| `checkpoints_timed` `bigint`已执行的预定检查点数  
-| `checkpoints_req` `bigint`请求已执行的检查点数 
-| `checkpoint_write_time` `double precision`检查点处理中将文件写入磁盘的部分所花费的总时间，以毫秒为单位 
-| `checkpoint_sync_time` `double precision`检查点处理中将文件同步到磁盘的部分所花费的总时间，以毫秒为单位 
-| `buffers_checkpoint` `bigint`检查点期间写入的缓冲区数 
-| `buffers_clean` `bigint`后台写入器写入的缓冲区数
-| `maxwritten_clean` `bigint`后台写入器因为写入太多缓冲区而停止清理扫描的次数 
-| `buffers_backend` `bigint`后端直接写入的缓冲区数 
-| `buffers_backend_fsync` `bigint`后端必须执行自己的`fsync`调用的次数(通常后台写入器处理这些，即使后端执行自己的写入) 
-| `buffers_alloc` `bigint`分配的缓冲区数  
-| `stats_reset` `timestamp with time zone`这些统计数据最后一次重置的时间
+| 列 | 类型 | 描述
+| `checkpoints_timed` | `bigint` | 已执行的预定检查点数
+| `checkpoints_req` | `bigint` | 请求已执行的检查点数
+| `checkpoint_write_time` | `double precision` | 检查点处理中将文件写入磁盘的部分所花费的总时间，以毫秒为单位
+| `checkpoint_sync_time` | `double precision` | 检查点处理中将文件同步到磁盘的部分所花费的总时间，以毫秒为单位
+| `buffers_checkpoint` | `bigint` | 检查点期间写入的缓冲区数
+| `buffers_clean` | `bigint` | 后台写入器写入的缓冲区数
+| `maxwritten_clean` | `bigint` | 后台写入器因为写入太多缓冲区而停止清理扫描的次数
+| `buffers_backend` | `bigint` | 后端直接写入的缓冲区数
+| `buffers_backend_fsync` | `bigint` | 后端必须执行自己的 `fsync` 调用的次数（通常后台写入器处理这些，即使后端执行自己的写入）
+| `buffers_alloc` | `bigint` | 分配的缓冲区数
+| `stats_reset` | `timestamp with time zone` | 这些统计数据最后一次重置的时间
 |====
 
 ==== `pg_stat_database`
@@ -611,28 +613,28 @@ SELECT pid, wait_event_type, wait_event FROM pg_stat_activity WHERE wait_event i
 
 **表21. `pg_stat_database` 视图**
 |====
-| 列类型描述
-|      `datid` `oid`该数据库的OID，属于共享关系的对象为0       
-|   `datname` `name`这个数据库的名称，或者共享对象为`NULL`。   
-| `numbackends` `integer`当前连接到此数据库的后端数，对于共享对象则为`NULL`。 这是该视图中唯一返回反映当前状态的值的列;所有其他列返回自上次重置以来累积的值。 
-|        `xact_commit` `bigint`此数据库中已提交的事务数        
-|       `xact_rollback` `bigint`该数据库中已回滚的事务数       
-|        `blks_read` `bigint`在该数据库中读取的磁盘块数        
-| `blks_hit` `bigint`在缓存中发现磁盘块的次数，因此读取不是必需的(这只包括在IvorySQL缓存中，而不是在操作系统的文件系统缓存中) 
-|      `tup_returned` `bigint`这个数据库中查询返回的行数       
-|       `tup_fetched` `bigint`这个数据库中查询获取的行数       
-|      `tup_inserted` `bigint`查询在该数据库中插入的行数       
-|       `tup_updated` `bigint`这个数据库中查询更新的行数       
-|      `tup_deleted` `bigint`这个数据库中被查询删除的行数      
-| `conflicts` `bigint`由于与此数据库中的恢复冲突而取消的查询数。(冲突只发生在备用服务器上) 
-| `temp_files` `bigint`这个数据库中查询创建的临时文件的数量。所有临时文件都将被计数，而不顾及临时文件为什么被创建(例如，排序或散列)，也不考虑log_temp_files设置。 
-| `temp_bytes` `bigint`这个数据库中的查询写入临时文件的数据总量。所有临时文件都将被计数，而不考虑临时文件为什么被创建，也不考虑log_temp_files设置。 
-|        `deadlocks` `bigint`在此数据库中检测到的死锁数        
-| `checksum_failures` `bigint`在此数据库(或共享对象)中检测到的数据页校验码失败数，如果没有启用数据校验码则为NULL。 
-| `checksum_last_failure` `timestamp with time zone`在此数据库(或共享对象)中检测到最后一个数据页校验码失败的时间，如果没有启用数据校验码则为NULL。 
-| `blk_read_time` `double precision`在这个数据库中通过后端读取数据文件块所花费的时间，以毫秒为单位(如果启用了track_io_timing，否则为零) 
-| `blk_write_time` `double precision`在这个数据库中通过后端写数据文件块所花费的时间，以毫秒为单位(如果启用了track_io_timing，否则为零) 
-| `stats_reset` `timestamp with time zone`这些统计数据最后一次重置的时间
+| 列 | 类型 | 描述
+| `datid` | `oid` | 该数据库的 OID，属于共享关系的对象为 0
+| `datname` | `name` | 这个数据库的名称，或者共享对象为 `NULL`
+| `numbackends` | `integer` | 当前连接到此数据库的后端数，对于共享对象则为 `NULL`。这是该视图中唯一返回反映当前状态的值的列；所有其他列返回自上次重置以来累积的值
+| `xact_commit` | `bigint` | 此数据库中已提交的事务数
+| `xact_rollback` | `bigint` | 该数据库中已回滚的事务数
+| `blks_read` | `bigint` | 在该数据库中读取的磁盘块数
+| `blks_hit` | `bigint` | 在缓存中发现磁盘块的次数，因此读取不是必需的（这只包括在 IvorySQL 缓存中，而不是在操作系统的文件系统缓存中）
+| `tup_returned` | `bigint` | 这个数据库中查询返回的行数
+| `tup_fetched` | `bigint` | 这个数据库中查询获取的行数
+| `tup_inserted` | `bigint` | 查询在该数据库中插入的行数
+| `tup_updated` | `bigint` | 这个数据库中查询更新的行数
+| `tup_deleted` | `bigint` | 这个数据库中被查询删除的行数
+| `conflicts` | `bigint` | 由于与此数据库中的恢复冲突而取消的查询数（冲突只发生在后备服务器上）
+| `temp_files` | `bigint` | 这个数据库中查询创建的临时文件的数量。所有临时文件都将被计数，而不顾及临时文件为什么被创建（例如，排序或散列），也不考虑 log_temp_files 设置
+| `temp_bytes` | `bigint` | 这个数据库中的查询写入临时文件的数据总量。所有临时文件都将被计数，而不考虑临时文件为什么被创建，也不考虑 log_temp_files 设置
+| `deadlocks` | `bigint` | 在此数据库中检测到的死锁数
+| `checksum_failures` | `bigint` | 在此数据库（或共享对象）中检测到的数据页校验码失败数，如果没有启用数据校验码则为 NULL
+| `checksum_last_failure` | `timestamp with time zone` | 在此数据库（或共享对象）中检测到最后一个数据页校验码失败的时间，如果没有启用数据校验码则为 NULL
+| `blk_read_time` | `double precision` | 在这个数据库中通过后端读取数据文件块所花费的时间，以毫秒为单位（如果启用了 track_io_timing，否则为零）
+| `blk_write_time` | `double precision` | 在这个数据库中通过后端写数据文件块所花费的时间，以毫秒为单位（如果启用了 track_io_timing，否则为零）
+| `stats_reset` | `timestamp with time zone` | 这些统计数据最后一次重置的时间
 |====
 
 ==== `pg_stat_database_conflicts`
@@ -641,13 +643,14 @@ SELECT pid, wait_event_type, wait_event FROM pg_stat_activity WHERE wait_event i
 
 **表22.`pg_stat_database_conflicts` 视图**
 |====
-|`datid` `oid`数据库的OID   
-| `datname` `name`数据库的名称  
-| `confl_tablespace` `bigint`这个数据库中由于删除表空间而取消的查询的数量 
-| `confl_lock` `bigint`此数据库中由于锁定超时而被取消的查询数  
-| `confl_snapshot` `bigint`此数据库中由于旧快照而取消的查询数  
-| `confl_bufferpin` `bigint`此数据库中由于固定缓冲区而被取消的查询数 
-| `confl_deadlock` `bigint`此数据库中由于死锁而被取消的查询数
+| 列 | 类型 | 描述
+|`datid`|`oid`|数据库的OID
+|`datname`|`name`|数据库的名称
+|`confl_tablespace`|`bigint`|这个数据库中由于删除表空间而取消的查询的数量
+|`confl_lock`|`bigint`|此数据库中由于锁定超时而被取消的查询数
+|`confl_snapshot`|`bigint`|此数据库中由于旧快照而取消的查询数
+|`confl_bufferpin`|`bigint`|此数据库中由于固定缓冲区而被取消的查询数
+|`confl_deadlock`|`bigint`|此数据库中由于死锁而被取消的查询数
 |====
 
 ==== `pg_stat_all_tables`
@@ -656,30 +659,30 @@ SELECT pid, wait_event_type, wait_event FROM pg_stat_activity WHERE wait_event i
 
 **表23.`pg_stat_all_tables` 视图**
 |====
-| 列类型描述
-| `relid` `oid`表的OID  
-| `schemaname` `name`该表所在的模式的名称 
-| `relname` `name`这个表的名称  
-| `seq_scan` `bigint`在此表上启动的顺序扫描数 
-| `seq_tup_read` `bigint`连续扫描获取的实时行数 
-| `idx_scan` `bigint`对这个表发起的索引扫描数 
-| `idx_tup_fetch` `bigint`索引扫描获取的实时行数 
-| `n_tup_ins` `bigint`插入的行数 
-| `n_tup_upd` `bigint`更新的行数(包括HOT更新的行) 
-| `n_tup_del` `bigint`删除的行数 
-| `n_tup_hot_upd` `bigint`HOT更新的行数(即，不需要单独的索引更新) 
-| `n_live_tup` `bigint`活的行的估计数量  
-| `n_dead_tup` `bigint`僵死行的估计数量  
-| `n_mod_since_analyze` `bigint`自上次分析此表以来修改的行的估计数量 
-| `n_ins_since_vacuum` `bigint`自上次清空此表以来插入的行的估计数量 
-| `last_vacuum` `timestamp with time zone`最后一次手动清理这个表(不包括`VACUUM FULL`) 
-| `last_autovacuum` `timestamp with time zone`这个表最后一次被自动清理守护进程清理的时间 
-| `last_analyze` `timestamp with time zone`上一次手动分析这个表 
-| `last_autoanalyze` `timestamp with time zone`自动清理守护进程最后一次分析这个表 
-| `vacuum_count` `bigint`这个表被手动清理的次数(`VACUUM FULL`不计数) 
-| `autovacuum_count` `bigint`这个表被autovacuum守护进程清理的次数 
-| `analyze_count` `bigint`手动分析这个表的次数      
-| `autoanalyze_count` `bigint`这个表被autovacuum守护进程分析的次数
+| 列 | 类型 | 描述
+| relid | oid | 表的OID
+| schemaname | name | 该表所在的模式的名称
+| relname | name | 这个表的名称
+| seq_scan | bigint | 在此表上启动的顺序扫描数
+| seq_tup_read | bigint | 连续扫描获取的实时行数
+| idx_scan | bigint | 对这个表发起的索引扫描数
+| idx_tup_fetch | bigint | 索引扫描获取的实时行数
+| n_tup_ins | bigint | 插入的行数
+| n_tup_upd | bigint | 更新的行数（包括HOT更新的行）
+| n_tup_del | bigint | 删除的行数
+| n_tup_hot_upd | bigint | HOT更新的行数（即不需要单独的索引更新）
+| n_live_tup | bigint | 活的行的估计数量
+| n_dead_tup | bigint | 僵死行的估计数量
+| n_mod_since_analyze | bigint | 自上次分析此表以来修改的行的估计数量
+| n_ins_since_vacuum | bigint | 自上次清空此表以来插入的行的估计数量
+| last_vacuum | timestamp with time zone | 最后一次手动清理这个表（不包括VACUUM FULL）
+| last_autovacuum | timestamp with time zone | 这个表最后一次被自动清理守护进程清理的时间
+| last_analyze | timestamp with time zone | 上一次手动分析这个表
+| last_autoanalyze | timestamp with time zone | 自动清理守护进程最后一次分析这个表
+| vacuum_count | bigint | 这个表被手动清理的次数（VACUUM FULL不计数）
+| autovacuum_count | bigint | 这个表被autovacuum守护进程清理的次数
+| analyze_count | bigint | 手动分析这个表的次数
+| autoanalyze_count | bigint | 这个表被autovacuum守护进程分析的次数
 |====
 
 ==== `pg_stat_all_indexes`
@@ -688,15 +691,15 @@ SELECT pid, wait_event_type, wait_event FROM pg_stat_activity WHERE wait_event i
 
 **表24.`pg_stat_all_indexes` 视图**
 |====
-| 列类型描述
-| `relid` `oid`对于此索引的表的OID                             
-| `indexrelid` `oid`这个索引的OID                              
-| `schemaname` `name`这个索引所在的模式名称                    
-| `relname` `name`这个索引的表的名称                           
-| `indexrelname` `name`这个索引的名称                          
-| `idx_scan` `bigint`在这个索引上开启的索引扫描的数量          
-| `idx_tup_read` `bigint`扫描此索引返回的索引项数       
-| `idx_tup_fetch` `bigint`使用此索引进行简单索引扫描获取的活动表行数
+| 列 | 类型 | 描述
+| relid | oid | 这个索引所在表的OID
+| indexrelid | oid | 这个索引的OID
+| schemaname | name | 这个索引所在的模式名称
+| relname | name | 这个索引所在表的名称
+| indexrelname | name | 这个索引的名称
+| idx_scan | bigint | 在这个索引上开启的索引扫描的数量
+| idx_tup_read | bigint | 扫描此索引返回的索引项数
+| idx_tup_fetch | bigint | 使用此索引进行简单索引扫描获取的活动表行数
 |====
 
 索引可以被简单索引扫描、“位图”索引扫描以及优化器使用。在一次位图扫描中，多个索引的输出可以被通过 AND 或 OR 规则组合，因此当使用一次位图扫描时难以将取得的个体堆行与特定的索引关联起来。因此，一次位图扫描会增加它使用的索引的`pg_stat_all_indexes`.`idx_tup_read`计数，并且为每个表增加`pg_stat_all_tables`.`idx_tup_fetch`计数，但是它不影响`pg_stat_all_indexes`.`idx_tup_fetch`。如果所提供的常量值不在优化器统计信息记录的范围之内，优化器也会访问索引来检查，因为优化器统计信息可能已经“不新鲜”了。
@@ -712,18 +715,18 @@ SELECT pid, wait_event_type, wait_event FROM pg_stat_activity WHERE wait_event i
 
 **表25.`pg_statio_all_tables` 视图**
 |====
-| 列类型描述
-| `relid` `oid`表的OID                       
-| `schemaname` `name`该表所在的模式名                          
-| `relname` `name`这个表的名称                                 
-| `heap_blks_read` `bigint`从该表中读取的磁盘块的数量          
-| `heap_blks_hit` `bigint`该表中的缓冲区命中数                 
-| `idx_blks_read` `bigint`从这个表上所有索引读取的磁盘块数     
-| `idx_blks_hit` `bigint`这个表上所有索引中的缓冲区命中数      
-| `toast_blks_read` `bigint`从这个表的TOAST表中读取的磁盘块的数量(如果有的话) 
-| `toast_blks_hit` `bigint`这个表的TOAST表中的缓冲区命中数(如果有的话) 
-| `tidx_blks_read` `bigint`从这个表的TOAST表索引中读取的磁盘块的数量(如果有的话) 
-| `tidx_blks_hit` `bigint`这个表的TOAST表索引中的缓冲区命中数(如果有的话)
+| 列 | 类型 | 描述 
+| `relid` | `oid` | 表的OID 
+| `schemaname` | `name` | 该表所在的模式名 
+| `relname` | `name` | 这个表的名称 
+| `heap_blks_read` | `bigint` | 从该表中读取的磁盘块的数量 
+| `heap_blks_hit` | `bigint` | 该表中的缓冲区命中数 
+| `idx_blks_read` | `bigint` | 从这个表上所有索引读取的磁盘块数 
+| `idx_blks_hit` | `bigint` | 这个表上所有索引中的缓冲区命中数 
+| `toast_blks_read` | `bigint` | 从这个表的TOAST表中读取的磁盘块的数量（如果有的话） 
+| `toast_blks_hit` | `bigint` | 这个表的TOAST表中的缓冲区命中数（如果有的话） 
+| `tidx_blks_read` | `bigint` | 从这个表的TOAST表索引中读取的磁盘块的数量（如果有的话） 
+| `tidx_blks_hit` | `bigint` | 这个表的TOAST表索引中的缓冲区命中数（如果有的话） 
 |====
 
 ==== `pg_statio_all_indexes`
@@ -732,14 +735,14 @@ SELECT pid, wait_event_type, wait_event FROM pg_stat_activity WHERE wait_event i
 
 **表26.`pg_statio_all_indexes` 视图**
 |====
-| 列类型描述
-| `relid` `oid`对这个索引的表的OID                     
-| `indexrelid` `oid`这个索引的OID                      
-| `schemaname` `name`索引所在的模式名称                
-| `relname` `name`此索引的表的名称                     
-| `indexrelname` `name`这个索引的名称                  
-| `idx_blks_read` `bigint`从此索引中读取的磁盘块的数量 
-| `idx_blks_hit` `bigint`此索引中的缓冲区命中数 
+| 列 | 类型 | 描述
+| `relid` | `oid` | 这个索引所在表的OID
+| `indexrelid` | `oid` | 这个索引的OID
+| `schemaname` | `name` | 索引所在的模式名称
+| `relname` | `name` | 这个索引所在表的名称
+| `indexrelname` | `name` | 这个索引的名称
+| `idx_blks_read` | `bigint` | 从这个索引中读取的磁盘块数量
+| `idx_blks_hit` | `bigint` | 这个索引中的缓冲区命中数
 |====
 
 ==== `pg_statio_all_sequences`
@@ -748,12 +751,12 @@ SELECT pid, wait_event_type, wait_event FROM pg_stat_activity WHERE wait_event i
 
 **表27.`pg_statio_all_sequences` 视图**
 |====
-| 列类型描述
-| `relid` `oid`序列的OID                           
-| `schemaname` `name`此序列所在的模式的名称          
-| `relname` `name`此序列的名称                       
-| `blks_read` `bigint`从这个序列中读取的磁盘块的数量 
-| `blks_hit` `bigint`在此序列中的缓冲区命中数 
+| 列 | 类型 | 描述
+| relid | oid | 序列的OID
+| schemaname | name | 此序列所在的模式的名称
+| relname | name | 此序列的名称
+| blks_read | bigint | 从这个序列中读取的磁盘块的数量
+| blks_hit | bigint | 在此序列中的缓冲区命中数
 |====
 
 ==== `pg_stat_user_functions`
@@ -762,13 +765,13 @@ SELECT pid, wait_event_type, wait_event FROM pg_stat_activity WHERE wait_event i
 
 **表28.`pg_stat_user_functions` 视图**
 |====
-| 列类型描述
-| `funcid` `oid`函数的OID                   
-| `schemaname` `name`这个函数所在的模式的名称         
-| `funcname` `name`这个函数的名称                   
-| `calls` `bigint`这个函数已经被调用的次数            
-| `total_time` `double precision`在这个函数以及它所调用的其他函数中花费的总时间，以毫秒计 
-| `self_time` `double precision`在这个函数本身花费的总时间，不包括被它调用的其他函数，以毫秒计
+| 列 | 类型 | 描述
+| funcid | oid | 函数的OID
+| schemaname | name | 这个函数所在的模式的名称
+| funcname | name | 这个函数的名称
+| calls | bigint | 这个函数已经被调用的次数
+| total_time | double precision | 在这个函数以及它所调用的其他函数中花费的总时间，以毫秒计
+| self_time | double precision | 在这个函数本身花费的总时间，不包括被它调用的其他函数，以毫秒计
 |====
 
 ==== `pg_stat_slru`
@@ -777,16 +780,16 @@ IvorySQL通过*SLRU*(simple least-recently-used，简单的最近-最少-使用)
 
 **表29.`pg_stat_slru` 视图**
 |====
-| 列类型描述
-| `name` `text`SLRU的名称      
-| `blks_zeroed` `bigint`初始化期间被置零的块数    
-| `blks_hit` `bigint`已经在SLRU中的磁盘块被发现的次数，因此不需要读取(这只包括SLRU中的命中，而不是操作系统的文件系统缓存) 
-| `blks_read` `bigint`为这个SLRU读取的磁盘块数         
-| `blks_written` `bigint`为这个SLRU写入的磁盘块数       
-| `blks_exists` `bigint`为这个SLRU检查是否存在的块数   
-| `flushes` `bigint`此SLRU的脏数据刷新数           
-| `truncates` `bigint`这个SLRU的截断数              
-| `stats_reset` `timestamp with time zone`这些统计数据最后一次重置的时间
+| 列 | 类型 | 描述
+| name | text | SLRU的名称
+| blks_zeroed | bigint | 初始化期间被置零的块数
+| blks_hit | bigint | 已经在SLRU中的磁盘块被发现的次数，因此不需要读取（这只包括SLRU中的命中，而不是操作系统的文件系统缓存）
+| blks_read | bigint | 为这个SLRU读取的磁盘块数
+| blks_written | bigint | 为这个SLRU写入的磁盘块数
+| blks_exists | bigint | 为这个SLRU检查是否存在的块数
+| flushes | bigint | 此SLRU的脏数据刷新数
+| truncates | bigint | 这个SLRU的截断数
+| stats_reset | timestamp with time zone | 这些统计数据最后一次重置的时间
 |====
 
 ==== Statistics Functions
@@ -797,16 +800,16 @@ IvorySQL通过*SLRU*(simple least-recently-used，简单的最近-最少-使用)
 
 **表30.Additional Statistics Functions**
 |====
-| 函数描述
-| `pg_backend_pid` () → `integer`返回附加到当前会话的服务器进程的进程ID。 
-| `pg_stat_get_activity` ( `integer` ) → `setof record`使用指定的进程ID返回有关后端信息的记录，如果指定了`NULL`，则返回系统中每个活动后端的一条记录。 返回的字段是`pg_stat_activity`视图中字段的子集。 
-| `pg_stat_get_snapshot_timestamp` () → `timestamp with time zone`返回当前统计快照的时间戳。 
-| `pg_stat_clear_snapshot` () → `void`丢弃当前的统计快照。    
-| `pg_stat_reset` () → `void`将当前数据库的所有统计计数器重置为零。默认情况下该函数仅限于超级用户，但是其他用户可以被授予EXECUTE来运行此函数。 
-| `pg_stat_reset_shared` ( `text` ) → `void`根据参数的不同，将一些集群范围的统计计数器重置为零。 参数可以是`bgwriter`来重置`pg_stat_bgwriter`视图中显示的所有计数器， 或者`archiver`来重置`pg_stat_archiver`视图中显示的所有计数器。默认情况下该函数仅限于超级用户，但是其他用户可以被授予EXECUTE来运行此函数。 
-| `pg_stat_reset_single_table_counters` ( `oid` ) → `void`将当前数据库中单个表或索引的统计信息重置为零。默认情况下该函数仅限于超级用户，但是其他用户可以被授予EXECUTE来运行此函数。 
-| `pg_stat_reset_single_function_counters` ( `oid` ) → `void`将当前数据库中单个函数的统计信息重置为零。默认情况下该函数仅限于超级用户，但是其他用户可以被授予EXECUTE来运行此函数。 
-| `pg_stat_reset_slru` ( `text` ) → `void`将单个SLRU缓存或集群中所有SLRU的统计信息重置为零。 如果该参数为NULL，则所有SLRU缓存的`pg_stat_slru`视图中显示的计数器将被重置。 参数可以是`CommitTs`、`MultiXactMember`、`MultiXactOffset`、`Notify`、 `Serial`、`Subtrans`、 或`Xact`中的一个，以便只重置该条目的计数器。 如果参数是`other`(或实际上，任何无法识别的名称)，那么所有其他SLRU缓存的计数器，如扩展定义的缓存，将被重置。默认情况下该函数仅限于超级用户，但是其他用户可以被授予EXECUTE来运行此函数。
+| 函数 | 描述
+| pg_backend_pid () → integer | 返回附加到当前会话的服务器进程的进程ID。
+| pg_stat_get_activity ( integer ) → setof record | 使用指定的进程ID返回有关后端信息的记录，如果指定了NULL，则返回系统中每个活动后端的一条记录。返回的字段是pg_stat_activity视图中字段的子集。
+| pg_stat_get_snapshot_timestamp () → timestamp with time zone | 返回当前统计快照的时间戳。
+| pg_stat_clear_snapshot () → void | 丢弃当前的统计快照。
+| pg_stat_reset () → void | 将当前数据库的所有统计计数器重置为零。默认情况下该函数仅限于超级用户，但是其他用户可以被授予EXECUTE来运行此函数。
+| pg_stat_reset_shared ( text ) → void | 根据参数的不同，将一些集群范围的统计计数器重置为零。参数可以是bgwriter来重置pg_stat_bgwriter视图中显示的所有计数器，或者archiver来重置pg_stat_archiver视图中显示的所有计数器。默认情况下该函数仅限于超级用户，但是其他用户可以被授予EXECUTE来运行此函数。
+| pg_stat_reset_single_table_counters ( oid ) → void | 将当前数据库中单个表或索引的统计信息重置为零。默认情况下该函数仅限于超级用户，但是其他用户可以被授予EXECUTE来运行此函数。
+| pg_stat_reset_single_function_counters ( oid ) → void | 将当前数据库中单个函数的统计信息重置为零。默认情况下该函数仅限于超级用户，但是其他用户可以被授予EXECUTE来运行此函数。
+| pg_stat_reset_slru ( text ) → void | 将单个SLRU缓存或集群中所有SLRU的统计信息重置为零。如果该参数为NULL，则所有SLRU缓存的pg_stat_slru视图中显示的计数器将被重置。参数可以是CommitTs、MultiXactMember、MultiXactOffset、Notify、Serial、Subtrans或Xact中的一个，以便只重置该条目的计数器。如果参数是other（或实际上，任何无法识别的名称），那么所有其他SLRU缓存的计数器，如扩展定义的缓存，将被重置。默认情况下该函数仅限于超级用户，但是其他用户可以被授予EXECUTE来运行此函数。
 |====
 
 `pg_stat_get_activity`是`pg_stat_activity`视图的底层函数， 它返回一个行集合，其中包含有关每个后端进程所有可用的信息。有时只获得该信息的一个子集可能会更方便。 在那些情况中，可以使用一组更老的针对每个后端的统计访问函数，这些显示在 表 31中。 这些访问函数使用一个后端 ID 号，范围从 1 到当前活动后端数目。 函数`pg_stat_get_backend_idset`提供了一种方便的方法为每个活动后端产生一行来调用这些函数。 例如，要显示PID以及所有后端当前的查询：
@@ -819,19 +822,19 @@ SELECT pg_stat_get_backend_pid(s.backendid) AS pid,
 
 **表31.Per-Backend Statistics Functions**
 |====
-| 函数描述
-| `pg_stat_get_backend_idset` () → `setof integer`返回当前活动后端ID号的集合(从1到活动后端数)。 
-| `pg_stat_get_backend_activity` ( `integer` ) → `text`返回此后端最近查询的文本。 
-| `pg_stat_get_backend_activity_start` ( `integer` ) → `timestamp with time zone`返回后端最近一次查询开始的时间。 
-| `pg_stat_get_backend_client_addr` ( `integer` ) → `inet`返回连接到此后端的客户端的IP地址。 
-| `pg_stat_get_backend_client_port` ( `integer` ) → `integer`返回客户端用于通信的TCP端口号。 
-| `pg_stat_get_backend_dbid` ( `integer` ) → `oid`返回此后端连接的数据库的OID。 
-| `pg_stat_get_backend_pid` ( `integer` ) → `integer`返回此后端进程ID。 
-| `pg_stat_get_backend_start` ( `integer` ) → `timestamp with time zone`返回该进程开始的时间。 
-| `pg_stat_get_backend_userid` ( `integer` ) → `oid`返回登录到此后端的用户的OID。 
-| `pg_stat_get_backend_wait_event_type` ( `integer` ) → `text`如果后端当前正在等待，返回等待事件类型名称，否则返回NULL。 
-| `pg_stat_get_backend_wait_event` ( `integer` ) → `text`如果后端当前正在等待，则返回等待事件名称，否则为NULL。 
-| `pg_stat_get_backend_xact_start` ( `integer` ) → `timestamp with time zone`返回后端当前事务开始的时间。
+| 函数 | 描述
+| pg_stat_get_backend_idset () → setof integer | 返回当前活动后端ID号的集合(从1到活动后端数)。
+| pg_stat_get_backend_activity ( integer ) → text | 返回此后端最近查询的文本。
+| pg_stat_get_backend_activity_start ( integer ) → timestamp with time zone | 返回后端最近一次查询开始的时间。
+| pg_stat_get_backend_client_addr ( integer ) → inet | 返回连接到此后端的客户端的IP地址。
+| pg_stat_get_backend_client_port ( integer ) → integer | 返回客户端用于通信的TCP端口号。
+| pg_stat_get_backend_dbid ( integer ) → oid | 返回此后端连接的数据库的OID。
+| pg_stat_get_backend_pid ( integer ) → integer | 返回此后端进程ID。
+| pg_stat_get_backend_start ( integer ) → timestamp with time zone | 返回该进程开始的时间。
+| pg_stat_get_backend_userid ( integer ) → oid | 返回登录到此后端的用户的OID。
+| pg_stat_get_backend_wait_event_type ( integer ) → text | 如果后端当前正在等待，返回等待事件类型名称，否则返回NULL。
+| pg_stat_get_backend_wait_event ( integer ) → text | 如果后端当前正在等待，则返回等待事件名称，否则为NULL。
+| pg_stat_get_backend_xact_start ( integer ) → timestamp with time zone | 返回后端当前事务开始的时间。
 |====
 
 == 查看锁
@@ -852,19 +855,19 @@ IvorySQL具有在命令执行过程中报告某些命令进度的能力。 目�
 
 **表32.`pg_stat_progress_analyze` 视图**
 |====
-| 列类型描述
-|                `pid` `integer`后端的进程ID。                 
-|            `datid` `oid`后端连接到的数据库的OID。            
-|          `datname` `name`后端连接到的数据库的名称。          
-|                `relid` `oid`被分析的表的OID。                
-| `phase` `text`当前处理阶段。参见 http://www.postgresql.org/docs/17/progress-reporting.html#ANALYZE-PHASES[表  33]。 
-|      `sample_blks_total` `bigint`将被采样的堆块的总数。      
-|        `sample_blks_scanned` `bigint`扫描的堆块数量。        
-|        `ext_stats_total` `bigint`扩展统计信息的数量。        
-| `ext_stats_computed` `bigint`已经计算的扩展统计的数量. 此计数器仅在 `computing extended statistics`阶段增进。 
-|          `child_tables_total` `bigint`子表的数量。           
-| `child_tables_done` `bigint`扫描的子表数。此计数器只有在`acquiring inherited sample rows`阶段才会增进。 
-| `current_child_table_relid` `oid`当前正在扫描的子表的OID。此字段仅在`acquiring inherited sample rows`时有效。
+|列 | 类型 | 描述
+|pid | integer | 后端的进程ID。
+|datid | oid | 后端连接到的数据库的OID。
+|datname | name | 后端连接到的数据库的名称。
+|relid | oid | 被分析的表的OID。
+|phase | text | 当前处理阶段。参见 表 33。
+|sample_blks_total | bigint | 将被采样的堆块的总数。
+|sample_blks_scanned | bigint | 扫描的堆块数量。
+|ext_stats_total | bigint | 扩展统计信息的数量。
+|ext_stats_computed | bigint | 已经计算的扩展统计的数量。此计数器仅在 computing extended statistics 阶段增进。
+|child_tables_total | bigint | 子表的数量。
+|child_tables_done | bigint | 扫描的子表数。此计数器只有在 acquiring inherited sample rows 阶段才会增进。
+|current_child_table_relid | oid | 当前正在扫描的子表的 OID。此字段仅在 acquiring inherited sample rows 时有效。
 |====
 
 **表33.ANALYZE phases**
@@ -888,24 +891,24 @@ IvorySQL具有在命令执行过程中报告某些命令进度的能力。 目�
 每当运行`CREATE INDEX`或`REINDEX`时，`pg_stat_progress_create_index`视图将包含当前正在创建索引的每个后端的一行。 下面的表描述了将要报告的信息，并提供了关于如何解释它的信息。
 
 **表34.`pg_stat_progress_create_index` 视图**
-|====
-| 列类型描述
-|                `pid` `integer`后端的进程ID。                 
-|            `datid` `oid`后端连接到的数据库的OID。            
-|          `datname` `name`后端连接到的数据库的名称。          
-|             `relid` `oid`正在创建索引的表的OID。             
-| `index_relid` `oid`正在创建或重建索引的OID。在非并发 `CREATE INDEX`的时候，此为 0。 
-| `command` `text`在运行的命令: `CREATE INDEX`,`CREATE INDEX CONCURRENTLY`, `REINDEX`, 或 `REINDEX CONCURRENTLY`. 
-| `phase` `text`索引创建的当前处理阶段。 参见 http://www.postgresql.org/docs/17/progress-reporting.html#CREATE-INDEX-PHASES[表  35]。 
-| `lockers_total` `bigint`在适用的情况下，需要等待的储物柜总数 
-|        `lockers_done` `bigint`已经等待的储物柜数量。         
-| `current_locker_pid` `bigint`目前正在等待的储物柜的进程ID。  
-|       `blocks_total` `bigint`本阶段要处理的区块总数。        
-|      `blocks_done` `bigint`当前阶段已经处理的区块数量。      
-|      `tuples_total` `bigint`当前阶段要处理的元组总数。       
-|     `tuples_done` `bigint`在当前阶段已经处理的元组数量。     
-| `partitions_total` `bigint`在分区表上创建索引时，该列被设置为要在其上创建索引的分区总数。 
-| `partitions_done` `bigint`当在分区表上创建索引时，该列被设置为在其上完成索引的分区数。
+|====  
+| 列 | 类型 | 描述
+| `pid` | `integer` | 后端的进程ID。
+| `datid` | `oid` | 后端连接到的数据库的OID。
+| `datname` | `name` | 后端连接到的数据库的名称。
+| `relid` | `oid` | 正在创建索引的表的OID。
+| `index_relid` | `oid` | 正在创建或重建索引的OID。在非并发 `CREATE INDEX` 的时候，此为 0。
+| `command` | `text` | 在运行的命令：`CREATE INDEX`、`CREATE INDEX CONCURRENTLY`、`REINDEX` 或 `REINDEX CONCURRENTLY`。
+| `phase` | `text` | 索引创建的当前处理阶段。参见 [表 35](http://www.postgresql.org/docs/17/progress-reporting.html#CREATE-INDEX-PHASES)。
+| `lockers_total` | `bigint` | 在适用的情况下，需要等待的储物柜总数。
+| `lockers_done` | `bigint` | 已经等待的储物柜数量。
+| `current_locker_pid` | `bigint` | 目前正在等待的储物柜的进程ID。
+| `blocks_total` | `bigint` | 本阶段要处理的区块总数。
+| `blocks_done` | `bigint` | 当前阶段已经处理的区块数量。
+| `tuples_total` | `bigint` | 当前阶段要处理的元组总数。
+| `tuples_done` | `bigint` | 在当前阶段已经处理的元组数量。
+| `partitions_total` | `bigint` | 在分区表上创建索引时，该列被设置为要在其上创建索引的分区总数。
+| `partitions_done` | `bigint` | 当在分区表上创建索引时，该列被设置为在其上完成索引的分区数。
 |====
 
 **表35.CREATE INDEX 的阶段**
@@ -929,18 +932,18 @@ IvorySQL具有在命令执行过程中报告某些命令进度的能力。 目�
 
 **表36.`pg_stat_progress_vacuum` 视图**
 |====
-| 列类型描述
-|                `pid` `integer`后端的进程ID。                 
-|           `datid` `oid`这个后端连接的数据库的OID。           
-|         `datname` `name`这个后端连接的数据库的名称。         
-|               `relid` `oid`被vacuum的表的OID。               
-|             `phase` `text`vacuum的当前处理阶段。             
-| `heap_blks_total` `bigint`该表中堆块的总数。这个数字在扫描开始时报告，之后增加的块将不会（并且不需要）被这个`VACUUM`访问。 
-| `heap_blks_scanned` `bigint`被扫描的堆块数量。由于visibility map被用来优化扫描，一些块将被跳过而不做检查， 被跳过的块会被包括在这个总数中，因此当清理完成时这个数字最终将会等于`heap_blks_total`。 仅当处于`扫描堆`阶段时这个计数器才会前进。 
-| `heap_blks_vacuumed` `bigint`被清理的堆块数量。除非表没有索引，这个计数器仅在处于`清理堆`阶段时才会前进。 不包含死亡元组的块会被跳过，因此这个计数器可能有时会向前跳跃一个比较大的增量。 
-|    `index_vacuum_count` `bigint`已完成的索引清理周期数。     
-| `max_dead_tuples` `bigint`在需要执行一个索引清理周期之前我们可以存储的死亡元组数，取决于maintenance_work_mem。 
-| `num_dead_tuples` `bigint`从上一个索引清理周期以来收集的死亡元组数。
+| 列 | 类型 | 描述
+| pid | integer | 后端的进程ID。
+| datid | oid | 这个后端连接的数据库的OID。
+| datname | name | 这个后端连接的数据库的名称。
+| relid | oid | 被vacuum的表的OID。
+| phase | text | vacuum的当前处理阶段。
+| heap_blks_total | bigint | 该表中堆块的总数。这个数字在扫描开始时报告，之后增加的块将不会（并且不需要）被这个VACUUM访问。
+| heap_blks_scanned | bigint | 被扫描的堆块数量。由于visibility map被用来优化扫描，一些块将被跳过而不做检查，被跳过的块会被包括在这个总数中，因此当清理完成时这个数字最终将会等于heap_blks_total。仅当处于扫描堆阶段时这个计数器才会前进。
+| heap_blks_vacuumed | bigint | 被清理的堆块数量。除非表没有索引，这个计数器仅在处于清理堆阶段时才会前进。不包含死亡元组的块会被跳过，因此这个计数器可能有时会向前跳跃一个比较大的增量。
+| index_vacuum_count | bigint | 已完成的索引清理周期数。
+| max_dead_tuples | bigint | 在需要执行一个索引清理周期之前我们可以存储的死亡元组数，取决于maintenance_work_mem。
+| num_dead_tuples | bigint | 从上一个索引清理周期以来收集的死亡元组数。
 |====
 
 **表37.VACUUM的阶段**
@@ -961,20 +964,20 @@ IvorySQL具有在命令执行过程中报告某些命令进度的能力。 目�
 每当`CLUSTER`或`VACUUM FULL`运行时，`pg_stat_progress_cluster`视图将包含当前正在运行的每一个后台的记录。下面的表格描述了将被报告的信息，并提供了关于如何解释这些信息的信息。
 
 **表38.`pg_stat_progress_cluster` 视图**
-|====
-| 列类型描述
-|                `pid` `integer`后台的进程ID。                 
-|            `datid` `oid`该后端连接的数据库的OID。            
-|         `datname` `name`与此后端连接的数据库的名称。         
-|                `relid` `oid`被集群的表的OID。                
-|  `command` `text`正在运行的命令。`CLUSTER`或`VACUUM FULL`。  
-|                 `phase` `text`当前处理阶段。                 
-| `cluster_index_relid` `oid`如果正在使用索引对表进行扫描，这就是正在使用的索引的OID；否则为0。 
-| `heap_tuples_scanned` `bigint`扫描的堆元组数。 这个计数器只有在阶段为`seq scanning heap`,`index scanning heap` 或 `writing new heap`时才会增进。 
-| `heap_tuples_written` `bigint`写入的堆元组的数量。这个计数器只有在阶段为`seq scanning heap`,`index scanning heap` 或 `writing new heap`时才会前进。 
-| `heap_blks_total` `bigint`表中的堆块总数。 这个数字是在`seq scanning heap`的开始时报告的。 
-| `heap_blks_scanned` `bigint`扫描的堆块数量。 这个计数器只有在阶段为`seq scanning heap`时才会增进。 
-| `index_rebuild_count` `bigint`重建的索引数。 该计数器仅在`重建索引`阶段时才会增进。
+|====  
+| 列 | 类型 | 描述
+| `pid` | `integer` | 后台的进程ID。
+| `datid` | `oid` | 该后端连接的数据库的OID。
+| `datname` | `name` | 与此后端连接的数据库的名称。
+| `relid` | `oid` | 被集群的表的OID。
+| `command` | `text` | 正在运行的命令。`CLUSTER`或`VACUUM FULL`。
+| `phase` | `text` | 当前处理阶段。
+| `cluster_index_relid` | `oid` | 如果正在使用索引对表进行扫描，这就是正在使用的索引的OID；否则为0。
+| `heap_tuples_scanned` | `bigint` | 扫描的堆元组数。这个计数器只有在阶段为`seq scanning heap`、`index scanning heap`或`writing new heap`时才会增进。
+| `heap_tuples_written` | `bigint` | 写入的堆元组的数量。这个计数器只有在阶段为`seq scanning heap`、`index scanning heap`或`writing new heap`时才会前进。
+| `heap_blks_total` | `bigint` | 表中的堆块总数。这个数字是在`seq scanning heap`的开始时报告的。
+| `heap_blks_scanned` | `bigint` | 扫描的堆块数量。这个计数器只有在阶段为`seq scanning heap`时才会增进。
+| `index_rebuild_count` | `bigint` | 重建的索引数。该计数器仅在`重建索引`阶段时才会增进。
 |====
 
 **表39.CLUSTER 和 VACUUM FULL 阶段**
@@ -996,13 +999,13 @@ IvorySQL具有在命令执行过程中报告某些命令进度的能力。 目�
 
 **表40.`pg_stat_progress_basebackup` 视图**
 |====
-| 列类型描述
-| `pid` `integer`WAL发送方进程ID。               
-|                `phase` `text`目前的处理阶段。                
-| `backup_total` `bigint`将被流输送的数据总量。这是在`streaming database files`阶段开始时的估计和报告。 注意，这只是一个近似值，因为在`streaming database files`阶段，数据库可能会改变，而WAL日志可能会在稍后的备份中包含。 一旦流数据量超过了估计的总大小，该值始终与`backup_streamed`相同。 如果在pg_basebackup中禁用估算(也就是说，指定了`--no-estimate-size`选项)，这为`NULL`。 
-| `backup_streamed` `bigint`数据流的总量。这个计数器只在`streaming database files`阶段或`transferring wal files`时增进。 
-|      `tablespaces_total` `bigint`要流输送的表空间总数。      
-| `tablespaces_streamed` `bigint`流输送的表空间数。此计数器仅在`streaming database files`阶段增进。
+| 列 | 类型 | 描述
+| pid | integer | WAL发送方进程ID。
+| phase | text | 目前的处理阶段。
+| backup_total | bigint | 将被流输送的数据总量。这是在streaming database files阶段开始时的估计和报告。注意，这只是一个近似值，因为在streaming database files阶段，数据库可能会改变，而WAL日志可能会在稍后的备份中包含。一旦流数据量超过了估计的总大小，该值始终与backup_streamed相同。如果在pg_basebackup中禁用估算（也就是说，指定了--no-estimate-size选项），这为NULL。
+| backup_streamed | bigint | 数据流的总量。这个计数器只在streaming database files阶段或transferring wal files时增进。
+| tablespaces_total | bigint | 要流输送的表空间总数。
+| tablespaces_streamed | bigint | 流输送的表空间数。此计数器仅在streaming database files阶段增进。
 |====
 
 **表41.基础备份阶段**
@@ -1018,7 +1021,7 @@ IvorySQL具有在命令执行过程中报告某些命令进度的能力。 目�
 
 == 动态追踪
 
-IvorySQL提供了功能来支持数据库服务器的动态追踪。这样就允许在代码中的特 定点上调用外部工具来追踪执行过程。
+IvorySQL提供了功能来支持数据库服务器的动态追踪。这样就允许在代码中的特定点上调用外部工具来追踪执行过程。
 
 一些探针或追踪点已经被插入在源代码中。这些探针的目的是被数据库开发者和管理员使用。默认情况下，探针不被编译到IvorySQL中；用户需要显式地告诉配置脚本使得探针可用。
 
@@ -1030,7 +1033,7 @@ IvorySQL提供了功能来支持数据库服务器的动态追踪。这样就允
 
 === 内建探针
 
-如表  42所示，源代码中提供了一些标准探针。表  43显式了在探针中使用的类型。当然，可以增加更多探针来增强IvorySQL的可观测性。
+如表  42所示，源代码中提供了一些标准探针。表  43显示了在探针中使用的类型。当然，可以增加更多探针来增强IvorySQL的可观测性。
 
 **表42.内建 DTrace 探针**
 |====

@@ -24,7 +24,7 @@ IvorySQL提供兼容Oracle的NLS参数功能。
 |nls_timestamp_format | 兼容Oracle的同名参数，控制带时间的日期格式。
 |nls_timestamp_tz_format | 兼容Oracle的同名参数，控制带时区的日期时间格式。
 |nls_territory | 兼容Oracle的同名参数，指定数据库的默认区域。
-|nls_iso_currency | 兼容Oracle的同名参数，指定的国家和区域制定唯一的货币符号。
+|nls_iso_currency | 兼容Oracle的同名参数，指定国家和区域对应的唯一货币符。
 |nls_currency | 兼容Oracle的同名参数，指定显示本地货币的符号，对应数字字符串格式中占位符L。
 |====
 

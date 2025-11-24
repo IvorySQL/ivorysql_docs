@@ -16,7 +16,7 @@ IvorySQL提供了兼容Oracle的NLS参数功能，包含如下参数。
 |nls_timestamp_format | 兼容Oracle的同名参数，控制带时间的日期格式。
 |nls_timestamp_tz_format | 兼容Oracle的同名参数，控制带时区的日期时间格式。
 |nls_territory | 兼容Oracle的同名参数，指定数据库的默认区域。
-|nls_iso_currency | 兼容Oracle的同名参数，指定的国家和区域制定唯一的货币符号。
+|nls_iso_currency | 兼容Oracle的同名参数，指定国家和区域对应的唯一货币符。
 |nls_currency | 兼容Oracle的同名参数，指定显示本地货币的符号，对应数字字符串格式中占位符L。
 |====
 
@@ -131,7 +131,7 @@ oratimestamptz_in()
 
 === GUC参数 `nls_date_format`/`nls_timestamp_format`/`nls_timestamp_tz_format`
 
-这三个GUC参数，在函数 `ora_do_to_timestamp()` 中做为格式字符串，对输入的字符串进行格式检查与模式识别。
+这三个GUC参数，在函数 `ora_do_to_timestamp()` 中作为格式字符串，对输入的字符串进行格式检查与模式识别。
 
 下面是其默认值，可以通过设置其值为"pg"使其失效。"pg"表示禁用NLS特定行为，恢复为PostgreSQL的默认行为。
 ```c

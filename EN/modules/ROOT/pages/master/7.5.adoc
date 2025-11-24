@@ -13,7 +13,7 @@
 |====
 |Database name|Like fuzzy queries
 |oracle|oracle's string type is varchar2, which supports fuzzy queries using the Like keyword with wildcards for columns of number, date, and string field types
-|IvorySQL|The basic type of IvorySQL's string is text, so like is based on text, and other IvorySQL types can be implicitly converted to text, so that they can be automatically converted without creating opeartor
+|IvorySQL|The basic type of IvorySQL's string is text, so like is based on text, and other IvorySQL types can be implicitly converted to text, so that they can be automatically converted without creating operator
 |====
 
 == Test cases

@@ -47,7 +47,7 @@ host all all 0.0.0.0/0 trust
 host replication all 0.0.0.0/0 trust
 ```
 [CAUTION]
-示例中的pg_hba的配置，仅做为demo用来测试，这种配置会导致数据库密码失效，请根据环境实际情况进行配置
+示例中的pg_hba的配置，仅作为demo用来测试，这种配置会导致数据库密码失效，请根据环境实际情况进行配置
 
 === 重启主节点数据库服务
 ```
