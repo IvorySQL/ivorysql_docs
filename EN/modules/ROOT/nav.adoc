@@ -7,10 +7,16 @@
 ** xref:master/3.3.adoc[Maintenance]
 * IvorySQL Advanced Feature
 ** xref:master/4.1.adoc[Installation]
-** xref:master/4.2.adoc[Building Cluster]
-** xref:master/4.3.adoc[Developer]
-** xref:master/4.4.adoc[Operation Management]
+** xref:master/4.2.adoc[Cluster]
 ** xref:master/4.5.adoc[Migration]
+** xref:master/4.3.adoc[Developer]
+** 容器化指南
+*** xref:master/4.6.1.adoc[K8S deployment]
+*** xref:master/4.6.2.adoc[Helm deployment]
+*** xref:master/4.6.3.adoc[Operator deployment]
+*** xref:master/4.6.4.adoc[Docker Swarm & Docker Compose deployment]
+** xref:master/4.4.adoc[Operation Management]
+** xref:master/4.7.adoc[Cloud Service Platform]
 * IvorySQL Ecosystem
 ** xref:master/cpu_arch_adp.adoc[CPU Architecture Adaption]
 ** xref:master/os_arch_adp.adoc[Operating System Adaption]

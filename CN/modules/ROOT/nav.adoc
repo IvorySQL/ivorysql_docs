@@ -9,9 +9,15 @@
 ** IvorySQL高级
 *** xref:master/4.1.adoc[安装指南]
 *** xref:master/4.2.adoc[集群搭建]
-*** xref:master/4.3.adoc[开发者指南]
-*** xref:master/4.4.adoc[运维管理指南]
 *** xref:master/4.5.adoc[迁移指南]
+*** xref:master/4.3.adoc[开发者指南]
+*** 容器化指南
+**** xref:master/4.6.1.adoc[K8S部署]
+**** xref:master/4.6.2.adoc[Helm部署]
+**** xref:master/4.6.3.adoc[Operator部署]
+**** xref:master/4.6.4.adoc[Docker Swarm & Docker Compose部署]
+*** xref:master/4.4.adoc[运维管理指南]
+*** xref:master/4.7.adoc[云服务平台指南]
 ** IvorySQL生态
 *** xref:master/cpu_arch_adp.adoc[芯片架构适配]
 *** xref:master/os_arch_adp.adoc[操作系统适配]
