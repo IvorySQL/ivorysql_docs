@@ -90,7 +90,7 @@ ivorysql=# show ivorysql.compatible_mode;
 
 卸载单机容器
 ```
-[root@k8s-master single]# kubectl delete-f statefulset.yaml
+[root@k8s-master single]# kubectl delete -f statefulset.yaml
 ```
 
 == 高可用集群
@@ -108,7 +108,7 @@ ivorysql=# show ivorysql.compatible_mode;
 进入高可用集群目录
 ```
 [root@k8s-master ~]# cd docker_library/k8s-cluster/ha-cluster/helm_charts
-[root@k8s-master single]# vim values.yaml #根据个人环境自行values.yaml中的pvc信息及集群规模等信息，数据库密码查看templates/secret.yaml并自行修改。
+[root@k8s-master single]# vim values.yaml #根据个人环境自行修改values.yaml中的pvc信息及集群规模等信息，数据库密码查看templates/secret.yaml并自行修改。
 ```
 
 使用 https://helm.sh/docs/intro/install/[Helm] 命令部署高可用集群
@@ -135,7 +135,7 @@ NAME                                    READY   AGE
 statefulset.apps/ivorysql-patroni-hac   1/3     42s
 ```
 
-等待所有pod均运行成功，集群部署成功
+等待所有 Pod 进入“Running”（运行中）状态，即表示集群已部署成功。
 ```
 [root@k8s-master helm_charts]# kubectl get all -n ivorysql
 NAME                         READY   STATUS    RESTARTS   AGE

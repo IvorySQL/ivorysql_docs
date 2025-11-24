@@ -18,7 +18,7 @@ Download the latest docker_library code.
 Enter the single-node directory
 ```
 [root@k8s-master ~]# cd docker_library/k8s-cluster/single
-[root@k8s-master single]# vim statefulset.yaml #Modify the PVC information and database password in the StatefulSet according to your personal environment.
+[root@k8s-master single]# vim statefulset.yaml #Update the PVC information and database password in the StatefulSet to match your actual environment.
 ```
 
 Use statefulset.yaml to create a single-node pod.
@@ -50,7 +50,7 @@ NAME                        READY   AGE
 statefulset.apps/ivorysql   1/1     2m39s
 ```
 
-Connect to IvorySQL's PostgreSQL Port Using psql
+Connect to IvorySQL via its PostgreSQL port using the psql
 ```
 [root@k8s-master single]# psql -U ivorysql -p 32106 -h 127.0.0.1 -d ivorysql
 Password for user ivorysql:
@@ -70,7 +70,7 @@ ivorysql=# show ivorysql.compatible_mode;
 ivorysql=# exit
 ```
 
-Connecting to IvorySQL's Oracle-Compatible Port Using psqlConnecting to IvorySQL's Oracle-Compatible Port Using psql
+Connect to IvorySQL's Oracle-compatible port using psql.
 ```
 [root@k8s-master single]# psql -U ivorysql -p 31887 -h 127.0.0.1 -d ivorysql
 Password for user ivorysql:
@@ -90,7 +90,7 @@ ivorysql=# show ivorysql.compatible_mode;
 
 Uninstall Single-node container
 ```
-[root@k8s-master single]# kubectl delete-f statefulset.yaml
+[root@k8s-master single]# kubectl delete -f statefulset.yaml
 ```
 
 == High Availability Cluster

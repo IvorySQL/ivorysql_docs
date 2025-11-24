@@ -10,7 +10,7 @@
 ** xref:master/4.2.adoc[Cluster]
 ** xref:master/4.5.adoc[Migration]
 ** xref:master/4.3.adoc[Developer]
-** 容器化指南
+** Containerization
 *** xref:master/4.6.1.adoc[K8S deployment]
 *** xref:master/4.6.2.adoc[Operator deployment]
 *** xref:master/4.6.3.adoc[Docker Swarm & Docker Compose deployment]
