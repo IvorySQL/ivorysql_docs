@@ -7,11 +7,11 @@
 [**发行日期：2025年06月04日**]
 
 
-IvorySQL 4.5，基于PostgreSQL 17.5，并修复了多个问题。有关更新的完整列表，请访问我们的 https://docs.ivorysql.org/[文档网站] 。
+IvorySQL 5.0，基于PostgreSQL 18.0，并修复了多个问题。有关更新的完整列表，请访问我们的 https://docs.ivorysql.org/[文档网站] 。
 
 == 增强功能及问题修复
 
-- PostgreSQL 17.5
+- PostgreSQL 18.0
 
 1. 修复了在检查声明为 GB18030 编码的无效字符串时，可能发生的一字节缓冲区超读（one-byte buffer overread）问题，增强了系统处理无效编码数据的稳健性。
 2. 确保对分区表上存在的自引用外键（self-referential foreign keys）进行正确处理，提升了复杂数据结构下分区表的可靠性。
@@ -21,9 +21,9 @@ IvorySQL 4.5，基于PostgreSQL 17.5，并修复了多个问题。有关更新�
 
 +
 
-更多细节, 请参阅 https://www.postgresql.org/docs/release/17.5/[PostgreSQL发布说明].
+更多细节, 请参阅 https://www.postgresql.org/docs/release/18.0/[PostgreSQL发布说明].
 
-- IvorySQL 4.5
+- IvorySQL 5.0
 
 1. MIPS 全平台打包支持：特性 https://github.com/IvorySQL/IvorySQL/issues/736[#736]
 +
@@ -31,7 +31,7 @@ IvorySQL 4.5，基于PostgreSQL 17.5，并修复了多个问题。有关更新�
 
 2. 新增IvorySQL 在线体验平台：特性 https://github.com/IvorySQL/ivorysql-wasm/issues/1[#1]
 +
-提供一个基于 Web 的平台，用户可直接通过浏览器界面在线体验 IvorySQL V4.5 并进行数据库交互。
+提供一个基于 Web 的平台，用户可直接通过浏览器界面在线体验 IvorySQL V5.0 并进行数据库交互。
 
 3. 新增社区行为准则：特性  https://github.com/IvorySQL/IvorySQL/issues/808[#808]
 +
@@ -47,7 +47,7 @@ IvorySQL 4.5，基于PostgreSQL 17.5，并修复了多个问题。有关更新�
 
 6. 改进贡献者工作流程，通过 /assign 命令自我分配任务：特性 https://github.com/IvorySQL/ivorysql_docs/issues/109[#109]
 
-7. IvorySQL Operator V4 适配 IvorySQL 4.5：特性 https://github.com/IvorySQL/ivory-operator/pull/79[#79]
+7. IvorySQL Operator V4 适配 IvorySQL 5.0：特性 https://github.com/IvorySQL/ivory-operator/pull/79[#79]
 
 == 源代码
 

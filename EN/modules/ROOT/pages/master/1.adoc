@@ -7,11 +7,11 @@
 
 [**Release date: June 04, 2025**]
 
-IvorySQL 4.5, based on PostgreSQL 17.5 and includes a variety of bug fixes. For a comprehensive list of updates, please visit our https://docs.ivorysql.org/[documentation site].
+IvorySQL 5.0, based on PostgreSQL 18.0 and includes a variety of bug fixes. For a comprehensive list of updates, please visit our https://docs.ivorysql.org/[documentation site].
 
 == Enhancements & Fixed Issue
 
-- PostgreSQL 17.5 Enhancements
+- PostgreSQL 18.0 Enhancements
 
 1. Avoid one-byte buffer overread when examining invalidly-encoded strings that are claimed to be in GB18030 encoding.
 2. Handle self-referential foreign keys on partitioned tables correctly.
@@ -21,9 +21,9 @@ IvorySQL 4.5, based on PostgreSQL 17.5 and includes a variety of bug fixes. For 
 
 +
 
-For further details, visit https://www.postgresql.org/docs/release/17.5/[PostgreSQL’s release notes].
+For further details, visit https://www.postgresql.org/docs/release/18.0/[PostgreSQL’s release notes].
 
-- IvorySQL 4.5
+- IvorySQL 5.0
 
 1. MIPS Packaging for All Platforms: Feature https://github.com/IvorySQL/IvorySQL/issues/736[#736]
 +
@@ -31,7 +31,7 @@ Provides multi-platform media packages for MIPS architecture, supporting both do
 
 2. IvorySQL Online trail: Feature https://github.com/IvorySQL/ivorysql-wasm/issues/1[#1]
 +
-Provide users with a web-based platform to experience IvorySQL V4.5 in an online environment, enabling database interaction directly through a browser interface.
+Provide users with a web-based platform to experience IvorySQL V5.0 in an online environment, enabling database interaction directly through a browser interface.
 
 3. Add code of conduct: Feature https://github.com/IvorySQL/IvorySQL/issues/808[#808]
 
@@ -41,7 +41,7 @@ Provide users with a web-based platform to experience IvorySQL V4.5 in an online
 
 6. Enhanced Contributor Workflow: Self-Assign Issues by using the '/assign' command: Feature https://github.com/IvorySQL/ivorysql_docs/issues/109[#109]
 
-7. IvorySQL Operator V4 has been adapted to support IvorySQL 4.5, with upgrades to system component versions and database extension versions : Feature https://github.com/IvorySQL/ivory-operator/pull/79[#79]
+7. IvorySQL Operator V4 has been adapted to support IvorySQL 5.0, with upgrades to system component versions and database extension versions : Feature https://github.com/IvorySQL/ivory-operator/pull/79[#79]
 
 == Source Code
 

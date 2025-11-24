@@ -1973,7 +1973,7 @@ SELECT concat_lower_or_upper('Hello', 'World', uppercase => true);
 
 **详见：**
 
-- [GUC变量](https://docs.ivorysql.org/cn/ivorysql-doc/v4.5/v4.5/15)
+- [GUC变量](https://docs.ivorysql.org/cn/ivorysql-doc/v5.0/v4.5/15)
 
 === 更改表
 

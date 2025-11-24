@@ -51,7 +51,7 @@ gpgcheck=0
 ```
 After saving and exiting, you can install IvorySQL 4 with the following steps
 ```
-$ sudo dnf install -y IvorySQL-4.5
+$ sudo dnf install -y IvorySQL-5.0
 ```
 
 [[setting-environment-variables]]
@@ -61,9 +61,9 @@ $ sudo dnf install -y IvorySQL-4.5
 
 Add below contents in ~/.bash_profile file and source to make it effective:
 ```
-PATH=/opt/IvorySQL-4.5/bin:$PATH
+PATH=/opt/IvorySQL-5.0/bin:$PATH
 export PATH
-PGDATA=/opt/IvorySQL-4.5/data
+PGDATA=/opt/IvorySQL-5.0/data
 export PGDATA
 ```
 ```
@@ -73,7 +73,7 @@ $ source ~/.bash_profile
 ** Initializing database
 
 ```
-$ initdb -D /opt/IvorySQL-4.5/data
+$ initdb -D /opt/IvorySQL-5.0/data
 ```
 ....
   The -D option specifies the directory where the database cluster should be stored. This is the only information required by initdb, but you can avoid writing it by setting the PGDATA environment variable, which can be convenient since the database server can find the database directory later by the same variable. 
@@ -84,7 +84,7 @@ $ initdb -D /opt/IvorySQL-4.5/data
 ** Starting IvorySQL service
 
 ```
-$ pg_ctl -D /opt/IvorySQL-4.5/data -l ivory.log start 
+$ pg_ctl -D /opt/IvorySQL-5.0/data -l ivory.log start 
 ```
 
   The -D option specifies the file system location of the database configuration files. If this option is omitted, the environment variable PGDATA in <<setting-environment-variables>> is used. -l option appends the server log output to filename. If the file does not exist, it is created.
@@ -95,7 +95,7 @@ $ pg_ctl -D /opt/IvorySQL-4.5/data -l ivory.log start
 Confirm it’s successfully started:
 ```
 $ ps -ef | grep postgres
-ivorysql  3214     1  0 20:35 ?        00:00:00 /opt/IvorySQL-4.5/bin/postgres -D /opt/IvorySQL-4.5/data
+ivorysql  3214     1  0 20:35 ?        00:00:00 /opt/IvorySQL-5.0/bin/postgres -D /opt/IvorySQL-5.0/data
 ivorysql  3215  3214  0 20:35 ?        00:00:00 postgres: checkpointer 
 ivorysql  3216  3214  0 20:35 ?        00:00:00 postgres: background writer 
 ivorysql  3218  3214  0 20:35 ?        00:00:00 postgres: walwriter 
@@ -108,19 +108,19 @@ ivorysql  3238  1551  0 20:35 pts/0    00:00:00 grep --color=auto postgres
 
 ** Get IvorySQL image from Docker Hub
 ```
-$ docker pull ivorysql/ivorysql:4.5-ubi8
+$ docker pull ivorysql/ivorysql:5.0-ubi8
 ```
 
 ** Running IvorySQL
 ```
-$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:4.5-ubi8
+$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:5.0-ubi8
 ```
 
 ** Check if the IvorySQL container is running successfully
 ```
 $ docker ps | grep ivorysql
 CONTAINER ID   IMAGE               COMMAND                   CREATED          STATUS          PORTS                              NAMES
-6faa2d0ed705   ivorysql:4.5-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
+6faa2d0ed705   ivorysql:5.0-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
 ```
 
 == Connecting to IvorySQL
@@ -128,7 +128,7 @@ CONTAINER ID   IMAGE               COMMAND                   CREATED          ST
 Connect to IovrySQL via psql:
 ```
 $ psql -d <database>
-psql (17.5)
+psql (18.0)
 Type "help" for help.
 
 ivorysql=#
@@ -143,4 +143,4 @@ TIP: When running IvorySQL in Docker, additional parameters need to be added, li
 
 Now you can start your journey of IvorySQL! Enjoy! 
 
-To explore additional installation methods, please refer to the xref:v4.5/6.adoc[Installation].
+To explore additional installation methods, please refer to the xref:v5.0/6.adoc[Installation].
