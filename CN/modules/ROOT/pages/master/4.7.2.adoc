@@ -1,7 +1,7 @@
 
 :sectnums:
 :sectnumlevels: 5
-:imagesdir: ./_images
+:imagesdir: ../../images/media
 
 = 使用说明
 

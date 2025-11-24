@@ -14,7 +14,7 @@ IvorySQL Cloud平台是一个综合性的解决方案，它集成了IvorySQL数�
 
 搭建好K8S集群，并在集群master节点上安装ivory-operator
 
-https://github.com/IvorySQL/ivory-operator/tree/IVYO++_++REL++_++5++_++STABLE
+https://github.com/IvorySQL/ivory-operator/tree/IVYO_REL_5_STABLE
 
 == IvorySQL Cloud平台安装
 
@@ -76,11 +76,11 @@ git clone https://github.com/IvorySQL/ivory-cloud.git
 cd ivory-cloud
 ----
 
-请确保ivory-cloud++\++cloudnative++\++src++\++main++\++resources++\++monitor文件夹，及其所有的子文件夹下的以.sh结尾的文件是unix格式的，如果不是，请执行dos2unix命令转换成unix格式。
+请确保ivory-cloud\cloudnative\src\main\resources\monitor文件夹，及其所有的子文件夹下的以.sh结尾的文件是unix格式的，如果不是，请执行dos2unix命令转换成unix格式。
 
 [literal]
 ----
-dos2unix cloudnative++\++src++\++main++\++resources++\++monitor++\*++
+dos2unix cloudnative\src\main\resources\monitor\*
 
 # 编译
 
@@ -117,7 +117,7 @@ application.yaml
 
 application-native.yaml
 
-spring++_++pro++_++logback.xml
+spring_pro_logback.xml
 
 ## 修改配置文件，请将url、username、password修改为<<backend-db,后端数据库章节>>安装的数据库的信息。
 
@@ -144,15 +144,15 @@ password: "ivory@123"
 ----
 # 安装jdk1.8
 
-yum install -y java-1.8.0-openjdk.x86++_++64
+yum install -y java-1.8.0-openjdk.x86_64
 
-++[++root@cloud ivory++]++# pwd
+[root@cloud ivory]# pwd
 
 /home/ivory/
 
-++[++root@cloud ivory++]++# nohup java -jar cloudnative-1.0-SNAPSHOT.jar ++>++ log++_++native 2++>++&1 &
+[root@cloud ivory]# nohup java -jar cloudnative-1.0-SNAPSHOT.jar > log_native 2>&1 &
 
-++[++root@cloud ivory++]++# ps -ef ++|++grep java
+[root@cloud ivory]# ps -ef |grep java
 
 root 77494 1 0 10月09 ? 00:03:07 java -jar cloudnative-1.0-SNAPSHOT.jar
 ----
@@ -186,15 +186,15 @@ npm run build:prod
 ----
 # 创建目录
 
-++[++root@cloud opt++]++# mkdir -p /opt/cloud/web
+[root@cloud opt]# mkdir -p /opt/cloud/web
 
 # 将前端构建后的dist文件夹置于/opt/cloud/web
 
 # 授权
 
-++[++root@cloud web++]++# chmod 755 /opt/cloud/web/dist
+[root@cloud web]# chmod 755 /opt/cloud/web/dist
 
-++[++root@cloud web++]++# chmod -R 777 /opt/cloud/web/dist
+[root@cloud web]# chmod -R 777 /opt/cloud/web/dist
 ----
 
 ==== 修改config.js 
@@ -203,17 +203,17 @@ npm run build:prod
 
 [literal]
 ----
-++[++root@cloud dist++]++# pwd
+[root@cloud dist]# pwd
 
 /home/cloud/web/dist
 
-++[++root@cloud dist++]++# vi config.js
+[root@cloud dist]# vi config.js
 
-var PLATFROM++_++CONFIG = ++{++};
+var PLATFROM_CONFIG = {};
 
 // ip请更换为当前服务器地址
 
-PLATFROM++_++CONFIG.baseUrl = "http://192.168.31.43:8081/cloudapi/api/v1"
+PLATFROM_CONFIG.baseUrl = "http://192.168.31.43:8081/cloudapi/api/v1"
 
 //true: need to show "注册" on login page
 
@@ -240,9 +240,9 @@ IvorySQL Cloud平台服务器需要安装nginx，以支持云服务平台的web�
 
 [literal]
 ----
-++[++root@cloud web++]++# wget https://nginx.org/download/nginx-1.20.1.tar.gz
+[root@cloud web]# wget https://nginx.org/download/nginx-1.20.1.tar.gz
 
-++[++root@cloud web++]++# ls -lrt
+[root@cloud web]# ls -lrt
 
 总用量 3924
 
@@ -257,9 +257,9 @@ drwxrwxrwx. 4 root root 103 10月 21 13:20 dist
 
 [literal]
 ----
-++[++root@host30 cloud++]++# yum -y install pcre-devel
+[root@host30 cloud]# yum -y install pcre-devel
 
-++[++root@host30 cloud++]++# yum -y install openssl openssl-devel
+[root@host30 cloud]# yum -y install openssl openssl-devel
 ----
 
 ==== 编译安装nginx
@@ -270,11 +270,11 @@ nginx会被安装在configure时由--prefix指定的目录下，例如这里的/
 ----
 ## 解压缩nginx-1.20.1.tar.gz安装包
 
-++[++root@cloud web++]++# tar -zxvf nginx-1.20.1.tar.gz
+[root@cloud web]# tar -zxvf nginx-1.20.1.tar.gz
 
 ## 解压后生成nginx-1.20.1文件夹
 
-++[++root@cloud web++]++# ls -lrt
+[root@cloud web]# ls -lrt
 
 总用量 3924
 
@@ -288,15 +288,15 @@ drwxrwxrwx. 4 root root 103 10月 21 13:20 dist
 
 ## 配置导向
 
-++[++root@cloud web++]++# cd nginx-1.20.1
+[root@cloud web]# cd nginx-1.20.1
 
-++[++root@cloud nginx-1.20.1++]++# ./configure --prefix=/opt/cloud/nginx --with-http++_++ssl++_++module
+[root@cloud nginx-1.20.1]# ./configure --prefix=/opt/cloud/nginx --with-http_ssl_module
 
 ## 编译安装
 
-++[++root@cloud nginx-1.20.1++]++# make
+[root@cloud nginx-1.20.1]# make
 
-++[++root@cloud nginx-1.20.1++]++# make install
+[root@cloud nginx-1.20.1]# make install
 ----
 
 ==== 修改配置文件nginx.conf
@@ -305,13 +305,13 @@ drwxrwxrwx. 4 root root 103 10月 21 13:20 dist
 
 [literal]
 ----
-server ++{++
+server {
 
 listen 9104;
 
-server++_++name 192.168.31.43;
+server_name 192.168.31.43;
 
-location / ++{++
+location / {
 
 root /opt/cloud/web/dist;
 
@@ -319,9 +319,9 @@ index index.html index.htm;
 
 }
 
-error++_++page 500 502 503 504 /50x.html;
+error_page 500 502 503 504 /50x.html;
 
-location = /50x.html ++{++
+location = /50x.html {
 
 root html;
 
@@ -334,13 +334,13 @@ root html;
 
 [literal]
 ----
-++[++root@cloud sbin++]++# pwd
+[root@cloud sbin]# pwd
 
 /opt/cloud/nginx/sbin
 
-++[++root@cloud sbin++]++# ./nginx -c /opt/cloud/nginx/conf/nginx.conf
+[root@cloud sbin]# ./nginx -c /opt/cloud/nginx/conf/nginx.conf
 
-++[++root@cloud sbin++]++# ps -ef ++|++ grep nginx
+[root@cloud sbin]# ps -ef | grep nginx
 
 root 2179 131037 0 09:46 pts/1 00:00:00 grep --color=auto nginx
 
@@ -357,7 +357,7 @@ nobody 55048 55047 0 10月21 ? 00:00:00 nginx: worker process
 
 参见
 
-https://github.com/IvorySQL/ivory-operator/tree/IVYO_REL_4_STABLE[https://github.com/IvorySQL/ivory-operator/tree/IVYO++_++REL++_++5++_++STABLE]
+https://github.com/IvorySQL/ivory-operator/tree/IVYO_REL_4_STABLE[https://github.com/IvorySQL/ivory-operator/tree/IVYO_REL_5_STABLE]
 
 网站上的readme
 
