@@ -16,7 +16,9 @@
 **** xref:master/4.6.2.adoc[Operator部署]
 **** xref:master/4.6.3.adoc[Docker Swarm & Docker Compose部署]
 *** xref:master/4.4.adoc[运维管理指南]
-*** xref:master/4.7.adoc[云服务平台指南]
+*** 云服务平台指南
+**** xref:master/4.7.1.adoc[IvorySQL Cloud安装]
+**** xref:master/4.7.2.adoc[IvorySQL Cloud使用]
 ** IvorySQL生态
 *** xref:master/cpu_arch_adp.adoc[芯片架构适配]
 *** xref:master/os_arch_adp.adoc[操作系统适配]

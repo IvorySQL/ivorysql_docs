@@ -15,7 +15,9 @@
 *** xref:master/4.6.2.adoc[Operator deployment]
 *** xref:master/4.6.3.adoc[Docker Swarm & Docker Compose deployment]
 ** xref:master/4.4.adoc[Operation Management]
-** xref:master/4.7.adoc[Cloud Service Platform]
+** Cloud Service Platform
+*** xref:master/4.7.1.adoc[IvorySQL Cloud Installation]
+*** xref:master/4.7.2.adoc[IvorySQL Cloud Usage]
 * IvorySQL Ecosystem
 ** xref:master/cpu_arch_adp.adoc[CPU Architecture Adaption]
 ** xref:master/os_arch_adp.adoc[Operating System Adaption]
