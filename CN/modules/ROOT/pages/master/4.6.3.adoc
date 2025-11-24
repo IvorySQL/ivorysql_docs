@@ -41,6 +41,12 @@ ID             NAME                  MODE         REPLICAS   IMAGE              
 sosag5017cis   ivoryhac-etcd_etcd2   replicated   1/1        quay.io/coreos/etcd:v3.5.8
 8twpgkzo2mnx   ivoryhac-etcd_etcd3   replicated   1/1        quay.io/coreos/etcd:v3.5.8
 ```
+可自定义数据库外挂目录，修改docker-swarm-ivypatroni.yml中的volumes，修改完成后修改目录权限及属主；示例如下
+```
+mkdir -p /home/ivorysql/{data,patroni}
+chown -R 1000:1000 /home/ivorysql/{data,patroni}
+chmod 700 /home/ivorysql/{data,patroni}
+```
 
 部署IvorySQL高可用集群
 ```

@@ -41,6 +41,12 @@ ID             NAME                  MODE         REPLICAS   IMAGE              
 sosag5017cis   ivoryhac-etcd_etcd2   replicated   1/1        quay.io/coreos/etcd:v3.5.8
 8twpgkzo2mnx   ivoryhac-etcd_etcd3   replicated   1/1        quay.io/coreos/etcd:v3.5.8
 ```
+You can customize the external database directory by modifying the volumes section in docker-swarm-ivypatroni.yml. After making changes, adjust the directory permissions and ownership accordingly. Example as follows:
+```
+mkdir -p /home/ivorysql/{data,patroni}
+chown -R 1000:1000 /home/ivorysql/{data,patroni}
+chmod 700 /home/ivorysql/{data,patroni}
+```
 
 Deploy an IvorySQL High Availability Cluster
 ```
