@@ -12,6 +12,7 @@
 *** xref:master/4.3.adoc[开发者指南]
 *** xref:master/4.4.adoc[运维管理指南]
 *** xref:master/4.5.adoc[迁移指南]
+*** xref:master/4.6.adoc[IvorySQL安装]
 ** IvorySQL生态
 *** xref:master/cpu_arch_adp.adoc[芯片架构适配]
 *** xref:master/os_arch_adp.adoc[操作系统适配]
