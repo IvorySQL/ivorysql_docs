@@ -11,6 +11,8 @@
 ** xref:master/4.3.adoc[Developer]
 ** xref:master/4.4.adoc[Operation Management]
 ** xref:master/4.5.adoc[Migration]
+** xref:master/4.7.1.adoc[IvorySQL Installation Manual]
+** xref:master/4.7.2.adoc[IvorySQL User Manual]
 * IvorySQL Ecosystem
 ** xref:master/cpu_arch_adp.adoc[CPU Architecture Adaption]
 ** xref:master/os_arch_adp.adoc[Operating System Adaption]

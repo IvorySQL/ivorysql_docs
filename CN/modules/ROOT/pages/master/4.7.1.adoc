@@ -56,7 +56,6 @@ systemctl disable firewalld.service
 
 === 后端部署
 
-[[backend-db]]
 ==== 后端数据库
 
 IvorySQL Cloud平台的后端数据库需用户自行安装，请参考IvorySQL官网。

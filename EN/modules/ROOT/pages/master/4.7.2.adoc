@@ -1,0 +1,236 @@
+:sectnums:
+:sectnumlevels: 5
+:imagesdir: ../../images
+
+= User Guide
+
+IvorySQL Cloud is a web-based service platform that can be accessed from any computer through a browser. After installing the cloud service platform on the server with IP `192.168.31.43`, open a browser and enter `http://192.168.31.43:9104/` (9104 is the port configured in `nginx.conf.default`) to reach the login page:
+
+image::media/image3.png[image3,width=274,height=355]
+
+== Sign In and Sign Out
+
+=== Sign In
+
+On the login page, enter the prompted information to access the IvorySQL Cloud service platform:
+
+image::media/image4.png[image4,width=552,height=272]
+
+=== Sign Out
+
+Click the avatar in the upper-right corner to display the current username and the **Log Out** action. Click **Log Out** to exit; click the username to stay on the current page:
+
+image::media/image5.png[image5,width=552,height=62]
+
+== Administrator Features
+
+=== Add a Cluster
+
+[arabic]
+. After signing in as the `admin` user, click **K8S Cluster Management** in the left navigation bar to open the cluster list.
+
+image::media/image6.png[image6,width=601,height=91]
+
+[arabic, start=2]
+. Click **Add Kubernetes Cluster** in the upper-left corner, fill in the cluster information, and submit.
+
+image::media/image7.png[image7,width=333,height=291]
+
+=== Manage Clusters
+
+The cluster management page lists details for each cluster and allows you to edit or delete them.
+
+image::media/image8.png[image8,width=553,height=82]
+
+== demo User Features
+
+=== Database Subscription
+
+[arabic]
+. Sign in with the `demo` user.
+. Click **Database Subscription** in the left navigation, fill in the database parameters, and click **Next: Confirm**.
+
+image::media/image9.png[image9,width=552,height=272]
+
+[arabic, start=3]
+. Review the information and click **Confirm**.
+
+image::media/image10.png[image10,width=552,height=272]
+
+[arabic, start=4]
+. After confirming, the page automatically redirects to **Database Management** to show the subscription task.
+
+image::media/image11.png[image11,width=552,height=77]
+
+image::media/image12.png[image12,width=552,height=79]
+
+=== Database Management
+
+Displays all databases managed by the cloud service platform.
+
+image::media/image12.png[image12,width=552,height=79]
+
+=== Restart a Database
+
+[arabic]
+. Sign in with the `demo` user.
+. Go to **Database Management**, select a database, click **More** in the **Actions** column, and choose **Restart**.
+
+image::media/image13.png[image13,width=79,height=286]
+
+[arabic, start=3]
+. Review the information and click **Confirm**.
+
+image::media/image14.png[image14,width=553,height=210]
+
+=== Change the Password
+
+[arabic]
+. Sign in with the `demo` user.
+. Go to **Database Management**, select a database, and click its **Instance ID**.
+
+image::media/image15.png[image15,width=553,height=48]
+
+[arabic, start=3]
+. On the database details page, click the password icon image::media/image16.png[image16,width=19,height=16].
+
+image::media/image17.png[image17,width=553,height=173]
+
+[arabic, start=4]
+. Enter a new password and click **Confirm**.
+
+image::media/image18.png[image18,width=553,height=352]
+
+=== Delete an Instance
+
+[arabic]
+. Sign in with the `demo` user.
+. Go to **Database Management**, select a database, click **More** in the **Actions** column, and choose **Delete Instance**.
+
+image::media/image19.png[image19,width=55,height=201]
+
+[arabic, start=3]
+. Review the confirmation window and click **Confirm**.
+
+image::media/image20.png[image20,width=552,height=207]
+
+=== Storage Expansion
+
+[arabic]
+. This feature requires additional plug-ins such as TopoLVM.
+. Sign in with the `demo` user.
+. Click **Storage Expansion**, select a database, then click **Edit** in the **Actions** column; alternatively, go to **Database Management**, click **More**, and choose **Storage Expansion**.
+
+image::media/image21.png[image21,width=552,height=197]
+
+image::media/image22.png[image22,width=63,height=200]
+
+[arabic, start=4]
+. Enter the expanded storage size and click **Confirm**.
+
+image::media/image23.png[image23,width=553,height=242]
+
+=== Specification Change
+
+[arabic]
+. Sign in with the `demo` user.
+. Click **Specification Change**, select a database, then click **Edit** in the **Actions** column; or go to **Database Management**, click **More**, and choose **Specification Change**.
+
+image::media/image24.png[image24,width=552,height=196]
+
+image::media/image25.png[image25,width=59,height=205]
+
+[arabic, start=3]
+. Enter the new specification and click **Confirm**.
+
+image::media/image26.png[image26,width=552,height=240]
+
+=== Database Backup
+
+[arabic]
+. Sign in with the `demo` user.
+. Go to **Database Backup**, select a database, and click **Backup** in the **Actions** column; or go to **Database Management**, click **More**, and choose **Backup**.
+
+image::media/image27.png[image27,width=552,height=197]
+
+image::media/image28.png[image28,width=64,height=199]
+
+[arabic, start=3]
+. Enter a backup name and click **Confirm**.
+
+image::media/image29.png[image29,width=552,height=285]
+
+=== Database Restore
+
+[arabic]
+. Sign in with the `demo` user.
+. Go to **Database Restore**, select a database, and click **View** in the **Actions** column; or go to **Database Management**, click **More**, and choose **Restore**.
+
+image::media/image30.png[image30,width=552,height=196]
+
+image::media/image31.png[image31,width=58,height=201]
+
+[arabic, start=3]
+. Select the backup file and click **Restore** in the **Actions** column.
+
+image::media/image32.png[image32,width=552,height=304]
+
+image::media/image33.png[image33,width=552,height=305]
+
+[arabic, start=4]
+. Enter the target database information. Use the database password from before the backup.
+
+image::media/image34.png[image34,width=552,height=246]
+
+[arabic, start=5]
+. Continue following the workflow described in “4.1 Database Subscription”.
+
+=== Database Monitoring
+
+[arabic]
+. Sign in with the `demo` user.
+. Click **Monitoring Tools** in the left navigation and select the cluster where the database resides; or go to **Database Management**, select a database, click **More**, and choose **Monitoring**.
+
+image::media/image35.png[image35,width=552,height=261]
+
+image::media/image36.jpeg[image36,width=65,height=215]
+
+[arabic, start=3]
+. After the monitoring stack is created, repeat step (2) to open the monitoring page, then sign in with `admin/admin` and click **Login**.
+
+____
+image::media/image37.png[image37,width=552,height=272]
+____
+
+[arabic, start=4]
+. Click the icon image::media/image38.jpeg[image38,width=24,height=17] to view monitoring metrics.
+
+image::media/image39.png[image39,width=553,height=264]
+
+image::media/image40.png[image40,width=552,height=261]
+
+image::media/image41.png[image41,width=553,height=261]
+
+image::media/image42.png[image42,width=552,height=72]
+
+image::media/image43.png[image43,width=552,height=259]
+
+image::media/image44.png[image44,width=552,height=280]
+
+=== Visual Login Tool
+
+[arabic]
+. Sign in with the `demo` user.
+. Go to **Database Management**, select a database, click **More** in the **Actions** column, and choose **Login**.
+
+image::media/image45.jpeg[image45,width=65,height=205]
+
+[arabic, start=3]
+. On the new page, enter the database account `sysdba@ivyo.com` and the database password, then click **Login**.
+
+image::media/image46.png[image46,width=383,height=263]
+
+[arabic, start=4]
+. Once the connection is established, you can operate on the database.
+
+
