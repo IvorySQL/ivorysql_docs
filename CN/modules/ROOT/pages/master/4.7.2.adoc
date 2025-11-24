@@ -1,13 +1,13 @@
 
 :sectnums:
 :sectnumlevels: 5
-:imagesdir: ../../images/media
+:imagesdir: ./_images
 
 = 使用说明
 
 IvorySQL Cloud是一个基于Web的服务平台，用户可以在任意电脑上通过浏览器进行访问，安装云服务平台的服务器IP为192.168.31.43，然后在浏览器输入http://192.168.31.43:9104/（9104为前端nginx.conf.default中设置的端口）即可进入登录页面页面：
 
-image::image3.png[image3,width=274,height=355]
+image::media/image3.png[image3,width=274,height=355]
 
 == 登录和退出
 
