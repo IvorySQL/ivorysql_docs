@@ -7,7 +7,7 @@
 
 IvorySQL Cloud是一个基于Web的服务平台，用户可以在任意电脑上通过浏览器进行访问，安装云服务平台的服务器IP为192.168.31.43，然后在浏览器输入http://192.168.31.43:9104/（9104为前端nginx.conf.default中设置的端口）即可进入登录页面页面：
 
-image:image3.png[image3,width=274,height=355]
+image::image3.png[image3,width=274,height=355]
 
 == 登录和退出
 
@@ -15,13 +15,13 @@ image:image3.png[image3,width=274,height=355]
 
 进入登录页面，根据提示输入信息即可访问瀚高云服务平台：
 
-image:image4.png[image4,width=552,height=272]
+image::image4.png[image4,width=552,height=272]
 
 === 退出登录
 
 点击页面右上角的头像，会显示当前登录用户名和“Log Out”。点击“Log Out”退出当前登录页面。点击用户名则保留当前登录页面：
 
-image:image5.png[image5,width=552,height=62]
+image::image5.png[image5,width=552,height=62]
 
 == 管理员功能
 
@@ -30,18 +30,18 @@ image:image5.png[image5,width=552,height=62]
 [arabic]
 . 平台登录admin用户后，点击左侧菜单栏的“K8S集群管理”按钮，进入集群管理页。
 
-image:image6.png[image6,width=601,height=91]
+image::image6.png[image6,width=601,height=91]
 
 [arabic, start=2]
 . 点击页面左上角“增加Kubernetes集群”按钮，输入集群信息后提交。
 
-image:image7.png[image7,width=333,height=291]
+image::image7.png[image7,width=333,height=291]
 
 === 管理集群
 
 在集群管理页面，可以查看已添加集群的详细信息，同时对集群信息进行编辑和删除操作。
 
-image:image8.png[image8,width=553,height=82]
+image::image8.png[image8,width=553,height=82]
 
 == demo用户功能
 
@@ -52,25 +52,25 @@ image:image8.png[image8,width=553,height=82]
 
 . 点击左侧菜单栏"数据库订阅"按钮，填写需要申请的数据库的各个参数，然后点击"下一步：确认信息"。
 
-image:image9.png[image9,width=552,height=272]
+image::image9.png[image9,width=552,height=272]
 
 [arabic, start=3]
 . 检查信息后，点击"确定"
 
-image:image10.png[image10,width=552,height=272]
+image::image10.png[image10,width=552,height=272]
 
 [arabic, start=4]
 . "确定"后，会自动跳转到"数据库管理"页面，查看订阅任务
 
-image:image11.png[image11,width=552,height=77]
+image::image11.png[image11,width=552,height=77]
 
-image:image12.png[image12,width=552,height=79]
+image::image12.png[image12,width=552,height=79]
 
 === 数据库管理
 
 显示云服务平台管理的数据库信息。
 
-image:image12.png[image12,width=552,height=79]
+image::image12.png[image12,width=552,height=79]
 
 === 数据库重启
 
@@ -79,12 +79,12 @@ image:image12.png[image12,width=552,height=79]
 
 . 点击左侧导航栏"数据库管理"，选中数据库，点击"操作"列的"更多"按钮，在下拉选项中选择"重启"选项。
 
-image:image13.png[image13,width=79,height=286]
+image::image13.png[image13,width=79,height=286]
 
 [arabic, start=3]
 . 检查信息后，点"确认"
 
-image:image14.png[image14,width=553,height=210]
+image::image14.png[image14,width=553,height=210]
 
 === 修改密码
 
@@ -93,17 +93,17 @@ image:image14.png[image14,width=553,height=210]
 
 . 点击左侧导航栏"数据库管理"，选中数据库，点击"实例ID"列。
 
-image:image15.png[image15,width=553,height=48]
+image::image15.png[image15,width=553,height=48]
 
 [arabic, start=3]
-. 进入数据库详情页面，点击"修改密码"列的图标image:image16.png[image16,width=19,height=16]。
+. 进入数据库详情页面，点击"修改密码"列的图标image::image16.png[image16,width=19,height=16]。
 
-image:image17.png[image17,width=553,height=173]
+image::image17.png[image17,width=553,height=173]
 
 [arabic, start=4]
 . 输入新的数据库密码，点击"确定"按钮。
 
-image:image18.png[image18,width=553,height=352]
+image::image18.png[image18,width=553,height=352]
 
 === 删除实例
 
@@ -112,12 +112,12 @@ image:image18.png[image18,width=553,height=352]
 
 . 点击左侧导航栏"数据库管理"，选中数据库，点击"操作"列的"更多"按钮，在下拉选项中选择"删除实例"选项。
 
-image:image19.png[image19,width=55,height=201]
+image::image19.png[image19,width=55,height=201]
 
 [arabic, start=3]
 . 检查信息后，点击"确定"按钮。
 
-image:image20.png[image20,width=552,height=207]
+image::image20.png[image20,width=552,height=207]
 
 === 磁盘扩容
 
@@ -126,14 +126,14 @@ image:image20.png[image20,width=552,height=207]
 . demo用户登录平台。
 . 点击左侧导航栏"磁盘扩容"，选中数据库，点击"操作"列的"修改"按钮；或者点击左侧导航栏"数据库管理"，选中数据库，点击"操作"列的"更多"按钮，在下拉选项中选择"磁盘扩容"选项。
 
-image:image21.png[image21,width=552,height=197]
+image::image21.png[image21,width=552,height=197]
 
-image:image22.png[image22,width=63,height=200]
+image::image22.png[image22,width=63,height=200]
 
 [arabic, start=4]
 . 检查并输入磁盘扩容的大小后，点击"确定"按钮。
 
-image:image23.png[image23,width=553,height=242]
+image::image23.png[image23,width=553,height=242]
 
 === 规格变更
 
@@ -142,14 +142,14 @@ image:image23.png[image23,width=553,height=242]
 
 . 点击左侧导航栏"规格变更"，选中数据库，点击"操作"列的"修改"按钮；或者点击左侧导航栏"数据库管理"，选中数据库，点击"操作"列的"更多"按钮，在下拉选项中选择"规格变更"选项。
 
-image:image24.png[image24,width=552,height=196]
+image::image24.png[image24,width=552,height=196]
 
-image:image25.png[image25,width=59,height=205]
+image::image25.png[image25,width=59,height=205]
 
 [arabic, start=3]
 . 检查信息并输入规格变更的大小后，点击"确定"按钮。
 
-image:image26.png[image26,width=552,height=240]
+image::image26.png[image26,width=552,height=240]
 
 === 数据库备份
 
@@ -158,14 +158,14 @@ image:image26.png[image26,width=552,height=240]
 
 . 点击左侧导航栏"数据库备份"，选中数据库，点击"操作"列的"备份"；或者点击左侧导航栏"数据库管理"，选中数据库，点击"操作"列的"更多"按钮，在下拉选项中选择"备份"选项。
 
-image:image27.png[image27,width=552,height=197]
+image::image27.png[image27,width=552,height=197]
 
-image:image28.png[image28,width=64,height=199]
+image::image28.png[image28,width=64,height=199]
 
 [arabic, start=3]
 . 检查信息并输入备份名称后，点击"确定"按钮。
 
-image:image29.png[image29,width=552,height=285]
+image::image29.png[image29,width=552,height=285]
 
 === 数据库恢复
 
@@ -174,21 +174,21 @@ image:image29.png[image29,width=552,height=285]
 
 . 点击左侧导航栏"数据库恢复"，选中数据库，点击"操作"列的"查看"按钮；或者点击左侧导航栏"数据库管理"，选中数据库，点击"操作"列的"更多"按钮，在下拉选项中选择"恢复"选项。
 
-image:image30.png[image30,width=552,height=196]
+image::image30.png[image30,width=552,height=196]
 
-image:image31.png[image31,width=58,height=201]
+image::image31.png[image31,width=58,height=201]
 
 [arabic, start=3]
 . 选择需要备份的文件后，点"操作"列的"恢复"
 
-image:image32.png[image32,width=552,height=304]
+image::image32.png[image32,width=552,height=304]
 
-image:image33.png[image33,width=552,height=305]
+image::image33.png[image33,width=552,height=305]
 
 [arabic, start=4]
 . 输入需要恢复的数据库信息，密码为备份前的数据库密码
 
-image:image34.png[image34,width=552,height=246]
+image::image34.png[image34,width=552,height=246]
 
 [arabic, start=5]
 . 后续参考"4.1数据库订阅"的步骤。
@@ -200,31 +200,31 @@ image:image34.png[image34,width=552,height=246]
 
 . 点击左侧导航栏"监控工具"，选择数据库所在的集群；或者点击左侧导航栏"数据库管理"，选中数据库，点击"操作"列的"更多"按钮，在下拉选项中选择"监控"选项。
 
-image:image35.png[image35,width=552,height=261]
+image::image35.png[image35,width=552,height=261]
 
-image:image36.jpeg[image36,width=65,height=215]
+image::image36.jpeg[image36,width=65,height=215]
 
 [arabic, start=3]
 . 等待监控创建完毕后，再次重复（2）中操作，跳转新页面，输入用户名：admin，密码admin，点击login登录
 
 ____
-image:image37.png[image37,width=552,height=272]
+image::image37.png[image37,width=552,height=272]
 ____
 
 [arabic, start=4]
-. 选择图标image:image38.jpeg[image38,width=24,height=17]，点击查看监控指标。
+. 选择图标image::image38.jpeg[image38,width=24,height=17]，点击查看监控指标。
 
-image:image39.png[image39,width=553,height=264]
+image::image39.png[image39,width=553,height=264]
 
-image:image40.png[image40,width=552,height=261]
+image::image40.png[image40,width=552,height=261]
 
-image:image41.png[image41,width=553,height=261]
+image::image41.png[image41,width=553,height=261]
 
-image:image42.png[image42,width=552,height=72]
+image::image42.png[image42,width=552,height=72]
 
-image:image43.png[image43,width=552,height=259]
+image::image43.png[image43,width=552,height=259]
 
-image:image44.png[image44,width=552,height=280]
+image::image44.png[image44,width=552,height=280]
 
 === 可视化登录工具
 
@@ -233,12 +233,12 @@ image:image44.png[image44,width=552,height=280]
 
 . 点击左侧导航栏"数据库管理"，选中数据库，点击"操作"列的"更多"按钮，选择"登录"选项。
 
-image:image45.jpeg[image45,width=65,height=205]
+image::image45.jpeg[image45,width=65,height=205]
 
 [arabic, start=3]
 . 跳转新页面后，输入数据库用户名sysdba@ivyo.com及数据库密码，点击"Login"按钮。
 
-image:image46.png[image46,width=383,height=263]
+image::image46.png[image46,width=383,height=263]
 
 [arabic, start=4]
 . 连接数据库，即可进行操作。
