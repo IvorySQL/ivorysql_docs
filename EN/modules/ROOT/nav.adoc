@@ -12,9 +12,8 @@
 ** xref:master/4.3.adoc[Developer]
 ** 容器化指南
 *** xref:master/4.6.1.adoc[K8S deployment]
-*** xref:master/4.6.2.adoc[Helm deployment]
-*** xref:master/4.6.3.adoc[Operator deployment]
-*** xref:master/4.6.4.adoc[Docker Swarm & Docker Compose deployment]
+*** xref:master/4.6.2.adoc[Operator deployment]
+*** xref:master/4.6.3.adoc[Docker Swarm & Docker Compose deployment]
 ** xref:master/4.4.adoc[Operation Management]
 ** xref:master/4.7.adoc[Cloud Service Platform]
 * IvorySQL Ecosystem
