@@ -15,7 +15,7 @@ The installation methods for IvorySQL include the following five:
 - <<deb-installation>>
 
 
-This chapter will provide detailed instructions on the installation, execution, and uninstallation processes for each method. For a quicker access to IvorySQL, please refer to xref:v5.0/3.adoc#quick-installation[Quick installation].
+This chapter will provide detailed instructions on the installation, execution, and uninstallation processes for each method. For a quicker access to IvorySQL, please refer to xref:v5.0/3.1.adoc#quick-installation[Quick installation].
 
 Before getting started, please create an user and grant it root privileges. All the installation steps will be performed by this user. Here we just name it 'ivorysql'.
 

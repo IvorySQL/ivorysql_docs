@@ -221,7 +221,8 @@ Labels:            my-label=value2
 Annotations:       my-annotation: value1
 ....
 
-NOTE: 使用默认 `ClusterIP` 类型时禁止设置 `nodePort`；该值必须在合法范围内且未被占用。此处提供的注解与标签优先级最高。若通过外部暴露 Service 并依赖 TLS 验证，需使用 IVYO 的 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/customize-cluster.md#customize-tls[自定义 TLS] 功能。
+NOTE: 使用默认 `ClusterIP` 类型时禁止设置 `nodePort`；该值必须在合法范围内且未被占用。此处提供的注解与标签优先级最高。若通过外部暴露 Service 并依赖 TLS 验证，需使用 IVYO 的 
+https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/customize-cluster.md#customize-tls[自定义 TLS] 功能。
 
 [#connect-app]
 === 连接应用程序
@@ -1371,7 +1372,8 @@ spec:
 
 ===== 流式备用集群
 
-流式备用集群依赖于通过网络到主集群的经过身份验证的连接。主集群应可通过网络访问并允许 TLS 身份验证（默认启用 TLS）。在以下清单中，我们将 `standby.enabled` 设置为 `true`，并提供了指向主集群的 `host` 和 `port`。我们还定义了 `customTLSSecret` 和 `customReplicationTLSSecret` 以提供允许备用集群向主集群进行身份验证的证书。对于这种类型的备用集群，您必须使用 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/customize-cluster.md#customize-tls[自定义 TLS]：
+流式备用集群依赖于通过网络到主集群的经过身份验证的连接。主集群应可通过网络访问并允许 TLS 身份验证（默认启用 TLS）。在以下清单中，我们将 `standby.enabled` 设置为 `true`，并提供了指向主集群的 `host` 和 `port`。我们还定义了 `customTLSSecret` 和 `customReplicationTLSSecret` 以提供允许备用集群向主集群进行身份验证的证书。对于这种类型的备用集群，您必须使用 
+https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/customize-cluster.md#customize-tls[自定义 TLS]：
 
 ----
 apiVersion: ivory-operator.ivorysql.org/v1beta1
@@ -1814,7 +1816,8 @@ kubectl apply -k kustomize/keycloak
 Kubernetes 将检测到更改并开始部署新的 Keycloak Pod。完成后，Keycloak 现在将通过 PgBouncer 连接池连接到 Ivory！
 
 === TLS
-IVYO 通过 TLS 部署每个集群和组件。这包括 PgBouncer 连接池。如果您使用自己的 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/customize-cluster.md#customize-tls[自定义 TLS 设置]，则需要在 `spec.proxy.pgBouncer.customTLSSecret` 中为 PgBouncer 提供 Secret 引用。
+IVYO 通过 TLS 部署每个集群和组件。这包括 PgBouncer 连接池。如果您使用自己的 
+https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/customize-cluster.md#customize-tls[自定义 TLS 设置]，则需要在 `spec.proxy.pgBouncer.customTLSSecret` 中为 PgBouncer 提供 Secret 引用。
 
 PgBouncer 的 TLS 证书应具有与 PgBouncer Service 名称匹配的通用名称 (CN)。这是集群的名称，后缀为 `-pgbouncer`。例如，对于我们的 `hippo` 集群，这将是 `hippo-pgbouncer`。对于 `keycloakdb` 示例，它将是 `keycloakdb-pgBouncer`。
 
@@ -2059,7 +2062,8 @@ IVYO 会自动检测并加载对 IvorySQL 服务器和复制 Secret 内容的更
 
 [IMPORTANT]
 ====
-更改 IvorySQL 证书颁发机构时，请确保同时更新 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/customize-cluster.md#customize-tls[`customReplicationTLSSecret`]。
+更改 IvorySQL 证书颁发机构时，请确保同时更新 
+https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/customize-cluster.md#customize-tls[`customReplicationTLSSecret`]。
 ====
 
 === 更改主节点
