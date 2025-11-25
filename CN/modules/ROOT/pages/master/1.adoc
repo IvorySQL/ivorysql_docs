@@ -167,38 +167,38 @@ IvorySQL 的主要代码仓库：
 == 贡献者名单
 以下人员（按字母顺序）作为补丁作者、提交者、审阅者、测试者或问题报告者，为本次发布做出了贡献。
 
-* Carlos Chong
 * ccwxl
 * Cédric Villemain
 * elodiefb
-* Fawei Zhao
-* Ge Sui
 * Grant Zhou
 * Imran Zaheer
-* jerome-peng
-* Jiaoshun Tian
 * luss
 * Martin Gerhardy
 * msdnchina
 * omstack
 * otegami
 * rophy
-* Ruoyan Shi
-* Shaolin Chu
-* Shawn Yan
-* Shihua Yang
-* Shiji Niu
-* Shuisen Tong
 * shlei6067
 * sjw1933
-* Xiangyu Liang
-* Xiaohui Liu
-* Xinjie Lv
-* xuexiaoganghs
-* Xueyu Gao
-* yangchunwanwusheng
-* Yanliang Lei
 * Yasir Hussain Shah
-* Yuan Li
-* Zheng Tao
-* Zhenhao Pan
+* 初少林
+* 崇鹏豪
+* 高雪玉
+* 矫顺田
+* 类延良
+* 李苑
+* 梁翔宇
+* 刘晓辉
+* 吕新杰
+* 牛世继
+* 彭冲
+* 潘振浩
+* 石卓妍
+* 隋戈
+* 陶郑
+* 童水森
+* 王硕
+* 薛晓刚
+* 严少安
+* 杨世华
+* 赵法威

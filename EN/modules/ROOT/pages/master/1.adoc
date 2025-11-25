@@ -184,7 +184,6 @@ The following individuals (in alphabetical order) have contributed to this relea
 * omstack
 * otegami
 * rophy
-* Ruoyan Shi
 * Shaolin Chu
 * Shawn Yan
 * Shihua Yang
@@ -203,3 +202,4 @@ The following individuals (in alphabetical order) have contributed to this relea
 * Yuan Li
 * Zheng Tao
 * Zhenhao Pan
+* Zhuoyan Shi
