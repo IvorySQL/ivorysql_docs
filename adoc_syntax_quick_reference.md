@@ -164,7 +164,7 @@ Some more text
 = Another top-level heading
 ```
 
-正确释放
+正确示范
 
 ```
 = Title
@@ -223,7 +223,7 @@ Some text here
 Some more text here
 ```
 
-正确释放:
+正确示范:
 
 ```
 Some text here

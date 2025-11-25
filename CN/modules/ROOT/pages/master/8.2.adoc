@@ -52,7 +52,7 @@ IvorySQL文档是用“asciidoc”编写的。为确保格式的质量和一致�
 
 ​21、链接文本两边禁止出现多余的空格。如不能出现 https://www.example.com/[某链接]。
 
-​22、链接必须有链接路径。如不能出现空连接等情况。
+​22、链接必须有链接路径。如不能出现空链接等情况。
 
 == 示例
 
@@ -166,7 +166,7 @@ Some more text
 = Another top-level heading
 ```
 
-正确释放
+正确示范
 
 ```
 = Title
@@ -225,7 +225,7 @@ Some text here
 Some more text here
 ```
 
-正确释放:
+正确示范:
 
 ```
 Some text here
@@ -431,7 +431,7 @@ some text
 
 
 
-20、链接必须有链接路径。如不能出现空连接等情况。
+20、链接必须有链接路径。如不能出现空链接等情况。
 
 错误示范
 

@@ -356,7 +356,7 @@ nobody 55048 55047 0 10月21 ? 00:00:00 nginx: worker process
 
 参见
 
-https://github.com/IvorySQL/ivory-operator/tree/IVYO_REL_4_STABLE[https://github.com/IvorySQL/ivory-operator/tree/IVYO_REL_5_STABLE]
+https://github.com/IvorySQL/ivory-operator/tree/IVYO_REL_5_STABLE[https://github.com/IvorySQL/ivory-operator/tree/IVYO_REL_5_STABLE]
 
 网站上的readme
 

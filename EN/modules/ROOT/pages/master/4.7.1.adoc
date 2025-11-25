@@ -357,7 +357,7 @@ Set up the Kubernetes cluster yourself. This section describes how to install `i
 
 Refer to the README on GitHub:
 
-https://github.com/IvorySQL/ivory-operator/tree/IVYO_REL_4_STABLE[https://github.com/IvorySQL/ivory-operator/tree/IVYO_REL_5_STABLE]
+https://github.com/IvorySQL/ivory-operator/tree/IVYO_REL_5_STABLE[https://github.com/IvorySQL/ivory-operator/tree/IVYO_REL_5_STABLE]
 
 ==== Load container images
 

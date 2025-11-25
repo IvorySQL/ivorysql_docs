@@ -13,7 +13,7 @@ image::media/image3.png[image3,width=274,height=355]
 
 === 用户登录
 
-进入登录页面，根据提示输入信息即可访问瀚高云服务平台：
+进入登录页面，根据提示输入信息即可访问IvorySQL云服务平台：
 
 image::media/image4.png[image4,width=552,height=272]
 

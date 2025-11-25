@@ -48,11 +48,11 @@ CREATE [ OR REPLACE ] FUNCTION
 
 支持冒号占位符形式的绑定变量，例如: 1，:name。
 
-新增新的DO+USING语法： DO [ LANGUAGE lang_name ] code [USING IN | OUT | IN OUT, ...]
+新增DO+USING语法： DO [ LANGUAGE lang_name ] code [USING IN | OUT | IN OUT, ...]
 
 支持在libpq中按位置和按参数名字绑定变量，提供系统函数get_parameter_descr，该函数根据SQL语句，返回变量名字与位置的关系。
 
-=== ibpq中调用含out参数的函数
+=== libpq中调用含out参数的函数
 
 libpq接口端提供准备、绑定、执行函数，这些函数与OCI相应函数类似。
 

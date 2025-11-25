@@ -5,7 +5,7 @@
 
 == Version Overview
 
-[**Release date: June 04, 2025**]
+[**Release date: November 25th, 2025**]
 
 IvorySQL 5.0, based on PostgreSQL 18.0 and includes a variety of bug fixes. For a comprehensive list of updates, please visit our https://docs.ivorysql.org/[documentation site].
 

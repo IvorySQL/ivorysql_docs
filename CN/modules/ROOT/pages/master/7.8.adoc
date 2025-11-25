@@ -604,7 +604,7 @@ select regexp_replace('01234abcd56789','012','xxx')from dual;
 ```
 
 === `regexp_substr` 函数
-功能：拾取合符正则表达式描述的字符子串，支持参数：text, text,integer /text, text, integer, integer/ text, text, integer, integer, text /varchar2 ,varchar2,测试用例如下：
+功能：拾取符合正则表达式描述的字符子串，支持参数：text, text,integer /text, text, integer, integer/ text, text, integer, integer, text /varchar2 ,varchar2,测试用例如下：
 查询'012ab34'中从第一个数开始的012字串：
 
 ```
@@ -1014,7 +1014,7 @@ select sessiontimezone() from dual;
 (1 row)
 ```
 
-修改timezone后，查看时区相信信息：
+修改timezone后，查看时区详细信息：
 
 ```
 set timezone = 'Asia/Hong_Kong';
@@ -1052,7 +1052,7 @@ select uid() from dual;
 
 === `USERENV` 函数
 功能：返回当前用户环境的信息，测试用例如下：
-查看当前用户是否是dba，如果是返回ture：
+查看当前用户是否是dba，如果是返回true：
 
 ```
 select userenv('isdba')from dual;
