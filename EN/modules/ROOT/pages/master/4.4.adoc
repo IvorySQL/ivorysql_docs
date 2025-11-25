@@ -77,7 +77,62 @@ When the above operation is executed, the old and new versions of the backend se
 
 === Upgrade with the pg_upgrade utility
 
-The pg_upgrade utility supports in-place upgrades of IvorySQL across versions. The upgrade can be performed in minutes, especially when using the --link mode. It requires similar steps as pg_dumpall above, such as starting/stopping the server and running initdb.pg_upgrade https://www.postgresql.org/docs/current/pgupgrade.html[doc] outlines the steps required.
+The pg_upgrade tool is a built-in cross-version upgrade utility in PostgreSQL that enables in-place database upgrades without requiring export and import operations. Since IvorySQL is derived from PostgreSQL, it can also use the pg_upgrade tool for major version upgrades. Below is a brief introduction on how to use pg_upgrade to upgrade IvorySQL to the latest 5.0 version on the CentOS8 platform.
+
+pg_upgrade provides a pre-upgrade compatibility check (using the -c or --check option), which can identify issues such as plugin or data type incompatibilities. If the --link option is specified, the new version service can directly use the existing database files without copying, typically completing the upgrade in just a few minutes.
+
+Commonly used parameters include:
+
+* -b bindir, --old-bindir=bindir: The directory of the old IvorySQL executable files;
+* -B bindir, --new-bindir=bindir: The directory of the new IvorySQL executable files;
+* -d configdir, --old-datadir=configdir: The data directory of the old version;
+* -D configdir, --new-datadir=configdir: The data directory of the new version;
+* -c, --check: Only check upgrade compatibility without modifying any data;
+* -k, --link: Upgrade using hard link method;
+
+Upgrade preparation:
+
+First, stop the old version of the IvorySQL 4.6 database:
+```
+/usr/ivory-4/bin/pg_ctl -D ./data stop
+```
+Then install the new version of the IvorySQL 5.0 database:
+```
+dnf install -y ivorysql5-5.0
+```
+Initialize the new IvorySQL 5.0 data directory:
+```
+/usr/ivory-5/bin/initdb -D ./data
+```
+Check version compatibility:
+```
+/usr/ivory-5/bin/pg_upgrade --old-datadir=/home/ivorysql/test/4.6/data --new-datadir=/home/ivorysql/test/5.0/data --old-bindir=/usr/ivory-4/bin/ --new-bindir=/usr/ivory-5/bin/ --check
+```
+The appearance of "Clusters are compatible" at the end indicates that there are no compatibility issues between the two versions of data, and the upgrade can proceed.
+
+Official upgrade:
+```
+/usr/ivory-5/bin/pg_upgrade --old-datadir=/home/ivorysql/test/4.6/data --new-datadir=/home/ivorysql/test/5.0/data --old-bindir=/usr/ivory-4/bin/ --new-bindir=/usr/ivory-5/bin/
+```
+Seeing "Upgrade Complete" indicates that the upgrade has been successfully completed.
+
+Update statistics:
+
+pg_upgrade creates new system tables and reuses old data for the upgrade. However, statistics are not migrated during the upgrade process. Therefore, before enabling the new version, you should first recollect statistics to avoid incorrect query plans caused by missing statistics.
+
+Start the new version of the database.
+```
+/usr/ivory-5/bin/pg_ctl -D ./data -l logfile start
+```
+Manually run the vacuum command
+```
+vacuum --all --analyze-in-stage -h 127.0.0.1 -p 1521
+```
+Cleanup after upgrade
+```
+rm -rf /home/ivorysql/test/4.6/data
+```
+pg_upgrade https://www.postgresql.org/docs/current/pgupgrade.html[Document]outlines the steps required above.
 
 === Upgrade data by copying
 

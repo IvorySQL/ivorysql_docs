@@ -69,16 +69,22 @@ IvorySQL是一个功能强大的开源对象关系数据库管理系统(ORDBMS)�
 
 == 与Oracle的兼容性
 
-* https://docs.ivorysql.org/cn/ivorysql-doc/v5.0/v5.0/14[ivorysql框架设计]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v5.0/v5.0/15[GUC框架]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v5.0/v5.0/16[大小写转换]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v5.0/v5.0/17[双模式设计]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v5.0/v5.0/18[兼容Oracle like]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v5.0/v5.0/19[兼容Oracle匿名块]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v5.0/v5.0/20[兼容Oracle函数与存储过程]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v5.0/v5.0/21[内置数据类型与内置函数]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v5.0/v5.0/22[新增Oracle兼容模式的端口与IP]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v5.0/v5.0/26[XML函数]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v5.0/v5.0/27[兼容Oracle sequence]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v5.0/v5.0/28[包]
-* https://docs.ivorysql.org/cn/ivorysql-doc/v5.0/v5.0/29[不可见列]
+* 大小写转换
+* LIKE操作符
+* 匿名块
+* 函数与存储过程
+* 内置数据类型与内置函数
+* 端口与IP
+* XML函数
+* sequence
+* 包
+* 不可见列
+* RowID
+* OUT 参数
+* %TYPE、%ROWTYPE
+* NLS 参数
+* Force View
+* 嵌套子函数
+* sys_guid 函数
+* 空字符串转null
+* CALL INTO

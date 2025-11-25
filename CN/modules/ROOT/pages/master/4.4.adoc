@@ -88,7 +88,61 @@ pg_dumpall -p 5432 | psql -d postgres -p 5433
 
 === 利用pg_upgrade 工具进行升级
 
-pg_upgrade 工具可以支持IvorySQL跨版本的就地升级。 升级可以在数分钟内被执行，特别是使用--link模式时。它要求和上面的pg_dumpall相似的步骤，例如启动/停止 服务器、运行initdb。pg_upgrade https://www.postgresql.org/docs/current/pgupgrade.html[文档]概述了所需的步骤。
+pg_upgrade 工具是PostgreSQL 内置的跨版本升级工具，能够对数据库就地升级，不需要执行导出和导入操作。IvorySQL源自于PG，因此也能够使用pg_upgrade 工具进行大版本升级。 下面简要介绍一下CentOS8平台上如何使用 pg_upgrade 将IvorySQL升级到最新的5.0版本。
+
+pg_upgrade 提供了升级前的兼容性检查（-c 或者 --check 选项）功能，可以发现插件、数据类型不兼容等问题。如果指定了--link 选项，新版本服务可以直接使用原有的数据库文件而不需要执行复制，通常可以在几分钟内完成升级操作。
+
+常用的参数包括：
+
+* -b bindir，--old-bindir=bindir：旧的 IvorySQL 可执行文件目录；
+* -B bindir，--new-bindir=bindir：新的 IvorySQL 可执行文件目录；
+* -d configdir，--old-datadir=configdir：旧版本的数据目录；
+* -D configdir，--new-datadir=configdir：新版本的数据目录；
+* -c，--check：只检查升级兼容性，不更改任何数据；
+* -k，--link：硬链接方式升级；
+
+升级准备：
+
+首先停止旧版本的IvorySQL4.6数据库：
+```
+/usr/ivory-4/bin/pg_ctl -D ./data stop
+```
+然后安装新版本的IvorySQL5.0数据库：
+```
+dnf install -y ivorysql5-5.0
+```
+初始化新版IvorySQL5.0数据目录：
+```
+/usr/ivory-5/bin/initdb -D ./data
+```
+检查版本兼容性：
+```
+/usr/ivory-5/bin/pg_upgrade --old-datadir=/home/ivorysql/test/4.6/data --new-datadir=/home/ivorysql/test/5.0/data --old-bindir=/usr/ivory-4/bin/ --new-bindir=/usr/ivory-5/bin/ --check
+```
+最后出现 “Clusters are compatible” 表明两个版本之间的数据不存在兼容性问题，可以进行升级。
+
+正式升级：
+```
+/usr/ivory-5/bin/pg_upgrade --old-datadir=/home/ivorysql/test/4.6/data --new-datadir=/home/ivorysql/test/5.0/data --old-bindir=/usr/ivory-4/bin/ --new-bindir=/usr/ivory-5/bin/
+```
+看到 Upgrade Complete 说明升级已经顺利完成。
+
+更新统计信息：
+
+pg_upgrade 会创建新的系统表，并重用旧的数据进行升级，统计信息并不会随升级过程迁移，所以在启用新版本之前，应该首先重新收集统计信息，避免没有统计信息导致错误的查询计划。
+启动新版本数据库
+```
+/usr/ivory-5/bin/pg_ctl -D ./data -l logfile start
+```
+手动运行vacuum命令
+```
+vacuum --all --analyze-in-stage -h 127.0.0.1 -p 1521
+```
+升级后清理
+```
+rm -rf /home/ivorysql/test/4.6/data
+```
+pg_upgrade https://www.postgresql.org/docs/current/pgupgrade.html[文档]概述了上述所需的步骤。
 
 === 通过复制升级数据
 
