@@ -183,6 +183,7 @@ The following individuals (in alphabetical order) have contributed to this relea
 * msdnchina
 * omstack
 * otegami
+* Ruike Sun
 * rophy
 * Shaolin Chu
 * Shawn Yan
@@ -200,6 +201,7 @@ The following individuals (in alphabetical order) have contributed to this relea
 * Yanliang Lei
 * Yasir Hussain Shah
 * Yuan Li
+* Zhe Zhang
 * Zheng Tao
 * Zhenhao Pan
 * Zhuoyan Shi

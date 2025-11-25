@@ -237,7 +237,8 @@ and not otherwise in use or the operation will fail. Additionally, be aware that
 will win in case of conflicts with any annotations or labels a user configures elsewhere.
 
 Finally, if you are exposing your Services externally and are relying on TLS
-verification, you will need to use the https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/customize-cluster.md#customize-tls[custom TLS]
+verification, you will need to use the 
+https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/customize-cluster.md#customize-tls[custom TLS]
 features of IVYO).
 
 === Connect an Application
@@ -2030,7 +2031,8 @@ cluster should be accessible via the network and allow TLS authentication (TLS i
 In the following manifest, we have `standby.enabled` set to `true` and have provided both the `host`
 and `port` that point to the primary cluster. We have also defined `customTLSSecret` and
 `customReplicationTLSSecret` to provide certs that allow the standby to authenticate to the primary.
-For this type of standby, you must use https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/customize-cluster.md#customize-tls[custom TLS]:
+For this type of standby, you must use 
+https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/customize-cluster.md#customize-tls[custom TLS]:
 
 [source,yaml]
 ----
@@ -2557,7 +2559,7 @@ Kubernetes will detect the changes and begin to deploy a new Keycloak Pod. When 
 
 === TLS
 
-IVYO deploys every cluster and component over TLS. This includes the PgBouncer connection pooler. If you are using your own xref:./customize-cluster.md#customize-tls[custom TLS setup], you will need to provide a Secret reference for a TLS key / certificate pair for PgBouncer in `spec.proxy.pgBouncer.customTLSSecret`.
+IVYO deploys every cluster and component over TLS. This includes the PgBouncer connection pooler. If you are using your own custom TLS setup, you will need to provide a Secret reference for a TLS key / certificate pair for PgBouncer in `spec.proxy.pgBouncer.customTLSSecret`.
 
 Your TLS certificate for PgBouncer should have a Common Name (CN) setting that matches the PgBouncer Service name. This is the name of the cluster suffixed with `-pgbouncer`. For example, for our `hippo` cluster this would be `hippo-pgbouncer`. For the `keycloakdb` example, it would be `keycloakdb-pgbouncer`.
 

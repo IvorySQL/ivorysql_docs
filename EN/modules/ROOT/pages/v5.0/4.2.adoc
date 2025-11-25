@@ -8,9 +8,9 @@ This chapter is a demo to show you how to build an IvorySQL cluster. Just take a
 == Primary node
 
 === Installing and start database
-For quick database installation by yum, please refer to xref:v5.0/3.adoc#quick-installation[Quick installation]。
+For quick database installation by yum, please refer to xref:v5.0/3.1.adoc#quick-installation[Quick installation]。
 
-For more installation options, please refer to xref:v5.0/6.adoc#Installation[Installation]。
+For more installation options, please refer to xref:v5.0/4.1.adoc#Installation[Installation]。
 [NOTE]
 The master node database needs to be installed and **started**.
 
@@ -55,9 +55,9 @@ $ pg_ctl restart
 
 == Standby node
 === Installing database
-For quick database installation by yum, please refer to xref:v5.0/3.adoc#quick-installation[Quick installation]。
+For quick database installation by yum, please refer to xref:v5.0/3.1.adoc#quick-installation[Quick installation]。
 
-For more installation options, please refer to xref:v5.0/6.adoc#Installation[Installation]。
+For more installation options, please refer to xref:v5.0/4.1.adoc#Installation[Installation]。
 
 [NOTE]
 The standby node database only needs to be installed and **not started**.
