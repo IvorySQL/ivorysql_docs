@@ -41,7 +41,7 @@ sudo apt install \
 $ wget https://download.osgeo.org/postgis/source/postgis-3.5.4.tar.gz
 $ tar xvf postgis-3.5.4.tar.gz
 $ cd postgis-3.5.4
-$ ./configure  --with-pgconfig=/path/to/pg_config   eg: /opt/IvorySQL-5/bin/pg_config, if ivorysql installation directory is /opt/IvorySQL-5.
+$ ./configure  --with-pgconfig=/path/to/pg_config   eg: /usr/ivory-5/bin/pg_config, if ivorysql installation directory is /usr/ivory-5.
 $ make
 $ sudo make install
 ----

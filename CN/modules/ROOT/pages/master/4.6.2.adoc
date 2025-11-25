@@ -1,0 +1,2177 @@
+:sectnums:
+:sectnumlevels: 5
+= IvorySQL Operator部署IvorySQL
+
+== Operator安装
+
+. Fork https://github.com/IvorySQL/ivory-operator[ivory-operator 仓库] 并克隆到本地：
++
+[source,bash,subs="attributes+"]
+----
+YOUR_GITHUB_UN="<your GitHub username>"
+git clone --depth 1 "git@github.com:${YOUR_GITHUB_UN}/ivory-operator.git"
+cd ivory-operator
+----
+
+. 执行以下命令完成安装：
++
+[source,bash]
+----
+kubectl apply -k examples/kustomize/install/namespace
+kubectl apply --server-side -k examples/kustomize/install/default
+----
+
+== 说明
+
+在本教程中，我们将基于 `examples/kustomize/ivory` 目录中的示例进行构建。
+
+当引用 YAML 清单中的嵌套对象时，我们将使用类似 `kubectl explain` 的 `.` 格式。例如，对于以下 YAML 文件：
+
+[source,yaml]
+----
+spec:
+  hippos:
+    appetite: huge
+----
+
+我们会用 `spec.hippos.appetite` 来表示最深层的元素。
+
+`kubectl explain` 是一个非常有用的命令。你可以使用它来查看 `ivorycluster.ivory-operator.ivorysql.org` 自定义资源定义（CRD）的结构：
+
+[source,bash]
+----
+kubectl explain ivorycluster
+----
+
+== 创建一个 Ivory 集群
+
+[#create]
+=== 创建
+
+创建一个 Ivory 集群非常简单。使用 `examples/kustomize/ivory` 目录中的示例，只需运行：
+
+[source,bash]
+----
+kubectl apply -k examples/kustomize/ivory
+----
+
+IVYO 将在 `ivory-operator` 命名空间中创建一个名为 `hippo` 的简单 Ivory 集群。你可以通过以下命令跟踪 Ivory 集群的状态：
+
+[source,bash]
+----
+kubectl -n ivory-operator describe ivoryclusters.ivory-operator.ivorysql.org hippo
+----
+
+你也可以使用以下命令跟踪 Ivory Pod 的状态：
+
+[source,bash]
+----
+kubectl -n ivory-operator get pods \
+  --selector=ivory-operator.ivorysql.org/cluster=hippo,ivory-operator.ivorysql.org/instance
+----
+
+[#what-just-happened]
+==== 发生了什么？
+
+IVYO 根据 `examples/kustomize/ivory` 目录中的 Kustomize 清单信息创建了 Ivory 集群。让我们通过查看 `examples/kustomize/ivory/ivory.yaml` 文件来更好地理解发生了什么：
+
+[source,yaml]
+----
+apiVersion: ivory-operator.ivorysql.org/v1beta1
+kind: IvoryCluster
+metadata:
+  name: hippo
+spec:
+  image: {{< param imageIvorySQL >}}
+  postgresVersion: {{< param postgresVersion >}}
+  instances:
+    - name: instance1
+      dataVolumeClaimSpec:
+        accessModes:
+        - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: 1Gi
+  backups:
+    pgbackrest:
+      image: {{< param imagePGBackrest >}}
+      repos:
+      - name: repo1
+        volume:
+          volumeClaimSpec:
+            accessModes:
+            - "ReadWriteOnce"
+            resources:
+              requests:
+                storage: 1Gi
+----
+
+当我们运行 `kubectl apply` 命令时，实际上是在 Kubernetes 中创建了一个 `ivorycluster` 自定义资源。IVYO 检测到新增的 `ivorycluster` 资源后，开始创建在 Kubernetes 中运行 Ivory 所需的所有对象！
+
+还发生了什么？IVYO 从 `metadata.name` 读取值，为 Ivory 集群命名为 `hippo`。此外，IVYO 通过查看 `spec.image` 和 `spec.backups.pgbackrest.image` 的值，分别确定了 Ivory 和 pgBackRest 使用的容器镜像。`spec.postgresVersion` 的值也很重要，它帮助 IVYO 跟踪你使用的 Ivory 主版本。
+
+IVYO 通过清单中的 `spec.instances` 部分知道要创建多少个 Ivory 实例。虽然 `name` 是可选的，但我们选择将其命名为 `instance1`。我们也可以在集群初始化期间创建多个副本和实例，但稍后在我们讨论 https://github.com/IvonySQL/ivory-operator/blob/master/docs/content/tutorial/high-availability.md[如何扩展并创建高可用 Ivory 集群] 时会详细介绍。
+
+`ivorycluster` 自定义资源中非常重要的一部分是 `dataVolumeClaimSpec` 部分。它描述了 Ivory 实例将使用的存储，建模自 https://kubernetes.io/docs/concepts/storage/persistent-volumes/[Persistent Volume Claim]。如果你没有提供 `spec.instances.dataVolumeClaimSpec.storageClassName`，则将使用 Kubernetes 环境中的默认存储类。
+
+作为创建 Ivory 集群的一部分，我们还指定了备份存档的信息。IVYO 使用 https://pgbackrest.org/[pgBackRest]，这是一个开源的备份与恢复工具，专为处理 TB 级备份而设计。在集群初始化期间，我们可以指定备份和归档（https://www.postgresql.org/docs/current/wal-intro.html[预写日志或 WAL]）的存储位置。我们将在本教程的 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/backups.md[灾难恢复] 部分更深入地讨论 `ivorycluster` 规范的这一部分，并了解如何将备份存储在 Amazon S3、Google GCS 和 Azure Blob Storage 中。
+
+[#troubleshooting]
+=== 故障排查
+
+[#pods-stuck-pending]
+==== IvorySQL / pgBackRest Pod 处于 `Pending` 状态
+
+最常见的原因是 PVC 未绑定。请确保你在任何 `volumeClaimSpec` 中正确设置了存储选项。你可以随时更新设置并使用 `kubectl apply` 重新应用更改。
+
+还要确保你有足够的持久卷可用：你的 Kubernetes 管理员可能需要配置更多持久卷。
+
+如果你使用的是 OpenShift，可能需要将 `spec.openshift` 设置为 `true`。
+
+== 连接到 Ivory 集群
+
+创建 Ivory 集群是一回事，连接到它又是另一回事。让我们看看 IVYO 如何让连接 Ivory 集群变得简单！
+
+[#background]
+=== 背景：Service、Secret 与 TLS
+
+IVYO 会创建一系列 Kubernetes https://kubernetes.io/docs/concepts/services-networking/service/[Service]，为访问 Ivory 数据库提供稳定的端点。这些端点让应用程序能够始终如一地连接到数据。要查看可用的 Service，可执行：
+
+[source,bash]
+----
+kubectl -n ivory-operator get svc --selector=ivory-operator.ivorysql.org/cluster=hippo
+----
+
+输出示例：
+
+....
+NAME              TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)    AGE
+hippo-ha          ClusterIP   10.103.73.92   <none>        5432/TCP   3h14m
+hippo-ha-config   ClusterIP   None           <none>        <none>     3h14m
+hippo-pods        ClusterIP   None           <none>        <none>     3h14m
+hippo-primary     ClusterIP   None           <none>        5432/TCP   3h14m
+hippo-replicas    ClusterIP   10.98.110.215  <none>        5432/TCP   3h14m
+....
+
+大多数 Service 用于集群内部管理，无需关注。连接数据库时，只需关注名为 `hippo-primary` 的 Service。得益于 IVYO，你甚至无需手动指定它——这些信息已被写入 Secret！
+
+集群初始化时，IVYO 会引导创建一个数据库和用户，供应用程序使用。相关信息保存在名为 `<clusterName>-pguser-<userName>` 的 Secret 中。对于 `hippo` 集群，该 Secret 名为 `hippo-pguser-hippo`，包含以下键值：
+
+- `user`：用户账户名
+- `password`：用户密码
+- `dbname`：用户默认可访问的数据库名
+- `host`：数据库主机名（指向主实例的 Service）
+- `port`：数据库监听端口
+- `uri`： https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING[PostgreSQL 连接 URI]，含完整登录信息
+- `jdbc-uri`： https://jdbc.postgresql.org/documentation/use/[PostgreSQL JDBC 连接 URI]，供 JDBC 驱动使用
+
+所有连接均通过 TLS 进行。IVYO 自带证书中心（CA），支持使用 Ivory 的 `verify-full` SSL 模式，防止窃听与中间人攻击。你也可以稍后使用自定义 CA，详见 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/customize-cluster.md[自定义集群] 章节。
+
+[#modify-service]
+==== 修改 Service 类型、NodePort 值与元数据
+
+默认情况下，IVYO 部署的 Service 类型为 `ClusterIP`。根据暴露数据库的方式，你可能需要更改为其他 https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types[Service 类型] 或指定 https://kubernetes.io/docs/concepts/services-networking/service/#type-nodeport[NodePort 值]。
+
+可通过以下字段调整 IVYO 管理的 Service：
+
+- `spec.service`：控制连接主库的 Service
+- `spec.userInterface.pgAdmin.service`：控制 pgAdmin 管理工具的 Service
+
+例如，将主库 Service 改为 `NodePort` 并指定端口、注解与标签：
+
+[source,yaml]
+----
+spec:
+  service:
+    metadata:
+      annotations:
+        my-annotation: value1
+      labels:
+        my-label: value2
+    type: NodePort
+    nodePort: 32000
+----
+
+重新应用后，再次查看 Service：
+
+[source,bash]
+----
+kubectl -n ivory-operator get svc --selector=ivory-operator.ivorysql.org/cluster=hippo
+----
+
+输出示例：
+
+....
+NAME              TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+hippo-ha          NodePort    10.105.57.191   <none>        5432:32000/TCP   48s
+hippo-ha-config   ClusterIP   None            <none>        <none>           48s
+hippo-pods        ClusterIP   None            <none>        <none>           48s
+hippo-primary     ClusterIP   None            <none>        5432/TCP         48s
+hippo-replicas    ClusterIP   10.106.18.99    <none>        5432/TCP         48s
+....
+
+查看 `hippo-ha` 的详细信息，顶部将显示自定义注解与标签已生效：
+
+....
+Name:              hippo-ha
+Namespace:         ivory-operator
+Labels:            my-label=value2
+                   ivory-operator.ivorysql.org/cluster=hippo
+                   ivory-operator.ivorysql.org/patroni=hippo-ha
+Annotations:       my-annotation: value1
+....
+
+NOTE: 使用默认 `ClusterIP` 类型时禁止设置 `nodePort`；该值必须在合法范围内且未被占用。此处提供的注解与标签优先级最高。若通过外部暴露 Service 并依赖 TLS 验证，需使用 IVYO 的 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/customize-cluster.md#customize-tls[自定义 TLS] 功能。
+
+[#connect-app]
+=== 连接应用程序
+
+本教程以 https://www.keycloak.org/[Keycloak]（开源身份管理应用）为例。Keycloak 可部署在 Kubernetes 上，并使用 Ivory 作为数据库。以下示例清单将 Keycloak 连接到已运行的 `hippo` 集群：
+
+[source,bash]
+----
+kubectl apply --filename=- <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: ivory-operator
+  labels:
+    app.kubernetes.io/name: keycloak
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: keycloak
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: keycloak
+    spec:
+      containers:
+      - image: quay.io/keycloak/keycloak:latest
+        args: ["start-dev"]
+        name: keycloak
+        env:
+        - name: DB_VENDOR
+          value: "ivory"
+        - name: DB_ADDR
+          valueFrom: { secretKeyRef: { name: hippo-pguser-hippo, key: host } }
+        - name: DB_PORT
+          valueFrom: { secretKeyRef: { name: hippo-pguser-hippo, key: port } }
+        - name: DB_DATABASE
+          valueFrom: { secretKeyRef: { name: hippo-pguser-hippo, key: dbname } }
+        - name: DB_USER
+          valueFrom: { secretKeyRef: { name: hippo-pguser-hippo, key: user } }
+        - name: DB_PASSWORD
+          valueFrom: { secretKeyRef: { name: hippo-pguser-hippo, key: password } }
+        - name: KEYCLOAK_ADMIN
+          value: "admin"
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          value: "admin"
+        - name: KC_PROXY
+          value: "edge"
+        ports:
+        - name: http
+          containerPort: 8080
+        - name: https
+          containerPort: 8443
+        readinessProbe:
+          httpGet:
+            path: /realms/master
+            port: 8080
+      restartPolicy: Always
+EOF
+----
+
+注意环境变量部分：
+
+[source,yaml]
+----
+- name: DB_ADDR
+  valueFrom: { secretKeyRef: { name: hippo-pguser-hippo, key: host } }
+- name: DB_PORT
+  valueFrom: { secretKeyRef: { name: hippo-pguser-hippo, key: port } }
+- name: DB_DATABASE
+  valueFrom: { secretKeyRef: { name: hippo-pguser-hippo, key: dbname } }
+- name: DB_USER
+  valueFrom: { secretKeyRef: { name: hippo-pguser-hippo, key: user } }
+- name: DB_PASSWORD
+  valueFrom: { secretKeyRef: { name: hippo-pguser-hippo, key: password } }
+----
+
+所有连接信息均来自 `hippo-pguser-hippo` Secret，无需硬编码或明文传递凭据，即可直接在 GitOps 流水线中使用！
+
+== 高可用（HA）
+
+Ivory 以稳定著称，通常“开箱即用”。但在 Kubernetes 这样的分布式环境中，仍可能遇到多种影响可用的事件：
+
+- 数据库磁盘或其余硬件故障  
+- 网络不可达  
+- 节点操作系统崩溃  
+- 数据文件损坏  
+- 整个数据中心失联  
+- Kubernetes 自身组件（如 Service）被误删  
+
+此外，常规运维（小版本升级、安全补丁、硬件更换）也会带来计划内停机。
+
+好消息：IVYO 已针对上述场景提供保护。要让集群**真正高可用**，首先把它**扩容**。
+
+[#scale-replicas]
+=== 为 Ivory 集群添加副本
+
+IVYO 支持两种快速获得 HA 集群的方式：
+
+1. 调大 `spec.instances.replicas`  
+2. 在 `spec.instances` 新增条目  
+
+本文采用方法 1，将副本数设为 2。对应 YAML 片段：
+
+[source,yaml]
+----
+apiVersion: ivory-operator.ivorysql.org/v1beta1
+kind: IvoryCluster
+metadata:
+  name: hippo
+spec:
+  image: "{{< param imageIvorySQL >}}"
+  postgresVersion: {{< param postgresVersion >}}
+  instances:
+    - name: instance1
+      replicas: 2          # <── 新增副本
+      dataVolumeClaimSpec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+  backups:
+    pgbackrest:
+      image: "{{< param imagePGBackrest >}}"
+      repos:
+      - name: repo1
+        volume:
+          volumeClaimSpec:
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 1Gi
+----
+
+应用后稍等片刻，新副本自动初始化。通过以下命令可实时查看实例 Pod：
+
+[source,bash]
+----
+kubectl -n ivory-operator get pods \
+  -l ivory-operator.ivorysql.org/cluster=hippo,\
+    ivory-operator.ivorysql.org/instance-set
+----
+
+[#test-ha]
+=== 验证集群自愈能力
+
+[#test-delete-svc]
+==== 测试 1 —— 删除主库 Service
+
+上一篇《连接集群》提到，应用默认通过 `hippo-primary` Service 读写。我们人为删除它：
+
+[source,bash]
+----
+kubectl -n ivory-operator delete svc hippo-primary
+----
+
+立刻再查询 Service 列表：
+
+[source,bash]
+----
+kubectl -n ivory-operator get svc \
+  -l ivory-operator.ivorysql.org/cluster=hippo
+----
+
+可见 `hippo-primary` 已被 IVYO **秒级重建**。多数应用凭借重连逻辑几乎无感知。
+
+[#test-delete-sts]
+==== 测试 2 —— 删除主库 StatefulSet
+
+首先找到当前主库 Pod 对应的 StatefulSet 名字：
+
+[source,bash]
+----
+PRIMARY_STS=$(kubectl -n ivory-operator get sts \
+  -l ivory-operator.ivorysql.org/cluster=hippo,\
+    ivory-operator.ivorysql.org/role=master \
+  -o jsonpath='{.items[0].metadata.name}')
+echo $PRIMARY_STS
+----
+
+假设输出为 `hippo-instance1-zj5s`，直接删除：
+
+[source,bash]
+----
+kubectl -n ivory-operator delete sts "$PRIMARY_STS"
+----
+
+再次查看 StatefulSet：
+
+[source,bash]
+----
+kubectl -n ivory-operator get sts \
+  -l ivory-operator.ivorysql.org/cluster=hippo
+----
+
+IVYO 会立即重建被删对象，并自动将原副本重新加入集群。同时，另一实例已被提升为新主：
+
+[source,bash]
+----
+kubectl -n ivory-operator get pods \
+  -l ivory-operator.ivorysql.org/role=master \
+  -o jsonpath='{.items[0].metadata.labels.ivory-operator\.ivorysql\.org/instance}'
+----
+
+即使 IVYO 进程短暂离线，Patroni 仍能独立完成故障切换，确保应用读写不中断。
+
+[#sync-repl]
+=== 同步复制（Synchronous Replication）
+
+IvorySQL 支持同步复制，可进一步降低事务丢失风险。只需在集群里增加：
+
+[source,yaml]
+----
+spec:
+  patroni:
+    dynamicConfiguration:
+      synchronous_mode: true
+----
+
+如需强制所有提交都同步到至少一个副本，可再加：
+
+[source,yaml]
+----
+      synchronous_mode_strict: true
+----
+
+NOTE: Patroni 默认“可用性优先”，当同步副本全部失效时会退化为异步；若业务要求**绝对同步**，请启用 `synchronous_mode_strict`，此时无可用同步副本将拒绝写入。
+
+[#affinity]
+=== 亲和性（Affinity）与反亲和性
+
+[#pod-antiaffinity]
+==== Pod 反亲和
+
+- `preferredDuringSchedulingIgnoredDuringExecution` —— 尽力分散，资源不足时允许同节点  
+- `requiredDuringSchedulingIgnoredDuringExecution` —— 强制分散，找不到空闲节点则 Pending  
+
+示例 —— 强制让同一 `instance-set` 的 Pod 落在不同节点：
+
+[source,yaml]
+----
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                ivory-operator.ivorysql.org/cluster: hippo
+                ivory-operator.ivorysql.org/instance-set: instance1
+----
+
+[#node-affinity]
+==== 节点亲和
+
+将数据库实例固定在带 `workload-role=db` 标签的节点：
+
+[source,yaml]
+----
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: workload-role
+                operator: In
+                values: ["db"]
+----
+
+[#topology-spread]
+=== Pod 拓扑分布约束（Topology Spread Constraints）
+
+相比反亲和的“0 或 1”限制，拓扑分布约束可按比例打散，粒度更细。字段模板：
+
+[source,yaml]
+----
+topologySpreadConstraints:
+- maxSkew: <整数>
+  topologyKey: <标签键>
+  whenUnsatisfiable: <DoNotSchedule | ScheduleAnyway>
+  labelSelector: <对象>
+----
+
+示例 —— 5 个实例 Pod 在 3 节点间尽量均衡：
+
+[source,yaml]
+----
+  instances:
+    - name: instance1
+      replicas: 5
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: my-node-label
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              ivory-operator.ivorysql.org/instance-set: instance1
+----
+
+备份仓库主机（repo-host）也可同理配置，确保多集群场景下仓库 Pod 分散。
+
+== 在线调整 Ivory 集群规格
+
+业务蒸蒸日上，流量激增，需要给 Ivory 集群扩容，却又担心 resize 造成停机？  
+IVYO 提供**滚动升级**机制，能在**零感知或毫秒级中断**内完成 CPU、内存、磁盘等所有规格的在线调整。  
+继续阅读前，请确保已按上一章《高可用》部署了 **HA 集群**（至少 2 副本）。
+
+[#resize-cpu-memory]
+=== 垂直调整 CPU / 内存
+
+IVYO 把资源声明分散在多处，保持统一语义（与 Kubernetes 原生 `resources` 字段一致），并支持 QoS 类别设置：
+
+`spec.instances.resources`  
+  └ Ivory 主容器、init 容器、数据迁移 Job 的 CPU / 内存  
+
+`spec.instances.sidecars.replicaCertCopy.resources`  
+  └ 副本证书复制 sidecar  
+
+`spec.backups.pgbackrest.repoHost.resources`  
+  └ pgBackRest 仓库主机及对应 init / 迁移 Job  
+
+`spec.backups.pgbackrest.sidecars.*.resources`  
+`spec.backups.pgbackrest.jobs.resources`  
+`spec.backups.pgbackrest.restore.resources`  
+`spec.dataSource.ivorycluster.resources`
+
+示例：把 `hippo` 每个实例上限调整为 2 CPU、4 GiB 内存
+
+[source,yaml]
+----
+apiVersion: ivory-operator.ivorysql.org/v1beta1
+kind: IvoryCluster
+metadata:
+  name: hippo
+spec:
+  instances:
+    - name: instance1
+      replicas: 2
+      resources:          # <── 新增或修改
+        limits:
+          cpu: "2"
+          memory: 4Gi
+      dataVolumeClaimSpec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+----
+
+[source,bash]
+kubectl apply -k examples/kustomize/ivory
+----
+
+实时观察滚动过程（逐 Pod 重建）：
+
+[source,bash]
+watch kubectl -n ivory-operator get pods \
+  -l ivory-operator.ivorysql.org/cluster=hippo,\
+    ivory-operator.ivorysql.org/instance \
+  -o custom-columns=NAME:.metadata.name,ROLE:.metadata.labels.ivory-operator\.ivorysql\.org/role,PHASE:.status.phase
+----
+
+流程解析：  
+1. 先升级所有 **副本** 实例 → 新 Pod 就绪后旧 Pod 才删除  
+2. 执行**受控主从切换**（switchover）→ 应用仅感受到毫秒级重连  
+3. 最后升级原主库 → 再次选主完成  
+
+[#resize-pvc]
+=== 在线扩容 PVC（磁盘）
+
+[#pvc-expansion-supported]
+==== 场景 A – StorageClass 允许扩容
+
+要求：  
+- 底层 StorageClass 的 `allowVolumeExpansion=true`  
+- 只能**增**不能减  
+
+需要调大的字段：
+
+- `spec.instances.dataVolumeClaimSpec.resources.requests.storage`        （数据目录）  
+- `spec.backups.pgbackrest.repos[*].volume.volumeClaimSpec...`          （备份仓库）
+
+示例：数据盘 1 GiB → 10 GiB，备份盘 1 GiB → 20 GiB
+
+[source,yaml]
+----
+spec:
+  instances:
+    - name: instance1
+      dataVolumeClaimSpec:
+        resources:
+          requests:
+            storage: 10Gi   # 1→10
+  backups:
+    pgbackrest:
+      repos:
+        - name: repo1
+          volume:
+            volumeClaimSpec:
+              resources:
+                requests:
+                  storage: 20Gi   # 1→20
+----
+
+[source,bash]
+kubectl apply -k examples/kustomize/ivory
+----
+
+IVYO 会按 **副本优先、主库最后** 的顺序触发底层 `pvc.spec.resources.requests.storage` 修改，Kubelet 与存储插件完成文件系统在线扩容，**Pod 无需重建**，业务无感知。
+
+[#pvc-expansion-unsupported]
+==== 场景 B – StorageClass **禁止** 扩容
+
+部分公有云早期 StorageClass 或本地盘 CSI 驱动未开启扩容，仍可通过 **“新增大容量实例集 → 切换 → 删除老实例集”** 完成“曲线”扩容。
+
+步骤示例：
+
+1. 保留原 `instance1`（1 GiB），新增 `instance2`（10 GiB）
+
+[source,yaml]
+----
+spec:
+  instances:
+    - name: instance1
+      replicas: 2
+      dataVolumeClaimSpec:
+        resources:
+          requests:
+            storage: 1Gi
+    - name: instance2          # 新实例集
+      replicas: 2
+      dataVolumeClaimSpec:
+        resources:
+          requests:
+            storage: 10Gi
+----
+
+2. 等待 `instance2` 副本同步追上主库  
+3. 提交仅含 `instance2` 的清单，IVYO 将自动：  
+   - 把 `instance2` 某一副本提升为新主  
+   - 删除 `instance1` 所有 Pod & PVC  
+   - 完成“数据迁移”  
+   
+结果：业务未中断，磁盘已换成 10 GiB，**老 PVC 被释放，费用停止计费**。  
+反向操作即可“缩容”磁盘（先建小盘实例集 → 切换 → 删大盘）。
+
+[#troubleshooting]
+=== 常见问题
+
+[#pod-unschedulable]
+==== Pod 无法调度
+
+- 节点剩余资源不满足 `requests` → 扩容节点或降低 requests  
+- PVC 申请过大 / StorageClass 不存在 → 检查存储类及配额
+
+[#pvc-not-expand]
+==== PVC 大小未变
+
+确认 StorageClass：
+
+[source,bash]
+kubectl get sc -o custom-columns=NAME:.metadata.name,ALLOW Expansion:.allowVolumeExpansion
+----
+
+若返回 `false` 或空值，请：
+
+- 换用支持扩容的 StorageClass，或  
+- 使用上文“场景 B”实例集替换方案
+
+== 自定义 Ivory 配置
+
+管理 Ivory 集群中多个实例的诀窍之一是确保所有配置更改都能传播到每个实例。这正是 IVYO 的用武之地：当您为集群进行 Ivory 配置更改时，IVYO 会将其应用到所有 Ivory 实例。
+
+例如，在上一步中，我们分别添加了 CPU 和内存限制为 `2.0` 和 `4Gi`。让我们调整一些 Ivory 设置以更好地利用我们的新资源。我们可以在 `spec.patroni.dynamicConfiguration` 部分中进行此操作。以下是一个更新后的示例清单，其中调整了几个设置：
+
+----
+apiVersion: ivory-operator.ivorysql.org/v1beta1
+kind: IvoryCluster
+metadata:
+  name: hippo
+spec:
+  image: {{< param imageIvorySQL >}}
+  postgresVersion: {{< param postgresVersion >}}
+  instances:
+    - name: instance1
+      replicas: 2
+      resources:
+        limits:
+          cpu: 2.0
+          memory: 4Gi
+      dataVolumeClaimSpec:
+        accessModes:
+        - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: 1Gi
+  backups:
+    pgbackrest:
+      image: {{< param imagePGBackrest >}}
+      repos:
+      - name: repo1
+        volume:
+          volumeClaimSpec:
+            accessModes:
+            - "ReadWriteOnce"
+            resources:
+              requests:
+                storage: 1Gi
+  patroni:
+    dynamicConfiguration:
+      postgresql:
+        parameters:
+          max_parallel_workers: 2
+          max_worker_processes: 2
+          shared_buffers: 1GB
+          work_mem: 2MB
+----
+
+特别是，我们在 `spec` 中添加了以下内容：
+
+----
+patroni:
+  dynamicConfiguration:
+    postgresql:
+      parameters:
+        max_parallel_workers: 2
+        max_worker_processes: 2
+        shared_buffers: 1GB
+        work_mem: 2MB
+----
+
+使用以下命令将这些更新应用到您的 Ivory 集群：
+
+----
+kubectl apply -k examples/kustomize/ivory
+----
+
+IVYO 将应用这些设置，并在必要时重新启动每个 Ivory 实例。您可以使用 Ivory 的 `SHOW` 命令验证更改是否已生效，例如：
+
+----
+SHOW work_mem;
+----
+
+应该会产生类似以下的结果：
+
+----
+ work_mem
+----------
+ 2MB
+----
+
+=== 自定义 TLS
+
+IVYO 中的所有连接都使用 TLS 加密组件之间的通信。IVYO 设置了一个 PKI 和证书颁发机构 (CA)，允许您创建可验证的端点。但是，您可能希望根据组织要求引入不同的 TLS 基础设施。好消息是：IVYO 允许您这样做！
+
+==== 如何自定义 TLS
+
+IVYO 有几个不同的 TLS 端点可以自定义，包括 Ivory 集群的端点以及控制 Ivory 实例之间如何进行身份验证的端点。让我们看看如何通过定义以下内容来自定义 TLS：
+
+* 一个 `spec.customTLSSecret`，用于标识集群并加密通信；以及
+* 一个 `spec.customReplicationTLSSecret`，用于复制身份验证。
+
+要自定义 Ivory 集群的 TLS，您需要在 Ivory 集群的命名空间中创建两个 Secret。其中一个 Secret 将是 `customTLSSecret`，另一个将是 `customReplicationTLSSecret`。这两个 Secret 都包含要使用的 TLS 密钥（`tls.key`）、TLS 证书（`tls.crt`）和 CA 证书（`ca.crt`）。
+
+注意：如果提供了 `spec.customTLSSecret`，则**必须**也提供 `spec.customReplicationTLSSecret`，并且两者都必须包含相同的 `ca.crt`。
+
+自定义 TLS 和自定义复制 TLS Secret 应包含以下字段（如果您无法控制 Secret 的 `data` 中的字段名称，请参见下面的解决方法）：
+
+----
+data:
+  ca.crt: <value>
+  tls.crt: <value>
+  tls.key: <value>
+----
+
+例如，如果您本地计算机上存储有名为 `ca.crt`、`hippo.key` 和 `hippo.crt` 的文件，您可以运行以下命令从这些文件创建 Secret：
+
+----
+kubectl create secret generic -n ivory-operator hippo-cluster.tls \
+  --from-file=ca.crt=ca.crt \
+  --from-file=tls.key=hippo.key \
+  --from-file=tls.crt=hippo.crt
+----
+
+创建 Secret 后，您可以在 `ivorycluster.ivory-operator.ivorysql.org` 自定义资源中指定自定义 TLS Secret。例如，如果您创建了 `hippo-cluster.tls` Secret 和 `hippo-replication.tls` Secret，您可以将它们添加到您的 Ivory 集群中：
+
+----
+spec:
+  customTLSSecret:
+    name: hippo-cluster.tls
+  customReplicationTLSSecret:
+    name: hippo-replication.tls
+----
+
+如果您无法控制 Secret 中的键值对，您可以创建一个映射来告诉 Ivory Operator 哪个键保存了预期的值。它看起来类似于以下内容：
+
+----
+spec:
+  customTLSSecret:
+    name: hippo.tls
+    items:
+      - key: <tls.crt key in the referenced hippo.tls Secret>
+        path: tls.crt
+      - key: <tls.key key in the referenced hippo.tls Secret>
+        path: tls.key
+      - key: <ca.crt key in the referenced hippo.tls Secret>
+        path: ca.crt
+----
+
+例如，如果 `hippo.tls` Secret 中的 `tls.crt` 位于名为 `hippo-tls.crt` 的键中，`tls.key` 位于名为 `hippo-tls.key` 的键中，`ca.crt` 位于名为 `hippo-ca.crt` 的键中，那么您的映射将如下所示：
+
+----
+spec:
+  customTLSSecret:
+    name: hippo.tls
+    items:
+      - key: hippo-tls.crt
+        path: tls.crt
+      - key: hippo-tls.key
+        path: tls.key
+      - key: hippo-ca.crt
+        path: ca.crt
+----
+
+注意：尽管自定义 TLS 和自定义复制 TLS Secret 共享相同的 `ca.crt`，但它们不共享相同的 `tls.crt`：
+
+* 您的 `spec.customTLSSecret` TLS 证书应具有与主服务名称匹配的通用名称 (CN) 设置。这是集群名称后缀为 `-primary` 的名称。例如，对于我们的 `hippo` 集群，这将是 `hippo-primary`。
+* 您的 `spec.customReplicationTLSSecret` TLS 证书应具有与预设复制用户 `_ivoryrepl` 匹配的通用名称 (CN) 设置。
+
+与其他更改一样，您可以使用 `kubectl apply` 推出 TLS 自定义设置。
+
+=== 标签
+
+有几种方法可以将您自己的自定义 Kubernetes https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/[标签] 添加到您的 Ivory 集群。
+
+- 集群：您可以通过编辑自定义资源的 `spec.metadata.labels` 部分将标签应用于集群中的任何 IVYO 托管对象。
+- Ivory：您可以通过编辑 `spec.instances.metadata.labels` 将标签应用于 Ivory 实例集及其对象。
+- pgBackRest：您可以通过编辑 `ivoryclusters.spec.backups.pgbackrest.metadata.labels` 将标签应用于 pgBackRest 及其对象。
+
+=== 注解
+
+有几种方法可以将您自己的自定义 Kubernetes https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/[注解] 添加到您的 Ivory 集群。
+
+- 集群：您可以通过编辑自定义资源的 `spec.metadata.annotations` 部分将注解应用于集群中的任何 IVYO 托管对象。
+- Ivory：您可以通过编辑 `spec.instances.metadata.annotations` 将注解应用于 Ivory 实例集及其对象。
+- pgBackRest：您可以通过编辑 `spec.backups.pgbackrest.metadata.annotations` 将注解应用于 pgBackRest 及其对象。
+
+=== Pod 优先级类
+
+IVYO 允许您使用 https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/[pod 优先级类] 通过设置 Ivory 集群上的 `priorityClassName` 字段来指示 pod 的相对重要性。这可以通过以下方式完成：
+
+- 实例：优先级是按实例集定义的，并应用于该实例集中的所有 Pod，方法是编辑自定义资源的 `spec.instances.priorityClassName` 部分。
+- 专用仓库主机：在规范的 repoHost 部分下定义的优先级通过编辑自定义资源的 `spec.backups.pgbackrest.repoHost.priorityClassName` 部分应用于专用仓库主机。
+- 备份（手动和计划）：优先级在 `spec.backups.pgbackrest.jobs.priorityClassName` 部分下定义，并将该优先级应用于所有 pgBackRest 备份作业（手动和计划）。
+- 还原（数据源或就地）：通过编辑自定义资源的 `spec.dataSource.ivorycluster.priorityClassName` 部分为“数据源”还原或就地还原定义优先级。
+- 数据迁移：规范中第一个实例集（数组位置 0）定义的优先级用于 PGDATA 和 WAL 迁移作业。pgBackRest 仓库迁移作业将使用应用于 repoHost 的优先级类。
+
+=== 独立的 WAL PVC
+
+IvorySQL 通过将更改存储在其https://www.postgresql.org/docs/current/wal-intro.html[预写日志 (WAL)] 中来提交事务。由于访问和使用 WAL 文件的方式通常与数据文件不同，并且在高性能情况下，可能需要将 WAL 文件放在单独的存储卷上。使用 IVYO，可以通过在您的 ivorycluster 规范中为您所需的实例添加 `walVolumeClaimSpec` 块来实现，无论是在创建集群时还是之后的任何时间：
+
+----
+spec:
+  instances:
+    - name: instance
+      walVolumeClaimSpec:
+        accessModes:
+        - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: 1Gi
+----
+
+稍后可以通过从实例中移除 `walVolumeClaimSpec` 部分来移除此卷。请注意，在更改 WAL 目录时，会小心避免丢失任何 WAL 文件。只有在先前配置的卷上不再有任何 WAL 文件时，IVYO 才会删除 PVC。
+
+=== 数据库初始化 SQL
+
+IVYO 可以在集群创建和初始化过程中为您运行 SQL。IVYO 使用 psql 客户端运行 SQL，因此您可以使用元命令连接到不同的数据库、更改错误处理或设置和使用变量。其功能在 https://www.postgresql.org/docs/current/app-psql.html[psql 文档] 中有所描述。
+
+==== 初始化 SQL ConfigMap
+
+Ivory 集群规范接受对包含您的 init SQL 文件的 ConfigMap 的引用。更新您的集群规范以包括 ConfigMap 名称 `spec.databaseInitSQL.name` 和您的 SQL 文件的数据键 `spec.databaseInitSQL.key`。例如，如果您使用以下命令创建 ConfigMap：
+
+----
+kubectl -n ivory-operator create configmap hippo-init-sql --from-file=init.sql=/path/to/init.sql
+----
+
+您可以将以下部分添加到您的 ivorycluster 规范中：
+
+----
+spec:
+  databaseInitSQL:
+    key: init.sql
+    name: hippo-init-sql
+----
+
+[NOTE]
+====
+ConfigMap 必须与您的 Ivory 集群位于同一命名空间中。
+====
+
+在您将 ConfigMap 引用添加到您的规范后，使用 `kubectl apply -k examples/kustomize/ivory` 应用更改。IVYO 将创建您的 `hippo` 集群，并在集群启动后运行您的初始化 SQL。您可以通过检查 Ivory 集群上的 `databaseInitSQL` 状态来验证您的 SQL 是否已运行。在状态设置期间，您的 init SQL 不会再次运行。您可以使用 `kubectl describe` 命令检查集群状态：
+
+----
+kubectl -n ivory-operator describe ivoryclusters.ivory-operator.ivorysql.org hippo
+----
+
+[WARNING]
+====
+在某些情况下，由于 Kubernetes 处理 ivorycluster 状态的方式，IVYO 可能会多次运行您的 SQL 命令。请确保您在 init SQL 中定义的命令是幂等的。
+====
+
+现在 `databaseInitSQL` 已在您的集群状态中定义，请验证数据库对象是否已按预期创建。验证后，我们建议从您的规范中移除 `spec.databaseInitSQL` 字段。从规范中移除该字段也将从集群状态中移除 `databaseInitSQL`。
+
+==== PSQL 用法
+IVYO 使用 psql 交互式终端在您的数据库中执行 SQL 语句。语句使用标准输入和文件名标志传递（例如 `psql -f -`）。
+
+SQL 语句以超级用户身份在默认维护数据库中执行。这意味着您可以完全控制创建数据库对象、扩展或运行您可能需要的任何 SQL 语句。
+
+===== 与用户和数据库管理集成
+
+如果您正在创建用户或数据库，请参阅 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/user-management.md[用户/数据库管理] 文档。通过规范的用户管理部分创建的数据库可以在您的初始化 sql 中引用。例如，如果定义了数据库 `zoo`：
+
+----
+spec:
+  users:
+    - name: hippo
+      databases:
+       - "zoo"
+----
+
+您可以通过将以下 `psql` 元命令添加到您的 SQL 来连接到 `zoo`：
+
+----
+\c zoo
+create table t_zoo as select s, md5(random()::text) from generate_Series(1,5) s;
+----
+
+===== 事务支持
+
+默认情况下，`psql` 会在每个 SQL 命令完成时提交它。要将多个命令组合成一个单独的 https://www.postgresql.org/docs/current/tutorial-transactions.html[事务]，请使用 https://www.postgresql.org/docs/current/sql-begin.html[`BEGIN`] 和 https://www.postgresql.org/docs/current/sql-commit.html[`COMMIT`] 命令。
+
+----
+BEGIN;
+create table t_random as select s, md5(random()::text) from generate_Series(1,5) s;
+COMMIT;
+----
+
+===== PSQL 退出代码和数据库 Init SQL 状态
+
+`psql` 的退出代码将决定何时设置 `databaseInitSQL` 状态。当 `psql` 返回 `0` 时，状态将被设置，并且不会再次运行 SQL。当 `psql` 返回错误退出代码时，状态将不会被设置。IVYO 将继续尝试执行 SQL，作为其协调循环的一部分，直到 `psql` 正常返回。如果 `psql` 以失败退出，您将需要编辑 ConfigMap 中的文件，以确保您的 SQL 语句将导致成功的 `psql` 返回。对 ConfigMap 进行实时更改的最简单方法是使用以下 `kubectl edit` 命令：
+
+----
+kubectl -n <cluster-namespace> edit configmap hippo-init-sql
+----
+
+请务必将所有更改传回您的本地文件。另一个选项是在本地文件中进行更改，并使用 `kubectl --dry-run` 创建模板，并将输出通过管道传输到 `kubectl apply`：
+
+----
+kubectl create configmap hippo-init-sql --from-file=init.sql=/path/to/init.sql --dry-run=client -o yaml | kubectl apply -f -
+----
+
+[TIP]
+====
+如果您编辑了 ConfigMap 但更改没有显示出来，您可能正在等待 IVYO 协调您的集群。一段时间后，IVYO 将自动协调集群，或者您可以通过对集群应用任何更改来触发协调（例如，使用 `kubectl apply -k examples/kustomize/ivory`）。
+====
+
+为了确保 `psql` 在您的 SQL 命令失败时返回失败退出代码，请在您的 SQL 文件中设置 `ON_ERROR_STOP` https://www.postgresql.org/docs/current/app-psql.html#APP-PSQL-VARIABLES[变量]：
+
+----
+\set ON_ERROR_STOP
+\echo Any error will lead to exit code 3
+create table t_random as select s, md5(random()::text) from generate_Series(1,5) s;
+----
+
+== 用户/数据库管理
+IVYO 内置了一些即用型便利功能，用于管理 Ivory 集群中的用户和数据库。然而，您可能有需要创建额外用户、调整用户权限或向集群添加额外数据库的需求。
+
+有关 IVYO 中用户和数据库管理工作原理的详细信息，请参阅架构指南中的 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/architecture/user-management.md[用户管理] 部分。
+
+=== 创建新用户
+
+您可以通过在 `ivorycluster` 自定义资源中添加以下片段来创建新用户。让我们将其添加到我们的 `hippo` 数据库中：
+
+----
+spec:
+  users:
+    - name: rhino
+----
+
+现在您可以应用更改，并看到新用户已创建。请注意以下事项：
+
+- 该用户只能连接到默认的 `ivory` 数据库。
+- 用户不会将任何连接凭据填充到 `hippo-pguser-rhino` Secret 中。
+- 该用户是未特权的。
+
+让我们创建一个名为 `zoo` 的新数据库，我们将允许 `rhino` 用户访问该数据库：
+
+----
+spec:
+  users:
+    - name: rhino
+      databases:
+        - zoo
+----
+
+检查 `hippo-pguser-rhino` Secret。您现在应该看到 `dbname` 和 `uri` 字段已填充！
+
+我们可以通过使用 Ivory 提供的标准 https://www.postgresql.org/docs/current/role-attributes.html[角色属性] 并将它们添加到 `spec.users.options` 来设置角色权限。假设我们希望 rhino 成为超级用户（在授予 Ivory 超级用户权限时要小心！）。您可以将以下内容添加到规范中：
+
+----
+spec:
+  users:
+    - name: rhino
+      databases:
+        - zoo
+      options: "SUPERUSER"
+----
+
+就这样：我们创建了一个名为 `rhino` 的 Ivory 用户，该用户具有超级用户权限，并且可以访问 `rhino` 数据库（尽管超级用户可以访问所有数据库！）。
+
+=== 调整权限
+
+假设您想从 `rhino` 中撤销超级用户权限。您可以通过以下方式执行此操作：
+
+----
+spec:
+  users:
+    - name: rhino
+      databases:
+        - zoo
+      options: "NOSUPERUSER"
+----
+
+如果您想添加多个权限，您可以在 `options` 中用空格分隔每个权限，例如：
+
+----
+spec:
+  users:
+    - name: rhino
+      databases:
+        - zoo
+      options: "CREATEDB CREATEROLE"
+----
+
+=== 管理 `ivory` 用户
+
+默认情况下，IVYO 不允许您访问 `ivory` 用户。但是，您可以通过执行以下操作来访问此帐户：
+
+----
+spec:
+  users:
+    - name: ivory
+----
+
+这将创建一个模式为 `<clusterName>-pguser-ivory` 的 Secret，其中包含 `ivory` 帐户的凭据。对于我们的 `hippo` 集群，这将是 `hippo-pguser-ivory`。
+
+=== 删除用户
+
+IVYO 不会自动删除用户：将用户从规范中移除后，它将仍然存在于您的集群中。要删除用户及其所有对象，作为超级用户，您需要在用户拥有对象的每个数据库中运行 https://www.postgresql.org/docs/current/sql-drop-owned.html[`DROP OWNED`]，并在您的 Ivory 集群中运行 https://www.postgresql.org/docs/current/sql-droprole.html[`DROP ROLE`]。
+
+例如，对于上面的 `rhino` 用户，您将运行以下命令：
+
+----
+DROP OWNED BY rhino;
+DROP ROLE rhino;
+----
+
+请注意，您可能需要根据对象所有权结构运行 `DROP OWNED BY rhino CASCADE;` —— 请非常小心此命令！
+
+=== 删除数据库
+
+IVYO 不会自动删除数据库：从规范中移除数据库的所有实例后，它将仍然存在于您的集群中。要完全删除数据库，您必须以 Ivory 超级用户身份运行 https://www.postgresql.org/docs/current/sql-dropdatabase.html[`DROP DATABASE`] 命令。
+
+例如，要删除 `zoo` 数据库，您将执行以下命令：
+
+----
+DROP DATABASE zoo;
+----
+
+== 灾难恢复与克隆
+也许有人不小心删除了 `users` 表。也许你想把生产数据库克隆到降级环境。也许你想演练灾难恢复系统（这很重要！）。
+
+无论哪种情况，了解如何使用 IVYO 执行“恢复”操作以便从特定时间点恢复数据，或出于其他目的克隆数据库都很重要。
+
+我们来看看如何执行不同类型的恢复操作。首先，让我们了解自定义资源上的核心恢复属性。
+
+=== 恢复属性
+
+[NOTE]
+====
+IVYO 提供了从现有 ivorycluster 或远程云数据源（如 S3、GCS 等）恢复的能力。有关更多信息，请参阅 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/disaster-recovery.md#cloud-based-data-source[从 S3 / GCS / Azure Blob 存储中存储的备份克隆] 部分。
+
+请注意，您**不能**同时使用本地 ivorycluster 数据源和远程云数据源；如果同时填写了 `dataSource.ivorycluster` 和 `dataSource.pgbackrest` 字段，本地 ivorycluster 数据源将优先。
+====
+
+自定义资源上有几个重要属性需要了解，这些都是恢复过程中的关键。所有这些属性都分组在自定义资源的 spec.dataSource.ivorycluster 部分中。
+
+请查看下表，了解每个属性在设置恢复操作时的工作原理。
+
+- `spec.dataSource.ivorycluster.clusterName`：您要从中恢复的集群的名称。这对应于另一个 `ivorycluster` 自定义资源的 `metadata.name` 属性。
+- `spec.dataSource.ivorycluster.clusterNamespace`：您要从中恢复的集群的命名空间。当集群存在于不同的命名空间时使用。
+- `spec.dataSource.ivorycluster.repoName`：用于恢复的 `spec.dataSource.ivorycluster.clusterName` 中的 pgBackRest 仓库的名称。可以是 `repo1`、`repo2`、`repo3` 或 `repo4` 之一。仓库必须存在于另一个集群中。
+- `spec.dataSource.ivorycluster.options`：IVYO 允许的任何额外 https://pgbackrest.org/command.html#command-restore[pgBackRest 恢复选项] 或常规选项。例如，您可能希望设置 `--process-max` 以帮助提高大型数据库的性能；但您将无法设置 `--target-action`，因为该选项目前被禁止。（如果存在 `--target`，IVYO 总是将其设置为 `promote`，否则将其留空。）
+- `spec.dataSource.ivorycluster.resources`：设置恢复作业的 https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#requests-and-limits[资源限制和请求] 可以确保其高效运行。
+- `spec.dataSource.ivorycluster.affinity`：自定义 https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/[Kubernetes 亲和性] 规则约束恢复作业，使其仅在某些节点上运行。
+- `spec.dataSource.ivorycluster.tolerations`：自定义 https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/[Kubernetes 容忍度] 允许恢复作业在 https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/[污点] 节点上运行。
+
+让我们通过一些示例来了解如何克隆和恢复我们的数据库。
+
+=== 克隆 Ivory 集群
+
+让我们创建一个我们之前创建的 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/create-cluster.md[`hippo`] 集群的克隆。我们知道我们的集群名为 `hippo`（基于其 `metadata.name`），并且我们只有一个名为 `repo1` 的备份仓库。
+
+让我们称我们的新集群为 `elephant`。我们可以使用如下所示的清单创建 `hippo` 集群的克隆：
+
+----
+apiVersion: ivory-operator.ivorysql.org/v1beta1
+kind: IvoryCluster
+metadata:
+  name: elephant
+spec:
+  dataSource:
+    ivoryCluster:
+      clusterName: hippo
+      repoName: repo1
+  image: {{< param imageIvorySQL >}}
+  postgresVersion: {{< param postgresVersion >}}
+  instances:
+    - dataVolumeClaimSpec:
+        accessModes:
+        - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: 1Gi
+  backups:
+    pgbackrest:
+      image: {{< param imagePGBackrest >}}
+      repos:
+      - name: repo1
+        volume:
+          volumeClaimSpec:
+            accessModes:
+            - "ReadWriteOnce"
+            resources:
+              requests:
+                storage: 1Gi
+----
+
+请注意规范中的这一部分：
+
+----
+spec:
+  dataSource:
+    ivoryCluster:
+      clusterName: hippo
+      repoName: repo1
+----
+
+这部分告诉 IVYO 将 `elephant` 集群创建为 `hippo` 集群的独立副本。
+
+以上就是克隆 Ivory 集群所需的全部操作！IVYO 将在新的持久卷声明 (PVC) 上创建数据副本，并致力于将集群初始化到规范。很简单！
+
+=== 执行时间点恢复 (PITR)
+
+有人删除了用户表吗？您可能希望执行时间点恢复 (PITR) 以将数据库恢复到更改发生之前的状态。幸运的是，IVYO 可以帮助您做到这一点。
+
+您可以使用为 IVYO 的灾难恢复功能提供支持的备份管理工具 https://www.pgbackrest.org[pgBackRest] 的 https://pgbackrest.org/command.html#command-restore[restore] 命令来设置 PITR。您需要在 `spec.dataSource.ivorycluster.options` 上设置一些选项来执行 PITR。这些选项包括：
+
+- `--type=time`：这告诉 pgBackRest 执行 PITR。
+- `--target`：执行 PITR 的目标位置。恢复目标的一个示例是 `2021-06-09 14:15:11-04`。此处指定的时区为 -04，即东部夏令时。有关其他时区选项，请参阅 https://pgbackrest.org/user-guide.html#pitr[pgBackRest 文档]。
+- `--set`（可选）：选择从哪个备份开始 PITR。
+
+开始前的一些快速说明：
+
+- 要执行 PITR，您必须有一个在 PITR 时间之前完成的备份。换句话说，您不能对没有备份的时间执行 PITR！
+- 所有相关的 WAL 文件必须成功推送，以便恢复正确完成。
+- 确保选择包含所需备份的正确仓库名称！
+
+考虑到这一点，让我们使用上面的 `elephant` 示例。假设我们要执行到 `2021-06-09 14:15:11-04` 的时间点恢复 (PITR)，我们可以使用以下清单：
+
+----
+apiVersion: ivory-operator.ivorysql.org/v1beta1
+kind: IvoryCluster
+metadata:
+  name: elephant
+spec:
+  dataSource:
+    ivoryCluster:
+      clusterName: hippo
+      repoName: repo1
+      options:
+      - --type=time
+      - --target="2021-06-09 14:15:11-04"
+  image: {{< param imageIvorySQL >}}
+  postgresVersion: {{< param postgresVersion >}}
+  instances:
+    - dataVolumeClaimSpec:
+        accessModes:
+        - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: 1Gi
+  backups:
+    pgbackrest:
+      image: {{< param imagePGBackrest >}}
+      repos:
+      - name: repo1
+        volume:
+          volumeClaimSpec:
+            accessModes:
+            - "ReadWriteOnce"
+            resources:
+              requests:
+                storage: 1Gi
+----
+
+需要注意的部分是：
+
+----
+spec:
+  dataSource:
+    ivoryCluster:
+      clusterName: hippo
+      repoName: repo1
+      options:
+      - --type=time
+      - --target="2021-06-09 14:15:11-04"
+----
+
+请注意我们如何放入选项以指定进行 PITR 的位置。
+
+使用上述清单，IVYO 将继续创建一个恢复其数据直到 `2021-06-09 14:15:11-04` 的新 Ivory 集群。此时，集群被提升，您可以从该特定时间点开始访问您的数据库！
+
+=== 执行就地时间点恢复 (PITR)
+
+与上面描述的 PITR 恢复类似，您可能希望执行类似的回退到更改发生之前的状态，但不创建另一个 IvorySQL 集群。幸运的是，IVYO 也可以帮助您做到这一点。
+
+您可以使用为 IVYO 的灾难恢复功能提供支持的备份管理工具 https://www.pgbackrest.org[pgBackRest] 的 https://pgbackrest.org/command.html#command-restore[restore] 命令来设置 PITR。您需要在 `spec.backups.pgbackrest.restore.options` 上设置一些选项来执行 PITR。这些选项包括：
+
+- `--type=time`：这告诉 pgBackRest 执行 PITR。
+- `--target`：执行 PITR 的目标位置。恢复目标的一个示例是 `2021-06-09 14:15:11-04`。
+- `--set`（可选）：选择从哪个备份开始 PITR。
+
+开始前的一些快速说明：
+
+- 要执行 PITR，您必须有一个在 PITR 时间之前完成的备份。换句话说，您不能对没有备份的时间执行 PITR！
+- 所有相关的 WAL 文件必须成功推送，以便恢复正确完成。
+- 确保选择包含所需备份的正确仓库名称！
+
+要执行就地恢复，用户首先需要填写规范的恢复部分，如下所示：
+
+----
+spec:
+  backups:
+    pgbackrest:
+      restore:
+        enabled: true
+        repoName: repo1
+        options:
+        - --type=time
+        - --target="2021-06-09 14:15:11-04"
+----
+
+然后，要触发恢复，您需要使用以下命令注释 ivorycluster：
+
+----
+kubectl annotate -n ivory-operator ivorycluster hippo --overwrite \
+  ivory-operator.ivorysql.org/pgbackrest-restore=id1
+----
+
+恢复完成后，可以禁用就地恢复：
+
+----
+spec:
+  backups:
+    pgbackrest:
+      restore:
+        enabled: false
+----
+
+请注意我们如何放入选项以指定进行 PITR 的位置。
+
+使用上述清单，IVYO 将继续重新创建您的 Ivory 集群，以恢复其数据直到 `2021-06-09 14:15:11-04`。此时，集群被提升，您可以从该特定时间点开始访问您的数据库！
+
+=== 恢复单个数据库
+
+出于性能原因或为了将选定数据库移动到没有足够空间来恢复整个集群备份的计算机上，您可能需要从备份中恢复特定数据库。
+
+[WARNING]
+====
+pgBackRest 支持这种情况，但请务必确保这是您想要的。以这种方式恢复将从备份中恢复请求的数据库并使其可访问，但备份中的所有其他数据库在恢复后将**无法**访问。
+
+例如，如果您的备份包含数据库 `test1`、`test2` 和 `test3`，并且您请求恢复 `test2`，则恢复完成后，`test1` 和 `test3` 数据库将**无法**访问。请查看 pgBackRest 文档中关于 https://pgbackrest.org/user-guide.html#restore/option-db-include[恢复单个数据库的限制]。
+====
+
+您可以使用类似于以下规范的规范从备份中恢复单个数据库：
+
+[source,yaml]
+----
+spec:
+  backups:
+    pgbackrest:
+      restore:
+        enabled: true
+        repoName: repo1
+        options:
+        - --db-include=hippo
+----
+
+其中 `--db-include=hippo` 将仅恢复 `hippo` 数据库的内容。
+
+=== 备用集群
+
+高级高可用性和灾难恢复策略涉及将您的数据库集群分布在数据中心之间，以帮助最大化正常运行时间。IVYO 提供了使用外部存储系统或 IvorySQL 流复制部署可以跨越多个 Kubernetes 集群的 ivorycluster 的方法。https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/architecture/disaster-recovery.md[灾难恢复架构] 文档中提供了 IVYO 备用集群的高级概述。
+
+==== 创建备用集群
+
+本教程部分将描述如何创建三种不同类型的备用集群，一种使用外部存储系统，一种直接从主集群流式传输数据，一种利用外部存储和流式传输。这些示例集群可以在同一个 Kubernetes 集群中使用单个 IVYO 实例创建，也可以通过正确的存储和网络配置分布在不同的 Kubernetes 集群和 IVYO 实例中。
+
+===== 基于仓库的备用集群
+
+基于仓库的备用集群将从存储在外部存储中的 pgBackRest 仓库中恢复。主集群应使用基于云的 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/backups.md[备份配置] 创建。以下清单定义了一个 ivorycluster，其中 `standby.enabled` 设置为 true，并且 `repoName` 配置为指向主集群中配置的 `s3` 仓库：
+
+----
+apiVersion: ivory-operator.ivorysql.org/v1beta1
+kind: IvoryCluster
+metadata:
+  name: hippo-standby
+spec:
+  image: {{< param imageIvorySQL >}}
+  postgresVersion: {{< param postgresVersion >}}
+  instances:
+    - dataVolumeClaimSpec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 1Gi } } }
+  backups:
+    pgbackrest:
+      image: {{< param imagePGBackrest >}}
+      repos:
+      - name: repo1
+        s3:
+          bucket: "my-bucket"
+          endpoint: "s3.ca-central-1.amazonaws.com"
+          region: "ca-central-1"
+  standby:
+    enabled: true
+    repoName: repo1
+----
+
+===== 流式备用集群
+
+流式备用集群依赖于通过网络到主集群的经过身份验证的连接。主集群应可通过网络访问并允许 TLS 身份验证（默认启用 TLS）。在以下清单中，我们将 `standby.enabled` 设置为 `true`，并提供了指向主集群的 `host` 和 `port`。我们还定义了 `customTLSSecret` 和 `customReplicationTLSSecret` 以提供允许备用集群向主集群进行身份验证的证书。对于这种类型的备用集群，您必须使用 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/customize-cluster.md#customize-tls[自定义 TLS]：
+
+----
+apiVersion: ivory-operator.ivorysql.org/v1beta1
+kind: IvoryCluster
+metadata:
+  name: hippo-standby
+spec:
+  image: {{< param imageIvorySQL >}}
+  postgresVersion: {{< param postgresVersion >}}
+  instances:
+    - dataVolumeClaimSpec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 1Gi } } }
+  backups:
+    pgbackrest:
+      repos:
+      - name: repo1
+        volume:
+          volumeClaimSpec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 1Gi } } }
+  customTLSSecret:
+    name: cluster-cert
+  customReplicationTLSSecret:
+    name: replication-cert
+  standby:
+    enabled: true
+    host: "192.0.2.2"
+    port: 5432
+----
+
+===== 具有外部仓库的流式备用集群
+
+另一个选项是使用从主集群流式传输的外部 pgBackRest 仓库创建备用集群。通过此设置，如果流式复制落后，备用集群将继续从 pgBackRest 仓库恢复。在此清单中，我们启用了前两个示例中的设置：
+
+----
+apiVersion: ivory-operator.ivorysql.org/v1beta1
+kind: IvoryCluster
+metadata:
+  name: hippo-standby
+spec:
+  image: {{< param imageIvorySQL >}}
+  postgresVersion: {{< param postgresVersion >}}
+  instances:
+    - dataVolumeClaimSpec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 1Gi } } }
+  backups:
+    pgbackrest:
+      image: {{< param imagePGBackrest >}}
+      repos:
+      - name: repo1
+        s3:
+          bucket: "my-bucket"
+          endpoint: "s3.ca-central-1.amazonaws.com"
+          region: "ca-central-1"
+  customTLSSecret:
+    name: cluster-cert
+  customReplicationTLSSecret:
+    name: replication-cert
+  standby:
+    enabled: true
+    repoName: repo1
+    host: "192.0.2.2"
+    port: 5432
+----
+
+=== 提升备用集群
+
+在某些时候，您会希望提升备用集群以开始接受读取和写入。这具有将 WAL（事务归档）推送到 pgBackRest 仓库的净效应，因此我们需要确保我们不会意外创建脑裂场景。如果两个主实例尝试写入同一个仓库，则可能会发生脑裂。如果主集群仍处于活动状态，请确保在尝试提升备用集群之前 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/administrative-tasks.md#shutdown[关闭] 主集群。
+
+一旦主集群处于非活动状态，我们可以通过移除或禁用其 `spec.standby` 部分来提升备用集群：
+
+----
+spec:
+  standby:
+    enabled: false
+----
+
+此更改触发将备用领导者提升为 IvorySQL 主实例，并且集群开始接受写入。
+
+=== 从 S3 / GCS / Azure Blob 存储中存储的备份克隆 {#cloud-based-data-source}
+
+您可以从存储在 AWS S3（或使用 S3 协议的存储系统）、GCS 或 Azure Blob 存储中的备份克隆 Ivory 集群，而无需活动的 Ivory 集群！方法与从现有 ivorycluster 克隆类似。如果您希望为人们提供数据集但将其压缩在更便宜的存储上，这很有用。
+
+出于本示例的目的，假设您创建了一个名为 `hippo` 的 Ivory 集群，其备份存储在 S3 中，看起来类似于以下内容：
+
+[source,yaml]
+----
+apiVersion: ivory-operator.ivorysql.org/v1beta1
+kind: IvoryCluster
+metadata:
+  name: hippo
+spec:
+  image: {{< param imageIvorySQL >}}
+  postgresVersion: {{< param postgresVersion >}}
+  instances:
+    - dataVolumeClaimSpec:
+        accessModes:
+        - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: 1Gi
+  backups:
+    pgbackrest:
+      image: {{< param imagePGBackrest >}}
+      configuration:
+      - secret:
+          name: ivyo-s3-creds
+      global:
+        repo1-path: /pgbackrest/ivory-operator/hippo/repo1
+      manual:
+        repoName: repo1
+        options:
+         - --type=full
+      repos:
+      - name: repo1
+        s3:
+          bucket: "my-bucket"
+          endpoint: "s3.ca-central-1.amazonaws.com"
+          region: "ca-central-1"
+----
+
+确保 `ivyo-s3-creds` 中的凭据与您的 S3 凭据匹配。有关 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/backups.md#using-s3[使用 S3 部署 Ivory 集群进行备份] 的更多详细信息，请参阅教程的 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/backups.md#using-s3[备份] 部分。
+
+为了从活跃集群创建新集群时获得最佳性能，请确保对前一个集群进行了最近的完整备份。上面的清单设置为进行完整备份。假设 `hippo` 是在 `ivory-operator` 命名空间中创建的，您可以使用以下命令触发完整备份：
+
+[source,shell]
+----
+kubectl annotate -n ivory-operator ivorycluster hippo --overwrite \
+  ivory-operator.ivorysql.org/pgbackrest-backup="$( date '+%F_%H:%M:%S' )"
+----
+
+等待备份完成。完成后，您可以删除 Ivory 集群。
+
+现在，让我们将 `hippo` 备份中的数据克隆到一个名为 `elephant` 的新集群中。您可以使用类似于以下的清单：
+
+[source,yaml]
+----
+apiVersion: ivory-operator.ivorysql.org/v1beta1
+kind: IvoryCluster
+metadata:
+  name: elephant
+spec:
+  image: {{< param imageIvorySQL >}}
+  postgresVersion: {{< param postgresVersion >}}
+  dataSource:
+    pgbackrest:
+      stanza: db
+      configuration:
+      - secret:
+          name: ivyo-s3-creds
+      global:
+        repo1-path: /pgbackrest/ivory-operator/hippo/repo1
+      repo:
+        name: repo1
+        s3:
+          bucket: "my-bucket"
+          endpoint: "s3.ca-central-1.amazonaws.com"
+          region: "ca-central-1"
+  instances:
+    - dataVolumeClaimSpec:
+        accessModes:
+        - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: 1Gi
+  backups:
+    pgbackrest:
+      image: {{< param imagePGBackrest >}}
+      configuration:
+      - secret:
+          name: ivyo-s3-creds
+      global:
+        repo1-path: /pgbackrest/ivory-operator/elephant/repo1
+      repos:
+      - name: repo1
+        s3:
+          bucket: "my-bucket"
+          endpoint: "s3.ca-central-1.amazonaws.com"
+          region: "ca-central-1"
+----
+
+在此清单中需要注意以下几点。首先，请注意我们新的 ivorycluster 中的 `spec.dataSource.pgbackrest` 对象与旧的 ivorycluster 中的 `spec.backups.pgbackrest` 对象非常相似，但略有不同。主要区别是：
+
+1. 从基于云的数据源恢复时不需要镜像
+2. 从基于云的数据源恢复时，`stanza` 是必填字段
+3. `backups.pgbackrest` 有一个 `repos` 字段，这是一个数组
+4. `dataSource.pgbackrest` 有一个 `repo` 字段，这是一个单一对象
+
+还要注意相似之处：
+
+1. 我们正在为两者重用密钥（因为新的恢复 pod 需要具有与原始备份 pod 相同的凭据）
+2. `repo` 对象是相同的
+3. `global` 对象是相同的
+
+这是因为 `elephant` ivorycluster 的新恢复 pod 将需要重用最初设置 `hippo` ivorycluster 时使用的配置和凭据。
+
+在此示例中，我们正在创建一个新的集群，该集群也备份到同一个 S3 存储桶；只有 `spec.backups.pgbackrest.global` 字段已更改为指向不同的路径。这将确保新的 `elephant` 集群将预填充来自 `hippo` 备份的数据，但将备份到自己的文件夹，确保原始备份仓库得到适当保留。
+
+部署此清单以创建 `elephant` Ivory 集群。观察它启动并运行：
+
+[source,shell]
+----
+kubectl -n ivory-operator describe ivorycluster elephant
+----
+
+当它准备就绪时，您将看到预期实例的数量与就绪实例的数量相匹配，例如：
+
+----
+Instances:
+  Name:               00
+  Ready Replicas:     1
+  Replicas:           1
+  Updated Replicas:   1
+----
+
+前面的示例展示了如何使用现有的 S3 仓库预填充 ivorycluster，同时使用新的 S3 仓库进行备份。但是使用基于云的数据源的 ivorycluster 也可以使用本地仓库。
+
+例如，假设一个名为 `rhino` 的 ivorycluster 旨在从原始的 `hippo` ivorycluster 预填充，清单将如下所示：
+
+[source,yaml]
+----
+apiVersion: ivory-operator.ivorysql.org/v1beta1
+kind: IvoryCluster
+metadata:
+  name: rhino
+spec:
+  image: {{< param imageIvorySQL >}}
+  postgresVersion: {{< param postgresVersion >}}
+  dataSource:
+    pgbackrest:
+      stanza: db
+      configuration:
+      - secret:
+          name: ivyo-s3-creds
+      global:
+        repo1-path: /pgbackrest/ivory-operator/hippo/repo1
+      repo:
+        name: repo1
+        s3:
+          bucket: "my-bucket"
+          endpoint: "s3.ca-central-1.amazonaws.com"
+          region: "ca-central-1"
+  instances:
+    - dataVolumeClaimSpec:
+        accessModes:
+        - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: 1Gi
+  backups:
+    pgbackrest:
+      image: {{< param imagePGBackrest >}}
+      repos:
+      - name: repo1
+        volume:
+          volumeClaimSpec:
+            accessModes:
+            - "ReadWriteOnce"
+            resources:
+              requests:
+                storage: 1Gi
+----
+
+== 监控
+虽然拥有 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/high-availability.md[高可用性] 和 https://github.com/Ivory-operator/blob/master/docs/content/tutorial/disaster-recovery.md[灾难恢复] 系统可以在您的 IvorySQL 集群出现问题时提供帮助，但监控可以帮助您预防问题的发生。此外，监控可以帮助您诊断和解决可能导致性能下降的问题，而不是停机。
+
+让我们看看 IVYO 如何允许您在集群中启用监控。
+
+=== 添加 Exporter Sidecar
+
+让我们看看如何使用 https://github.com/CrunchyData/postgres-operator-examples[Postgres Operator 示例] 仓库中的 `kustomize/ivory` 示例将 IvorySQL Exporter sidecar 添加到您的集群中。
+
+监控工具是使用自定义资源的 `spec.monitoring` 部分添加的。目前，唯一支持的监控工具是使用 https://github.com/CrunchyData/pgmonitor[pgMonitor] 配置的 IvorySQL Exporter。
+
+在 `kustomize/ivory/ivory.yaml` 文件中，将以下 YAML 添加到规范中：
+
+[source,yaml]
+----
+monitoring:
+  pgmonitor:
+    exporter:
+      image: {{< param imagePostgresExporter >}}
+----
+
+保存您的更改并运行：
+
+[source,shell]
+----
+kubectl apply -k kustomize/ivory
+----
+
+IVYO 将检测到更改并将 Exporter sidecar 添加到集群中存在的所有 Ivory Pod 中。IVYO 还将完成允许 Exporter 连接到数据库并使用 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/monitoring.md#ivyo-monitoring[IVYO 监控] 堆栈收集指标的工作。
+
+==== 为 Exporter 配置 TLS 加密
+
+IVYO 允许您配置 exporter sidecar 以使用 TLS 加密。如果您通过 exporter 规范提供自定义 TLS Secret：
+
+[source,yaml]
+----
+  monitoring:
+    pgmonitor:
+      exporter:
+        customTLSSecret:
+          name: hippo.tls
+----
+
+与 IVYO 可以配置的其他自定义 TLS Secret 一样，Secret 需要在与您的 PostgresCluster 相同的命名空间中创建。它还应该包含启用加密所需的 TLS 密钥 (`tls.key`) 和 TLS 证书 (`tls.crt`)。
+
+[source,yaml]
+----
+data:
+  tls.crt: <value>
+  tls.key: <value>
+----
+
+为 exporter 配置 TLS 后，您将需要更新您的 Prometheus 部署以使用 TLS，并且与 exporter 的连接将被加密。查看 https://prometheus.io/docs/prometheus/latest/configuration/configuration/#tls_config[Prometheus] 文档，了解有关为 https://prometheus.io/[Prometheus] 配置 TLS 的更多信息。
+
+=== 访问指标
+
+在您的集群中启用 IvorySQL Exporter 后，请按照 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/monitoring.md#ivyo-monitoring[IVYO 监控] 中概述的步骤安装监控堆栈。这将允许您在 Kubernetes 中部署 https://github.com/CrunchyData/pgmonitor[pgMonitor] 配置的 https://prometheus.io/[Prometheus]、https://grafana.com/[Grafana] 和 https://prometheus.io/docs/alerting/latest/alertmanager/[Alertmanager] 监控工具。这些工具将默认设置为连接到您的 Ivory Pod 上的 Exporter 容器。
+
+=== 配置监控
+虽然默认的 Kustomize 安装应该在大多数 Kubernetes 环境中工作，但可能需要根据您的特定需求进一步自定义项目。
+
+例如，默认情况下，`fsGroup` 设置为 `26`，用于为组成 IVYO 监控堆栈的各种部署定义的 `securityContext`：
+
+[source,yaml]
+----
+securityContext:
+  fsGroup: 26
+----
+
+在大多数 Kubernetes 环境中，此设置是必需的，以确保容器内的进程具有写入组成 IVYO 监控堆栈的每个 Pod 挂载的任何卷所需的权限。但是，在 OpenShift 环境中安装时（更具体地说，当使用 `restricted` 安全上下文约束时），应删除 `fsGroup` 设置，因为 OpenShift 将自动处理在 Pod 的 `securityContext` 中设置适当的 `fsGroup`。
+
+此外，在同一部分中，可能还需要根据您的特定存储配置修改 `supplmentalGroups` 设置：
+
+[source,yaml]
+----
+securityContext:
+  supplementalGroups : 65534
+----
+
+因此，应修改和/或修补（例如，使用额外的覆盖）`kustomize/monitoring` 下的以下文件，以确保 `securityContext` 为您的 Kubernetes 环境正确定义：
+
+- `deploy-alertmanager.yaml`
+- `deploy-grafana.yaml`
+- `deploy-prometheus.yaml`
+
+为了修改 IVYO 监控安装程序创建的各种存储资源（即 PersistentVolumeClaims）的配置，还可以修改 `kustomize/monitoring/pvcs.yaml` 文件。
+
+此外，还可以通过修改以下配置资源来进一步自定义组成 IVYO 监控堆栈的各种组件（Grafana、Prometheus 和/或 AlertManager）的配置：
+
+- `alertmanager-config.yaml`
+- `alertmanager-rules-config.yaml`
+- `grafana-datasources.yaml`
+- `prometheus-config.yaml`
+
+最后，请注意，可以通过修改 `kustomize/monitoring/grafana-secret.yaml` 文件中的 Grafana Secret 来更新 Grafana 的默认用户名和密码。
+
+=== 安装
+
+一旦 Kustomize 项目根据您的特定需求进行了修改，就可以使用 `kubectl` 和 Kustomize 安装 IVYO 监控：
+
+[source,shell]
+----
+kubectl apply -k kustomize/monitoring
+----
+
+=== 卸载
+
+同样，一旦安装了 IVYO 监控，就可以使用 `kubectl` 和 Kustomize 卸载它：
+
+[source,shell]
+----
+kubectl delete -k kustomize/monitoring
+----
+
+== 连接池
+连接池有助于扩展和维护应用程序与数据库之间的整体可用性。IVYO 通过支持 https://www.pgbouncer.org/[PgBouncer] 连接池和状态管理器来促进这一点。
+
+让我们看看我们如何添加连接池并将其连接到我们的应用程序！
+
+=== 添加连接池
+让我们看看如何使用 https://github.com/IvorySQL/ivory-operator[Ivory Operator] 仓库示例文件夹中的 `kustomize/keycloak` 示例添加连接池。
+
+连接池是使用自定义资源的 `spec.proxy` 部分添加的。目前，唯一支持的连接池是 https://www.pgbouncer.org/[PgBouncer]。
+
+添加 PgBouncer 连接池的唯一必需属性是设置 `spec.proxy.pgBouncer.image` 属性。在 `kustomize/keycloak/ivory.yaml` 文件中，将以下 YAML 添加到规范中：
+
+[source,yaml]
+----
+proxy:
+  pgBouncer:
+    image: {{< param imageIvoryPGBouncer >}}
+----
+
+（您也可以在 `kustomize/examples/high-availability` 示例中找到此示例）。
+
+保存您的更改并运行：
+
+[source,shell]
+----
+kubectl apply -k kustomize/keycloak
+----
+
+IVYO 将检测到更改并创建一个新的 PgBouncer Deployment！
+
+设置起来相当容易，所以现在让我们看看如何将我们的应用程序连接到连接池。
+
+=== 连接到连接池
+当连接池部署到集群时，IVYO 会将附加信息添加到用户 Secret 中，以允许应用程序直接连接到连接池。回想一下，在此示例中，我们的用户 Secret 称为 `keycloakdb-pguser-keycloakdb`。描述用户 Secret：
+
+[source,shell]
+----
+kubectl -n ivory-operator describe secrets keycloakdb-pguser-keycloakdb
+----
+
+您应该看到此 Secret 中包含几个新属性，允许您通过连接池连接到您的 Ivory 实例：
+
+- `pgbouncer-host`：PgBouncer 连接池的主机名。这引用了 PgBouncer 连接池的 https://kubernetes.io/docs/concepts/services-networking/service/[Service]。
+- `pgbouncer-port`：PgBouncer 连接池正在侦听的端口。
+- `pgbouncer-uri`：一个 https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING[PostgreSQL 连接 URI]，提供通过 PgBouncer 连接池登录到 Ivory 数据库的所有信息。
+- `pgbouncer-jdbc-uri`：一个 https://jdbc.postgresql.org/documentation/use/[PostgreSQL JDBC 连接 URI]，提供通过使用 JDBC 驱动程序的 PgBouncer 连接池登录到 Ivory 数据库的所有信息。请注意，默认情况下，连接字符串禁用 JDBC 管理预处理事务以实现 https://www.pgbouncer.org/faq.html#how-to-use-prepared-statements-with-transaction-pooling[与 PgBouncer 一起使用的最佳方式]。
+
+打开 `kustomize/keycloak/keycloak.yaml` 中的文件。更新 `DB_ADDR` 和 `DB_PORT` 值如下：
+
+[source,yaml]
+----
+- name: DB_ADDR
+  valueFrom: { secretKeyRef: { name: keycloakdb-pguser-keycloakdb, key: pgbouncer-host } }
+- name: DB_PORT
+  valueFrom: { secretKeyRef: { name: keycloakdb-pguser-keycloakdb, key: pgbouncer-port } }
+----
+
+这会更改 Keycloak 的配置，使其现在通过连接池连接。
+
+应用更改：
+
+[source,shell]
+----
+kubectl apply -k kustomize/keycloak
+----
+
+Kubernetes 将检测到更改并开始部署新的 Keycloak Pod。完成后，Keycloak 现在将通过 PgBouncer 连接池连接到 Ivory！
+
+=== TLS
+IVYO 通过 TLS 部署每个集群和组件。这包括 PgBouncer 连接池。如果您使用自己的 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/customize-cluster.md#customize-tls[自定义 TLS 设置]，则需要在 `spec.proxy.pgBouncer.customTLSSecret` 中为 PgBouncer 提供 Secret 引用。
+
+PgBouncer 的 TLS 证书应具有与 PgBouncer Service 名称匹配的通用名称 (CN)。这是集群的名称，后缀为 `-pgbouncer`。例如，对于我们的 `hippo` 集群，这将是 `hippo-pgbouncer`。对于 `keycloakdb` 示例，它将是 `keycloakdb-pgBouncer`。
+
+要自定义 PgBouncer 的 TLS，您需要在您的 Ivory 集群的命名空间中创建一个 Secret，其中包含要使用的 TLS 密钥 (`tls.key`)、TLS 证书 (`tls.crt`) 和 CA 证书 (`ca.crt`)。Secret 应包含以下值：
+
+[source,yaml]
+----
+data:
+  ca.crt: <value>
+  tls.crt: <value>
+  tls.key: <value>
+----
+
+例如，如果您本地计算机上存储有名为 `ca.crt`、`keycloakdb-pgBouncer.key` 和 `keycloakdb-pgBouncer.crt` 的文件，则可以运行以下命令：
+
+[source,shell]
+----
+kubectl create secret generic -n ivory-operator keycloakdb-pgBouncer.tls \
+  --from-file=ca.crt=ca.crt \
+  --from-file=tls.key=keycloakdb-pgBouncer.key \
+  --from-file=tls.crt=keycloakdb-pgBouncer.crt
+----
+
+您可以在您的 `ivorycluster.ivory-operator.ivorysql.org` 自定义资源中的 `spec.proxy.pgBouncer.customTLSSecret.name` 字段中指定自定义 TLS Secret，例如：
+
+[source,yaml]
+----
+spec:
+  proxy:
+    pgBouncer:
+      customTLSSecret:
+        name: keycloakdb-pgBouncer.tls
+----
+
+=== 自定义
+PgBouncer 连接池是高度可定制的，从配置和 Kubernetes 部署角度来看都是如此。让我们探索一些您可以进行的自定义！
+
+==== 配置
+可以通过 `spec.proxy.pgBouncer.config` 自定义 https://www.pgbouncer.org/config.html[PgBouncer 配置]。进行配置更改后，IVYO 会将它们推出到任何 PgBouncer 实例，并自动发出“重新加载”。
+
+您可以通过以下几种方式自定义配置：
+
+- `spec.proxy.pgBouncer.config.global`：接受键值对，这些更改全局应用于 PgBouncer。
+- `spec.proxy.pgBouncer.config.databases`：接受键值对，这些键值对代表 PgBouncer https://www.pgbouncer.org/config.html#section-databases[数据库定义]。
+- `spec.proxy.pgBouncer.config.users`：接受键值对，这些键值对代表 https://www.pgbouncer.org/config.html#section-users[应用于特定用户的连接设置]。
+- `spec.proxy.pgBouncer.config.files`：接受文件列表，这些文件挂载在 `/etc/pgbouncer` 目录中，并在使用 PgBouncer 的 https://www.pgbouncer.org/config.html#include-directive[include 指令] 考虑任何其他选项之前加载。
+
+例如，要将连接池模式设置为 `transaction`，您需要设置以下配置：
+
+[source,yaml]
+----
+spec:
+  proxy:
+    pgBouncer:
+      config:
+        global:
+          pool_mode: transaction
+----
+
+有关 https://www.pgbouncer.org/config.html[PgBouncer 配置] 的参考，请参阅：
+
+https://www.pgbouncer.org/config.html
+
+==== 副本
+默认情况下，IVYO 部署一个 PgBouncer 实例。您可能希望运行多个 PgBouncer 实例以具有一定的冗余级别，尽管您仍然希望注意有多少连接将连接到您的 Ivory 数据库！
+
+您可以通过 `spec.proxy.pgBouncer.replicas` 属性管理部署的 PgBouncer 实例的数量。
+
+==== 资源
+您可以通过 `spec.proxy.pgBouncer.resources` 属性管理分配给 PgBouncer 实例的 CPU 和内存资源。`spec.proxy.pgBouncer.resources` 的布局应该很熟悉：它遵循设置 https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/[容器资源] 的标准 Kubernetes 结构。
+
+例如，假设我们想为 PgBouncer 实例设置一些 CPU 和内存限制。我们可以添加以下配置：
+
+[source,yaml]
+----
+spec:
+  proxy:
+    pgBouncer:
+      resources:
+        limits:
+          cpu: 200m
+          memory: 128Mi
+----
+
+由于 IVYO 使用 https://kubernetes.io/docs/concepts/workloads/controllers/deployment/[Deployment] 部署 PgBouncer 实例，因此这些更改会使用滚动更新推出，以最大程度地减少应用程序与 Ivory 实例之间的中断！
+
+==== 注释 / 标签
+您可以通过 `spec.proxy.pgBouncer.metadata.annotations` 和 `spec.proxy.pgBouncer.metadata.labels` 属性分别为您的 PgBouncer 实例应用自定义注释和标签。请注意，对这两个属性中的任何一个的任何更改都将优先于您添加的任何其他自定义标签。
+
+==== Pod 反亲和性 / Pod 亲和性 / 节点亲和性
+您可以通过 `spec.proxy.pgBouncer.affinity` 属性控制 https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity[pod 反亲和性、pod 亲和性和节点亲和性]，特别是：
+
+- `spec.proxy.pgBouncer.affinity.nodeAffinity`：控制 PgBouncer 实例的节点亲和性。
+- `spec.proxy.pgBouncer.affinity.podAffinity`：控制 PgBouncer 实例的 Pod 亲和性。
+- `spec.proxy.pgBouncer.affinity.podAntiAffinity`：控制 PgBouncer 实例的 Pod 反亲和性。
+
+以上每个都遵循 https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity[设置亲和性的标准 Kubernetes 规范]。
+
+例如，要为 `kustomize/keycloak` 示例设置首选 Pod 反亲和性规则，您需要向配置中添加以下内容：
+
+[source,yaml]
+----
+spec:
+  proxy:
+    pgBouncer:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  ivory-operator.ivorysql.org/cluster: keycloakdb
+                  ivory-operator.ivorysql.org/role: pgbouncer
+              topologyKey: kubernetes.io/hostname
+----
+
+==== 容忍度
+您可以通过设置 https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/[容忍度] 通过 `spec.proxy.pgBouncer.tolerations` 将 PgBouncer 实例部署到 https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/[具有污点的节点]。此属性遵循 Kubernetes 标准容忍度布局。
+
+例如，如果有一组具有 `role=connection-poolers:NoSchedule` 污点的节点，您希望将 PgBouncer 实例调度到这些节点，您可以应用以下配置：
+
+[source,yaml]
+----
+spec:
+  proxy:
+    pgBouncer:
+      tolerations:
+      - effect: NoSchedule
+        key: role
+        operator: Equal
+        value: connection-poolers
+----
+
+请注意，设置容忍度并不一定意味着 PgBouncer 实例将被分配给具有这些污点的节点。容忍度充当**密钥**：它们允许您访问节点。如果您希望确保您的 PgBouncer 实例部署到特定节点，您需要将设置容忍度与节点亲和性相结合。
+
+==== Pod 分布约束
+除了使用亲和性、反亲和性和容忍度之外，您还可以通过 `spec.proxy.pgBouncer.topologySpreadConstraints` 设置 https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/[拓扑分布约束]。此属性遵循 Kubernetes 标准拓扑分布约束布局。
+
+例如，由于我们的每个 pgBouncer Pod 都将设置标准的 `ivory-operator.ivorysql.org/role: pgbouncer` 标签，我们可以在确定 `maxSkew` 时使用此标签。在下面的示例中，由于我们有 3 个节点，`maxSkew` 为 1，并且我们将 `whenUnsatisfiable` 设置为 `ScheduleAnyway`，我们理想情况下应该在每个节点上看到 1 个 Pod，但如果其他约束阻止这种情况发生，我们的 Pod 可以分布得不那么均匀。
+
+[source,yaml]
+----
+  proxy:
+    pgBouncer:
+      replicas: 3
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: my-node-label
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              ivory-operator.ivorysql.org/role: pgbouncer
+----
+
+如果您希望确保您的 PgBouncer 实例分布得更均匀（或根本不部署），您需要将 `whenUnsatisfiable` 更新为 `DoNotSchedule`。
+
+== 管理任务
+
+=== 手动重启 IvorySQL
+
+有时您可能需要手动重启 IvorySQL。这可以通过向集群的 `spec.metadata.annotations` 部分添加或更新自定义注释来完成。IVYO 将检测到更改并执行 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/architecture/high-availability.md#rolling-update[滚动重启]。
+
+例如，如果您在命名空间 `ivory-operator` 中有一个名为 `hippo` 的集群，您只需要使用以下命令修补 hippo ivorycluster：
+
+[source,shell]
+----
+kubectl patch ivorycluster/hippo -n ivory-operator --type merge \
+  --patch '{"spec":{"metadata":{"annotations":{"restarted":"'"$(date)"'"}}}}'
+----
+
+观察您的 hippo 集群：您将看到滚动更新已触发，重启已开始。
+
+=== 关闭
+
+您可以通过将 `spec.shutdown` 属性设置为 `true` 来关闭 Ivory 集群。您可以通过编辑清单来执行此操作，或者在 `hippo` 集群的情况下，执行如下命令：
+
+[source,shell]
+----
+kubectl patch ivorycluster/hippo -n ivory-operator --type merge \
+  --patch '{"spec":{"shutdown": true}}'
+----
+
+这样做的结果是，此集群的所有 Kubernetes 工作负载都缩放为 0。您可以使用以下命令验证这一点：
+
+[source,shell]
+----
+kubectl get deploy,sts,cronjob --selector=ivory-operator.ivorysql.org/cluster=hippo -n ivory-operator
+
+NAME                             READY   AGE
+statefulset.apps/hippo-00-lwgx   0/0     1h
+
+NAME                             SCHEDULE   SUSPEND   ACTIVE
+cronjob.batch/hippo-repo1-full   @daily     True      0
+----
+
+要将已关闭的 Ivory 集群重新打开，您可以将 `spec.shutdown` 设置为 `false`。
+
+=== 暂停协调和部署
+
+您可以通过将 `spec.paused` 属性设置为 `true` 来暂停 Ivory 集群协调过程。您可以通过编辑清单来执行此操作，或者在 `hippo` 集群的情况下，执行如下命令：
+
+[source,shell]
+----
+kubectl patch ivorycluster/hippo -n ivory-operator --type merge \
+  --patch '{"spec":{"paused": true}}'
+----
+
+暂停集群将暂停对集群当前状态的任何更改，直到协调恢复。这允许您完全控制何时将 ivorycluster spec 的更改部署到 Ivory 集群。在暂停期间，除了“Progressing”条件外，不会更新任何状态。
+
+要恢复 Ivory 集群的协调，您可以将 `spec.paused` 设置为 `false` 或从清单中删除该设置。
+
+=== 轮换 TLS 证书
+
+应尽可能频繁地使凭据失效并替换（轮换）它们，以最大限度地降低其被滥用的风险。与密码不同，每个 TLS 证书都有一个过期日期，因此替换它们是不可避免的。
+
+实际上，IVYO 会在证书过期日期 *之前* 自动轮换其管理的客户端证书。将在其工作持续时间的 2/3 之后生成新的客户端证书；因此，例如，IVYO 创建的证书在 12 个月后过期，将在大约第 8 个月时被 IVYO 替换。这样做是为了让您不必担心遇到过期证书的问题或服务中断。
+
+==== 触发证书轮换
+
+如果您想轮换单个客户端证书，您可以通过从其证书 Secret 中删除 `tls.key` 字段来重新生成现有集群的证书。
+
+是时候轮换您的 IVYO 根证书了吗？您只需要删除 `ivyo-root-cacert` secret。IVYO 将无缝地重新生成并推出它，确保您的应用程序继续与 Ivory 集群通信，而无需更新任何配置或处理任何停机时间。
+
+[source,bash]
+----
+kubectl delete secret ivyo-root-cacert
+----
+
+[NOTE]
+====
+IVYO 仅更新包含生成的根证书的 secret。它不会触及自定义证书。
+====
+
+==== 轮换自定义 TLS 证书
+
+当您使用自己的 TLS 证书与 IVYO 时，您有责任适当地替换它们。方法如下。
+
+IVYO 会自动检测并加载对 IvorySQL 服务器和复制 Secret 内容的更改，而不会停机。您或您的证书管理器只需要替换 `spec.customTLSSecret` 引用的 Secret 中的值。
+
+如果您将 `spec.customTLSSecret` 更改为引用新的 Secret 或新的字段，IVYO 将执行 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/architecture/high-availability.md#rolling-update[滚动重启]。
+
+[IMPORTANT]
+====
+更改 IvorySQL 证书颁发机构时，请确保同时更新 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/customize-cluster.md#customize-tls[`customReplicationTLSSecret`]。
+====
+
+=== 更改主节点
+
+有时您可能希望更改 HA 集群中的主节点。这可以通过使用 ivorycluster spec 的 `patroni.switchover` 部分来完成。它允许您在 ivoryclusters 中启用切换，将特定实例作为新的主节点，并在您的 ivorycluster 进入不良状态时运行故障转移。
+
+让我们完成执行切换的过程！
+
+首先，您需要更新您的 spec 以准备您的集群以更改主节点。编辑您的 spec 以具有以下字段：
+
+[source,yaml]
+----
+spec:
+  patroni:
+    switchover:
+      enabled: true
+----
+
+应用此更改后，IVYO 将寻找触发器以在您的集群中执行切换。您将通过将 `ivory-operator.ivorysql.org/trigger-switchover` 注释添加到您的自定义资源来触发切换。设置此注释的最佳方法是使用时间戳，这样您就知道何时启动了更改。
+
+例如，对于我们的 `hippo` 集群，我们可以运行以下命令来触发切换：
+
+[source,shell]
+----
+kubectl annotate -n ivory-operator ivorycluster hippo \
+  ivory-operator.ivorysql.org/trigger-switchover="$(date)"
+----
+
+[TIP]
+====
+如果您想执行另一次切换，您可以重新运行注释命令并添加 `--overwrite` 标志：
+
+[source,shell]
+----
+kubectl annotate -n ivory-operator ivorycluster hippo --overwrite \
+  ivory-operator.ivorysql.org/trigger-switchover="$(date)"
+----
+====
+
+IVYO 将检测到此注释并使用 Patroni API 请求更改当前主节点！
+
+随着 Patroni 的工作，您的数据库实例 Pod 上的角色将开始更改。新的主节点将具有 `master` 角色标签，旧的主节点将更新为 `replica`。
+
+切换的状态将使用 `status.patroni.switchover` 字段进行跟踪。这将设置为您在触发器注释中定义的值。如果您使用时间戳作为注释，这是确定何时请求切换的另一种方法。
+
+在实例 Pod 标签已更新且 `status.patroni.switchover` 已设置后，主节点已在您的集群上更改！
+
+[IMPORTANT]
+====
+更改主节点后，我们建议您通过将 `spec.patroni.switchover.enabled` 设置为 false 或完全从您的 spec 中删除该字段来禁用切换。如果该字段被删除，相应的状态也将从 ivorycluster 中删除。
+====
+
+==== 定位实例
+
+切换主节点时，您可以选择的另一个选项是提供目标实例作为新的主节点。在执行切换时，此目标实例将用作候选节点。`spec.patroni.switchover.targetInstance` 字段接受您要切换到的实例的名称。
+
+此名称可以在几个不同的地方找到；一个是 StatefulSet 的名称，另一个是数据库 Pod 上的 `ivory-operator.ivorysql.org/instance` 标签。以下命令可以帮助您确定谁是当前主节点以及用作 `targetInstance` 的名称：
+
+[source,shell-session]
+----
+$ kubectl get pods -l ivory-operator.ivorysql.org/cluster=hippo \
+    -L ivory-operator.ivorysql.org/instance \
+    -L ivory-operator.ivorysql.org/role -n ivory-operator
+
+NAME                      READY   STATUS      RESTARTS   AGE     INSTANCE               ROLE
+hippo-instance1-jdb5-0    3/3     Running     0          2m47s   hippo-instance1-jdb5   master
+hippo-instance1-wm5p-0    3/3     Running     0          2m47s   hippo-instance1-wm5p   replica
+----
+
+在我们的示例集群中，`hippo-instance1-jdb5` 当前是主节点，这意味着我们希望在切换中定位 `hippo-instance1-wm5p`。现在您知道哪个实例当前是主节点以及如何找到您的 `targetInstance`，让我们更新您的集群 spec：
+
+[source,yaml]
+----
+spec:
+  patroni:
+    switchover:
+      enabled: true
+      targetInstance: hippo-instance1-wm5p
+----
+
+应用此更改后，您将再次需要通过注释 ivorycluster 来触发切换（请参见上面的命令）。您可以通过检查 Pod 角色标签和 `status.patroni.switchover` 来验证切换是否已完成。
+
+==== 故障转移
+
+最后，当您的集群进入不健康状态时，我们可以选择进行故障转移。完成此操作所需的唯一 spec 更改是将 `spec.patroni.switchover.type` 字段更新为 `Failover` 类型。需要注意的是，执行故障转移时需要 `targetInstance`。基于上面的示例集群，假设 `hippo-instance1-wm5p` 仍然是副本，我们可以更新 spec：
+
+[source,yaml]
+----
+spec:
+  patroni:
+    switchover:
+      enabled: true
+      targetInstance: hippo-instance1-wm5p
+      type: Failover
+----
+
+应用此 spec 更改后，您的 ivorycluster 将准备好执行故障转移。同样，您需要通过注释 ivorycluster 来触发切换（请参见上面的命令），并验证 Pod 角色标签和 `status.patroni.switchover` 是否已相应更新。
+
+[WARNING]
+====
+切换过程中遇到的错误可能会使您的集群处于不良状态。如果您遇到问题，请在 operator 日志中找到问题，您可以更新 spec 以修复问题并应用更改。应用更改后，IVYO 将尝试再次执行切换。
+====
+
+== 删除Ivory集群
+
+总有一个时刻，您需要删除自己的集群。如果您一直在跟着示例操作，只需运行下面一条命令即可删除 Ivory 集群：
+
+[source,shell]
+----
+kubectl delete -k examples/kustomize/ivory
+----
+
+IVYO 会清理与该集群相关的所有对象。
+
+关于数据保留：这取决于您 PVC 的 https://kubernetes.io/docs/concepts/storage/persistent-volumes/#reclaiming[回收策略]。如需了解 Kubernetes 如何管理数据保留，请参阅 https://kubernetes.io/docs/concepts/storage/persistent-volumes/#reclaiming[Kubernetes 官方文档关于卷回收的说明]。

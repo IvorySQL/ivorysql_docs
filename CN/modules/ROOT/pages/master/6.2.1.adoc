@@ -69,7 +69,7 @@ Oracle 模式下额外创建 ivorysql.conf 配置文件。
 
 执行 bootstrap_template1() 加载对应模式的 BKI 文件初始化template1模板数据库，
 
-IvorySQL会额外设置template1模板数据库的数据库模式(oracle/pg)和大小写转换模式以。
+IvorySQL会额外设置template1模板数据库的数据库模式(oracle/pg)和大小写转换模式。
 
 load_plisql()：安装兼容 Oracle PL/SQL 的 PL/iSQL 过程语言
 

@@ -8,9 +8,9 @@ This chapter is a demo to show you how to build an IvorySQL cluster. Just take a
 == Primary node
 
 === Installing and start database
-For quick database installation by yum, please refer to xref:v4.5/3.adoc#quick-installation[Quick installation]。
+For quick database installation by yum, please refer to xref:v5.0/3.adoc#quick-installation[Quick installation]。
 
-For more installation options, please refer to xref:v4.5/6.adoc#Installation[Installation]。
+For more installation options, please refer to xref:v5.0/6.adoc#Installation[Installation]。
 [NOTE]
 The master node database needs to be installed and **started**.
 
@@ -55,9 +55,9 @@ $ pg_ctl restart
 
 == Standby node
 === Installing database
-For quick database installation by yum, please refer to xref:v4.5/3.adoc#quick-installation[Quick installation]。
+For quick database installation by yum, please refer to xref:v5.0/3.adoc#quick-installation[Quick installation]。
 
-For more installation options, please refer to xref:v4.5/6.adoc#Installation[Installation]。
+For more installation options, please refer to xref:v5.0/6.adoc#Installation[Installation]。
 
 [NOTE]
 The standby node database only needs to be installed and **not started**.
@@ -71,7 +71,7 @@ $ sudo systemctl stop firewalld
 === Building streaming replication
 Run below command on the standby node to take base backups of the primary, that is, to build a streaming replication:
 ```
-$ sudo pg_basebackup -F p -P -X fetch -R -h <primary_ip> -p <primary_port> -U ivorysql -D /usr/local/ivorysql/ivorysql-4/data 
+$ sudo pg_basebackup -F p -P -X fetch -R -h <primary_ip> -p <primary_port> -U ivorysql -D /usr/local/ivorysql/ivorysql-5/data 
 ```
 - Specifies the host name of the machine on which the server is running;
 - Specifies the TCP port or local Unix domain socket file extension on which the server is listening for connections. Defaults is 5432;
@@ -84,9 +84,9 @@ For more options, refer to pg_basebackup --help.
 
 Add below contents in ~/.bash_profile file:
 ```
-PATH=/usr/local/ivorysql/ivorysql-4/bin:$PATH
+PATH=/usr/local/ivorysql/ivorysql-5/bin:$PATH
 export PATH
-PGDATA=/usr/local/ivorysql/ivorysql-4/data
+PGDATA=/usr/local/ivorysql/ivorysql-5/data
 export PGDATA
 ```
 Source to make it effective:
@@ -96,7 +96,7 @@ $ source ~/.bash_profile
 
 === Starting IvorySQL sevice
 ```
-$ sudo pg_ctl -D /usr/local/ivorysql/ivorysql-4/data start
+$ sudo pg_ctl -D /usr/local/ivorysql/ivorysql-5/data start
 ```
 
 == Experience the IvorySQL cluster
@@ -117,7 +117,7 @@ ivorysql  6567  6139  0 21:54 ?        00:00:00 postgres: walreceiver streaming 
 On the primary node, connect to IvorySQL and show the status:
 ```
 $ psql -d ivorysql
-psql (17.5)
+psql (18.0)
 Type "help" for help.
 
 ivorysql=# select * from pg_stat_replication;
@@ -141,7 +141,7 @@ All writing operations are performed on the primary node, while reading can be o
 Below is an example. Create a new database test on primary and query:
 ```
 $ psql -d ivorysql
-psql (17.5)
+psql (18.0)
 Type "help" for help.
 
 ivorysql=# create database test;
@@ -161,7 +161,7 @@ ivorysql=# \l
 Query on the standby node:
 ```
 $ psql -d ivorysql
-psql (17.5)
+psql (18.0)
 Type "help" for help.
 
 ivorysql=# \l

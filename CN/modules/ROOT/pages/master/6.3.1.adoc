@@ -9,7 +9,7 @@ Oracle和IvorySQL中的 LIKE 语法是相同的，他们的区别在于表达式
 
 == 实现原理
 
-PostgreSQL的字符串基本类型是text，所以 LIKE 是以text为基础，其他PostgreSQL类型隐式转换成text，不用创建opeartor就能自动转换；IvorySQL中oracle兼容的字符串类型是varchar2，因此创建一个varchar2的 LIKE 操作符，其他oracle的类型也通过隐式转换成varchar2实现不用创建操作符，也能使用 LIKE 操作符。
+PostgreSQL的字符串基本类型是text，所以 LIKE 是以text为基础，其他PostgreSQL类型隐式转换成text，不用创建operator就能自动转换；IvorySQL中oracle兼容的字符串类型是varchar2，因此创建一个varchar2的 LIKE 操作符，其他oracle的类型也通过隐式转换成varchar2实现不用创建操作符，也能使用 LIKE 操作符。
 
 在之前实现oracle兼容数据类型时，IvorySQL做了integer，float8，float4 等一些数据类型到varchar2的隐式转换，没有直接到text的。因此实现这些兼容类型的 LIKE 操作符兼容，有两种方式。一种需要针对每个类型添加一个 LIKE 操作符，另一种是做一个基本的varchar2的 LIKE 操作符。在第二种实现方式中，IvorySQL针对float8，integer，number等已经做了向varchar2类型的隐式转换，这些数据类型可以和varchar2用同一个操作符，这样在创建操作符的时候只需要创建varchar2类型的 LIKE 操作符就可以。
 

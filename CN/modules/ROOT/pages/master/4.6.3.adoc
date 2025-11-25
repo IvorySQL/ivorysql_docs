@@ -1,0 +1,194 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= Docker Swarm & Docker Compose 部署IvorySQL高可用集群
+
+准备三个网络互通的服务器，并搭建swarm集群。
+测试集群名称及对应ip地址如下：
+
+manager-node1: 192.168.21.205
+
+manager-node2: 192.168.21.164
+
+manager-node3: 192.168.21.51
+
+```
+[root@manager-node1 docker-swarm]# docker node ls
+ID                            HOSTNAME        STATUS    AVAILABILITY   MANAGER STATUS   ENGINE VERSION
+y9d9wd9t2ncy4t9bvw6bg9sjs *   manager-node1   Ready     Active         Reachable        26.1.4
+iv17o6m9t9e06vd9iu1o6damd     manager-node2   Ready     Active         Leader           25.0.4
+vjnax76qj812mlvut6cv4qotl     manager-node3   Ready     Active         Reachable        24.0.6
+```
+
+== docker swarm搭建IvorySQL HA Cluster
+下载源码
+```
+[root@manager-node1 ~]# git clone https://github.com/IvorySQL/docker_library.git
+[root@manager-node1 ~]# cd docker_library/docker-cluster/docker-swarm
+```
+
+部署一个三节点的etcd
+```
+[root@manager-node1 docker-swarm]# docker stack deploy -c docker-swarm-etcd.yml ivoryhac-etcd
+Creating network ivoryhac-etcd_etcd-net
+Creating service ivoryhac-etcd_etcd3
+Creating service ivoryhac-etcd_etcd1
+Creating service ivoryhac-etcd_etcd2
+[root@manager-node1 docker-swarm]# docker service ls
+ID             NAME                  MODE         REPLICAS   IMAGE                        PORTS
+1jst0mva8o5n   ivoryhac-etcd_etcd1   replicated   1/1        quay.io/coreos/etcd:v3.5.8   *:2379-2380->2379-2380/tcp
+sosag5017cis   ivoryhac-etcd_etcd2   replicated   1/1        quay.io/coreos/etcd:v3.5.8
+8twpgkzo2mnx   ivoryhac-etcd_etcd3   replicated   1/1        quay.io/coreos/etcd:v3.5.8
+```
+可自定义数据库外挂目录，修改docker-swarm-ivypatroni.yml中的volumes，修改完成后修改目录权限及属主；示例如下
+```
+mkdir -p /home/ivorysql/{data,patroni}
+chown -R 1000:1000 /home/ivorysql/{data,patroni}
+chmod 700 /home/ivorysql/{data,patroni}
+```
+
+部署IvorySQL高可用集群
+```
+[root@manager-node1 docker-swarm]# docker stack deploy -c docker-swarm-ivypatroni.yml ivoryhac-patroni
+Since --detach=false was not specified, tasks will be created in the background.
+In a future release, --detach=false will become the default.
+Creating service ivoryhac-patroni_ivypatroni1
+Creating service ivoryhac-patroni_ivypatroni2
+[root@manager-node1 docker-swarm]# docker service ls
+ID             NAME                       MODE         REPLICAS   IMAGE                                             PORTS
+1jst0mva8o5n   ivoryhac-etcd_etcd1        replicated   1/1        quay.io/coreos/etcd:v3.5.8                        *:2379-2380->2379-2380/tcp
+sosag5017cis   ivoryhac-etcd_etcd2        replicated   1/1        quay.io/coreos/etcd:v3.5.8
+8twpgkzo2mnx   ivoryhac-etcd_etcd3        replicated   1/1        quay.io/coreos/etcd:v3.5.8
+uzdvjq5j2gwt   ivorysql-hac_ivypatroni1   replicated   1/1        ivorysql/docker-swarm-ha-cluster:5.0-4.0.6-ubi8   *:1521->1521/tcp, *:5866->5866/tcp
+fr0m9chu3ce8   ivorysql-hac_ivypatroni2   replicated   1/1        ivorysql/docker-swarm-ha-cluster:5.0-4.0.6-ubi8   *:1522->1521/tcp, *:5867->5866/tcp
+```
+
+psql连接数据库的Oracle端口及PG端口
+```
+[root@manager-node1 docker-swarm]# psql -h127.0.0.1 -p1521 -U ivorysql -d ivorysql
+Password for user ivorysql:
+
+ivorysql=# select version();
+                                                        version
+------------------------------------------------------------------------------------------------------------------------
+ PostgreSQL 18.0 (IvorySQL 5.0) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
+(1 row)
+
+ivorysql=# show ivorysql.compatible_mode;
+ ivorysql.compatible_mode
+--------------------------
+ oracle
+(1 row)
+
+ivorysql=# exit
+```
+```
+[root@manager-node1 docker-swarm]# psql -h127.0.0.1 -p5432 -U ivorysql -d ivorysql
+Password for user ivorysql:
+
+ivorysql=# select version();
+                                                        version
+------------------------------------------------------------------------------------------------------------------------
+ PostgreSQL 18.0 (IvorySQL 5.0) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
+(1 row)
+
+ivorysql=# show ivorysql.compatible_mode;
+ ivorysql.compatible_mode
+--------------------------
+ pg
+(1 row)
+```
+
+卸载IvorySQL集群
+```
+[root@manager-node1 ~] docker stack rm ivoryhac-patroni
+[root@manager-node1 ~] docker stack rm ivoryhac-etcd
+```
+
+== docker compose搭建IvorySQL HA Cluster
+
+下载源码
+```
+[root@manager-node1 ~]# git clone https://github.com/IvorySQL/docker_library.git
+[root@manager-node1 ~]# cd docker_library/docker-cluster/docker-compose
+```
+拷贝文件至其他服务器
+
+将etcd和ivypatroni的docker-compose文件，分别拷贝到其他服务器上。
+
+如测试服务器:
+
+192.168.21.205 存放etcd1+ivorypatroni1，
+
+192.168.21.164 存放etcd2+ivorypatroni2，
+
+192.168.21.51  存放etcd3+ivorypatroni3
+
+部署一个三节点的etcd，以node1为例
+```
+[root@manager-node1 docker-compose]# docker-compose -f ./docker-compose-etcd1.yml up -d
+[+] Running 1/1
+ ✔ Container etcd  Started                                                                                                                                                                   0.1s
+
+```
+
+部署IvorySQL高可用集群
+
+在每个节点上，部署ivyhac服务
+以node1为例
+```
+[root@manager-node1 docker-compose]# docker-compose -f ./docker-compose-ivypatroni_1.yml up -d
+[+] Running 1/1
+ ✔ Container ivyhac1  Started                                                                                                                                                                0.1s
+[root@manager-node1 docker-compose]# docker ps
+CONTAINER ID   IMAGE                                               COMMAND                  CREATED          STATUS          PORTS     NAMES
+736c0d188bdd   ivorysql/docker-compose-ha-cluster:5.0-4.0.6-ubi8   "/bin/sh /docker-ent…"   18 seconds ago   Up 17 seconds             ivyhac1
+9d8e04e4f819   quay.io/coreos/etcd:v3.5.8                          "/usr/local/bin/etcd"    24 minutes ago   Up 24 minutes             etcd
+
+```
+
+此时，一主两备集群搭建完成
+psql连接数据库的Oracle端口及PG端口
+```
+[root@manager-node1 docker-swarm]# psql -h127.0.0.1 -p1521 -U ivorysql -d ivorysql
+Password for user ivorysql:
+
+ivorysql=# select version();
+                                                        version
+------------------------------------------------------------------------------------------------------------------------
+ PostgreSQL 18.0 (IvorySQL 5.0) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
+(1 row)
+
+ivorysql=# show ivorysql.compatible_mode;
+ ivorysql.compatible_mode
+--------------------------
+ oracle
+(1 row)
+
+ivorysql=# exit
+```
+```
+[root@manager-node1 docker-swarm]# psql -h127.0.0.1 -p5432 -U ivorysql -d ivorysql
+Password for user ivorysql:
+
+ivorysql=# select version();
+                                                        version
+------------------------------------------------------------------------------------------------------------------------
+ PostgreSQL 18.0 (IvorySQL 5.0) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
+(1 row)
+
+ivorysql=# show ivorysql.compatible_mode;
+ ivorysql.compatible_mode
+--------------------------
+ pg
+(1 row)
+
+```
+
+卸载IvorySQL集群
+以node1为例
+```
+[root@manager-node1 ~] docker-compose -f ./docker-compose-ivypatroni_1.yml down
+[root@manager-node1 ~] docker-compose -f ./docker-compose-etcd1.yml down
+```

@@ -87,7 +87,7 @@ values_clause_no_parens:
 
 === UPDATE语句增强
 
-在UPDATE语句做transform时候，也就是transformUpdateStmt的时候，如果是Oralce兼容模式，调用新添加的 transformIvyUpdateTargetList 函数。
+在UPDATE语句做transform时候，也就是transformUpdateStmt的时候，如果是Oracle兼容模式，调用新添加的 transformIvyUpdateTargetList 函数。
 在这个新函数中，对于参数origTlist(即targetList)中没有名字为row的情况，按原来UPDATE的transform流程执行 transformUpdateTargetList 函数。
 
 对参数origTlist中有名字为row的情况：因为PostgreSQL中row可以作为列名，而Oracle 中row是保留关键字，不可以作为列名，所以需要区分row是否是表中的列，如果row不是要更新的表中的列，则调用新函数 transformUpdateRowTargetList 把语句

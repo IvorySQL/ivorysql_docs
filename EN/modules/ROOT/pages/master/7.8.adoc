@@ -1050,7 +1050,7 @@ select uid() from dual;
 
 === `USERENV` function
 function: return the information of the current user environment, the test cases are as follows:
-Check whether the current user is DBA, and if so, return ture:
+Check whether the current user is DBA, and if so, return true:
 
 ```
 select userenv('isdba')from dual;

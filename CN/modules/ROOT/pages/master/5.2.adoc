@@ -117,7 +117,7 @@ NOTICE:  [4,5,6]
 CALL
 ----
 
-==== 函数（FUNCTION）
+=== 函数（FUNCTION）
 [literal]
 ----
 ivorysql=# CREATE OR REPLACE FUNCTION AddVector(a vector(3), b vector(3))

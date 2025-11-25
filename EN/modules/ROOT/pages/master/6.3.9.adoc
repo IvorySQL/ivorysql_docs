@@ -11,7 +11,7 @@ To meet Oracle's quoted identifier case compatibility requirements, IvorySQL has
 
 == Implementation Details
 
-If the parameter `-C` is appended during database initialization, with values of `normal/interchange/lowercase`, the `Intidb.c->main()` function in the code will process this parameter and set the global variable `caseswitchmode` according to the parameter value. Then the `initdb` command will start a `postgres` process in `-boot` mode to set up the `template1` template database, while passing the parameter `-C ivorysql.identifier_case_switch=caseswitchmode` to the new process.
+If the parameter `-C` is appended during database initialization, with values of `normal/interchange/lowercase`, the `Initdb.c->main()` function in the code will process this parameter and set the global variable `caseswitchmode` according to the parameter value. Then the `initdb` command will start a `postgres` process in `-boot` mode to set up the `template1` template database, while passing the parameter `-C ivorysql.identifier_case_switch=caseswitchmode` to the new process.
 
 This newly started backend process will write the `identifier_case_switch` information to the `pg_control` file through the following code:
 

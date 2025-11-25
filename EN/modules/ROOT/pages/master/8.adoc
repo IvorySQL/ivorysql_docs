@@ -29,7 +29,7 @@ Our team is a continuously open team, focusing on parts of IvorySQL. In our team
 
 == **Contributor's Guide**
 
-Before contributing, we need to know the current version of IvorySQL and the version of the document.At present, we maintain versions after version *4.5*. Our version follows the update pace of PG. Please update to the latest version before contributing. After that, we need to read the format requirements carefully and be familiar with code format, code comment format, issue format, pull PR title format, document contribution format, and article contribution format. These can help you become a contributor of IvorySQL as soon as possible.
+Before contributing, we need to know the current version of IvorySQL and the version of the document.At present, we maintain versions after version *5.0*. Our version follows the update pace of PG. Please update to the latest version before contributing. After that, we need to read the format requirements carefully and be familiar with code format, code comment format, issue format, pull PR title format, document contribution format, and article contribution format. These can help you become a contributor of IvorySQL as soon as possible.
 
 
 === Preparation before Contribution

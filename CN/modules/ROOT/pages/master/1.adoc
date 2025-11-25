@@ -4,78 +4,201 @@
 
 == 版本概览
 
-[**发行日期：2025年06月04日**]
+[*发布日期：2025 年 11 月 25 日*]
 
+IvorySQL 5.0 基于 PostgreSQL 18.0，带来更强的 Oracle 兼容能力、PL/iSQL 增强以及全新的全球化特性，同时对打包、自动化和工具链进行全面更新。
+有关完整更新列表，请访问我们的 https://docs.ivorysql.org/[文档站点]。
 
-IvorySQL 4.5，基于PostgreSQL 17.5，并修复了多个问题。有关更新的完整列表，请访问我们的 https://docs.ivorysql.org/[文档网站] 。
+== 增强内容
 
-== 增强功能及问题修复
+- PostgreSQL 18.0
 
-- PostgreSQL 17.5
+1. 新增异步 I/O（AIO）子系统，可提升顺序扫描、位图堆扫描、vacuum 等操作的性能。
+2. pg_upgrade 现在会保留优化器统计信息。
+3. 支持 "skip scan" 查找，使多列 B-tree 索引能够在更多场景下使用。
+4. 提供用于生成按时间排序 UUID 的 uuidv7() 函数。
+5. 支持虚拟生成列（在读取时计算值），并将其设为生成列的默认模式。
+6. 增加 OAuth 认证能力。
+7. 在 INSERT、UPDATE、DELETE 和 MERGE 的 RETURNING 子句中支持 OLD 和 NEW。
+8. 对 PRIMARY KEY、UNIQUE 与 FOREIGN KEY 引入时间区间约束。
 
-1. 修复了在检查声明为 GB18030 编码的无效字符串时，可能发生的一字节缓冲区超读（one-byte buffer overread）问题，增强了系统处理无效编码数据的稳健性。
-2. 确保对分区表上存在的自引用外键（self-referential foreign keys）进行正确处理，提升了复杂数据结构下分区表的可靠性。
-3. 避免了在 brin_bloom_union() 函数中合并已压缩的 BRIN 摘要（summaries）时，可能发生的数据丢失风险，保障了索引数据的准确性。
-4. 修正了在嵌套 WITH 子句中的 INSERT/UPDATE/DELETE/MERGE 命令所附带的 WITH 子句内，对外部公共表表达式（CTE）名称引用时的处理逻辑，确保了复杂查询的正确执行。
-5. 修复了 ALTER TABLE ADD COLUMN 命令，以确保在添加列时，能够正确处理包含默认值的域（domain）类型，提高了表结构变更操作的准确性
+更多细节请参阅 https://www.postgresql.org/docs/release/18.0/[PostgreSQL 18.0 发布说明]。
 
-+
+== 新特性
+=== 新增21 项 Oracle 兼容能力
 
-更多细节, 请参阅 https://www.postgresql.org/docs/release/17.5/[PostgreSQL发布说明].
+- Oracle 兼容 ROWID：Feature https://github.com/IvorySQL/IvorySQL/issues/126[#126] +
+  让 IvorySQL 行标识符与 Oracle 语义保持一致，便于跨数据库工具协同。
 
-- IvorySQL 4.5
+- PL/iSQL CALL 调用语法：Feature https://github.com/IvorySQL/IvorySQL/issues/764[#764] +
+  新增 Oracle 风格的 `CALL` 入口，实现存储过程一致的调用体验。
 
-1. MIPS 全平台打包支持：特性 https://github.com/IvorySQL/IvorySQL/issues/736[#736]
-+
-为 MIPS 架构提供多平台介质包，支持国内外主流操作系统，包括 Red Hat、Debian、麒麟、UOS、凝思等。
+- PL/iSQL `%ROWTYPE`：Feature https://github.com/IvorySQL/IvorySQL/issues/765[#765] +
+  允许变量复用整张表或游标行的结构，便于紧凑编写 PL/iSQL。
 
-2. 新增IvorySQL 在线体验平台：特性 https://github.com/IvorySQL/ivorysql-wasm/issues/1[#1]
-+
-提供一个基于 Web 的平台，用户可直接通过浏览器界面在线体验 IvorySQL V4.5 并进行数据库交互。
+- PL/iSQL `%TYPE`：Feature https://github.com/IvorySQL/IvorySQL/issues/766[#766] +
+  支持变量继承既有列或变量的类型，降低类型漂移风险。
 
-3. 新增社区行为准则：特性  https://github.com/IvorySQL/IvorySQL/issues/808[#808]
-+
-为社区参与者明确了行为规范和期望，旨在营造一个友好且互相尊重的社区环境。
+- 区分大小写兼容开关：Feature https://github.com/IvorySQL/IvorySQL/issues/767[#767] +
+  在需要时可保留标识符大小写，以匹配 Oracle 行为。
 
-4. 更新社区贡献指南：特性 https://github.com/IvorySQL/ivorysql_docs/pull/121[#121]
-+
-对社区贡献流程、规范和最佳实践进行了修订与完善，方便贡献者参与。
+- NLS 参数兼容性：Feature https://github.com/IvorySQL/IvorySQL/issues/768[#768] +
+  支持 `NLS_DATE_FORMAT`、`NLS_TIMESTAMP_FORMAT` 等 Oracle 风格 NLS 设置。
 
-5. 实现文档构建与网站更新自动化：特性 https://github.com/IvorySQL/ivorysql_docs/issues/115[#115]
-+
-通过 Pull Request (PR) 自动触发文档构建及官方网站内容更新流程。
+- 空字符串转 NULL：Feature https://github.com/IvorySQL/IvorySQL/issues/769[#769] +
+  将长度为零的字符串转换为 NULL，以遵循 Oracle 的兼容规则。
 
-6. 改进贡献者工作流程，通过 /assign 命令自我分配任务：特性 https://github.com/IvorySQL/ivorysql_docs/issues/109[#109]
+- 解析器切换能力：Feature https://github.com/IvorySQL/IvorySQL/issues/770[#770] +
+  可在 Oracle 与 PostgreSQL 解析器之间切换，实现会话级灵活性。
 
-7. IvorySQL Operator V4 适配 IvorySQL 4.5：特性 https://github.com/IvorySQL/ivory-operator/pull/79[#79]
+- GB18030 数据库编码：Feature https://github.com/IvorySQL/IvorySQL/issues/771[#771] +
+  为中国市场提供 GB18030 初始化和创建数据库选项。
 
-== 源代码
+- Oracle 兼容 `SYS_GUID`：Feature https://github.com/IvorySQL/IvorySQL/issues/773[#773] +
+  实现 Oracle `SYS_GUID` 函数，生成基于 RAW 的 GUID。
 
-IvorySQL主要包含2个代码仓库:
+- Oracle 兼容 `SYS_CONTEXT`：Feature https://github.com/IvorySQL/IvorySQL/issues/774[#774] +
+  提供 Oracle `SYS_CONTEXT` API，用于查询会话与环境元数据。
 
-* IvorySQL数据库源码: https://github.com/IvorySQL/IvorySQL
-* IvorySQL官方网站: https://github.com/IvorySQL/Ivory-www
+- Oracle 兼容 `USERENV`：Feature https://github.com/IvorySQL/IvorySQL/issues/775[#775] +
+  引入 `USERENV` 函数，使会话可检查 Oracle 风格的上下文信息。
 
-== 贡献人员
-以下个人（按姓氏排序）作为补丁作者、提交者、审查者、测试者或问题报告者为此版本做出了贡献。
+- Oracle 兼容函数语法：Feature https://github.com/IvorySQL/IvorySQL/issues/776[#776] +
+  支持 EDITIONABLE/NONEDITIONABLE、`RETURN`、`IS`、`OUT ... NOCOPY` 等 Oracle 结构。
 
-- Cary Huang
-- Denis Lussier
-- Flyingbeecd
-- Grant Zhou
-- 高雪玉
-- 矫顺田
-- 纪虎林
-- 梁翔宇
-- 吕新杰
-- 牛世继
-- 潘振浩
-- 石卓妍
-- 隋戈
-- 陶郑
-- 王康
-- 王守波
-- 杨世华
-- 严少安
-- 赵法威
-- 邹仁利
+- Oracle 兼容过程语法：Feature https://github.com/IvorySQL/IvorySQL/issues/777[#777] +
+  支持包含 Oracle 选项的过程 DDL、EXEC 调用以及 ALTER PROCEDURE。
+
+- libpq OUT 参数传递：Feature https://github.com/IvorySQL/IvorySQL/issues/778[#778] +
+  扩展客户端协议，使 OUT 参数可像 OCI 一样被消费。
+
+- 过程 OUT 参数：Feature https://github.com/IvorySQL/IvorySQL/issues/779[#779] +
+  存储过程现在可按 Oracle 约定声明 IN、OUT、IN OUT 模式。
+
+- 函数 OUT 参数：Feature https://github.com/IvorySQL/IvorySQL/issues/780[#780] +
+  函数支持 Oracle 风格 OUT（含 IN OUT）参数。
+
+- 嵌套子程序：Feature https://github.com/IvorySQL/IvorySQL/issues/781[#781] +
+  允许在子程序内部定义函数或过程，并支持重载。
+
+- Oracle 兼容 `INSTR`：Feature https://github.com/IvorySQL/IvorySQL/issues/782[#782] +
+  与 Oracle `INSTR` 行为保持一致，覆盖子串搜索与位置判断。
+
+- Oracle 兼容 FORCE VIEW：Feature https://github.com/IvorySQL/IvorySQL/issues/783[#783] +
+  允许在引用对象尚未存在时创建视图，重现 Oracle FORCE 选项。
+
+- Oracle 兼容 LIKE 运算符：Feature https://github.com/IvorySQL/IvorySQL/issues/784[#784] +
+  对齐 Oracle 的通配符语义，确保匹配行为可预测。
+
+=== 在线体验与多平台发行包
+
+- 在线体验：IvorySQL v5.0：Feature https://github.com/IvorySQL/IvorySQL/issues/887[#887] +
+  上线交互式浏览器环境，用户可实时体验与评估 IvorySQL v5.0，无需安装。
+
+- 全平台打包：Feature https://github.com/IvorySQL/IvorySQL/issues/949[#949] +
+  为 X86、ARM、MIPS、龙芯架构等平台提供多架构安装介质。
+
+=== 云原生与容器化
+
+- 容器化部署支持（Docker Compose & Docker Swarm）：
+  支持在 Docker Swarm 与 Docker Compose 中部署单实例数据库与高可用集群。
+
+- 容器化部署支持（Kubernetes 基础版）：
+  使用 Helm 在 Kubernetes（K8S）中部署单实例数据库与高可用集群。
+
+- 发布 IvorySQL Operator v5（Kubernetes 进阶版）：
+  Operator v5 适配 IvorySQL v5.0，并同步升级系统组件版本与数据库扩展版本。
+
+- 发布 IvorySQL Cloud v5（统一全生命周期与可视化控制平面）：
+  提供可视化托管控制平面，覆盖订阅、全生命周期编排以及生态集成。
+
+=== 新增 10 个 PostgreSQL 扩展
+
+- pg_cron：Feature https://github.com/IvorySQL/IvorySQL/issues/882[#882] +
+  通过 pg_cron 集成在数据库层内执行计划任务。
+
+- pgAudit：Feature https://github.com/IvorySQL/IvorySQL/issues/929[#929] +
+  借助 PostgreSQL 标准日志能力输出详尽的会话 / 对象审计记录。
+
+- PostGIS：Feature https://github.com/IvorySQL/IvorySQL/issues/880[#880] +
+  提供空间数据处理与地理分析能力。
+
+- pgRouting：Feature https://github.com/IvorySQL/IvorySQL/issues/881[#881] +
+  引入网络与路径分析能力。
+
+- PGroonga：Feature https://github.com/IvorySQL/IvorySQL/issues/879[#879] +
+  增强全文检索。
+
+- ddlx：Feature https://github.com/IvorySQL/IvorySQL/issues/877[#877] +
+  支持 ddlx，便于高级模式洞察与自动化 DDL 生成。
+
+- pgsql-http：Feature https://github.com/IvorySQL/IvorySQL/issues/883[#883] +
+  允许数据库内部发起 HTTP/HTTPS 请求，实现与外部 Web 服务的无缝通信。
+
+- system_stats：Feature https://github.com/IvorySQL/IvorySQL/issues/946[#946] +
+  通过 system_stats 提供系统级统计信息。
+
+- plpgsql_check：Feature https://github.com/IvorySQL/IvorySQL/issues/915[#915] +
+  在运行前对 PL/pgSQL 函数做静态分析，定位错误、警告与潜在问题。
+
+- pgvector：Feature https://github.com/IvorySQL/IvorySQL/issues/878[#878] +
+  融合 pgvector，为 AI/ML 工作负载提供原生向量相似度检索。
+
+== 缺陷修复
+
+- 修复 `unused_oids` 与 `duplicate_oids` 目录工具，使头文件扫描能准确检测冲突且无误报：Issue https://github.com/IvorySQL/IvorySQL/issues/841[#841]
+- 为 `libpq/ivytest` 产物新增 `.gitignore`，避免生成的二进制与日志污染开发树：Issue https://github.com/IvorySQL/IvorySQL/issues/843[#843]
+- 扩展 GitHub 工作流回归测试，覆盖 `--with-libnuma` 配置，防止未来在启用 NUMA 的主机上出问题：Issue https://github.com/IvorySQL/IvorySQL/issues/869[#869]
+- 让 `psql` 用户可以通过 `\h create package` 获取 CREATE PACKAGE 语法帮助，补齐 PL/iSQL 包的 CLI 文档：Issue https://github.com/IvorySQL/IvorySQL/issues/936[#936]
+- 排除 MainLoop 悬空指针引发的并发压力下间歇性段错误：Issue https://github.com/IvorySQL/IvorySQL/issues/898[#898]
+- 修复 `oracle_test/modules/*/sql` 的测试框架假设，让 Oracle 兼容测试套件再次端到端运行：Issue https://github.com/IvorySQL/IvorySQL/issues/897[#897]
+- 更新 `README.md` 与 `README_CN.md`，同步 IvorySQL v5 特性、打包与快速上手信息：Issue https://github.com/IvorySQL/IvorySQL/issues/896[#896]
+- 更正全局唯一索引的强制机制，使相关回归测试在所有支持平台上稳定通过：Issue https://github.com/IvorySQL/IvorySQL/issues/894[#894]
+
+== 源码仓库
+
+IvorySQL 的主要代码仓库：
+
+- IvorySQL 数据库源码：https://github.com/IvorySQL/IvorySQL
+- IvorySQL 官网：https://github.com/IvorySQL/Ivory-www
+- IvorySQL 文档：https://github.com/IvorySQL/IvorySQL-docs
+- IvorySQL Docker：https://github.com/IvorySQL/docker_library
+
+== 贡献者名单
+以下人员（按字母顺序）作为补丁作者、提交者、审阅者、测试者或问题报告者，为本次发布做出了贡献。
+
+* ccwxl
+* Cédric Villemain
+* elodiefb
+* Grant Zhou
+* Imran Zaheer
+* luss
+* Martin Gerhardy
+* msdnchina
+* omstack
+* otegami
+* rophy
+* shlei6067
+* sjw1933
+* Yasir Hussain Shah
+* 初少林
+* 崇鹏豪
+* 高雪玉
+* 矫顺田
+* 类延良
+* 李苑
+* 梁翔宇
+* 刘晓辉
+* 吕新杰
+* 牛世继
+* 彭冲
+* 潘振浩
+* 石卓妍
+* 隋戈
+* 陶郑
+* 童水森
+* 王硕
+* 薛晓刚
+* 严少安
+* 杨世华
+* 赵法威

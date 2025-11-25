@@ -17,7 +17,7 @@
 
 == 功能
 
-- Initdb -m 初始化，需要判断不同的模式，其中Oracle模式下，需要执行postgres_oracle.bki的SQL语句;
+- initdb -m 初始化，需要判断不同的模式，其中Oracle模式下，需要执行postgres_oracle.bki的SQL语句;
 - 启动时会根据初始化模式，判断是否为oracle兼容模式。
 
 ```

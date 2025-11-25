@@ -94,7 +94,8 @@ Set environment variables; Load environment variables; Because ORACLE must be de
 
 ```
 export ORACLE_HOME=/usr/lib/oracle/18.3/client64
-# tar -zxvf DBD-Oracle-1.76.tar.gz # source /home/postgres/.bashrc
+# tar -zxvf DBD-Oracle-1.76.tar.gz 
+# source /home/postgres/.bashrc
 # cd DBD-Oracle-1.76
 # perl Makefile.PL
 # make
@@ -459,7 +460,7 @@ $ createdb orcl
 
 $ psql
 
-psql (17.5)
+psql (18.0)
 
 Type "help" for help.
 
@@ -488,7 +489,7 @@ Create SH, HR, SCOTT users:
 ```
 $ psql orcl
 
-psql (17.5)
+psql (18.0)
 
 Type "help" for help.
 

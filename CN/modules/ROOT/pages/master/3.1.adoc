@@ -44,24 +44,24 @@ https://www.ionos.com/help/server-cloud-infrastructure/server-administration/cre
 创建或编辑IvorySQL yum源配置文件/etc/yum.repos.d/ivorysql.repo
 ```
 vim /etc/yum.repos.d/ivorysql.repo
-[ivorysql4]
-name=IvorySQL Server 4 $releasever - $basearch
-baseurl=https://yum.highgo.com/dists/ivorysql-rpms/4/redhat/rhel-$releasever-$basearch
+[ivorysql5]
+name=IvorySQL Server 5 $releasever - $basearch
+baseurl=https://yum.highgo.com/dists/ivorysql-rpms/5/redhat/rhel-$releasever-$basearch
 enabled=1
 gpgcheck=0
 ```
-保存退出后，安装IvorySQL4
+保存退出后，安装IvorySQL5
 ```
-$ sudo dnf install -y IvorySQL-4.5
+$ sudo dnf install -y ivorysql5-5.0
 ```
 ....
 
-  正确安装后，数据库将被安装在/opt/IvorySQL-4.5/路径下的IvorySQL-version(如:IvorySQL-4.5)文件夹内
+  正确安装后，数据库将被安装在/usr/ivory-5/路径下的IvorySQL-version(如:IvorySQL-5.0)文件夹内
 ....
 
 执行以下命令为ivorysql用户赋权：
 ```
-$ sudo chown -R ivorysql:ivorysql /opt/IvorySQL-4.5
+$ sudo chown -R ivorysql:ivorysql /usr/ivory-5
 ```
 [[配置环境变量]]
 ** 配置环境变量
@@ -70,9 +70,9 @@ $ sudo chown -R ivorysql:ivorysql /opt/IvorySQL-4.5
 
 将以下配置写入~/.bash_profile文件并使用source命令该文件使环境变量生效：
 ```
-PATH=/opt/IvorySQL-4.5/bin:$PATH
+PATH=/usr/ivory-5/bin:$PATH
 export PATH
-PGDATA=/opt/IvorySQL-4.5/data
+PGDATA=/usr/ivory-5/data
 export PGDATA
 ```
 ```
@@ -82,7 +82,7 @@ $ source ~/.bash_profile
 ** 数据库初始化
 
 ```
-$ initdb -D /opt/IvorySQL-4.5/data
+$ initdb -D /usr/ivory-5/data
 ```
 ....
   其中-D参数用来指定数据库的数据目录。更多参数使用方法，请使用initdb --help命令获取。
@@ -91,16 +91,16 @@ $ initdb -D /opt/IvorySQL-4.5/data
 ** 启动数据库服务
 
 ```
-$ pg_ctl -D /opt/IvorySQL-4.5/data -l ivory.log start 
+$ pg_ctl -D /usr/ivory-5/data -l ivory.log start 
 ```
 
-其中-D参数用来指定数据库的数据目录，如果<<配置环境变量>> 配置了PGDATA，则该参数可以省略。-l参数用来指定日志目录。更多参数使用方法，请使用pg_ctl --help命令获取。
+其中-D参数用来指定数据库的数据目录，如果<<配置环境变量>> 配置了PGDATA，则该参数可以省略。-l参数用来指定日志文件。更多参数使用方法，请使用pg_ctl --help命令获取。
 
 
 查看确认数据库启动成功：
 ```
 $ ps -ef | grep postgres
-ivorysql  3214     1  0 20:35 ?        00:00:00 /opt/IvorySQL-4.5/bin/postgres -D /opt/IvorySQL-4.5/data
+ivorysql  3214     1  0 20:35 ?        00:00:00 /usr/ivory-5/bin/postgres -D /usr/ivory-5/data
 ivorysql  3215  3214  0 20:35 ?        00:00:00 postgres: checkpointer 
 ivorysql  3216  3214  0 20:35 ?        00:00:00 postgres: background writer 
 ivorysql  3218  3214  0 20:35 ?        00:00:00 postgres: walwriter 
@@ -113,19 +113,19 @@ ivorysql  3238  1551  0 20:35 pts/0    00:00:00 grep --color=auto postgres
 
 ** 从Docker Hub上获取IvorySQL镜像
 ```
-$ docker pull ivorysql/ivorysql:4.5-ubi8
+$ docker pull ivorysql/ivorysql:5.0-ubi8
 ```
 
 ** 运行IvorySQL
 ```
-$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:4.5-ubi8
+$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:5.0-ubi8
 ```
 
 ** 查看IvorySQL容器运行是否成功
 ```
 $ docker ps | grep ivorysql
 CONTAINER ID   IMAGE               COMMAND                   CREATED          STATUS          PORTS                              NAMES
-6faa2d0ed705   ivorysql:4.5-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
+6faa2d0ed705   ivorysql:5.0-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
 ```
 
 == 数据库连接
@@ -133,7 +133,7 @@ CONTAINER ID   IMAGE               COMMAND                   CREATED          ST
 psql连接数据库：
 ```
 $ psql -d <database>
-psql (17.5)
+psql (18.0)
 Type "help" for help.
 
 ivorysql=#

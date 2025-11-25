@@ -13,7 +13,7 @@
 |====
 |数据库名称|like模糊查询
 |oracle|oracle的字符串类型是varchar2，支持对数字、日期、字符串字段类型的列用Like关键字配合通配符来实现模糊查询
-|IvorySQL|IvorySQL的字符串基本类型是text，所以like是以text为基础上，其他IvorySQL的类型能隐式转换成text，这样不用创建opeartor就能自动转换
+|IvorySQL|IvorySQL的字符串基本类型是text，所以like是以text为基础上，其他IvorySQL的类型能隐式转换成text，这样不用创建operator就能自动转换
 |====
 
 == 测试用例

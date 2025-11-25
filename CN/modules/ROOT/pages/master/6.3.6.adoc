@@ -68,7 +68,7 @@ Oracle的sqlplus工具使用斜线(/)来结束函数和存储过程，IvorySQL�
 	ECHO;
 ```
 
-Psql工具需要检测斜线/的含义，避免将注释等部分的斜线判定为结束符，为此在oracle_fe_utils/ora_psqlscan.l文件中增加一个单独的接口is_oracle_slash来检测：
+避免将注释等场景中的斜线误判为结束符，为此在 oracle_fe_utils/ora_psqlscan.l 文件中新增 is_oracle_slash 函数接口用于检测：
 ```
 bool
 is_oracle_slash(PsqlScanState state, const char *line)

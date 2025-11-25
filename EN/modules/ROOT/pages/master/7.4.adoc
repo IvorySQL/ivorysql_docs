@@ -15,7 +15,7 @@
 ====
 == Function
 
-- Initdb -m initialization requires judgment of different modes, among which oracle mode requires the execution of SQL statements postgres_oracle.bki. The default is Oracle compatibility mode, and the process is as follows:
+- initdb -m initialization requires judgment of different modes, among which oracle mode requires the execution of SQL statements postgres_oracle.bki. The default is Oracle compatibility mode, and the process is as follows:
  
 - Startup: When starting, it determines whether it is an Oracle compatibility mode based on the initialization mode;
 

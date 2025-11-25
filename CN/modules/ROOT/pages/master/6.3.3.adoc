@@ -12,7 +12,7 @@ IvorySQL提供了兼容Oracle RowID的功能。RowID是一种伪列，在创建�
 RowID 应当具备以下特性：
 
 |====
-| 1. 逻辑的标识每一行，且值唯一 
+| 1. 逻辑地标识每一行，且值唯一 
 | 2. 可以通过ROWID快速查询和修改表的其他列，自身不能被插入和修改 
 | 3. 用户可以控制是否开启此功能 
 |====
@@ -21,7 +21,7 @@ RowID 应当具备以下特性：
 
 在IvorySQL中系统列 ctid 字段代表了数据行在表中的物理位置，也就是行标识（tuple identifier），由一对数值组成（块编号和行索引），可以通过ctid快速的查找表中的数据行，这样和Oracle的RowID行为很相似，但是ctid值有可能会改变（例如当update/ vacuum full时），因此ctid不适合作为一个长期的行标识。
 
-我们选择了表的oid加一个序列值组成的复合类型来做为RowID值，其中的序列是系统列。如果RowID功能被开启，则在建表的同时创建一个名为table-id_rowid_seq 的序列。同时在heap_form_tuple构造函数中，为 HeapTupleHeaderData 的长度增加8个字节，并标识td->t_infomask = HEAP_HASROWID 位来表示rowid的存在。
+我们选择了表的oid加一个序列值组成的复合类型来作为RowID值，其中的序列是系统列。如果RowID功能被开启，则在建表的同时创建一个名为table-id_rowid_seq 的序列。同时在heap_form_tuple构造函数中，为 HeapTupleHeaderData 的长度增加8个字节，并标识td->t_infomask = HEAP_HASROWID 位来表示rowid的存在。
 
 在开启了ROWID的GUC参数或建表时带上 WITH ROWID 选项，或对普通表执行 ALTER TABLE … SET WITH ROWID 时会通过增加序列创建命令来创建一个序列。
 ```
@@ -44,7 +44,7 @@ RowID 应当具备以下特性：
 
 同时为了快速通过RowID伪列查询到一行数据，默认会在表的RowID列上创建一个UNIQUE索引，以提供快速查询功能。
 
-RowID列做为系统属性列其实现是通过在 heap.c 中新增一个系统列来实现的。
+RowID列作为系统属性列其实现是通过在 heap.c 中新增一个系统列来实现的。
 ```
 /*
  * Compatible Oracle ROWID pseudo column.
