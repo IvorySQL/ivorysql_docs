@@ -6,7 +6,7 @@
 
 [*发布日期：2025 年 11 月 25 日*]
 
-IvorySQL 5.0 基于 PostgreSQL 18.0，带来更强的 Oracle 兼容能力、PL/iSQL 增强以及全新的全球化特性，同时对打包、自动化和工具链进行全面更新。
+IvorySQL 5.0 基于 PostgreSQL 18.0 全面升级：Oracle 兼容性再突破，生态组件集成再升级，云原生深度支持，配合全平台安装包与在线丝滑体验，让复杂变得简单。
 有关完整更新列表，请访问我们的 https://docs.ivorysql.org/[文档站点]。
 
 == 增强内容
@@ -169,12 +169,10 @@ IvorySQL 的主要代码仓库：
 
 * ccwxl
 * Cédric Villemain
-* elodiefb
 * Grant Zhou
 * Imran Zaheer
 * luss
 * Martin Gerhardy
-* msdnchina
 * omstack
 * otegami
 * rophy
@@ -185,6 +183,7 @@ IvorySQL 的主要代码仓库：
 * 崇鹏豪
 * 高雪玉
 * 矫顺田
+* 付贝
 * 类延良
 * 李苑
 * 梁翔宇

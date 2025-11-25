@@ -168,10 +168,10 @@ IvorySQL's development is maintained across four main repositories:
 
 The following individuals (in alphabetical order) have contributed to this release as patch authors, committers, reviewers, testers, or reporters of issues.
 
+* Bei Fu
 * Carlos Chong
 * ccwxl
 * Cédric Villemain
-* elodiefb
 * Fawei Zhao
 * Ge Sui
 * Grant Zhou
@@ -180,7 +180,6 @@ The following individuals (in alphabetical order) have contributed to this relea
 * Jiaoshun Tian
 * luss
 * Martin Gerhardy
-* msdnchina
 * omstack
 * otegami
 * Ruike Sun
