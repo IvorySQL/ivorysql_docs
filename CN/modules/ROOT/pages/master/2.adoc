@@ -41,7 +41,7 @@ IvorySQL基于PostgreSQL，具有完整的SQL、坚如磐石的可靠性和庞�
 
 === 核心应用场景
 
-Ivory数据库的主要应用场景：
+IvorySQL数据库的主要应用场景：
 
 * 企业数据库
 
