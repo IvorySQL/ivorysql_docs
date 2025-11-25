@@ -180,6 +180,7 @@ The following individuals (in alphabetical order) have contributed to this relea
 * Jiaoshun Tian
 * luss
 * Martin Gerhardy
+* Mingran Feng
 * omstack
 * otegami
 * Ruike Sun
