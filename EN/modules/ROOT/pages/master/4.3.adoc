@@ -2090,10 +2090,6 @@ Named and mixed call notations currently cannot be used when calling an aggregat
 
 == Oracle Compatible Features
 
-**Refer to:**
-
-- [GUC Variables](https://docs.ivorysql.org/en/ivorysql-doc/v5.0/v4.5/15)
-
 === Changing tables
 
 #### syntax

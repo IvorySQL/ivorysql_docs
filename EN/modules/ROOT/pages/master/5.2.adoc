@@ -59,7 +59,7 @@ sudo --preserve-env=PG_CONFIG make install
 +
 [literal]
 ----
-[ivorysql@localhost ivorysql-4]$ psql
+[ivorysql@localhost ivorysql-5]$ psql
 psql (18.0)
 Type "help" for help.
 

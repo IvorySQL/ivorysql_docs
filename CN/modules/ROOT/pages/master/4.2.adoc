@@ -72,7 +72,7 @@ $ sudo systemctl stop firewalld
 === 搭建流复制
 在备节点上执行以下命令，创建一个主节点的基础备份，即搭建流复制：
 ```
-$ sudo pg_basebackup -F p -P -X fetch -R -h <primary_ip> -p <primary_port> -U ivorysql -D /usr/local/ivorysql/ivorysql-4/data 
+$ sudo pg_basebackup -F p -P -X fetch -R -h <primary_ip> -p <primary_port> -U ivorysql -D /usr/local/ivorysql/ivorysql-5/data 
 ```
 - -h为主节点ip；
 - -p为主节点数据库端口号，默认为5432；
@@ -85,9 +85,9 @@ $ sudo pg_basebackup -F p -P -X fetch -R -h <primary_ip> -p <primary_port> -U iv
 
 将以下配置写入~/.bash_profile文件：
 ```
-PATH=/usr/local/ivorysql/ivorysql-4/bin:$PATH
+PATH=/usr/local/ivorysql/ivorysql-5/bin:$PATH
 export PATH
-PGDATA=/usr/local/ivorysql/ivorysql-4/data
+PGDATA=/usr/local/ivorysql/ivorysql-5/data
 export PGDATA
 ```
 source该文件使环境变量生效：
@@ -97,7 +97,7 @@ $ source ~/.bash_profile
 
 === 启动备节点数据库服务
 ```
-$ pg_ctl -D /usr/local/ivorysql/ivorysql-4/data start
+$ pg_ctl -D /usr/local/ivorysql/ivorysql-5/data start
 ```
 
 == 集群的使用

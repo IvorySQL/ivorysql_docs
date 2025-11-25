@@ -43,15 +43,15 @@ https://www.ionos.com/help/server-cloud-infrastructure/server-administration/cre
 Create or edit IvorySQL yum repository configuration  /etc/yum.repos.d/ivorysql.repo
 ```
 vim /etc/yum.repos.d/ivorysql.repo
-[ivorysql4]
-name=IvorySQL Server 4 $releasever - $basearch
-baseurl=https://yum.highgo.com/dists/ivorysql-rpms/4/redhat/rhel-$releasever-$basearch
+[ivorysql5]
+name=IvorySQL Server 5 $releasever - $basearch
+baseurl=https://yum.highgo.com/dists/ivorysql-rpms/5/redhat/rhel-$releasever-$basearch
 enabled=1
 gpgcheck=0
 ```
 After saving and exiting, you can install IvorySQL 4 with the following steps
 ```
-$ sudo dnf install -y IvorySQL-5.0
+$ sudo dnf install -y ivorysql5-5.0
 ```
 
 [[setting-environment-variables]]
@@ -61,9 +61,9 @@ $ sudo dnf install -y IvorySQL-5.0
 
 Add below contents in ~/.bash_profile file and source to make it effective:
 ```
-PATH=/opt/IvorySQL-5.0/bin:$PATH
+PATH=/usr/ivory-5/bin:$PATH
 export PATH
-PGDATA=/opt/IvorySQL-5.0/data
+PGDATA=/usr/ivory-5/data
 export PGDATA
 ```
 ```
@@ -73,7 +73,7 @@ $ source ~/.bash_profile
 ** Initializing database
 
 ```
-$ initdb -D /opt/IvorySQL-5.0/data
+$ initdb -D /usr/ivory-5/data
 ```
 ....
   The -D option specifies the directory where the database cluster should be stored. This is the only information required by initdb, but you can avoid writing it by setting the PGDATA environment variable, which can be convenient since the database server can find the database directory later by the same variable. 
@@ -84,7 +84,7 @@ $ initdb -D /opt/IvorySQL-5.0/data
 ** Starting IvorySQL service
 
 ```
-$ pg_ctl -D /opt/IvorySQL-5.0/data -l ivory.log start 
+$ pg_ctl -D /usr/ivory-5/data -l ivory.log start 
 ```
 
   The -D option specifies the file system location of the database configuration files. If this option is omitted, the environment variable PGDATA in <<setting-environment-variables>> is used. -l option appends the server log output to filename. If the file does not exist, it is created.
@@ -95,7 +95,7 @@ $ pg_ctl -D /opt/IvorySQL-5.0/data -l ivory.log start
 Confirm it’s successfully started:
 ```
 $ ps -ef | grep postgres
-ivorysql  3214     1  0 20:35 ?        00:00:00 /opt/IvorySQL-5.0/bin/postgres -D /opt/IvorySQL-5.0/data
+ivorysql  3214     1  0 20:35 ?        00:00:00 /usr/ivory-5/bin/postgres -D /usr/ivory-5/data
 ivorysql  3215  3214  0 20:35 ?        00:00:00 postgres: checkpointer 
 ivorysql  3216  3214  0 20:35 ?        00:00:00 postgres: background writer 
 ivorysql  3218  3214  0 20:35 ?        00:00:00 postgres: walwriter 
