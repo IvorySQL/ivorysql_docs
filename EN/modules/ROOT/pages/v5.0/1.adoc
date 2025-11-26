@@ -100,8 +100,8 @@ For further details, visit https://www.postgresql.org/docs/release/18.0/[Postgre
 
 === Cloud-Native & Containerized
 
-- Containerized Deployment Support (Docker Compose & Docker Swarm):
-  Supports deployment of standalone IvorySQL databases and high-availability clusters in Docker Swarm and Docker Compose environments.
+- Containerized Deployment Support (Docker Compose & podman & Docker Swarm):
+  Supports deployment of standalone IvorySQL databases and high-availability clusters in Docker Compose , podman and Docker Swarm environments.
 
 - Containerized Deployment Support (Kubernetes):
   Supports deployment of standalone IvorySQL databases and high-availability clusters on Kubernetes (K8S) using Helm.
@@ -149,7 +149,6 @@ For further details, visit https://www.postgresql.org/docs/release/18.0/[Postgre
 - Repaired `unused_oids` and `duplicate_oids` catalog tooling so header scans correctly detect conflicts without false positives: Issue https://github.com/IvorySQL/IvorySQL/issues/841[#841]
 - Added `.gitignore` coverage for `libpq/ivytest` artifacts to prevent generated binaries and logs from polluting developer trees: Issue https://github.com/IvorySQL/IvorySQL/issues/843[#843]
 - Extended GitHub workflow regression runs to cover builds configured with `--with-libnuma`, preventing future breakages on NUMA-enabled hosts: Issue https://github.com/IvorySQL/IvorySQL/issues/869[#869]
-- Enabled `psql` users to access CREATE PACKAGE syntax help via `\h create package`, closing the CLI documentation gap for PL/iSQL packages: Issue https://github.com/IvorySQL/IvorySQL/issues/936[#936]
 - Eliminated the MainLoop dangling-pointer scenario that triggered intermittent segmentation faults under concurrency stress: Issue https://github.com/IvorySQL/IvorySQL/issues/898[#898]
 - Re-enabled `oracle_test/modules/*/sql` cases by fixing harness assumptions so Oracle-compatibility suites execute end-to-end again: Issue https://github.com/IvorySQL/IvorySQL/issues/897[#897]
 - Updated `README.md` and `README_CN.md` to reflect IvorySQL v5 feature set, packaging, and onboarding instructions: Issue https://github.com/IvorySQL/IvorySQL/issues/896[#896]
@@ -177,21 +176,21 @@ The following individuals (in alphabetical order) have contributed to this relea
 * Grant Zhou
 * Imran Zaheer
 * jerome-peng
-* Jiaoshun Tian
 * luss
 * Martin Gerhardy
 * Mingran Feng
 * omstack
+* Oreo Yang
 * otegami
 * Ruike Sun
 * rophy
 * Shaolin Chu
 * Shawn Yan
-* Shihua Yang
-* Shiji Niu
 * Shuisen Tong
+* Shuntian Jiao
 * shlei6067
 * sjw1933
+* Steven Niu
 * Xiangyu Liang
 * Xiaohui Liu
 * Xinjie Lv

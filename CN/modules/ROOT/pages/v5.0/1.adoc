@@ -100,8 +100,8 @@ IvorySQL 5.0 基于 PostgreSQL 18.0 全面升级：Oracle 兼容性再突破，�
 
 === 云原生与容器化
 
-- 容器化部署支持（Docker Compose & Docker Swarm）：
-  支持在 Docker Swarm 与 Docker Compose 中部署单实例数据库与高可用集群。
+- 容器化部署支持（Docker Compose & podman & Docker Swarm）：
+  支持在 Docker Compose 、 podman 和 Docker Swarm 环境中部署单机版 IvorySQL 数据库及高可用集群。
 
 - 容器化部署支持（Kubernetes 基础版）：
   使用 Helm 在 Kubernetes（K8S）中部署单实例数据库与高可用集群。
@@ -149,7 +149,6 @@ IvorySQL 5.0 基于 PostgreSQL 18.0 全面升级：Oracle 兼容性再突破，�
 - 修复 `unused_oids` 与 `duplicate_oids` 目录工具，使头文件扫描能准确检测冲突且无误报：Issue https://github.com/IvorySQL/IvorySQL/issues/841[#841]
 - 为 `libpq/ivytest` 产物新增 `.gitignore`，避免生成的二进制与日志污染开发树：Issue https://github.com/IvorySQL/IvorySQL/issues/843[#843]
 - 扩展 GitHub 工作流回归测试，覆盖 `--with-libnuma` 配置，防止未来在启用 NUMA 的主机上出问题：Issue https://github.com/IvorySQL/IvorySQL/issues/869[#869]
-- 让 `psql` 用户可以通过 `\h create package` 获取 CREATE PACKAGE 语法帮助，补齐 PL/iSQL 包的 CLI 文档：Issue https://github.com/IvorySQL/IvorySQL/issues/936[#936]
 - 排除 MainLoop 悬空指针引发的并发压力下间歇性段错误：Issue https://github.com/IvorySQL/IvorySQL/issues/898[#898]
 - 修复 `oracle_test/modules/*/sql` 的测试框架假设，让 Oracle 兼容测试套件再次端到端运行：Issue https://github.com/IvorySQL/IvorySQL/issues/897[#897]
 - 更新 `README.md` 与 `README_CN.md`，同步 IvorySQL v5 特性、打包与快速上手信息：Issue https://github.com/IvorySQL/IvorySQL/issues/896[#896]
