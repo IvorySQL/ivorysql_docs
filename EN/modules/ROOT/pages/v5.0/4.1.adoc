@@ -90,8 +90,14 @@ IvorySQL then will be installed in the /usr/ivory-5/ directory.
 == Source code installation
 ** Installing dependencies
 ```
+# CentOS
 $ sudo dnf install -y bison readline-devel zlib-devel openssl-devel
 $ sudo dnf groupinstall -y 'Development Tools'
+
+# Ubuntu
+$ sudo apt install -y bison libreadline-dev zlib1g-dev libssl-dev
+$ sudo apt install -y build-essential
+$ sudo apt install -y pkg-config uuid-dev
 ```
 ** Getting source code
 ```
