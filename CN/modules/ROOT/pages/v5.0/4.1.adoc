@@ -90,7 +90,7 @@ $ sudo yum --disablerepo=* localinstall *.rpm
 ** 安装依赖
 ```
 # CentOS
-$ sudo dnf install -y bison readline-devel zlib-devel openssl-devel
+$ sudo dnf install -y bison readline-devel zlib-devel openssl-devel uuid-devel
 $ sudo dnf groupinstall -y 'Development Tools'
 
 # Ubuntu
