@@ -4,6 +4,7 @@ on:
   pull_request_target:
     types:
       - closed
+  create:
 
 jobs:
   build-and-deploy:
@@ -91,12 +92,67 @@ jobs:
             fi
           done
 
+      - name: Pin PDF assembler to merged PR branch
+        working-directory: ./ivory-doc-builder
+        env:
+          MERGED_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
+          COMPONENT_NAME: ivorysql-doc
+        run: |
+          if [[ -z "${MERGED_BRANCH}" ]]; then
+            echo "::error::Merged branch name is empty, cannot update PDF component version."
+            exit 1
+          fi
+
+          TARGET_COMPONENT_VERSION="${MERGED_BRANCH}@${COMPONENT_NAME}"
+          echo "Setting antora-assembler.yml component_versions to ${TARGET_COMPONENT_VERSION}"
+          yq -i ".component_versions = \"${TARGET_COMPONENT_VERSION}\"" antora-assembler.yml
+          echo "Updated antora-assembler.yml:"
+          cat antora-assembler.yml
+
       - name: Checkout Web Repository (web)
         uses: actions/checkout@v4
         with:
           repository:  ${{ github.repository_owner }}/ivorysql_web
           path: www_publish_target
           token: ${{ secrets.WEB_TOKEN }}
+          
+      - name: Ensure web index redirects to latest home
+        id: update_web_index
+        working-directory: ./www_publish_target
+        env:
+          LATEST_VERSION: ${{ steps.latest_version_step.outputs.version }}
+          MERGED_PR_BASE: ${{ github.event.pull_request.base.ref || github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          TARGET_BRANCH="v${LATEST_VERSION}"
+          EXPECTED_PATH="ivorysql-doc/v${LATEST_VERSION}/v${LATEST_VERSION}/welcome.html"
+
+          if [[ "${MERGED_PR_BASE}" != "${TARGET_BRANCH}" ]]; then
+            echo "Base branch ${MERGED_PR_BASE} is not the latest version branch ${TARGET_BRANCH}, skip index redirect check."
+            echo "index_updated=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          UPDATE_NEEDED=false
+          for lang in cn en; do
+            FILE_PATH="docs/${lang}/index.html"
+            if [[ ! -f "${FILE_PATH}" ]]; then
+              echo "Missing ${FILE_PATH}, cannot update redirect."
+              continue
+            fi
+
+            if grep -q "${EXPECTED_PATH}" "${FILE_PATH}"; then
+              echo "${FILE_PATH} already points to latest ${LATEST_VERSION}."
+            else
+              # Replace all version segments like vX.Y or vX.Y.Z in href/location/meta/script targets
+              sed -i -E "s@ivorysql-doc/v[0-9]+(\\.[0-9]+){1,2}/v[0-9]+(\\.[0-9]+){1,2}/welcome\\.html@${EXPECTED_PATH}@g" "${FILE_PATH}"
+              UPDATE_NEEDED=true
+              echo "Updated ${FILE_PATH} to latest ${LATEST_VERSION} redirect."
+            fi
+          done
+
+          echo "index_updated=${UPDATE_NEEDED}" >> "$GITHUB_OUTPUT"
           
       - name: Setup Ruby and Bundler
         uses: ruby/setup-ruby@v1
@@ -132,6 +188,36 @@ jobs:
         run: |
           echo "Building Chinese site..."
           npx antora generate --stacktrace --to-dir ../www_publish_target/docs/cn antora-playbook-CN.yml
+
+      - name: Copy PDF exports into web repo
+        working-directory: ./ivory-doc-builder
+        env:
+          MERGED_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
+          COMPONENT_NAME: ivorysql-doc
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${MERGED_BRANCH}" ]]; then
+            echo "::error::Merged branch name is empty, cannot locate PDF output."
+            exit 1
+          fi
+
+          SOURCE_PDF="build/assembler-pdf/${COMPONENT_NAME}/${MERGED_BRANCH}/_exports/index.pdf"
+          DEST_CN="../www_publish_target/docs/cn/${COMPONENT_NAME}/${MERGED_BRANCH}/ivorysql.pdf"
+          DEST_EN="../www_publish_target/docs/en/${COMPONENT_NAME}/${MERGED_BRANCH}/ivorysql.pdf"
+
+          if [[ ! -f "${SOURCE_PDF}" ]]; then
+            echo "::error::PDF not found at ${SOURCE_PDF}"
+            exit 1
+          fi
+
+          echo "Copying PDF from ${SOURCE_PDF} to web repo targets..."
+          mkdir -p "$(dirname "${DEST_CN}")" "$(dirname "${DEST_EN}")"
+          cp "${SOURCE_PDF}" "${DEST_CN}"
+          cp "${SOURCE_PDF}" "${DEST_EN}"
+          echo "PDF copied to:"
+          echo " - ${DEST_CN}"
+          echo " - ${DEST_EN}"
 
       - name: Commit and Push to web Repository new branch , pull request
         id: commit_push_new_branch
