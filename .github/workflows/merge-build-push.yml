@@ -5,17 +5,23 @@ on:
     types:
       - closed
   create:
+  workflow_dispatch:
+    inputs:
+      source_branch:
+        required: false
+        default: ""
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'create' || github.event.pull_request.merged == true
     permissions:
       contents: write
       pull-requests: write
 
     steps:
       - name: PR was merged
+        if: github.event.pull_request.number != ''
         run: |
           echo "PR #${{ github.event.pull_request.number }} was merged into ${{ github.event.pull_request.base.ref }}."
           echo "Head commit was: ${{ github.event.pull_request.head.sha }}"
@@ -24,6 +30,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: ivorysql_doc
+          ref: ${{ inputs.source_branch || github.ref }}
 
       - name: Checkout Doc Builder Repository (doc_builder)
         uses: actions/checkout@v4
@@ -95,7 +102,7 @@ jobs:
       - name: Pin PDF assembler to merged PR branch
         working-directory: ./ivory-doc-builder
         env:
-          MERGED_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
+          MERGED_BRANCH: ${{ inputs.source_branch || github.event.pull_request.base.ref || github.ref_name }}
           COMPONENT_NAME: ivorysql-doc
         run: |
           if [[ -z "${MERGED_BRANCH}" ]]; then
@@ -183,16 +190,43 @@ jobs:
           ls ../www_publish_target/
           npx antora generate --stacktrace --to-dir ../www_publish_target/docs/en antora-playbook-EN.yml
 
+      - name: Copy English PDF export into web repo
+        working-directory: ./ivory-doc-builder
+        env:
+          MERGED_BRANCH: ${{ inputs.source_branch || github.event.pull_request.base.ref || github.ref_name }}
+          COMPONENT_NAME: ivorysql-doc
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${MERGED_BRANCH}" ]]; then
+            echo "::error::Merged branch name is empty, cannot locate PDF output."
+            exit 1
+          fi
+
+          SOURCE_PDF_EN="build/assembler-pdf/${COMPONENT_NAME}/${MERGED_BRANCH}/_exports/index.pdf"
+          DEST_EN="../www_publish_target/docs/en/${COMPONENT_NAME}/${MERGED_BRANCH}/ivorysql.pdf"
+
+          if [[ ! -f "${SOURCE_PDF_EN}" ]]; then
+            echo "::error::English PDF not found at ${SOURCE_PDF_EN}"
+            exit 1
+          fi
+
+          echo "Copying English PDF from ${SOURCE_PDF_EN} to web repo target..."
+          mkdir -p "$(dirname "${DEST_EN}")"
+          cp "${SOURCE_PDF_EN}" "${DEST_EN}"
+          echo "English PDF copied to:"
+          echo " - ${DEST_EN}"
+
       - name: Build Chinese Documentation
         working-directory: ./ivory-doc-builder
         run: |
           echo "Building Chinese site..."
           npx antora generate --stacktrace --to-dir ../www_publish_target/docs/cn antora-playbook-CN.yml
 
-      - name: Copy PDF exports into web repo
+      - name: Copy Chinese PDF export into web repo
         working-directory: ./ivory-doc-builder
         env:
-          MERGED_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
+          MERGED_BRANCH: ${{ inputs.source_branch || github.event.pull_request.base.ref || github.ref_name }}
           COMPONENT_NAME: ivorysql-doc
         run: |
           set -euo pipefail
@@ -204,7 +238,6 @@ jobs:
 
           SOURCE_PDF="build/assembler-pdf/${COMPONENT_NAME}/${MERGED_BRANCH}/_exports/index.pdf"
           DEST_CN="../www_publish_target/docs/cn/${COMPONENT_NAME}/${MERGED_BRANCH}/ivorysql.pdf"
-          DEST_EN="../www_publish_target/docs/en/${COMPONENT_NAME}/${MERGED_BRANCH}/ivorysql.pdf"
 
           if [[ ! -f "${SOURCE_PDF}" ]]; then
             echo "::error::PDF not found at ${SOURCE_PDF}"
@@ -212,12 +245,10 @@ jobs:
           fi
 
           echo "Copying PDF from ${SOURCE_PDF} to web repo targets..."
-          mkdir -p "$(dirname "${DEST_CN}")" "$(dirname "${DEST_EN}")"
+          mkdir -p "$(dirname "${DEST_CN}")"
           cp "${SOURCE_PDF}" "${DEST_CN}"
-          cp "${SOURCE_PDF}" "${DEST_EN}"
           echo "PDF copied to:"
           echo " - ${DEST_CN}"
-          echo " - ${DEST_EN}"
 
       - name: Commit and Push to web Repository new branch , pull request
         id: commit_push_new_branch
