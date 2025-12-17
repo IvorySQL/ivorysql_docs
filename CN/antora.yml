@@ -1,7 +1,7 @@
 name: ivorysql-doc
 title: 文档中心
-version: v5.0
-start_page: v5.0/welcome.adoc
+version: v5.1
+start_page: v5.1/welcome.adoc
 asciidoc:
   attributes:
     source-language: asciidoc@
