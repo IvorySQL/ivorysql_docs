@@ -64,7 +64,7 @@ CONTAINER ID            IMAGE                       COMMAND          CREATED    
 ivorysql=# select version();
                                                         version
 ------------------------------------------------------------------------------------------------------------------------
- PostgreSQL 18.0 (IvorySQL 5.1) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
+ PostgreSQL 18.1 (IvorySQL 5.1) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
 (1 row)
 
 ivorysql=#

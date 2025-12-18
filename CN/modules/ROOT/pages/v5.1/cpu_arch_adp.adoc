@@ -8,8 +8,8 @@ IvorySQL适配认证如下CPU架构：
 [cols="8h,~,~,~"]
 |====
 | 序号 | 架构名称  | 适配品牌  | 全平台介质包下载  
-| 1 | x86_64 |  Intel、AMD、兆芯、海光 | https://github.com/IvorySQL/IvorySQL/releases/download/untagged-5dfd1f3bd16bcf3f6347/IvorySQL-5.1-62069c2-20251211.amd64.deb[deb], https://github.com/IvorySQL/IvorySQL/releases/download/untagged-5dfd1f3bd16bcf3f6347/IvorySQL-5.1-62069c2-20251211.x86_64.rpm[rpm]
-| 2 | aarch64 | 飞腾、鲲鹏 | https://github.com/IvorySQL/IvorySQL/releases/download/untagged-5dfd1f3bd16bcf3f6347/IvorySQL-5.1-62069c2-20251211.arm64.deb[deb], https://github.com/IvorySQL/IvorySQL/releases/download/untagged-5dfd1f3bd16bcf3f6347/IvorySQL-5.1-62069c2-20251211.aarch64.rpm[rpm]
-| 3 | mips64el| 龙芯3000、龙芯4000 | https://github.com/IvorySQL/IvorySQL/releases/download/untagged-5dfd1f3bd16bcf3f6347/IvorySQL-5.1-62069c2-20251211.mips64el.deb[deb], https://github.com/IvorySQL/IvorySQL/releases/download/untagged-5dfd1f3bd16bcf3f6347/IvorySQL-5.1-62069c2-20251211.mips64el.rpm[rpm]
-| 4 | loongarch64 | 龙芯5000 |  https://github.com/IvorySQL/IvorySQL/releases/download/untagged-5dfd1f3bd16bcf3f6347/IvorySQL-5.1-62069c2-20251211.loongarch64.deb[deb], https://github.com/IvorySQL/IvorySQL/releases/download/untagged-5dfd1f3bd16bcf3f6347/IvorySQL-5.1-62069c2-20251211.loongarch64.rpm[rpm]
+| 1 | x86_64 |  Intel、AMD、兆芯、海光 | https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_5.1/IvorySQL-5.1-62069c2-20251211.amd64.deb[deb], https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_5.1/IvorySQL-5.1-62069c2-20251211.x86_64.rpm[rpm]
+| 2 | aarch64 | 飞腾、鲲鹏 | https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_5.1/IvorySQL-5.1-62069c2-20251211.arm64.deb[deb], https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_5.1/IvorySQL-5.1-62069c2-20251211.aarch64.rpm[rpm]
+| 3 | mips64el| 龙芯3000、龙芯4000 | https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_5.1/IvorySQL-5.1-62069c2-20251211.mips64el.deb[deb], https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_5.1/IvorySQL-5.1-62069c2-20251211.mips64el.rpm[rpm]
+| 4 | loongarch64 | 龙芯5000 |  https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_5.1/IvorySQL-5.1-62069c2-20251211.loongarch64.deb[deb], https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_5.1/IvorySQL-5.1-62069c2-20251211.loongarch64.rpm[rpm]
 |====

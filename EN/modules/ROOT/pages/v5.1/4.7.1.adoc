@@ -26,10 +26,10 @@ The IvorySQL Cloud platform currently supports installation on Linux systems. Th
 |K8S cluster a|
 [arabic]
 . docker.io/ivorysql/ivory-operator:v5.1
-. docker.io/ivorysql/pgadmin:ubi8-9.9-5.0-1
-. docker.io/ivorysql/pgbackrest:ubi8-2.56.0-5.0-1
-. docker.io/ivorysql/postgres-exporter:ubi8-0.17.0-5.0-1
-. docker.io/ivorysql/ivorysql:ubi8-5.0-5.0-1
+. docker.io/ivorysql/pgadmin:ubi9-9.9-5.1-1
+. docker.io/ivorysql/pgbackrest:ubi9-2.56.0-5.1-1
+. docker.io/ivorysql/postgres-exporter:ubi9-0.17.0-5.1-1
+. docker.io/ivorysql/ivorysql:ubi9-5.1-5.1-1
 |===
 
 In addition, install the following supporting components:
@@ -365,15 +365,15 @@ If your servers have direct access to Docker Hub, you can skip this step. Otherw
 
 [literal]
 ----
-docker.io/ivorysql/pgadmin:ubi8-9.9-5.0-1
+docker.io/ivorysql/pgadmin:ubi9-9.9-5.1-1
 
-docker.io/ivorysql/pgbackrest:ubi8-2.56.0-5.0-1
+docker.io/ivorysql/pgbackrest:ubi9-2.56.0-5.1-1
 
-docker.io/ivorysql/pgbouncer:ubi8-1.23.0-5.0-1
+docker.io/ivorysql/pgbouncer:ubi9-1.23.0-5.1-1
 
-docker.io/ivorysql/postgres-exporter:ubi8-0.17.0-5.0-1
+docker.io/ivorysql/postgres-exporter:ubi9-0.17.0-5.1-1
 
-docker.io/ivorysql/ivorysql:ubi8-5.0-5.0-1
+docker.io/ivorysql/ivorysql:ubi9-5.1-5.1-1
 
 docker.io/prom/prometheus:v2.33.5
 

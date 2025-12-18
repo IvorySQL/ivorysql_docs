@@ -83,7 +83,7 @@ postgres=# SELECT * FROM pg_available_extensions WHERE name = 'pgroonga';
 postgres=# select version();
                                     version
 --------------------------------------------------------------------------------
- PostgreSQL (IvorySQL 5.1) 18.0 on x86_64-linux, compiled by gcc-13.3.0, 64-bit
+ PostgreSQL (IvorySQL 5.1) 18.1 on x86_64-linux, compiled by gcc-13.3.0, 64-bit
 (1 row)
 ```
 
