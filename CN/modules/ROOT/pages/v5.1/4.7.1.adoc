@@ -27,11 +27,11 @@ IvorySQL Cloud平台，目前支持Linux系统下的安装，以下为各部分�
 |后端|cloudnative-1.0-SNAPSHOT.jar
 |K8S集群 a|
 [arabic]
-. docker.io/ivorysql/ivory-operator:v5.0
-. docker.io/ivorysql/pgadmin:ubi8-9.9-5.0-1
-. docker.io/ivorysql/pgbackrest:ubi8-2.56.0-5.0-1
-. docker.io/ivorysql/postgres-exporter:ubi8-0.17.0-5.0-1
-. docker.io/ivorysql/ivorysql:ubi8-5.0-5.0-1
+. docker.io/ivorysql/ivory-operator:v5.1
+. docker.io/ivorysql/pgadmin:ubi9-9.9-5.1-1
+. docker.io/ivorysql/pgbackrest:ubi9-2.56.0-5.1-1
+. docker.io/ivorysql/postgres-exporter:ubi9-0.17.0-5.1-1
+. docker.io/ivorysql/ivorysql:ubi9-5.1-5.1-1
 |===
 
 另外，云服务平台还需要用户安装以下组件：
@@ -228,7 +228,7 @@ disableNative = false
 
 dbtype = "IvorySQL"
 
-dbversion = "5.0"
+dbversion = "5.1"
 ----
 
 === 安装部署nginx
@@ -366,15 +366,15 @@ https://github.com/IvorySQL/ivory-operator/tree/IVYO_REL_5_STABLE[https://github
 
 [literal]
 ----
-docker.io/ivorysql/pgadmin:ubi8-9.9-5.0-1
+docker.io/ivorysql/pgadmin:ubi9-9.9-5.1-1
 
-docker.io/ivorysql/pgbackrest:ubi8-2.56.0-5.0-1
+docker.io/ivorysql/pgbackrest:ubi9-2.56.0-5.1-1
 
-docker.io/ivorysql/pgbouncer:ubi8-1.23.0-5.0-1
+docker.io/ivorysql/pgbouncer:ubi9-1.23.0-5.1-1
 
-docker.io/ivorysql/postgres-exporter:ubi8-0.17.0-5.0-1
+docker.io/ivorysql/postgres-exporter:ubi9-0.17.0-5.1-1
 
-docker.io/ivorysql/ivorysql:ubi8-5.0-5.0-1
+docker.io/ivorysql/ivorysql:ubi9-5.1-5.1-1
 
 docker.io/prom/prometheus:v2.33.5
 

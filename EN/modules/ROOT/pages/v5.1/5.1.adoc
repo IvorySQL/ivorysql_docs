@@ -14,7 +14,7 @@ Users can select the installation method for PostGIS that best suits their devel
 In addition to the installation methods provided by the PostGIS community, the IvorySQL community also offers a source code installation method, with Ubuntu 24.04 (x86_64) as the installation environment.
 
 [NOTE]
-Please ensure that **IvorySQL 5.0 or above** is installed in the environment.
+Please ensure that **IvorySQL 5.1 or above** is installed in the environment.
 
 ** Install dependencies
 [literal]

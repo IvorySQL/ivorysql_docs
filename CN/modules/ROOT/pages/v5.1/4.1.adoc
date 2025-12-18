@@ -14,7 +14,7 @@ IvorySQL安装方式包括以下5种：
 - <<源码安装>>
 - <<deb安装>>
 
-本章将详细介绍每种方式的安装、运行及卸载过程。想要更快获得IvorySQL，请参阅xref:v5.0/3.1.adoc#快速开始[快速开始]。
+本章将详细介绍每种方式的安装、运行及卸载过程。想要更快获得IvorySQL，请参阅xref:v5.1/3.1.adoc#快速开始[快速开始]。
 
 同样，安装前请先创建一个用户，并赋予其root权限，安装、使用和卸载均以该用户执行。这里以ivorysql用户为例。
 
@@ -32,7 +32,7 @@ gpgcheck=0
 ```
 保存退出后，安装IvorySQL5
 ```
-$ sudo dnf install -y ivorysql5-5.0
+$ sudo dnf install -y ivorysql5-5.1
 ```
 
 [[docker安装]]
@@ -40,12 +40,12 @@ $ sudo dnf install -y ivorysql5-5.0
 
 ** 从Docker Hub上获取IvorySQL镜像
 ```
-$ docker pull ivorysql/ivorysql:5.0-ubi8
+$ docker pull ivorysql/ivorysql:5.1-ubi8
 ```
 
 ** 运行IvorySQL
 ```
-$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:5.0-ubi8
+$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:5.1-ubi8
 ```
 -e参数说明
 |====
@@ -73,7 +73,7 @@ $ sudo dnf install -y lz4 libicu libxslt python3
 ```
 ** 获取rpm包
 ```
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_5.0/IvorySQL-5.0-9d890e9-20251120.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_5.1/IvorySQL-5.1-62069c2-20251211.x86_64.rpm
 ```
 ** 安装rpm包
 
@@ -89,14 +89,20 @@ $ sudo yum --disablerepo=* localinstall *.rpm
 == 源码安装
 ** 安装依赖
 ```
-$ sudo dnf install -y bison readline-devel zlib-devel openssl-devel
+# CentOS
+$ sudo dnf install -y bison readline-devel zlib-devel openssl-devel uuid-devel
 $ sudo dnf groupinstall -y 'Development Tools'
+
+# Ubuntu
+$ sudo apt install -y bison libreadline-dev zlib1g-dev libssl-dev
+$ sudo apt install -y build-essential
+$ sudo apt install -y pkg-config uuid-dev
 ```
 ** 获取IvorySQL源代码
 ```
 $ git clone https://github.com/IvorySQL/IvorySQL.git
 $ cd IvorySQL
-$ git checkout -b IVORY_REL_5_STABLE origin/IVORY_REL_5_STABLE
+$ git checkout tags/IvorySQL_5.1
 ```
 ** 配置
 
@@ -138,12 +144,12 @@ $ sudo apt -y install pkg-config libreadline-dev libicu-dev libldap2-dev uuid-de
 
 ** 获取deb包
 ```
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_5.0/IvorySQL-5.0-a50789d-20250304.amd64.deb
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_5.1/IvorySQL-5.1-62069c2-20251211.amd64.deb
 ```
 
 ** 安装deb包
 ```
-$ sudo dpkg -i IvorySQL-5.0-a50789d-20250304.amd64.deb
+$ sudo dpkg -i IvorySQL-5.1-62069c2-20251211.amd64.deb
 ```
 数据库将被安装在/usr/ivory-5/路径下。
 
@@ -209,7 +215,7 @@ ivorysql  130445  130274  0 02:45 pts/1    00:00:00 grep --color=auto postgres
 psql连接数据库：
 ```
 $ psql -d <database>
-psql (18.0)
+psql (18.1)
 Type "help" for help.
 
 ivorysql=#
@@ -242,7 +248,7 @@ $ sudo dnf remove -y ivorysql5-5.0
 ```
 $ docker stop ivorysql
 $ docker rm ivorysql
-$ docker rmi ivorysql/ivorysql:5.0-ubi8
+$ docker rmi ivorysql/ivorysql:5.1-ubi8
 ```
 
 === rpm安装的卸载
@@ -266,6 +272,6 @@ $ sudo rm -rf /usr/ivory-5
 
 执行以下命令卸载数据库并清理文件夹：
 ```
-$ sudo dpkg -P IvorySQL-5.0
+$ sudo dpkg -P IvorySQL-5.1
 $ sudo rm -rf /usr/ivory-5
 ```

@@ -8,28 +8,28 @@
 
 ** Get IvorySQL image from Docker Hub
 ```
-$ docker pull ivorysql/ivorysql:5.0-ubi8
+$ docker pull ivorysql/IvorySQL 5.1-ubi8
 ```
 
 ** Running IvorySQL
 ```
-$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:5.0-ubi8
+$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/IvorySQL 5.1-ubi8
 ```
 
 ** Check if the IvorySQL container is running successfully
 ```
 $ docker ps | grep ivorysql
 CONTAINER ID   IMAGE               COMMAND                   CREATED          STATUS          PORTS                              NAMES
-6faa2d0ed705   ivorysql:5.0-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
+6faa2d0ed705   IvorySQL 5.1-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
 ```
 
 == Running with Podman
 
 ** Pull IvorySQL Image from Docker Hub
 ```
-[highgo@manager-node1 ~]$ podman pull ivorysql/ivorysql:5.0-ubi8
-✔ docker.io/ivorysql/ivorysql:5.0-ubi8
-Trying to pull docker.io/ivorysql/ivorysql:5.0-ubi8...
+[highgo@manager-node1 ~]$ podman pull ivorysql/IvorySQL 5.1-ubi8
+✔ docker.io/ivorysql/IvorySQL 5.1-ubi8
+Trying to pull docker.io/ivorysql/IvorySQL 5.1-ubi8...
 Getting image source signatures
 Copying blob 5885448c5c88 done   |
 Copying blob 6c502b378234 done   |
@@ -50,21 +50,21 @@ Writing manifest to image destination
 
 ** Run IvorySQL Container
 ```
-$ podman run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=123456 -d ivorysql/ivorysql:5.0-ubi8
+$ podman run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=123456 -d ivorysql/IvorySQL 5.1-ubi8
 ```
 
 ** Check if IvorySQL Container is Running Successfully
 ```
 [highgo@manager-node1 ~]$ podman ps | grep ivorysql
 CONTAINER ID            IMAGE                       COMMAND          CREATED          STATUS          PORTS                                 NAMES
-368dee58d5ef  docker.io/ivorysql/ivorysql:5.0-ubi8  postgres    20 seconds ago  Up 20 seconds  0.0.0.0:5434->5432/tcp, 1521/tcp, 5866/tcp  ivorysql
+368dee58d5ef  docker.io/ivorysql/IvorySQL 5.1-ubi8  postgres    20 seconds ago  Up 20 seconds  0.0.0.0:5434->5432/tcp, 1521/tcp, 5866/tcp  ivorysql
 
 [highgo@manager-node1 ~]$ podman exec -it ivorysql /bin/bash
 [root@8cc631eb413d /]#
 ivorysql=# select version();
                                                         version
 ------------------------------------------------------------------------------------------------------------------------
- PostgreSQL 18.0 (IvorySQL 5.0) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
+ PostgreSQL 18.1 (IvorySQL 5.1) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
 (1 row)
 
 ivorysql=#
