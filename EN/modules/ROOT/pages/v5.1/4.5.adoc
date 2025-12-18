@@ -460,7 +460,7 @@ $ createdb orcl
 
 $ psql
 
-psql (18.0)
+psql (18.1)
 
 Type "help" for help.
 
@@ -489,7 +489,7 @@ Create SH, HR, SCOTT users:
 ```
 $ psql orcl
 
-psql (18.0)
+psql (18.1)
 
 Type "help" for help.
 

@@ -8,9 +8,9 @@
 == 主节点
 
 === 安装并启动数据库
-yum源快速安装数据库，请参考xref:v5.0/3.1.adoc#从yum源安装ivorysql数据库[从yum源安装ivorysql数据库]。
+yum源快速安装数据库，请参考xref:v5.1/3.1.adoc#从yum源安装ivorysql数据库[从yum源安装ivorysql数据库]。
 
-想要获取更多安装方式，请参考xref:v5.0/4.1.adoc[安装指南]。
+想要获取更多安装方式，请参考xref:v5.1/4.1.adoc[安装指南]。
 
 [NOTE]
 主节点数据库需要安装并**启动**
@@ -56,9 +56,9 @@ $ pg_ctl restart
 
 == 备节点
 === 安装数据库
-Yum源快速安装数据库，请参考xref:v5.0/3.1.adoc#从yum源安装ivorysql数据库[从yum源安装ivorysql数据库]。
+Yum源快速安装数据库，请参考xref:v5.1/3.1.adoc#从yum源安装ivorysql数据库[从yum源安装ivorysql数据库]。
 
-想要获取更多安装方式，请参考xref:v5.0/4.1.adoc[安装指南]。
+想要获取更多安装方式，请参考xref:v5.1/4.1.adoc[安装指南]。
 
 [NOTE]
 备节点数据库只需要安装，**不需要启动**
@@ -118,7 +118,7 @@ ivorysql  6567  6139  0 21:54 ?        00:00:00 postgres: walreceiver streaming 
 在主节点上psql连接数据库，并查看集群状态：
 ```
 $ psql -d ivorysql
-psql (18.0)
+psql (18.1)
 Type "help" for help.
 
 ivorysql=# select * from pg_stat_replication;
@@ -139,7 +139,7 @@ xmin |   state   | sent_lsn  | write_lsn | flush_lsn | replay_lsn | write_lag | 
 例如，在主节点创建一个新的数据库test，并在主节点进行查询：
 ```
 $ psql -d ivorysql
-psql (18.0)
+psql (18.1)
 Type "help" for help.
 
 ivorysql=# create database test;
@@ -159,7 +159,7 @@ ivorysql=# \l
 在备节点查询：
 ```
 $ psql -d ivorysql
-psql (18.0)
+psql (18.1)
 Type "help" for help.
 
 ivorysql=# \l

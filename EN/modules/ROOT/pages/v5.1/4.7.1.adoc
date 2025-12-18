@@ -25,7 +25,7 @@ The IvorySQL Cloud platform currently supports installation on Linux systems. Th
 |Backend |cloudnative-1.0-SNAPSHOT.jar
 |K8S cluster a|
 [arabic]
-. docker.io/ivorysql/ivory-operator:v5.0
+. docker.io/ivorysql/ivory-operator:v5.1
 . docker.io/ivorysql/pgadmin:ubi8-9.9-5.0-1
 . docker.io/ivorysql/pgbackrest:ubi8-2.56.0-5.0-1
 . docker.io/ivorysql/postgres-exporter:ubi8-0.17.0-5.0-1
@@ -229,7 +229,7 @@ disableNative = false
 
 dbtype = "IvorySQL"
 
-dbversion = "5.0"
+dbversion = "5.1"
 ----
 
 === Install and configure NGINX

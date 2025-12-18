@@ -4,156 +4,49 @@
 
 == 版本概览
 
-[*发布日期：2025 年 11 月 25 日*]
+[*发布日期：2025 年 12 月 18 日*]
 
-IvorySQL 5.0 基于 PostgreSQL 18.0 全面升级：Oracle 兼容性再突破，生态组件集成再升级，云原生深度支持，配合全平台安装包与在线丝滑体验，让复杂变得简单。
-有关完整更新列表，请访问我们的 https://docs.ivorysql.org/[文档站点]。
+IvorySQL 5.1 基于 PostgreSQL 18.1 构建，包含多项错误修复。有关更新的完整列表，请访问我们的 https://docs.ivorysql.org/[文档站点]。
 
 == 增强内容
 
-- PostgreSQL 18.0
+- PostgreSQL 18.1
 
-1. 新增异步 I/O（AIO）子系统，可提升顺序扫描、位图堆扫描、vacuum 等操作的性能。
-2. pg_upgrade 现在会保留优化器统计信息。
-3. 支持 "skip scan" 查找，使多列 B-tree 索引能够在更多场景下使用。
-4. 提供用于生成按时间排序 UUID 的 uuidv7() 函数。
-5. 支持虚拟生成列（在读取时计算值），并将其设为生成列的默认模式。
-6. 增加 OAuth 认证能力。
-7. 在 INSERT、UPDATE、DELETE 和 MERGE 的 RETURNING 子句中支持 OLD 和 NEW。
-8. 对 PRIMARY KEY、UNIQUE 与 FOREIGN KEY 引入时间区间约束。
+1. 执行 CREATE STATISTICS 时检查 schema 上的 CREATE 权限。
+2. 避免 libpq 中分配内存计算时发生整数溢出。
+3. SQL/JSON 函数（如 JSON_VALUE）的 DEFAULT 子句中包含 COLLATE 表达式时，防止出现“未识别的节点类型”错误。
+4. 避免在包含分组集且不含变量的 HAVING 子句中进行不正确的优化。
+5. 在哈希右半连接中禁用并行处理。
+6. 创建有序追加执行计划时避免可能的除零错误。
+7. 修复规划器在处理“支持有序访问但不支持仅索引扫描的索引类型”时的失败问题。
 
-更多细节请参阅 https://www.postgresql.org/docs/release/18.0/[PostgreSQL 18.0 发布说明]。
+更多详情，请参阅  https://www.postgresql.org/docs/release/18.1/[PostgreSQL 18.1 发布说明]。
 
 == 新特性
-=== 新增21 项 Oracle 兼容能力
 
-- Oracle 兼容 ROWID：Feature https://github.com/IvorySQL/IvorySQL/issues/126[#126] +
-  让 IvorySQL 行标识符与 Oracle 语义保持一致，便于跨数据库工具协同。
+- 升级至 PG 18.1 内核：Feature https://github.com/IvorySQL/IvorySQL/pull/1004[#1004] +
+  PostgreSQL 内核已升级至 18.1 版本。
 
-- PL/iSQL CALL 调用语法：Feature https://github.com/IvorySQL/IvorySQL/issues/764[#764] +
-  新增 Oracle 风格的 `CALL` 入口，实现存储过程一致的调用体验。
+- http://trial.ivorysql.org/[在线体验]：IvorySQL 5.1：Feature https://github.com/IvorySQL/ivorysql-wasm/pull/6[#6] +
+  上线交互式浏览器环境，用户可实时体验与评估 IvorySQL v5.1，无需安装。
 
-- PL/iSQL `%ROWTYPE`：Feature https://github.com/IvorySQL/IvorySQL/issues/765[#765] +
-  允许变量复用整张表或游标行的结构，便于紧凑编写 PL/iSQL。
-
-- PL/iSQL `%TYPE`：Feature https://github.com/IvorySQL/IvorySQL/issues/766[#766] +
-  支持变量继承既有列或变量的类型，降低类型漂移风险。
-
-- 区分大小写兼容开关：Feature https://github.com/IvorySQL/IvorySQL/issues/767[#767] +
-  在需要时可保留标识符大小写，以匹配 Oracle 行为。
-
-- NLS 参数兼容性：Feature https://github.com/IvorySQL/IvorySQL/issues/768[#768] +
-  支持 `NLS_DATE_FORMAT`、`NLS_TIMESTAMP_FORMAT` 等 Oracle 风格 NLS 设置。
-
-- 空字符串转 NULL：Feature https://github.com/IvorySQL/IvorySQL/issues/769[#769] +
-  将长度为零的字符串转换为 NULL，以遵循 Oracle 的兼容规则。
-
-- 解析器切换能力：Feature https://github.com/IvorySQL/IvorySQL/issues/770[#770] +
-  可在 Oracle 与 PostgreSQL 解析器之间切换，实现会话级灵活性。
-
-- GB18030 数据库编码：Feature https://github.com/IvorySQL/IvorySQL/issues/771[#771] +
-  为中国市场提供 GB18030 初始化和创建数据库选项。
-
-- Oracle 兼容 `SYS_GUID`：Feature https://github.com/IvorySQL/IvorySQL/issues/773[#773] +
-  实现 Oracle `SYS_GUID` 函数，生成基于 RAW 的 GUID。
-
-- Oracle 兼容 `SYS_CONTEXT`：Feature https://github.com/IvorySQL/IvorySQL/issues/774[#774] +
-  提供 Oracle `SYS_CONTEXT` API，用于查询会话与环境元数据。
-
-- Oracle 兼容 `USERENV`：Feature https://github.com/IvorySQL/IvorySQL/issues/775[#775] +
-  引入 `USERENV` 函数，使会话可检查 Oracle 风格的上下文信息。
-
-- Oracle 兼容函数语法：Feature https://github.com/IvorySQL/IvorySQL/issues/776[#776] +
-  支持 EDITIONABLE/NONEDITIONABLE、`RETURN`、`IS`、`OUT ... NOCOPY` 等 Oracle 结构。
-
-- Oracle 兼容过程语法：Feature https://github.com/IvorySQL/IvorySQL/issues/777[#777] +
-  支持包含 Oracle 选项的过程 DDL、EXEC 调用以及 ALTER PROCEDURE。
-
-- libpq OUT 参数传递：Feature https://github.com/IvorySQL/IvorySQL/issues/778[#778] +
-  扩展客户端协议，使 OUT 参数可像 OCI 一样被消费。
-
-- 过程 OUT 参数：Feature https://github.com/IvorySQL/IvorySQL/issues/779[#779] +
-  存储过程现在可按 Oracle 约定声明 IN、OUT、IN OUT 模式。
-
-- 函数 OUT 参数：Feature https://github.com/IvorySQL/IvorySQL/issues/780[#780] +
-  函数支持 Oracle 风格 OUT（含 IN OUT）参数。
-
-- 嵌套子程序：Feature https://github.com/IvorySQL/IvorySQL/issues/781[#781] +
-  允许在子程序内部定义函数或过程，并支持重载。
-
-- Oracle 兼容 `INSTR`：Feature https://github.com/IvorySQL/IvorySQL/issues/782[#782] +
-  与 Oracle `INSTR` 行为保持一致，覆盖子串搜索与位置判断。
-
-- Oracle 兼容 FORCE VIEW：Feature https://github.com/IvorySQL/IvorySQL/issues/783[#783] +
-  允许在引用对象尚未存在时创建视图，重现 Oracle FORCE 选项。
-
-- Oracle 兼容 LIKE 运算符：Feature https://github.com/IvorySQL/IvorySQL/issues/784[#784] +
-  对齐 Oracle 的通配符语义，确保匹配行为可预测。
-
-=== 在线体验与多平台发行包
-
-- 在线体验：IvorySQL v5.0：Feature https://github.com/IvorySQL/IvorySQL/issues/887[#887] +
-  上线交互式浏览器环境，用户可实时体验与评估 IvorySQL v5.0，无需安装。
-
-- 全平台打包：Feature https://github.com/IvorySQL/IvorySQL/issues/949[#949] +
+- 全平台打包：Feature https://github.com/IvorySQL/IvorySQL/issues/1136[#1136] +
   为 X86、ARM、MIPS、龙芯架构等平台提供多架构安装介质。
 
-=== 云原生与容器化
+- 容器化部署支持 +
+  支持通过 Docker Compose、Podman、Swarm、Helm 以及 IvorySQL 5.1 Operator 一键部署单机或高可用的 IvorySQL 5.1 集群。
 
-- 容器化部署支持（Docker Compose & Docker Swarm）：
-  支持在 Docker Swarm 与 Docker Compose 中部署单实例数据库与高可用集群。
+- 发布 IvorySQL Cloud v5.1（统一全生命周期与可视化控制平台） +
+  提供可视化托管控制平台，覆盖订阅、端到端的全生命周期编排以及生态集成。
 
-- 容器化部署支持（Kubernetes 基础版）：
-  使用 Helm 在 Kubernetes（K8S）中部署单实例数据库与高可用集群。
-
-- 发布 IvorySQL Operator v5（Kubernetes 进阶版）：
-  Operator v5 适配 IvorySQL v5.0，并同步升级系统组件版本与数据库扩展版本。
-
-- 发布 IvorySQL Cloud v5（统一全生命周期与可视化控制平面）：
-  提供可视化托管控制平面，覆盖订阅、全生命周期编排以及生态集成。
-
-=== 新增 10 个 PostgreSQL 扩展
-
-- pg_cron：Feature https://github.com/IvorySQL/IvorySQL/issues/882[#882] +
-  通过 pg_cron 集成在数据库层内执行计划任务。
-
-- pgAudit：Feature https://github.com/IvorySQL/IvorySQL/issues/929[#929] +
-  借助 PostgreSQL 标准日志能力输出详尽的会话 / 对象审计记录。
-
-- PostGIS：Feature https://github.com/IvorySQL/IvorySQL/issues/880[#880] +
-  提供空间数据处理与地理分析能力。
-
-- pgRouting：Feature https://github.com/IvorySQL/IvorySQL/issues/881[#881] +
-  引入网络与路径分析能力。
-
-- PGroonga：Feature https://github.com/IvorySQL/IvorySQL/issues/879[#879] +
-  增强全文检索。
-
-- ddlx：Feature https://github.com/IvorySQL/IvorySQL/issues/877[#877] +
-  支持 ddlx，便于高级模式洞察与自动化 DDL 生成。
-
-- pgsql-http：Feature https://github.com/IvorySQL/IvorySQL/issues/883[#883] +
-  允许数据库内部发起 HTTP/HTTPS 请求，实现与外部 Web 服务的无缝通信。
-
-- system_stats：Feature https://github.com/IvorySQL/IvorySQL/issues/946[#946] +
-  通过 system_stats 提供系统级统计信息。
-
-- plpgsql_check：Feature https://github.com/IvorySQL/IvorySQL/issues/915[#915] +
-  在运行前对 PL/pgSQL 函数做静态分析，定位错误、警告与潜在问题。
-
-- pgvector：Feature https://github.com/IvorySQL/IvorySQL/issues/878[#878] +
-  融合 pgvector，为 AI/ML 工作负载提供原生向量相似度检索。
+- PostgreSQL Extensions +
+  新增支持 10 个 PostgreSQL 扩展：pg_cron、pgAudit、PostGIS、pgRouting、PGroonga、ddlx、pgsql-http、system_stats、plpgsql_check、pgvector。
 
 == 缺陷修复
 
-- 修复 `unused_oids` 与 `duplicate_oids` 目录工具，使头文件扫描能准确检测冲突且无误报：Issue https://github.com/IvorySQL/IvorySQL/issues/841[#841]
-- 为 `libpq/ivytest` 产物新增 `.gitignore`，避免生成的二进制与日志污染开发树：Issue https://github.com/IvorySQL/IvorySQL/issues/843[#843]
-- 扩展 GitHub 工作流回归测试，覆盖 `--with-libnuma` 配置，防止未来在启用 NUMA 的主机上出问题：Issue https://github.com/IvorySQL/IvorySQL/issues/869[#869]
-- 让 `psql` 用户可以通过 `\h create package` 获取 CREATE PACKAGE 语法帮助，补齐 PL/iSQL 包的 CLI 文档：Issue https://github.com/IvorySQL/IvorySQL/issues/936[#936]
-- 排除 MainLoop 悬空指针引发的并发压力下间歇性段错误：Issue https://github.com/IvorySQL/IvorySQL/issues/898[#898]
-- 修复 `oracle_test/modules/*/sql` 的测试框架假设，让 Oracle 兼容测试套件再次端到端运行：Issue https://github.com/IvorySQL/IvorySQL/issues/897[#897]
-- 更新 `README.md` 与 `README_CN.md`，同步 IvorySQL v5 特性、打包与快速上手信息：Issue https://github.com/IvorySQL/IvorySQL/issues/896[#896]
-- 更正全局唯一索引的强制机制，使相关回归测试在所有支持平台上稳定通过：Issue https://github.com/IvorySQL/IvorySQL/issues/894[#894]
+- 清除编译警告：Issue https://github.com/IvorySQL/IvorySQL/issues/996[#996]
+- PL/iSQL 解析器拒绝在 SELECT INTO 表达式中使用括号：Issue https://github.com/IvorySQL/IvorySQL/issues/981[#981]
+- 源码安装过程中提示缺少 uuid-ossp：Issue https://github.com/IvorySQL/ivorysql_docs/pull/198[#198]
 
 == 源码仓库
 
@@ -167,40 +60,23 @@ IvorySQL 的主要代码仓库：
 == 贡献者名单
 以下人员（按字母顺序）作为补丁作者、提交者、审阅者、测试者或问题报告者，为本次发布做出了贡献。
 
-* ccwxl
+* Amberwww1
 * Cédric Villemain
 * Grant Zhou
-* Imran Zaheer
-* luss
-* Martin Gerhardy
-* omstack
-* otegami
-* rophy
-* shlei6067
-* sjw1933
+* Rophy Tsai
 * Yasir Hussain Shah
-* 初少林
-* 崇鹏豪
 * 高雪玉
 * 矫顺田
-* 冯明冉
-* 付贝
-* 类延良
 * 李苑
 * 梁翔宇
 * 刘晓辉
 * 吕新杰
 * 牛世继
-* 彭冲
 * 潘振浩
 * 石卓妍
 * 隋戈
-* 孙锐克
 * 陶郑
-* 童水森
-* 王硕
-* 薛晓刚
-* 严少安
+* 王志斌
 * 杨世华
 * 赵法威
 * 张哲

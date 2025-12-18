@@ -27,7 +27,7 @@ IvorySQL Cloud平台，目前支持Linux系统下的安装，以下为各部分�
 |后端|cloudnative-1.0-SNAPSHOT.jar
 |K8S集群 a|
 [arabic]
-. docker.io/ivorysql/ivory-operator:v5.0
+. docker.io/ivorysql/ivory-operator:v5.1
 . docker.io/ivorysql/pgadmin:ubi8-9.9-5.0-1
 . docker.io/ivorysql/pgbackrest:ubi8-2.56.0-5.0-1
 . docker.io/ivorysql/postgres-exporter:ubi8-0.17.0-5.0-1
@@ -228,7 +228,7 @@ disableNative = false
 
 dbtype = "IvorySQL"
 
-dbversion = "5.0"
+dbversion = "5.1"
 ----
 
 === 安装部署nginx

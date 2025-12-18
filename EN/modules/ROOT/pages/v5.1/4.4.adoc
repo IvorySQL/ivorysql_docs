@@ -77,7 +77,7 @@ When the above operation is executed, the old and new versions of the backend se
 
 === Upgrade with the pg_upgrade utility
 
-The pg_upgrade tool is a built-in cross-version upgrade utility in PostgreSQL that enables in-place database upgrades without requiring export and import operations. Since IvorySQL is derived from PostgreSQL, it can also use the pg_upgrade tool for major version upgrades. Below is a brief introduction on how to use pg_upgrade to upgrade IvorySQL to the latest 5.0 version on the CentOS8 platform.
+The pg_upgrade tool is a built-in cross-version upgrade utility in PostgreSQL that enables in-place database upgrades without requiring export and import operations. Since IvorySQL is derived from PostgreSQL, it can also use the pg_upgrade tool for major version upgrades. Below is a brief introduction on how to use pg_upgrade to upgrade IvorySQL to the latest 5.1 version on the CentOS8 platform.
 
 pg_upgrade provides a pre-upgrade compatibility check (using the -c or --check option), which can identify issues such as plugin or data type incompatibilities. If the --link option is specified, the new version service can directly use the existing database files without copying, typically completing the upgrade in just a few minutes.
 
@@ -96,23 +96,23 @@ First, stop the old version of the IvorySQL 4.6 database:
 ```
 /usr/ivory-4/bin/pg_ctl -D ./data stop
 ```
-Then install the new version of the IvorySQL 5.0 database:
+Then install the new version of the IvorySQL 5.1 database:
 ```
-dnf install -y ivorysql5-5.0
+dnf install -y ivorysql5-5.1
 ```
-Initialize the new IvorySQL 5.0 data directory:
+Initialize the new IvorySQL 5.1 data directory:
 ```
 /usr/ivory-5/bin/initdb -D ./data
 ```
 Check version compatibility:
 ```
-/usr/ivory-5/bin/pg_upgrade --old-datadir=/home/ivorysql/test/4.6/data --new-datadir=/home/ivorysql/test/5.0/data --old-bindir=/usr/ivory-4/bin/ --new-bindir=/usr/ivory-5/bin/ --check
+/usr/ivory-5/bin/pg_upgrade --old-datadir=/home/ivorysql/test/4.6/data --new-datadir=/home/ivorysql/test/5.1/data --old-bindir=/usr/ivory-4/bin/ --new-bindir=/usr/ivory-5/bin/ --check
 ```
 The appearance of "Clusters are compatible" at the end indicates that there are no compatibility issues between the two versions of data, and the upgrade can proceed.
 
 Official upgrade:
 ```
-/usr/ivory-5/bin/pg_upgrade --old-datadir=/home/ivorysql/test/4.6/data --new-datadir=/home/ivorysql/test/5.0/data --old-bindir=/usr/ivory-4/bin/ --new-bindir=/usr/ivory-5/bin/
+/usr/ivory-5/bin/pg_upgrade --old-datadir=/home/ivorysql/test/4.6/data --new-datadir=/home/ivorysql/test/5.1/data --old-bindir=/usr/ivory-4/bin/ --new-bindir=/usr/ivory-5/bin/
 ```
 Seeing "Upgrade Complete" indicates that the upgrade has been successfully completed.
 
@@ -142,7 +142,7 @@ This upgrade method can be used with built-in logical replication tools and exte
 
 == Managing IvorySQL Versions
 
-IvorySQL is based on PostgreSQL and is updated at the same frequency as PostgreSQL, with one major release per year and one minor release per quarter. IvorySQL 5.0 is based on PostgreSQL 18.0, and all versions of IvorySQL are backward compatible.The relevant version features can be viewed by looking at https://www.ivorysql.org/en/releases-page/[Official Website]。
+IvorySQL is based on PostgreSQL and is updated at the same frequency as PostgreSQL, with one major release per year and one minor release per quarter. IvorySQL 5.1 is based on PostgreSQL 18.1, and all versions of IvorySQL are backward compatible.The relevant version features can be viewed by looking at https://www.ivorysql.org/en/releases-page/[Official Website]。
 
 
 == Managing IvorySQL database access

@@ -5,155 +5,49 @@
 
 == Version Overview
 
-[*Release Date: Nov 25, 2025*]
+[*Release Date: Dec 18, 2025*]
 
-IvorySQL 5.0, based on PostgreSQL 18.0, introduces significant Oracle compatibility improvements, PL/iSQL enhancements, and new globalization capabilities while refreshing packaging, automation, and tooling. For a comprehensive list of updates, please visit our https://docs.ivorysql.org/[documentation site].
+IvorySQL 5.1 is built on PostgreSQL 18.1 and includes a variety of bug fixes. For a comprehensive list of updates, please visit our https://docs.ivorysql.org/[documentation site].
 
 == Enhancements
 
-- PostgreSQL 18.0
+- PostgreSQL 18.1
 
-1. An asynchronous I/O (AIO) subsystem that can improve performance of sequential scans, bitmap heap scans, vacuums, and other operations.
-2. pg_upgrade now retains optimizer statistics.
-3. Support for "skip scan" lookups that allow using multicolumn B-tree indexes in more cases.
-4. uuidv7() function for generating timestamp-ordered UUIDs.
-5. Virtual generated columns that compute their values during read operations. This is now the default for generated columns.
-6. OAuth authentication support.
-7. OLD and NEW support for RETURNING clauses in INSERT, UPDATE, DELETE, and MERGE commands.
-8. Temporal constraints, or constraints over ranges, for PRIMARY KEY, UNIQUE, and FOREIGN KEY constraints.
+1. Check for CREATE privileges on the schema in CREATE STATISTICS.
+2. Avoid integer overflow in allocation-size calculations within libpq.
+3. Prevent “unrecognized node type” errors when a SQL/JSON function such as JSON_VALUE has a DEFAULT clause containing a COLLATE expression.
+4. Avoid incorrect optimization of variable-free HAVING clauses with grouping sets.
+5. Do not use parallelism in hash right semi joins.
+6. Avoid possible division-by-zero when creating ordered-append plans.
+7. Fix planner failure with index types that can do ordered access but not index-only scans.
 
-For further details, visit https://www.postgresql.org/docs/release/18.0/[PostgreSQL’s release notes].
+For further details, visit https://www.postgresql.org/docs/release/18.1/[PostgreSQL’s release notes].
 
 == New Features
-=== 21 New Oracle Compatibility Features
 
-- Oracle-compatible ROWID support: Feature https://github.com/IvorySQL/IvorySQL/issues/126[#126] +
-  Ensures IvorySQL row identifiers align with Oracle semantics for seamless cross-database tooling.
+- Upgrade to PG 18.1 kernel: Feature https://github.com/IvorySQL/IvorySQL/pull/1004[#1004] +
+  PostgreSQL kernel upgraded to version 18.1.
 
-- PL/iSQL CALL invocation syntax: Feature https://github.com/IvorySQL/IvorySQL/issues/764[#764] +
-  Adds the Oracle-style `CALL` entry point so stored procedures can be invoked consistently.
+- http://trial.ivorysql.org/[Online Experience]: IvorySQL 5.1: Feature https://github.com/IvorySQL/ivorysql-wasm/pull/6[#6] +
+  An interactive, browser-based environment will be launched to allow users to explore and evaluate IvorySQL 5.1 in real time — no installation required.
 
-- PL/iSQL `%ROWTYPE` support: Feature https://github.com/IvorySQL/IvorySQL/issues/765[#765] +
-  Allows variables to mirror entire table or cursor rows for concise PL/iSQL coding.
+- Packaging for All Platforms: Feature https://github.com/IvorySQL/IvorySQL/issues/1136[#1136] +
+  Provides multi-platform media packages for X86, ARM, MIPS, LoongArch architecture.
 
-- PL/iSQL `%TYPE` support: Feature https://github.com/IvorySQL/IvorySQL/issues/766[#766] +
-  Enables variables to adopt the data type of existing columns or variables to reduce drift.
+- Containerized Deployment Support +
+  Supports one-click deployment of standalone or highly available IvorySQL 5.1 clusters via Docker Compose, Podman, Swarm, Helm, and the IvorySQL 5.1 Operator.
 
-- Case-sensitive compatibility switch: Feature https://github.com/IvorySQL/IvorySQL/issues/767[#767] +
-  Preserves identifier case to match Oracle behavior when required.
+- IvorySQL Cloud 5.1 released (Visual Database Lifecycle Management Platform) +
+  Offers a fully managed, graphical control plane that handles IvorySQL 5.1 database subscriptions, orchestrates end-to-end lifecycle operations, and integrates surrounding ecosystem services.
 
-- NLS parameter compatibility: Feature https://github.com/IvorySQL/IvorySQL/issues/768[#768] +
-  Honors Oracle-style NLS settings such as `NLS_DATE_FORMAT` and `NLS_TIMESTAMP_FORMAT`.
-
-- Empty string to NULL translation: Feature https://github.com/IvorySQL/IvorySQL/issues/769[#769] +
-  Converts zero-length strings to NULL to match Oracle compatibility rules.
-
-- Parser switching capability: Feature https://github.com/IvorySQL/IvorySQL/issues/770[#770] +
-  Adds toggles between Oracle and PostgreSQL parsers for per-session flexibility.
-
-- GB18030 database encoding: Feature https://github.com/IvorySQL/IvorySQL/issues/771[#771] +
-  Provides GB18030 initialization and create-database options for full Chinese market coverage.
-
-- Oracle-compatible `SYS_GUID`: Feature https://github.com/IvorySQL/IvorySQL/issues/773[#773] +
-  Implements the Oracle `SYS_GUID` function to generate RAW-based GUIDs.
-
-- Oracle-compatible `SYS_CONTEXT`: Feature https://github.com/IvorySQL/IvorySQL/issues/774[#774] +
-  Delivers the Oracle `SYS_CONTEXT` API for querying session and environment metadata.
-
-- Oracle-compatible `USERENV`: Feature https://github.com/IvorySQL/IvorySQL/issues/775[#775] +
-  Adds the `USERENV` function so sessions can inspect Oracle-style contextual details.
-
-- Oracle-compatible function syntax: Feature https://github.com/IvorySQL/IvorySQL/issues/776[#776] +
-  Supports Oracle constructs such as EDITIONABLE/NONEDITIONABLE, `RETURN`, `IS`, and `OUT ... NOCOPY` options.
-
-- Oracle-compatible procedure syntax: Feature https://github.com/IvorySQL/IvorySQL/issues/777[#777] +
-  Enables procedure DDL with Oracle options, EXEC invocation, and ALTER PROCEDURE support.
-
-- libpq OUT parameter plumbing: Feature https://github.com/IvorySQL/IvorySQL/issues/778[#778] +
-  Extends client protocol handling so OUT parameters can be consumed like OCI.
-
-- Procedure OUT parameter support: Feature https://github.com/IvorySQL/IvorySQL/issues/779[#779] +
-  Allows stored procedures to declare IN, OUT, and IN OUT modes per Oracle conventions.
-
-- Function OUT parameter support: Feature https://github.com/IvorySQL/IvorySQL/issues/780[#780] +
-  Permits Oracle-style OUT parameters within functions, including IN OUT combinations.
-
-- Nested subprograms: Feature https://github.com/IvorySQL/IvorySQL/issues/781[#781] +
-  Introduces support for declaring functions or procedures within other subprograms, including overloading.
-
-- Oracle-compatible `INSTR`: Feature https://github.com/IvorySQL/IvorySQL/issues/782[#782] +
-  Matches Oracle `INSTR` behavior for substring searches and position checks.
-
-- Oracle-compatible FORCE VIEW: Feature https://github.com/IvorySQL/IvorySQL/issues/783[#783] +
-  Lets views be created even when referenced objects do not yet exist, mirroring Oracle's FORCE option.
-
-- Oracle-compatible LIKE operator: Feature https://github.com/IvorySQL/IvorySQL/issues/784[#784] +
-  Aligns pattern-matching semantics with Oracle for predictable wildcard behavior.
-
-=== Online Trial and Multi-Platform Distribution Packages
-
-- Online Experience: IvorySQL v5.0: Featuare https://github.com/IvorySQL/IvorySQL/issues/887[#887] +
-  An interactive, browser-based environment will be launched to allow users to explore and evaluate IvorySQL v5.0 in real time — no installation required.
-
-- Packaging for All Platforms: Featuare https://github.com/IvorySQL/IvorySQL/issues/949[#949] +
-  Provides multi-platform media packages for X86、ARM、MIPS、LoongArch architecture.
-
-=== Cloud-Native & Containerized
-
-- Containerized Deployment Support (Docker Compose & Docker Swarm):
-  Supports deployment of standalone IvorySQL databases and high-availability clusters in Docker Swarm and Docker Compose environments.
-
-- Containerized Deployment Support (Kubernetes):
-  Supports deployment of standalone IvorySQL databases and high-availability clusters on Kubernetes (K8S) using Helm.
-
-- IvorySQL Operator v5 released (Kubernetes):
-  The IvorySQL Operator v5 has been adapted to support IvorySQL v5.0, with upgrades to system component versions and database extension versions.
-
-- IvorySQL Cloud v5 released (Unified Lifecycle & Visual Control Plane):
-  Offers a fully managed, graphical control plane that handles IvorySQL v5 database subscriptions, orchestrates end-to-end lifecycle operations, and integrates surrounding ecosystem services.
-
-=== Support for 10 Additional PostgreSQL Extensions
-
-- pg_cron: Feature https://github.com/IvorySQL/IvorySQL/issues/882[#882] +
-  Scheduled job execution within the database layer will be available through pg_cron integration.
-
-- pgAudit: Feature https://github.com/IvorySQL/IvorySQL/issues/929[#929] +
-  Provides detailed session and/or object audit logging via the standard PostgreSQL logging facility.
-
-- PostGIS: Feature https://github.com/IvorySQL/IvorySQL/issues/880[#880] +
-  Spatial data processing and geospatial analytics will be enabled through PostGIS compatibility.
-
-- pgRouting: Feature https://github.com/IvorySQL/IvorySQL/issues/881[#881] +
-  Network and routing analysis features will be introduced with pgRouting support.
-
-- PGroonga: Feature https://github.com/IvorySQL/IvorySQL/issues/879[#879] +
-  Full-text search capabilities will be enhanced via planned PGroonga support.
-
-- ddlx: Feature https://github.com/IvorySQL/IvorySQL/issues/877[#877] +
-  Support for ddlx to enable advanced schema introspection and automated DDL generation.
-
-- pgsql-http: Feature https://github.com/IvorySQL/IvorySQL/issues/883[#883] +
-  Allow the database to initiate HTTP/HTTPS requests internally, enabling seamless communication between the database and external web services.
-
-- system_stats： Feature https://github.com/IvorySQL/IvorySQL/issues/946[#946] +
-  System level statistics will be provided by system_stats support.
-
-- plpgsql_check: Feature https://github.com/IvorySQL/IvorySQL/issues/915[#915] +
-  Static code analysis on PL/pgSQL functions to identify errors, warnings, and potential issues before runtime execution
-
-- pgvector:  Feature https://github.com/IvorySQL/IvorySQL/issues/878[#878] +
-  Integration with pgvector to empower AI/ML workloads through native vector similarity search.
+- PostgreSQL Extensions +
+  Support for 10 Additional PostgreSQL Extensions: pg_cron, pgAudit, PostGIS, pgRouting, PGroonga, ddlx, pgsql-http, system_stats, plpgsql_check, pgvector.
 
 == Fixed Issues
 
-- Repaired `unused_oids` and `duplicate_oids` catalog tooling so header scans correctly detect conflicts without false positives: Issue https://github.com/IvorySQL/IvorySQL/issues/841[#841]
-- Added `.gitignore` coverage for `libpq/ivytest` artifacts to prevent generated binaries and logs from polluting developer trees: Issue https://github.com/IvorySQL/IvorySQL/issues/843[#843]
-- Extended GitHub workflow regression runs to cover builds configured with `--with-libnuma`, preventing future breakages on NUMA-enabled hosts: Issue https://github.com/IvorySQL/IvorySQL/issues/869[#869]
-- Enabled `psql` users to access CREATE PACKAGE syntax help via `\h create package`, closing the CLI documentation gap for PL/iSQL packages: Issue https://github.com/IvorySQL/IvorySQL/issues/936[#936]
-- Eliminated the MainLoop dangling-pointer scenario that triggered intermittent segmentation faults under concurrency stress: Issue https://github.com/IvorySQL/IvorySQL/issues/898[#898]
-- Re-enabled `oracle_test/modules/*/sql` cases by fixing harness assumptions so Oracle-compatibility suites execute end-to-end again: Issue https://github.com/IvorySQL/IvorySQL/issues/897[#897]
-- Updated `README.md` and `README_CN.md` to reflect IvorySQL v5 feature set, packaging, and onboarding instructions: Issue https://github.com/IvorySQL/IvorySQL/issues/896[#896]
-- Corrected globally unique index enforcement so related regression tests now pass reliably across supported platforms: Issue https://github.com/IvorySQL/IvorySQL/issues/894[#894]
+- Clear build warnings: Issue https://github.com/IvorySQL/IvorySQL/issues/996[#996]
+- PL/iSQL Parser Rejects Parentheses in SELECT INTO Expression: Issue https://github.com/IvorySQL/IvorySQL/issues/981[#981]
+- Doc:Fix reports missing uuid-ossp during source installation: Issue https://github.com/IvorySQL/ivorysql_docs/pull/198[#198]
 
 == Source Code
 
@@ -161,47 +55,30 @@ IvorySQL's development is maintained across four main repositories:
 
 - IvorySQL database source code: https://github.com/IvorySQL/IvorySQL
 - IvorySQL official website: https://github.com/IvorySQL/Ivory-www
-- IvorySQL documentation: https://github.com/IvorySQL/IvorySQL-docs
+- IvorySQL documentation: https://github.com/IvorySQL/IvorySQL_docs
 - IvorySQL Docker: https://github.com/IvorySQL/docker_library
 
 == Contributors
 
 The following individuals (in alphabetical order) have contributed to this release as patch authors, committers, reviewers, testers, or reporters of issues.
 
-* Bei Fu
-* Carlos Chong
-* ccwxl
+* Amberwww1
 * Cédric Villemain
 * Fawei Zhao
 * Ge Sui
 * Grant Zhou
-* Imran Zaheer
-* jerome-peng
-* Jiaoshun Tian
-* luss
-* Martin Gerhardy
-* Mingran Feng
-* omstack
-* otegami
-* Ruike Sun
-* rophy
-* Shaolin Chu
-* Shawn Yan
-* Shihua Yang
-* Shiji Niu
-* Shuisen Tong
-* shlei6067
-* sjw1933
+* Oreo Yang
+* Rophy Tsai
+* Shuntian Jiao
+* Steven Niu
 * Xiangyu Liang
 * Xiaohui Liu
 * Xinjie Lv
-* xuexiaoganghs
 * Xueyu Gao
-* yangchunwanwusheng
-* Yanliang Lei
 * Yasir Hussain Shah
 * Yuan Li
-* Zhe Zhang
 * Zheng Tao
 * Zhenhao Pan
+* Zhe Zhang
+* Zhibin Wang
 * Zhuoyan Shi

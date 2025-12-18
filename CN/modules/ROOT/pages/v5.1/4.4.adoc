@@ -88,7 +88,7 @@ pg_dumpall -p 5432 | psql -d postgres -p 5433
 
 === 利用pg_upgrade 工具进行升级
 
-pg_upgrade 工具是PostgreSQL 内置的跨版本升级工具，能够对数据库就地升级，不需要执行导出和导入操作。IvorySQL源自于PG，因此也能够使用pg_upgrade 工具进行大版本升级。 下面简要介绍一下CentOS8平台上如何使用 pg_upgrade 将IvorySQL升级到最新的5.0版本。
+pg_upgrade 工具是PostgreSQL 内置的跨版本升级工具，能够对数据库就地升级，不需要执行导出和导入操作。IvorySQL源自于PG，因此也能够使用pg_upgrade 工具进行大版本升级。 下面简要介绍一下CentOS8平台上如何使用 pg_upgrade 将IvorySQL升级到最新的5.1版本。
 
 pg_upgrade 提供了升级前的兼容性检查（-c 或者 --check 选项）功能，可以发现插件、数据类型不兼容等问题。如果指定了--link 选项，新版本服务可以直接使用原有的数据库文件而不需要执行复制，通常可以在几分钟内完成升级操作。
 
@@ -107,23 +107,23 @@ pg_upgrade 提供了升级前的兼容性检查（-c 或者 --check 选项）功
 ```
 /usr/ivory-4/bin/pg_ctl -D ./data stop
 ```
-然后安装新版本的IvorySQL5.0数据库：
+然后安装新版本的IvorySQL5.1数据库：
 ```
-dnf install -y ivorysql5-5.0
+dnf install -y ivorysql5-5.1
 ```
-初始化新版IvorySQL5.0数据目录：
+初始化新版IvorySQL5.1数据目录：
 ```
 /usr/ivory-5/bin/initdb -D ./data
 ```
 检查版本兼容性：
 ```
-/usr/ivory-5/bin/pg_upgrade --old-datadir=/home/ivorysql/test/4.6/data --new-datadir=/home/ivorysql/test/5.0/data --old-bindir=/usr/ivory-4/bin/ --new-bindir=/usr/ivory-5/bin/ --check
+/usr/ivory-5/bin/pg_upgrade --old-datadir=/home/ivorysql/test/4.6/data --new-datadir=/home/ivorysql/test/5.1/data --old-bindir=/usr/ivory-4/bin/ --new-bindir=/usr/ivory-5/bin/ --check
 ```
 最后出现 “Clusters are compatible” 表明两个版本之间的数据不存在兼容性问题，可以进行升级。
 
 正式升级：
 ```
-/usr/ivory-5/bin/pg_upgrade --old-datadir=/home/ivorysql/test/4.6/data --new-datadir=/home/ivorysql/test/5.0/data --old-bindir=/usr/ivory-4/bin/ --new-bindir=/usr/ivory-5/bin/
+/usr/ivory-5/bin/pg_upgrade --old-datadir=/home/ivorysql/test/4.6/data --new-datadir=/home/ivorysql/test/5.1/data --old-bindir=/usr/ivory-4/bin/ --new-bindir=/usr/ivory-5/bin/
 ```
 看到 Upgrade Complete 说明升级已经顺利完成。
 
@@ -153,7 +153,7 @@ pg_upgrade https://www.postgresql.org/docs/current/pgupgrade.html[文档]概述�
 
 == 管理IvorySQL版本
 
-IvorySQL基于PostgreSQL开发，版本更新频率与PostgreSQL版本更新频率保持一致，每年更新一个大版本，每季度更新一个小版本。IvorySQL目前发布的版本有1.0到5.0，分别基于PostgreSQL 14.0到18.0进行开发，最新版本为IvorySQL 5.0，基于PostgreSQL 18.0进行开发。IvorySQL 的所有版本全部都做到了向下兼容。相关版本特性可以查看 https://www.ivorysql.org/zh-CN/releases-page[官网]。
+IvorySQL基于PostgreSQL开发，版本更新频率与PostgreSQL版本更新频率保持一致，每年更新一个大版本，每季度更新一个小版本。IvorySQL目前发布的版本有1.0到5.1，分别基于PostgreSQL 14.0到18.1进行开发，最新版本为IvorySQL 5.1，基于PostgreSQL 18.1进行开发。IvorySQL 的所有版本全部都做到了向下兼容。相关版本特性可以查看 https://www.ivorysql.org/zh-CN/releases-page[官网]。
 
 
 == 管理IvorySQL数据库访问
