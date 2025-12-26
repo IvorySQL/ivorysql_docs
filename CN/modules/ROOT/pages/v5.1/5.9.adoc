@@ -14,7 +14,7 @@ pgRouting 广泛应用于物流配送、交通导航、网络分析、城市规�
 == 安装
 
 [TIP]
-环境中已经安装了IvorySQL5.1及以上版本，安装路径为/usr/local/ivorysql/ivorysql-5
+环境中已经安装了IvorySQL{ivorysql-version}及以上版本，安装路径为/usr/local/ivorysql/ivorysql-5
 
 === 源码安装
 

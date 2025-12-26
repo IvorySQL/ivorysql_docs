@@ -19,10 +19,11 @@ The IvorySQL community provides source code installation steps, demonstrated bel
 === Dependencies
 
 Setup Environment
+[literal,subs="attributes"]
 ```  
   Operating System: Ubuntu 24.04
   CPU Architecture: x86_64
-  IvorySQL: v5.1
+  IvorySQL: v{ivorysql-version}
 ``` 
 ==== Install msgpack-c
 
@@ -71,6 +72,7 @@ Then execute the following commands to compile and install:
 == Create Extension PGroonga and Confirm the version
 
 Connect to the database with `psql` in `pg` mode and execute the following commands:
+[source,subs="attributes"]
 ```sql
 postgres=# CREATE extension pgroonga;
 CREATE EXTENSION
@@ -83,7 +85,7 @@ postgres=# SELECT * FROM pg_available_extensions WHERE name = 'pgroonga';
 postgres=# select version();
                                     version
 --------------------------------------------------------------------------------
- PostgreSQL (IvorySQL 5.1) 18.1 on x86_64-linux, compiled by gcc-13.3.0, 64-bit
+ PostgreSQL (IvorySQL {ivorysql-version}) 18.0 on x86_64-linux, compiled by gcc-13.3.0, 64-bit
 (1 row)
 ```
 

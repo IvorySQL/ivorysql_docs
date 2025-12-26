@@ -20,10 +20,11 @@ IvorySQL社区提供了源码安装步骤，下面以PGroonga v4.0.4为例进行
 === 安装依赖
 
 环境
+[literal,subs="attributes"]
 ```  
   操作系统：Ubuntu 24.04
   CPU架构：x86_64
-  IvorySQL: v5.1
+  IvorySQL: v{ivorysql-version}
 ```
 
 ==== 安装 msgpack-c
@@ -74,6 +75,7 @@ highgo@ubuntu:~/work/IvorySQL/inst$ groonga --version
 
 
 psql 连接到数据库的pg模式下，执行命令：
+[source,subs="attributes"]
 ```sql
 postgres=# CREATE extension pgroonga;
 CREATE EXTENSION
@@ -86,7 +88,7 @@ postgres=# SELECT * FROM pg_available_extensions WHERE name = 'pgroonga';
 postgres=# select version();
                                     version
 --------------------------------------------------------------------------------
- PostgreSQL (ivorysql 5.1) 18.1 on x86_64-linux, compiled by gcc-13.3.0, 64-bit
+ PostgreSQL (IvorySQL {ivorysql-version}) {pg-version} on x86_64-linux, compiled by gcc-13.3.0, 64-bit
 (1 row)
 ```
 
