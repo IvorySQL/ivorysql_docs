@@ -15,7 +15,7 @@ The installation methods for IvorySQL include the following five:
 - <<deb-installation>>
 
 
-This chapter will provide detailed instructions on the installation, execution, and uninstallation processes for each method. For a quicker access to IvorySQL, please refer to xref:v5.1/3.1.adoc#quick-installation[Quick installation].
+This chapter will provide detailed instructions on the installation, execution, and uninstallation processes for each method. For a quicker access to IvorySQL, please refer to xref:v{ivorysql-version}/3.1.adoc#quick-installation[Quick installation].
 
 Before getting started, please create an user and grant it root privileges. All the installation steps will be performed by this user. Here we just name it 'ivorysql'.
 
@@ -32,21 +32,26 @@ enabled=1
 gpgcheck=0
 ```
 After saving and exiting, you can install IvorySQL 4 with the following steps
+[source,bash,subs="attributes"]
 ```
-$ sudo dnf install -y ivorysql5-5.1
+$ sudo dnf install -y ivorysql5-{ivorysql-version}
 ```
 
 [[Docker-installation]]
 == Docker installation
 
 ** Get IvorySQL image from Docker Hub
+
+[source,bash,subs="attributes"]
 ```
-$ docker pull ivorysql/IvorySQL 5.1-ubi8
+$ docker pull ivorysql/IvorySQL {ivorysql-version}-ubi8
 ```
 
 ** Run IvorySQL
+
+[source,bash,subs="attributes"]
 ```
-$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/IvorySQL 5.1-ubi8
+$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/IvorySQL {ivorysql-version}-ubi8
 ```
 -e Parameter Explanation
 |====
@@ -73,8 +78,10 @@ $ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d 
 $ sudo dnf install -y lz4 libicu libxslt python3
 ```
 ** Getting rpms
+
+[source,bash,subs="attributes"]
 ```
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_5.1/IvorySQL-5.1-62069c2-20251211.x86_64.rpm
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_{ivorysql-version}/IvorySQL-{ivorysql-version}-9d890e9-20251120.x86_64.rpm
 ```
 ** Installing rpms
 
@@ -103,7 +110,7 @@ $ sudo apt install -y pkg-config uuid-dev
 ```
 $ git clone https://github.com/IvorySQL/IvorySQL.git
 $ cd IvorySQL
-$ git checkout tags/IvorySQL_5.1
+$ git checkout -b IVORY_REL_5_STABLE origin/IVORY_REL_5_STABLE
 ```
 ** Configuring
 
@@ -144,13 +151,17 @@ $ sudo apt -y install pkg-config libreadline-dev libicu-dev libldap2-dev uuid-de
 ```
 
 ** Getting deb
+
+[source,bash,subs="attributes"]
 ```
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_5.1/IvorySQL-5.1-62069c2-20251211.amd64.deb
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_{ivorysql-version}/IvorySQL-{ivorysql-version}-a50789d-20250304.amd64.deb
 ```
 
 ** Installing deb
+
+[source,bash,subs="attributes"]
 ```
-$ sudo dpkg -i IvorySQL-5.1-62069c2-20251211.amd64.deb
+$ sudo dpkg -i IvorySQL-{ivorysql-version}-a50789d-20250304.amd64.deb
 ```
 IvorySQL will then be installed in the /usr/ivory-5/ directory.
 
@@ -217,9 +228,10 @@ ivorysql  130445  130274  0 02:45 pts/1    00:00:00 grep --color=auto postgres
 == Connecting to IvorySQL
 
 Connect to IovrySQL via psql:
+[source,subs="attributes"]
 ```
 $ psql -d <database>
-psql (18.1)
+psql ({pg-version})
 Type "help" for help.
 
 ivorysql=#
@@ -242,40 +254,45 @@ No matter which method is used for the uninstallation, make sure the service has
 === Uninstallation for yum installation
 
 Run the following commands in turn and clean the residual folders:
+[source,bash,subs="attributes"]
 ```
-$ sudo dnf remove -y ivorysql5-5.1
+$ sudo dnf remove -y ivorysql5-{ivorysql-version}
 ```
 
 === Uninstallation for docker installation
 
 Stop IvorySQL container and remove IvorySQL image:
+[source,bash,subs="attributes"]
 ```
 $ docker stop ivorysql
 $ docker rm ivorysql
-$ docker rmi ivorysql/IvorySQL 5.1-ubi8
+$ docker rmi ivorysql/IvorySQL {ivorysql-version}-ubi8
 ```
 
 === Uninstallation for rpm installation
 
 Uninstall the rpms and clear the residual folders:
+[source,bash,subs="attributes"]
 ```
 $ sudo yum remove --disablerepo=* ivorysql5\* 
-$ sudo rm -rf IvorySQL-5.1
+$ sudo rm -rf IvorySQL-{ivorysql-version}
 ```
 
 === Uninstallation for source code installation
 
 Uninstall the database system, then clear the residual folders:
+[source,bash,subs="attributes"]
 ```
 $ sudo make uninstall
 $ make clean
-$ sudo rm -rf IvorySQL-5.1
+$ sudo rm -rf IvorySQL-{ivorysql-version}
 ```
 
 === Uninstallation for deb installation
 
 Uninstall the database system, then clear the residual folders:
+[source,bash,subs="attributes"]
 ```
-$ sudo dpkg -P IvorySQL-5.1
-$ sudo rm -rf IvorySQL-5.1
+$ sudo dpkg -P IvorySQL-{ivorysql-version}
+$ sudo rm -rf IvorySQL-{ivorysql-version}
 ```
