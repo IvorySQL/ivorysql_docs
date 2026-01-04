@@ -8,9 +8,9 @@ This chapter is a demo to show you how to build an IvorySQL cluster. Just take a
 == Primary node
 
 === Installing and start database
-For quick database installation by yum, please refer to xref:v5.1/3.1.adoc#quick-installation[Quick installation]。
+For quick database installation by yum, please refer to xref:v{ivorysql-version}/3.1.adoc#quick-installation[Quick installation]。
 
-For more installation options, please refer to xref:v5.1/4.1.adoc#Installation[Installation]。
+For more installation options, please refer to xref:v{ivorysql-version}/4.1.adoc#Installation[Installation]。
 [NOTE]
 The master node database needs to be installed and **started**.
 
@@ -55,9 +55,9 @@ $ pg_ctl restart
 
 == Standby node
 === Installing database
-For quick database installation by yum, please refer to xref:v5.1/3.1.adoc#quick-installation[Quick installation]。
+For quick database installation by yum, please refer to xref:v{ivorysql-version}/3.1.adoc#quick-installation[Quick installation]。
 
-For more installation options, please refer to xref:v5.1/4.1.adoc#Installation[Installation]。
+For more installation options, please refer to xref:v{ivorysql-version}/4.1.adoc#Installation[Installation]。
 
 [NOTE]
 The standby node database only needs to be installed and **not started**.
@@ -115,9 +115,10 @@ ivorysql  6567  6139  0 21:54 ?        00:00:00 postgres: walreceiver streaming 
 ...
 ```
 On the primary node, connect to IvorySQL and show the status:
+[source,subs="attributes"]
 ```
 $ psql -d ivorysql
-psql (18.1)
+psql ({pg-version})
 Type "help" for help.
 
 ivorysql=# select * from pg_stat_replication;
@@ -139,9 +140,10 @@ Here 192.168.31.102 is the ip address of the standby node, and async means the d
 All writing operations are performed on the primary node, while reading can be on both primary and standby. The data on primary is synchronized to standby through streaming replication. The writing result can be queried on all the nodes in the cluster.
 
 Below is an example. Create a new database test on primary and query:
+[source,subs="attributes"]
 ```
 $ psql -d ivorysql
-psql (18.1)
+psql ({pg-version})
 Type "help" for help.
 
 ivorysql=# create database test;
@@ -159,9 +161,10 @@ ivorysql=# \l
 (4 rows)
 ```
 Query on the standby node:
+[source,subs="attributes"]
 ```
 $ psql -d ivorysql
-psql (18.1)
+psql ({pg-version})
 Type "help" for help.
 
 ivorysql=# \l

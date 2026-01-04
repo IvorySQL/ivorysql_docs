@@ -65,6 +65,7 @@ fr0m9chu3ce8   ivorysql-hac_ivypatroni2   replicated   1/1        ivorysql/docke
 ```
 
 Connect to the database using psql via Oracle port and PostgreSQL port
+[source,bash,subs="attributes"]
 ```
 [root@manager-node1 docker-swarm]# psql -h127.0.0.1 -p1521 -U ivorysql -d ivorysql
 Password for user ivorysql:
@@ -72,7 +73,7 @@ Password for user ivorysql:
 ivorysql=# select version();
                                                         version
 ------------------------------------------------------------------------------------------------------------------------
- PostgreSQL 18.1 (IvorySQL 5.1) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
+ PostgreSQL 18.0 (IvorySQL {ivorysql-version}) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
 (1 row)
 
 ivorysql=# show ivorysql.compatible_mode;
@@ -83,6 +84,7 @@ ivorysql=# show ivorysql.compatible_mode;
 
 ivorysql=# exit
 ```
+[source,bash,subs="attributes"]
 ```
 [root@manager-node1 docker-swarm]# psql -h127.0.0.1 -p5432 -U ivorysql -d ivorysql
 Password for user ivorysql:
@@ -90,7 +92,7 @@ Password for user ivorysql:
 ivorysql=# select version();
                                                         version
 ------------------------------------------------------------------------------------------------------------------------
- PostgreSQL 18.1 (IvorySQL 5.1) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
+ PostgreSQL 18.0 (IvorySQL {ivorysql-version}) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
 (1 row)
 
 ivorysql=# show ivorysql.compatible_mode;
@@ -149,6 +151,7 @@ CONTAINER ID   IMAGE                                               COMMAND      
 
 At this point, the one-primary-two-standby cluster setup is complete.
 Connect to the database using psql via Oracle-compatible ports and PostgreSQL ports.
+[source,bash,subs="attributes"]
 ```
 [root@manager-node1 docker-swarm]# psql -h127.0.0.1 -p1521 -U ivorysql -d ivorysql
 Password for user ivorysql:
@@ -156,7 +159,7 @@ Password for user ivorysql:
 ivorysql=# select version();
                                                         version
 ------------------------------------------------------------------------------------------------------------------------
- PostgreSQL 18.1 (IvorySQL 5.1) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
+ PostgreSQL 18.0 (IvorySQL {ivorysql-version}) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
 (1 row)
 
 ivorysql=# show ivorysql.compatible_mode;
@@ -167,6 +170,7 @@ ivorysql=# show ivorysql.compatible_mode;
 
 ivorysql=# exit
 ```
+[source,bash,subs="attributes"]
 ```
 [root@manager-node1 docker-swarm]# psql -h127.0.0.1 -p5432 -U ivorysql -d ivorysql
 Password for user ivorysql:
@@ -174,7 +178,7 @@ Password for user ivorysql:
 ivorysql=# select version();
                                                         version
 ------------------------------------------------------------------------------------------------------------------------
- PostgreSQL 18.1 (IvorySQL 5.1) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
+ PostgreSQL 18.0 (IvorySQL {ivorysql-version}) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
 (1 row)
 
 ivorysql=# show ivorysql.compatible_mode;

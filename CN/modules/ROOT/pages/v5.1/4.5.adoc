@@ -440,6 +440,7 @@ Fixing function calls in output files...
 
 创建ORCL 数据库
 
+[source,bash,subs="attributes"]
 ```
 # su - ivorysql  
 
@@ -449,7 +450,7 @@ $ createdb orcl
 
 $ psql
 
-psql (18.1)
+psql ({pg-version})
 
 Type "help" for help.
 
@@ -475,10 +476,11 @@ ivorysql=#
 
  创建SH,HR,SCOTT 用户：
 
+[source,bash,subs="attributes"]
 ```
 $ psql orcl
 
-psql (18.1)
+psql ({pg-version})
 
 Type "help" for help.
 

@@ -51,6 +51,7 @@ statefulset.apps/ivorysql   1/1     2m39s
 ```
 
 Connect to IvorySQL via its PostgreSQL port using the psql
+[source,bash,subs="attributes"]
 ```
 [root@k8s-master single]# psql -U ivorysql -p 32106 -h 127.0.0.1 -d ivorysql
 Password for user ivorysql:
@@ -58,7 +59,7 @@ Password for user ivorysql:
 ivorysql=# select version();
                                                         version
 ------------------------------------------------------------------------------------------------------------------------
- PostgreSQL 18.1 (IvorySQL 5.1) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
+ PostgreSQL 18.0 (IvorySQL {ivorysql-version}) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
 (1 row)
 
 ivorysql=# show ivorysql.compatible_mode;
@@ -71,6 +72,7 @@ ivorysql=# exit
 ```
 
 Connect to IvorySQL's Oracle-compatible port using psql.
+[source,bash,subs="attributes"]
 ```
 [root@k8s-master single]# psql -U ivorysql -p 31887 -h 127.0.0.1 -d ivorysql
 Password for user ivorysql:
@@ -78,7 +80,7 @@ Password for user ivorysql:
 ivorysql=# select version();
                                                         version
 ------------------------------------------------------------------------------------------------------------------------
- PostgreSQL 18.1 (IvorySQL 5.1) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
+ PostgreSQL 18.0 (IvorySQL {ivorysql-version}) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
 (1 row)
 
 ivorysql=# show ivorysql.compatible_mode;

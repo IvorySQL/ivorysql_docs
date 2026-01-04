@@ -50,8 +50,9 @@ enabled=1
 gpgcheck=0
 ```
 After saving and exiting, you can install IvorySQL 4 with the following steps
+[source,bash,subs="attributes"]
 ```
-$ sudo dnf install -y ivorysql5-5.1
+$ sudo dnf install -y ivorysql5-{ivorysql-version}
 ```
 
 [[setting-environment-variables]]
@@ -107,28 +108,35 @@ ivorysql  3238  1551  0 20:35 pts/0    00:00:00 grep --color=auto postgres
 === Running IvorySQL in docker
 
 ** Get IvorySQL image from Docker Hub
+
+[source,bash,subs="attributes"]
 ```
-$ docker pull ivorysql/IvorySQL 5.1-ubi8
+$ docker pull ivorysql/IvorySQL {ivorysql-version}-ubi8
 ```
 
 ** Running IvorySQL
+
+[source,bash,subs="attributes"]
 ```
-$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/IvorySQL 5.1-ubi8
+$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/IvorySQL {ivorysql-version}-ubi8
 ```
 
 ** Check if the IvorySQL container is running successfully
+
+[source,bash,subs="attributes"]
 ```
 $ docker ps | grep ivorysql
 CONTAINER ID   IMAGE               COMMAND                   CREATED          STATUS          PORTS                              NAMES
-6faa2d0ed705   IvorySQL 5.1-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
+6faa2d0ed705   IvorySQL {ivorysql-version}-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
 ```
 
 == Connecting to IvorySQL
 
 Connect to IovrySQL via psql:
+[source,subs="attributes"]
 ```
 $ psql -d <database>
-psql (18.1)
+psql ({pg-version})
 Type "help" for help.
 
 ivorysql=#
@@ -143,4 +151,4 @@ TIP: When running IvorySQL in Docker, additional parameters need to be added, li
 
 Now you can start your journey of IvorySQL! Enjoy! 
 
-To explore additional installation methods, please refer to the xref:v5.1/4.1.adoc[Installation].
+To explore additional installation methods, please refer to the xref:v{ivorysql-version}/4.1.adoc[Installation].

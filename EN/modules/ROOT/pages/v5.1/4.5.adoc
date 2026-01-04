@@ -451,6 +451,7 @@ Export HR and SCOTT user data in the same way.
 
 Create ORCL database
 
+[source,subs="attributes"]
 ```
 # su - ivorysql  
 
@@ -460,7 +461,7 @@ $ createdb orcl
 
 $ psql
 
-psql (18.1)
+psql ({pg-version})
 
 Type "help" for help.
 
@@ -486,10 +487,11 @@ ivorysql=#
 
 Create SH, HR, SCOTT users:
 
+[source,subs="attributes"]
 ```
 $ psql orcl
 
-psql (18.1)
+psql ({pg-version})
 
 Type "help" for help.
 

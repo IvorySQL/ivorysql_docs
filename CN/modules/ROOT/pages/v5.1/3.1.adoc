@@ -42,6 +42,7 @@ https://www.ionos.com/help/server-cloud-infrastructure/server-administration/cre
 +
 
 创建或编辑IvorySQL yum源配置文件/etc/yum.repos.d/ivorysql.repo
+[source,bash,subs="attributes"]
 ```
 vim /etc/yum.repos.d/ivorysql.repo
 [ivorysql5]
@@ -51,12 +52,13 @@ enabled=1
 gpgcheck=0
 ```
 保存退出后，安装IvorySQL5
+[source,bash,subs="attributes"]
 ```
-$ sudo dnf install -y ivorysql5-5.1
+$ sudo dnf install -y ivorysql5-{ivorysql-version}
 ```
 ....
 
-  正确安装后，数据库将被安装在/usr/ivory-5/路径下的IvorySQL-version(如:IvorySQL-5.1)文件夹内
+  正确安装后，数据库将被安装在/usr/ivory-5/路径下的IvorySQL-version(如:IvorySQL-{ivorysql-version})文件夹内
 ....
 
 执行以下命令为ivorysql用户赋权：
@@ -112,28 +114,35 @@ ivorysql  3238  1551  0 20:35 pts/0    00:00:00 grep --color=auto postgres
 === docker方式运行
 
 ** 从Docker Hub上获取IvorySQL镜像
+
+[source,bash,subs="attributes"]
 ```
-$ docker pull ivorysql/ivorysql:5.1-ubi8
+$ docker pull ivorysql/ivorysql:{ivorysql-version}-ubi8
 ```
 
 ** 运行IvorySQL
+
+[source,bash,subs="attributes"]
 ```
-$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:5.1-ubi8
+$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:{ivorysql-version}-ubi8
 ```
 
 ** 查看IvorySQL容器运行是否成功
+
+[source,bash,subs="attributes"]
 ```
 $ docker ps | grep ivorysql
 CONTAINER ID   IMAGE               COMMAND                   CREATED          STATUS          PORTS                              NAMES
-6faa2d0ed705   ivorysql:5.1-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
+6faa2d0ed705   ivorysql:{ivorysql-version}-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
 ```
 
 == 数据库连接
 
 psql连接数据库：
+[source,bash,subs="attributes"]
 ```
 $ psql -d <database>
-psql (18.1)
+psql ({pg-version})
 Type "help" for help.
 
 ivorysql=#
@@ -148,4 +157,4 @@ TIP: Docker运行IvorySQL时，需要添加额外参数，如 psql -d ivorysql -
 
 现在可以开始使用IvorySQL啦！就是这么简单！
 
-想要获得更多安装方式，请参考xref:v5.1/4.1.adoc[安装指南]
+想要获得更多安装方式，请参考xref:v{ivorysql-version}/4.1.adoc[安装指南]
