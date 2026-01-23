@@ -91,8 +91,8 @@ For C and Perl code, please run pgindent if necessary. We recommend using git di
 All new functionality that is contributed to IvorySQL should be covered by regression tests that are contributed alongside it. If you are uncertain about how to test or document your work, please raise the question on the ivorysql-hackers mailing list and the developer community will do its best to help you.
 
 At the very minimum, you should always be running 
-``
-`make installcheck world 
+```
+make installcheck world 
 ```
 to make sure that you're not breaking anything.
 
