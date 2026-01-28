@@ -89,7 +89,7 @@ $ sudo yum --disablerepo=* localinstall *.rpm
 == 源码安装
 ** 安装依赖
 ```
-$ sudo dnf install -y bison readline-devel zlib-devel openssl-devel
+$ sudo dnf install -y bison readline-devel zlib-devel openssl-devel uuid-devel
 $ sudo dnf groupinstall -y 'Development Tools'
 ```
 ** 获取IvorySQL源代码
