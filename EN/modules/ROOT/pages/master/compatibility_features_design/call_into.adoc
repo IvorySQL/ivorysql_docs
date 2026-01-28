@@ -136,7 +136,7 @@ typedef enum IvyStmtType
 {
 	IVY_STMT_UNKNOW,
 	IVY_STMT_DO,
-	IVY_STMT_DOFROMCALL, /* new statementt type */
+	IVY_STMT_DOFROMCALL, /* new statement type */
 	IVY_STMT_DOHANDLED,
 	IVY_STMT_OTHERS
 } IvyStmtType;
