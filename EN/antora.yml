@@ -1,7 +1,7 @@
 name: ivorysql-doc
 title: IvorySQL
 version: v5.1
-start_page: v5.1/welcome.adoc
+start_page: welcome.adoc
 asciidoc:
   attributes:
     source-language: asciidoc@

@@ -84,7 +84,16 @@ jobs:
               echo # Newline for better readability
 
               if [[ -n "$DETECTED_VERSION" ]]; then
-                NEW_START_PAGE="${START_PAGE_COMPONENT_NAME}::v${DETECTED_VERSION}/${START_PAGE_FILE_PATH}"
+                # v5.1+ uses flat structure (no version prefix in path)
+                # v5.0 and earlier use nested structure (version prefix in path)
+                # Use version comparison: if DETECTED_VERSION >= 5.1, use flat structure
+                if [[ "$(printf '%s\n' "5.1" "$DETECTED_VERSION" | sort -V | head -n1)" == "5.1" ]]; then
+                  # For v5.1+: ivorysql-doc:v5.1:welcome.adoc (no version prefix in path)
+                  NEW_START_PAGE="${START_PAGE_COMPONENT_NAME}:v${DETECTED_VERSION}:${START_PAGE_FILE_PATH}"
+                else
+                  # For v5.0 and earlier: ivorysql-doc:v5.0:v5.0/welcome.adoc (with version prefix)
+                  NEW_START_PAGE="${START_PAGE_COMPONENT_NAME}:v${DETECTED_VERSION}:v${DETECTED_VERSION}/${START_PAGE_FILE_PATH}"
+                fi
                 yq -i ".site.start_page = \"$NEW_START_PAGE\"" "$PLAYBOOK_FILE"
                 echo "Updated .site.start_page in $PLAYBOOK_FILE to: $NEW_START_PAGE"
               else
@@ -133,7 +142,17 @@ jobs:
           set -euo pipefail
 
           TARGET_BRANCH="v${LATEST_VERSION}"
-          EXPECTED_PATH="ivorysql-doc/v${LATEST_VERSION}/v${LATEST_VERSION}/welcome.html"
+          
+          # v5.1+ uses flat structure (single-level path)
+          # v5.0 and earlier use nested structure (double-level path)
+          # Use version comparison: if LATEST_VERSION >= 5.1, use flat structure
+          if [[ "$(printf '%s\n' "5.1" "$LATEST_VERSION" | sort -V | head -n1)" == "5.1" ]]; then
+            # For v5.1+: ivorysql-doc/v5.1/welcome.html (single-level)
+            EXPECTED_PATH="ivorysql-doc/v${LATEST_VERSION}/welcome.html"
+          else
+            # For v5.0 and earlier: ivorysql-doc/v5.0/v5.0/welcome.html (double-level)
+            EXPECTED_PATH="ivorysql-doc/v${LATEST_VERSION}/v${LATEST_VERSION}/welcome.html"
+          fi
 
           if [[ "${MERGED_PR_BASE}" != "${TARGET_BRANCH}" ]]; then
             echo "Base branch ${MERGED_PR_BASE} is not the latest version branch ${TARGET_BRANCH}, skip index redirect check."
@@ -152,8 +171,9 @@ jobs:
             if grep -q "${EXPECTED_PATH}" "${FILE_PATH}"; then
               echo "${FILE_PATH} already points to latest ${LATEST_VERSION}."
             else
-              # Replace all version segments like vX.Y or vX.Y.Z in href/location/meta/script targets
-              sed -i -E "s@ivorysql-doc/v[0-9]+(\\.[0-9]+){1,2}/v[0-9]+(\\.[0-9]+){1,2}/welcome\\.html@${EXPECTED_PATH}@g" "${FILE_PATH}"
+              # Replace path to latest version
+              # Handle both old double-level and new single-level path formats
+              sed -i -E "s@ivorysql-doc/v[0-9]+(\\.[0-9]+){1,2}/(v[0-9]+(\\.[0-9]+){1,2}/)?welcome\\.html@${EXPECTED_PATH}@g" "${FILE_PATH}"
               UPDATE_NEEDED=true
               echo "Updated ${FILE_PATH} to latest ${LATEST_VERSION} redirect."
             fi
