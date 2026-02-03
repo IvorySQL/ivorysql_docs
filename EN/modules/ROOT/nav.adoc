@@ -36,12 +36,12 @@
 *** xref:master/ecosystem_components/system_stats.adoc[system_stats]
 * IvorySQL Architecture Design
 ** Query Processing
-*** xref:master/dual_parser.adoc[Dual Parser]
+*** xref:master/architecture/dual_parser.adoc[Dual Parser]
 ** Compatibility Framework
-*** xref:master/framework_design.adoc[Ivorysql frame design]
-*** xref:master/guc_framework.adoc[GUC Framework]
-*** xref:master/dual_mode_design.adoc[Dual-mode design]
-*** xref:master/initdb_process.adoc[initdb Process]
+*** xref:master/architecture/framework_design.adoc[Ivorysql frame design]
+*** xref:master/architecture/guc_framework.adoc[GUC Framework]
+*** xref:master/architecture/dual_mode_design.adoc[Dual-mode design]
+*** xref:master/architecture/initdb_process.adoc[initdb Process]
 ** Compatibility Features
 *** xref:master/compatibility_features_design/like_operator.adoc[like]
 *** xref:master/compatibility_features_design/rowid.adoc[RowID]

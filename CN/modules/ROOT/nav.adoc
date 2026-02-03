@@ -37,12 +37,12 @@
 **** xref:master/ecosystem_components/system_stats.adoc[system_stats]
 ** IvorySQL架构设计
 *** 查询处理
-**** xref:master/dual_parser.adoc[双parser]
+**** xref:master/architecture/dual_parser.adoc[双parser]
 *** 兼容框架
-**** xref:master/framework_design.adoc[框架设计]
-**** xref:master/guc_framework.adoc[GUC框架]
-**** xref:master/dual_mode_design.adoc[双模式设计]
-**** xref:master/initdb_process.adoc[initdb过程]
+**** xref:master/architecture/framework_design.adoc[框架设计]
+**** xref:master/architecture/guc_framework.adoc[GUC框架]
+**** xref:master/architecture/dual_mode_design.adoc[双模式设计]
+**** xref:master/architecture/initdb_process.adoc[initdb过程]
 *** 兼容特性
 **** xref:master/compatibility_features_design/like_operator.adoc[like]
 **** xref:master/compatibility_features_design/rowid.adoc[RowID]
