@@ -56,8 +56,8 @@
 *** xref:master/compatibility_features_design/empty_string_to_null.adoc[Empty String to NULL]
 *** xref:master/compatibility_features_design/call_into.adoc[CALL INTO]
 ** Built-in Functions
-*** xref:master/sys_context.adoc[sys_context]
-*** xref:master/userenv.adoc[userenv]
+*** xref:master/oracle_builtin_functions/sys_context.adoc[sys_context]
+*** xref:master/oracle_builtin_functions/userenv.adoc[userenv]
 ** xref:master/gb18030.adoc[GB18030 Character Set]
 * List of Oracle compatible features
 ** xref:master/oracle_compatibility/compat_case_conversion.adoc[1、Case conversion]

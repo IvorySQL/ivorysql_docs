@@ -57,8 +57,8 @@
 **** xref:master/compatibility_features_design/empty_string_to_null.adoc[空字符串转null]
 **** xref:master/compatibility_features_design/call_into.adoc[CALL INTO]
 *** 内置函数
-**** xref:master/sys_context.adoc[sys_context]
-**** xref:master/userenv.adoc[userenv]
+**** xref:master/oracle_builtin_functions/sys_context.adoc[sys_context]
+**** xref:master/oracle_builtin_functions/userenv.adoc[userenv]
 *** xref:master/gb18030.adoc[国标GB18030]
 ** Oracle兼容功能列表
 *** xref:master/oracle_compatibility/compat_case_conversion.adoc[1、大小写转换]
