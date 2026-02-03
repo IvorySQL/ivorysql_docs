@@ -2,9 +2,9 @@
 * xref:master/release_notes.adoc[Release]
 * xref:master/about_ivorysql.adoc[About]
 * Getting Started with IvorySQL
-** xref:master/quick_start.adoc[Quick Start]
-** xref:master/daily_monitoring.adoc[Monitoring]
-** xref:master/daily_maintenance.adoc[Maintenance]
+** xref:master/getting-started/quick_start.adoc[Quick Start]
+** xref:master/getting-started/daily_monitoring.adoc[Monitoring]
+** xref:master/getting-started/daily_maintenance.adoc[Maintenance]
 * IvorySQL Advanced Feature
 ** xref:master/installation_guide.adoc[Installation]
 ** xref:master/cluster_setup.adoc[Cluster]

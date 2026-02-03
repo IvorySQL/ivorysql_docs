@@ -3,9 +3,9 @@
 ** xref:master/release_notes.adoc[发行说明]
 ** xref:master/about_ivorysql.adoc[关于IvorySQL]
 ** IvorySQL入门
-*** xref:master/quick_start.adoc[快速开始]
-*** xref:master/daily_monitoring.adoc[日常监控]
-*** xref:master/daily_maintenance.adoc[日常维护]
+*** xref:master/getting-started/quick_start.adoc[快速开始]
+*** xref:master/getting-started/daily_monitoring.adoc[日常监控]
+*** xref:master/getting-started/daily_maintenance.adoc[日常维护]
 ** IvorySQL高级
 *** xref:master/installation_guide.adoc[安装指南]
 *** xref:master/cluster_setup.adoc[集群搭建]
