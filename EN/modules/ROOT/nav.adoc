@@ -20,8 +20,8 @@
 *** xref:master/cloud_platform/ivorysql_cloud_installation.adoc[IvorySQL Cloud Installation]
 *** xref:master/cloud_platform/ivorysql_cloud_usage.adoc[IvorySQL Cloud Usage]
 * IvorySQL Ecosystem
-** xref:master/cpu_architecture_adaptation.adoc[CPU Architecture Adaption]
-** xref:master/os_architecture_adaptation.adoc[Operating System Adaption]
+** xref:master/cpu_os_adaptation/cpu_architecture_adaptation.adoc[CPU Architecture Adaption]
+** xref:master/cpu_os_adaptation/os_architecture_adaptation.adoc[Operating System Adaption]
 ** Eco Component Adaption
 *** xref:master/ecosystem_components/ecosystem_overview.adoc[Overview]
 *** xref:master/ecosystem_components/postgis.adoc[postgis]
