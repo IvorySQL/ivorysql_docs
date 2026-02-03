@@ -8,7 +8,7 @@
 == 主节点
 
 === 安装并启动数据库
-yum源快速安装数据库，请参考xref:master/quick_start.adoc#从yum源安装ivorysql数据库[从yum源安装ivorysql数据库]。
+yum源快速安装数据库，请参考xref:master/getting-started/quick_start.adoc#从yum源安装ivorysql数据库[从yum源安装ivorysql数据库]。
 
 想要获取更多安装方式，请参考xref:master/installation_guide.adoc[安装指南]。
 
@@ -56,7 +56,7 @@ $ pg_ctl restart
 
 == 备节点
 === 安装数据库
-Yum源快速安装数据库，请参考xref:master/quick_start.adoc#从yum源安装ivorysql数据库[从yum源安装ivorysql数据库]。
+Yum源快速安装数据库，请参考xref:master/getting-started/quick_start.adoc#从yum源安装ivorysql数据库[从yum源安装ivorysql数据库]。
 
 想要获取更多安装方式，请参考xref:master/installation_guide.adoc[安装指南]。
 
