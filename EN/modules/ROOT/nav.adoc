@@ -11,14 +11,14 @@
 ** xref:master/migration_guide.adoc[Migration]
 ** xref:master/developer_guide.adoc[Developer]
 ** Containerization
-*** xref:master/k8s_deployment.adoc[K8S deployment]
-*** xref:master/operator_deployment.adoc[Operator deployment]
-*** xref:master/docker_podman_deployment.adoc[Docker & Podman deployment]
-*** xref:master/docker_swarm_compose_deployment.adoc[Docker Swarm & Docker Compose deployment]
+*** xref:master/containerization/k8s_deployment.adoc[K8S deployment]
+*** xref:master/containerization/operator_deployment.adoc[Operator deployment]
+*** xref:master/containerization/docker_podman_deployment.adoc[Docker & Podman deployment]
+*** xref:master/containerization/docker_swarm_compose_deployment.adoc[Docker Swarm & Docker Compose deployment]
 ** xref:master/operation_guide.adoc[Operation Management]
 ** Cloud Service Platform
-*** xref:master/ivorysql_cloud_installation.adoc[IvorySQL Cloud Installation]
-*** xref:master/ivorysql_cloud_usage.adoc[IvorySQL Cloud Usage]
+*** xref:master/cloud_platform/ivorysql_cloud_installation.adoc[IvorySQL Cloud Installation]
+*** xref:master/cloud_platform/ivorysql_cloud_usage.adoc[IvorySQL Cloud Usage]
 * IvorySQL Ecosystem
 ** xref:master/cpu_architecture_adaptation.adoc[CPU Architecture Adaption]
 ** xref:master/os_architecture_adaptation.adoc[Operating System Adaption]

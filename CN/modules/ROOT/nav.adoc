@@ -12,14 +12,14 @@
 *** xref:master/migration_guide.adoc[迁移指南]
 *** xref:master/developer_guide.adoc[开发者指南]
 *** 容器化指南
-**** xref:master/k8s_deployment.adoc[K8S部署]
-**** xref:master/operator_deployment.adoc[Operator部署]
-**** xref:master/docker_podman_deployment.adoc[Docker & Podman部署]
-**** xref:master/docker_swarm_compose_deployment.adoc[Docker Swarm & Docker Compose部署]
+**** xref:master/containerization/k8s_deployment.adoc[K8S部署]
+**** xref:master/containerization/operator_deployment.adoc[Operator部署]
+**** xref:master/containerization/docker_podman_deployment.adoc[Docker & Podman部署]
+**** xref:master/containerization/docker_swarm_compose_deployment.adoc[Docker Swarm & Docker Compose部署]
 *** xref:master/operation_guide.adoc[运维管理指南]
 *** 云服务平台指南
-**** xref:master/ivorysql_cloud_installation.adoc[IvorySQL Cloud安装]
-**** xref:master/ivorysql_cloud_usage.adoc[IvorySQL Cloud使用]
+**** xref:master/cloud_platform/ivorysql_cloud_installation.adoc[IvorySQL Cloud安装]
+**** xref:master/cloud_platform/ivorysql_cloud_usage.adoc[IvorySQL Cloud使用]
 ** IvorySQL生态
 *** xref:master/cpu_architecture_adaptation.adoc[芯片架构适配]
 *** xref:master/os_architecture_adaptation.adoc[操作系统适配]
