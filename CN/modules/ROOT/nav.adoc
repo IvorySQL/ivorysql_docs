@@ -86,5 +86,5 @@
 ** xref:master/tools_reference.adoc[工具参考]
 ** xref:master/faq.adoc[FAQ]
 * PostgreSQL
-** xref:master/pg_parameters_reference.adoc[PG参数参考手册]
-** xref:master/pg_functions_reference.adoc[PG函数参考手册]
+** xref:master/pg_reference/pg_parameters_reference.adoc[PG参数参考手册]
+** xref:master/pg_reference/pg_functions_reference.adoc[PG函数参考手册]
