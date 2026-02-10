@@ -1,0 +1,135 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= wal2json
+
+== Overview
+wal2json is an output plugin for logical decoding. It generates JSON object for each transaction. 
+
+== Installation
+
+[TIP]
+The source code installation environment is Ubuntu 24.04 (x86_64), in which IvorySQL 5 or a later version has been installed. The installation path is /usr/ivory-5.
+
+=== Source Code Installation
+
+[literal]
+----
+# download source code package from: https://github.com/eulerto/wal2json/releases/tag/wal2json_2_6
+
+unzip wal2json_2_6.zip
+cd wal2json_2_6
+
+# compile and install the extension
+make PG_CONFIG=/usr/ivory-5/bin/pg_config
+make PG_CONFIG=/usr/ivory-5/bin/pg_config install
+----
+
+[TIP]
+If there is error "xlocale.h: No such file or directory" during compilation, user should remove the 
+line of "#define HAVE_XLOCALE_H 1" from file /usr/ivory-5/include/postgresql/server/pg_config.h. 
+
+=== Modify the configuration file
+
+Modify the postgresql.conf file to set wal_level as "logical", and set max_replication_slots/max_wal_senders.
+[literal]
+----
+wal_level = logical
+max_replication_slots = 10
+max_wal_senders = 10
+----
+
+Make sure the following content to be in pg_hba.conf.
+[literal]
+----
+     local   replication     all                                     trust
+     host    replication     all             127.0.0.1/32            trust
+     host    replication     all             ::1/128                 trust
+----	
+
+Then restart the database. 
+
+== Use
+
+Open the first terminal and execute command:
+
+[literal]
+----
+sudo -u highgo /home/highgo/ivy/inst/bin/pg_recvlogical -d postgres --slot wal2json_slot --create-slot -P wal2json
+
+Start monitoring, output the changes in JSON format and in real time.
+sudo -u highgo /home/highgo/ivy/inst/bin/pg_recvlogical -d postgres --slot wal2json_slot --start -o pretty-print=1 -f -
+----
+
+Connect database in the second terminal:
+[literal]
+----
+bin/psql -d postgres -p 1521
+----
+
+Execute the following SQL statement:
+[literal]
+----
+CREATE TABLE test_cdc (id int primary key, name varchar(50));
+INSERT INTO test_cdc VALUES (1, 'test1');
+UPDATE test_cdc SET name = 'test1_update' WHERE id = 1;
+DELETE FROM test_cdc WHERE id = 1;
+DROP TABLE test_cdc;
+----
+
+The following output will appear in the first terminal:
+[literal]
+----
+{
+        "change": [
+        ]
+}
+{
+        "change": [
+                {
+                        "kind": "insert",
+                        "schema": "public",
+                        "table": "test_cdc",
+                        "columnnames": ["id", "name"],
+                        "columntypes": ["integer", "sys.oravarcharbyte(50)"],
+                        "columnvalues": [1, "test1"]
+                }
+        ]
+}
+{
+        "change": [
+                {
+                        "kind": "update",
+                        "schema": "public",
+                        "table": "test_cdc",
+                        "columnnames": ["id", "name"],
+                        "columntypes": ["integer", "sys.oravarcharbyte(50)"],
+                        "columnvalues": [1, "test1_update"],
+                        "oldkeys": {
+                                "keynames": ["id"],
+                                "keytypes": ["integer"],
+                                "keyvalues": [1]
+                        }
+                }
+        ]
+}
+{
+        "change": [
+                {
+                        "kind": "delete",
+                        "schema": "public",
+                        "table": "test_cdc",
+                        "oldkeys": {
+                                "keynames": ["id"],
+                                "keytypes": ["integer"],
+                                "keyvalues": [1]
+                        }
+                }
+        ]
+}
+{
+        "change": [
+        ]
+}
+----
