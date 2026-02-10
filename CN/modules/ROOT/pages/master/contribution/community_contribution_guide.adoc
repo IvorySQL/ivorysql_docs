@@ -79,7 +79,7 @@ IvorySQL源码托管在github: <https://github.com/IvorySQL>。
 
 * 有新的功能建议或使用体验改进？
 
-如果您准备向社区上报 Bug 或者提交需求，请在 IvorySQL 社区对应的仓库上提交 Issue，并参考Issue xref:./33.adoc[提交指南]。
+如果您准备向社区上报 Bug 或者提交需求，请在 IvorySQL 社区对应的仓库上提交 Issue，并参考Issue xref:master/contribution/issue_submission_guide.adoc[提交指南]。
 
 ==== 参与社区讨论
 
