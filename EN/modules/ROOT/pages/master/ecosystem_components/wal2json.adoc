@@ -56,16 +56,16 @@ Open the first terminal and execute command:
 
 [literal]
 ----
-sudo -u ivorysql /home/ivorysql/ivy/inst/bin/pg_recvlogical -d postgres --slot wal2json_slot --create-slot -P wal2json
+sudo -u ivorysql /usr/ivory-5/bin/pg_recvlogical -d postgres --slot wal2json_slot --create-slot -P wal2json
 
 Start monitoring, output the changes in JSON format and in real time.
-sudo -u ivorysql /home/ivorysql/ivy/inst/bin/pg_recvlogical -d postgres --slot wal2json_slot --start -o pretty-print=1 -f -
+sudo -u ivorysql /usr/ivory-5/bin/pg_recvlogical -d postgres --slot wal2json_slot --start -o pretty-print=1 -f -
 ----
 
 Connect database in the second terminal:
 [literal]
 ----
-bin/psql -d postgres -p 1521
+/usr/ivory-5/bin/psql -d postgres -p 1521
 ----
 
 Execute the following SQL statement:

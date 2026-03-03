@@ -58,16 +58,16 @@ pg_hba.conf不需要修改，有以下内容即可（仅限本地链接测试）
 在第一个终端中执行命令：
 [literal]
 ----
-sudo -u ivorysql /home/ivorysql/ivy/inst/bin/pg_recvlogical -d postgres --slot wal2json_slot --create-slot -P wal2json
+sudo -u ivorysql /usr/ivory-5/bin/bin/pg_recvlogical -d postgres --slot wal2json_slot --create-slot -P wal2json
 
 启动监听，实时输出变更的JSON格式
-sudo -u ivorysql /home/ivorysql/ivy/inst/bin/pg_recvlogical -d postgres --slot wal2json_slot --start -o pretty-print=1 -f -
+sudo -u ivorysql /usr/ivory-5/bin/bin/pg_recvlogical -d postgres --slot wal2json_slot --start -o pretty-print=1 -f -
 ----
 
 在第二个终端中连接数据库：
 [literal]
 ----
-bin/psql -d postgres -p 1521
+/usr/ivory-5/bin/psql -d postgres -p 1521
 ----
 
 执行下面的SQL语句：
