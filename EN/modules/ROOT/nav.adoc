@@ -30,6 +30,7 @@
 *** xref:master/ecosystem_components/pg_cron.adoc[pg_cron]
 *** xref:master/ecosystem_components/pgsql_http.adoc[pgsql-http]
 *** xref:master/ecosystem_components/plpgsql_check.adoc[plpgsql_check]
+*** xref:master/ecosystem_components/pg_ai_query.adoc[pg_ai_query]
 *** xref:master/ecosystem_components/pgroonga.adoc[pgroonga]
 *** xref:master/ecosystem_components/pgaudit.adoc[pgaudit]
 *** xref:master/ecosystem_components/pgrouting.adoc[pgrouting]
