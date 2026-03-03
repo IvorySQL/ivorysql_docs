@@ -58,10 +58,10 @@ pg_hba.conf不需要修改，有以下内容即可（仅限本地链接测试）
 在第一个终端中执行命令：
 [literal]
 ----
-sudo -u highgo /home/highgo/ivy/inst/bin/pg_recvlogical -d postgres --slot wal2json_slot --create-slot -P wal2json
+sudo -u ivorysql /home/ivorysql/ivy/inst/bin/pg_recvlogical -d postgres --slot wal2json_slot --create-slot -P wal2json
 
 启动监听，实时输出变更的JSON格式
-sudo -u highgo /home/highgo/ivy/inst/bin/pg_recvlogical -d postgres --slot wal2json_slot --start -o pretty-print=1 -f -
+sudo -u ivorysql /home/ivorysql/ivy/inst/bin/pg_recvlogical -d postgres --slot wal2json_slot --start -o pretty-print=1 -f -
 ----
 
 在第二个终端中连接数据库：

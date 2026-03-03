@@ -56,10 +56,10 @@ Open the first terminal and execute command:
 
 [literal]
 ----
-sudo -u highgo /home/highgo/ivy/inst/bin/pg_recvlogical -d postgres --slot wal2json_slot --create-slot -P wal2json
+sudo -u ivorysql /home/ivorysql/ivy/inst/bin/pg_recvlogical -d postgres --slot wal2json_slot --create-slot -P wal2json
 
 Start monitoring, output the changes in JSON format and in real time.
-sudo -u highgo /home/highgo/ivy/inst/bin/pg_recvlogical -d postgres --slot wal2json_slot --start -o pretty-print=1 -f -
+sudo -u ivorysql /home/ivorysql/ivy/inst/bin/pg_recvlogical -d postgres --slot wal2json_slot --start -o pretty-print=1 -f -
 ----
 
 Connect database in the second terminal:
