@@ -22,6 +22,8 @@ Key features:
 
 == Quick Start
 
+The following demonstration uses v0.1.1 as an example.
+
 === Installation
 
 *Prerequisites*
