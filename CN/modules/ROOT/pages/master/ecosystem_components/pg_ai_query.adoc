@@ -21,6 +21,7 @@ pg_ai_query 是一个用于 IvorySQL/PostgreSQL 的 AI 驱动自然语言转 SQL
 * **API 密钥安全**：安全处理 API 凭证
 
 == 快速开始
+下面以v0.1.1为例进行演示。
 
 === 安装
 
