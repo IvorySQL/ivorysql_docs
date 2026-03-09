@@ -13,7 +13,7 @@ pg_ai_query 是一个用于 IvorySQL/PostgreSQL 的 AI 驱动自然语言转 SQL
 
 主要特性：
 
-* **自然语言转 SQL**：将语言描述转换为有效的 PostgreSQL 查询
+* **自然语言转 SQL**：将文本语言描述转换为有效的 SQL 查询
 * **多模型支持**：支持 gpt-4o-mini、gpt-4o、gpt-5、claude-3-haiku-20240307、claude-sonnet-4-5-20250929、claude-4.5-opus 等大模型
 * **安全保护**：阻止访问 `information_schema` 和 `pg_catalog` 系统表
 * **作用域限制**：仅对用户表进行操作
