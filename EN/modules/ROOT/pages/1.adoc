@@ -85,7 +85,7 @@ The following individuals (in alphabetical order) have contributed to this relea
 * Ge Sui
 * Grant Zhou
 * Oreo Yang
-* pierreforstmann
+* Pierre Forstmann
 * Rophy Tsai
 * Shuntian Jiao
 * Steven Niu

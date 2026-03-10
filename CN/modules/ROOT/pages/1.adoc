@@ -82,7 +82,7 @@ IvorySQL 的主要代码仓库：
 
 * Cédric Villemain
 * Grant Zhou
-* pierreforstmann
+* Pierre Forstmann
 * Rophy Tsai
 * Yasir Hussain Shah
 * 高雪玉
