@@ -1,0 +1,321 @@
+:sectnums:
+:sectnumlevels: 5
+
+= pg_ai_query
+
+== Overview
+
+pg_ai_query is an AI-powered natural language to SQL extension for IvorySQL/PostgreSQL. It leverages Large Language Models (LLMs) to convert user's natural language descriptions directly into executable SQL query statements. It supports multiple AI models including OpenAI, Anthropic Claude, and Google Gemini.
+
+Project URL: <https://github.com/benodiwal/pg_ai_query/tree/main>
+
+License: Apache-2.0
+
+Key features:
+
+* **Natural Language to SQL**: Convert plain text descriptions into valid SQL queries
+* **Multi-model Support**: Supports gpt-4o-mini, gpt-4o, gpt-5, claude-3-haiku-20240307, claude-sonnet-4-5-20250929, claude-4.5-opus and other large models
+* **System Table Protection**: Blocks access to `information_schema` and `pg_catalog`
+* **Limited Scope**: Only operates on user tables
+* **Configurable Limits**: Built-in row limit enforcement
+* **API Key Security**: Secure handling of API credentials
+
+== Quick Start
+
+The following demonstration uses v0.1.1 as an example.
+
+=== Installation
+
+*Prerequisites*
+
+* PostgreSQL 14+ with development headers
+* CMake 3.16+
+* C++20 compatible compiler
+* API key from OpenAI, Anthropic, or Google (Gemini)
+
+*Install dependencies*
+
+[source,bash]
+----
+sudo apt-get install libcurl4-openssl-dev
+----
+
+*Compile and install IvorySQL*
+
+If you need to compile IvorySQL from source, you can refer to the following configuration:
+
+[source,bash]
+----
+./configure \
+--prefix=$PWD/inst \
+--enable-cassert \
+--enable-debug \
+--enable-tap-tests \
+--enable-rpath \
+--enable-nls \
+--enable-injection-points \
+--with-tcl \
+--with-python \
+--with-gssapi \
+--with-pam \
+--with-ldap \
+--with-openssl \
+--with-libedit-preferred \
+--with-uuid=e2fs \
+--with-ossp-uuid \
+--with-libxml \
+--with-libxslt \
+--with-perl \
+--with-icu \
+--with-libnuma
+----
+
+*Compile and install pg_ai_query*
+
+[source,bash]
+----
+git clone --recurse-submodules https://github.com/benodiwal/pg_ai_query.git
+cd pg_ai_query
+mkdir build && cd build
+export PATH="$HOME/works/repo/ivorysql/IvorySQL/inst/bin:$PATH"
+cmake .. -DCMAKE_INSTALL_PREFIX=$HOME/works/repo/ivorysql/IvorySQL/inst
+make && sudo make install
+----
+
+*Create extension*
+
+[source,sql]
+----
+CREATE EXTENSION pg_ai_query;
+----
+
+=== Configuration
+
+Create a `~/.pg_ai.config` configuration file in your home directory:
+
+[source,ini]
+----
+[general]
+log_level = "INFO"
+enable_logging = false
+
+[query]
+enforce_limit = true
+default_limit = 1000
+
+[response]
+show_explanation = true
+show_warnings = true
+show_suggested_visualization = false
+use_formatted_response = false
+
+[anthropic]
+# Your Anthropic API key (if using Claude)
+api_key = "******"
+
+# Default model to use (options: claude-sonnet-4-5-20250929)
+default_model = "claude-sonnet-4-5-20250929"
+
+# Custom API endpoint (optional) - for Anthropic-compatible APIs
+api_endpoint = "https://open.bigmodel.cn/api/anthropic"
+
+[prompts]
+# Use file paths to read custom prompts
+system_prompt = /home/highgo/.pg_ai.prompts
+explain_system_prompt = /home/highgo/.pg_ai.explain.prompts
+----
+
+For more examples, please refer to: <https://github.com/benodiwal/pg_ai_query/blob/main/docs/src/examples.md>
+
+== Usage Examples
+
+=== Basic Usage
+
+[source,sql]
+----
+SELECT generate_query('Find all users');
+----
+
+Example output:
+
+----
+[INFO] Text generation successful - model: claude-sonnet-4-5-20250929, response_id: msg_20260209135507cc16362d5d324ccd
+
+                    generate_query
+--------------------------------------------------------
+ SELECT * FROM public.users LIMIT 1000;
++
+ -- Explanation:
+ -- Retrieves all columns and rows from the users table.
++
+ -- Warning: INFO: Applied LIMIT 1000 to prevent large result sets. Remove LIMIT if you need all data.
++
+ -- Note: Row limit was automatically applied to this query for safety
+(1 row)
+----
+
+Execute the query:
+
+[source,sql]
+----
+SELECT * FROM public.users LIMIT 1000;
+----
+
+Output:
+
+----
+ id |     name      |       email       | age |         created_at         |     city
+----+---------------+-------------------+-----+----------------------------+---------------
+  1 | Alice Johnson | alice@example.com |  28 | 2026-02-04 15:47:55.208111 | New York
+  2 | Bob Smith     | bob@example.com   |  35 | 2026-02-04 15:47:55.208111 | San Francisco
+  3 | Carol Davis   | carol@example.com |  31 | 2026-02-04 15:47:55.208111 | Chicago
+  4 | David Wilson  | david@example.com |  27 | 2026-02-04 15:47:55.208111 | Seattle
+  5 | Eva Brown     | eva@example.com   |  33 | 2026-02-04 15:47:55.208111 | Boston
+(5 rows)
+----
+
+=== generate_query Examples
+
+*Generate test data*
+
+[source,sql]
+----
+SELECT generate_query('Generate 100 user records and insert into users table');
+----
+
+Output:
+
+----
+[INFO] Text generation successful - model: claude-sonnet-4-5-20250929, response_id: msg_2026021114092101601c5650864a2d
+
+                          generate_query
+--------------------------------------------------------------------------------------------------------
+ INSERT INTO public.users (name, email, age, city, status)
+ SELECT 'User_' || generate_series AS name,
+        'user' || generate_series || '@example.com' AS email,
+        (18 + (generate_series % 50)) AS age,
+        (ARRAY['Beijing','Shanghai','Guangzhou','Shenzhen','Hangzhou'])[1 + (generate_series % 5)] AS city,
+        'active' AS status
+ FROM generate_series(1, 100);
++
+ -- Explanation:
+ -- Generates 100 simulated user records and inserts them into the users table. Data includes auto-generated names, unique emails, random ages (18-67), random cities, and default status.
++
+ -- Warnings:
+ --   1. INFO: Relies on DEFAULT auto-increment setting for id column in users table, id is not manually inserted.
+ --   2. INFO: Uses generate_series function to generate sequence data, which is a PostgreSQL/IvorySQL feature.
+ --   3. WARN: Ensure users table is empty or id sequence does not conflict before running, otherwise duplicate inserts may occur.
+ --   4. WARN: Email format is simple simulation, actual environment may require more complex logic or duplicate checking.
+(1 row)
+----
+
+*Case-insensitive query*
+
+[source,sql]
+----
+SELECT generate_query('Show users from beijing, beijing is non-Case insensitive');
+----
+
+Output:
+
+----
+[INFO] Text generation successful - model: claude-sonnet-4-5-20250929, response_id: msg_20260211142845878f5f1a5a2f44a7
+
+                generate_query
+-----------------------------------------
+ SELECT id, name, email, age, created_at, city, status
+ FROM public.users
+ WHERE LOWER(city) = LOWER('beijing') LIMIT 100;
++
+ -- Explanation:
+ -- Selects all user details for users located in Beijing, performing a case-insensitive match on the city column.
++
+ -- Warnings:
+ --   1. INFO: Using LOWER() on both sides ensures case-insensitive matching but may prevent the database from using a standard index on the city column if one exists.
+ --   2. INFO: Row limit of 100 applied to prevent large result sets.
++
+ -- Note: Row limit was automatically applied to this query for safety
+(1 row)
+----
+
+=== explain_query Examples
+
+[source,sql]
+----
+SELECT explain_query('SELECT * FROM orders WHERE user_id = 12');
+----
+
+Output:
+
+----
+[INFO] Text generation successful - model: claude-sonnet-4-5-20250929, response_id: msg_20260211175909d47a6871bcca4897
+
+                                          explain_query
+--------------------------------------------------------------------------------------------------------------
+ 1. Query Overview
++
+ - This query aims to retrieve all records from the orders table where user_id equals 12 (SELECT *).
+ - This is a typical query that filters data based on a specific field (user_id).
++
+ 2. Performance Summary
++
+ - Total execution time: 0.021 ms
+ - Planning time: 0.430 ms
+ - Total cost: 18.12
+ - Rows returned: 0 rows (Actual Rows: 0)
+ - Rows scanned: 0 rows (Rows Removed by Filter: 0)
++
+ 3. Execution Plan Analysis
++
+ - Key step: Sequential Scan
+ - The database performed a full table scan on the orders table.
+ - The planner estimated finding 3 rows, but actual execution returned 0 rows.
+ - Filter condition: orders.user_id = 12, which means the database must read every row in the table to check this condition.
++
+ 4. Performance Issues
++
+ - Full table scan risk: Although the current table data volume is small (execution time is only 0.021ms), using Seq Scan (sequential scan) means the database is not using an index. If the orders table grows to millions of rows over time, this query approach will become extremely slow (high I/O consumption).
+ - Missing index: The plan shows no index was used to locate rows where user_id = 12, indicating that a necessary B-Tree index may be missing on the user_id column.
++
+ 5. Optimization Recommendations
++
+ - Primary recommendation: Create an index on the user_id column to avoid full table scans. This will transform the query from O(N) (scanning all rows) to O(log N) (index lookup).
+ - SQL optimization example:
++
+ CREATE INDEX idx_orders_user_id ON orders(user_id);
++
+ 6. Index Recommendations
++
+ - Recommended index: Create a B-Tree index on the user_id column of the orders table.
+ - Reason: The query condition is based on equality comparison (=) of user_id. After creating the index, IvorySQL (PostgreSQL) will be able to use the index to quickly locate data, significantly reducing query time and resource consumption, especially when data volume is large.
+(1 row)
+----
+
+== Best Practices
+
+=== Prompt Writing Guidelines
+
+* **Use English**: While AI supports multiple languages, English works best
+* **Understand your database structure**: The more you understand your database structure, the more accurate the generated queries will be
+* **Refine iteratively**: Start broad, then add details step by step to improve results
+* **Be explicit**: If you know specific tables or columns, mention them in your prompts - this helps AI generate more precise queries
+
+=== Error Handling Examples
+
+When tables referenced in the query do not exist, the system returns an error message:
+
+[source,sql]
+----
+SELECT generate_query('List all products and prices');
+----
+
+Error output:
+
+----
+[INFO] Text generation successful - model: claude-sonnet-4-5-20250929, response_id: msg_20260209135642777cbc5c82ca4a85
+
+ERROR:  Query generation failed: Cannot generate query. Referenced table(s) for 'products' or 'goods' do not exist in the database. Available tables: public.orders, public.student_scores, public.users, sys.dual
+----
+
+In this case, the AI informs you of the available table list to help adjust your query.
+
