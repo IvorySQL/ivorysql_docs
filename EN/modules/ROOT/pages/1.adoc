@@ -93,7 +93,7 @@ The following individuals (in alphabetical order) have contributed to this relea
 * Xiaohui Liu
 * Xinjie LYU
 * Xueyu Gao
-* yasir-hussain-shah
+* Yasir Hussain Shah
 * Yuan Li
 * Zheng Tao
 * Zhenhao Pan
