@@ -141,7 +141,7 @@ CONTAINER ID   IMAGE               COMMAND                   CREATED          ST
 psql连接数据库：
 [source,bash,subs="attributes"]
 ```
-$ psql -d <database>
+$ psql -d YOUR_DATABASE
 psql ({pg-version})
 Type "help" for help.
 
