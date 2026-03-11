@@ -230,7 +230,7 @@ ivorysql  130445  130274  0 02:45 pts/1    00:00:00 grep --color=auto postgres
 Connect to IovrySQL via psql:
 [source,subs="attributes"]
 ```
-$ psql -d <database>
+$ psql -d YOUR_DATABASE
 psql ({pg-version})
 Type "help" for help.
 
