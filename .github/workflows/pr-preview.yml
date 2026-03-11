@@ -123,7 +123,14 @@ jobs:
           echo "Building Chinese site..."
           #mkdir -p ../www_publish_target/docs/cn
           npx antora generate --stacktrace --to-dir ../www_publish_target/docs/cn antora-playbook-CN.yml
-            
+
+      - name: Debug PDF output paths
+        working-directory: ./ivory-doc-builder
+        run: |
+          echo "--- Debug: PDF output directory structure ---"
+          find build/ -name "*.pdf" 2>/dev/null || echo "No PDF files found under build/"
+          echo "--- End debug ---"
+
       - name: Deploy to Netlify
         id: netlify_deploy 
         uses: nwtgck/actions-netlify@v3.0
