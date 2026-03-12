@@ -25,7 +25,7 @@
 ** xref:7.19.adoc[16、嵌套子函数]
 ** xref:7.20.adoc[17、sys_guid 函数]
 ** xref:7.21.adoc[18、空字符串转null]
-*** xref:7.22.adoc[19、CALL INTO]
+** xref:7.22.adoc[19、CALL INTO]
 * 容器化与云服务
 ** 容器化指南
 *** xref:4.6.1.adoc[K8S部署]
