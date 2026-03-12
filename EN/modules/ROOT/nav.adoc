@@ -1,21 +1,37 @@
-* xref:welcome.adoc[Welcome]
-* xref:1.adoc[Release]
-* xref:2.adoc[About]
-* Getting Started with IvorySQL
+* xref:2.adoc[About IvorySQL]
+** xref:welcome.adoc[Welcome]
+** xref:1.adoc[Release]
+* Get Started 
 ** xref:3.1.adoc[Quick Start]
-** xref:3.2.adoc[Monitoring]
-** xref:3.3.adoc[Maintenance]
-* IvorySQL Advanced Feature
+* Deploy
 ** xref:4.1.adoc[Installation]
 ** xref:4.2.adoc[Cluster]
-** xref:4.5.adoc[Migration]
-** xref:4.3.adoc[Developer]
+* Oracle Compatibility
+** xref:7.3.adoc[1、Case conversion]
+** xref:7.5.adoc[2、LIKE operator]
+** xref:7.6.adoc[3、anonymous block]
+** xref:7.7.adoc[4、functions and stored procedures]
+** xref:7.8.adoc[5、Built-in data types and built-in functions]
+** xref:7.9.adoc[6、ports and IP]
+** xref:7.10.adoc[7、XML Function]
+** xref:7.11.adoc[8、sequence]
+** xref:7.12.adoc[9、Package]
+** xref:7.13.adoc[10、Invisible Columns]
+** xref:7.14.adoc[11、RowID Column]
+** xref:7.15.adoc[12、OUT Parameter]
+** xref:7.16.adoc[13、%Type & %Rowtype]
+** xref:7.17.adoc[14、NLS Parameters]
+** xref:7.18.adoc[15、Force View]
+** xref:7.19.adoc[16、Nested Subfunctions]
+** xref:7.20.adoc[17、sys_guid Function]
+** xref:7.21.adoc[18、Empty String to NULL]
+** xref:7.22.adoc[19、CALL INTO]
+* Containerization and Cloud Service
 ** Containerization
 *** xref:4.6.1.adoc[K8S deployment]
 *** xref:4.6.2.adoc[Operator deployment]
 *** xref:4.6.4.adoc[Docker & Podman deployment]
 *** xref:4.6.3.adoc[Docker Swarm & Docker Compose deployment]
-** xref:4.4.adoc[Operation Management]
 ** Cloud Service Platform
 *** xref:4.7.1.adoc[IvorySQL Cloud Installation]
 *** xref:4.7.2.adoc[IvorySQL Cloud Usage]
@@ -34,6 +50,15 @@
 *** xref:5.8.adoc[pgaudit]
 *** xref:5.9.adoc[pgrouting]
 *** xref:5.10.adoc[system_stats]
+* Monitor and O&M
+** xref:3.2.adoc[Monitoring]
+** xref:3.3.adoc[Maintenance]
+** xref:4.4.adoc[Operation Management]
+* Data Migration
+** xref:4.5.adoc[Migration]
+* IvorySQL Developers
+** xref:4.3.adoc[Developer]
+** xref:8.adoc[Community contribution]
 * IvorySQL Architecture Design
 ** Query Processing
 *** xref:6.1.1.adoc[Dual Parser]
@@ -59,26 +84,6 @@
 *** xref:6.4.1.adoc[sys_context]
 *** xref:6.4.2.adoc[userenv]
 ** xref:6.5.adoc[GB18030 Character Set]
-* List of Oracle compatible features
-** xref:7.3.adoc[1、Case conversion]
-** xref:7.5.adoc[2、LIKE operator]
-** xref:7.6.adoc[3、anonymous block]
-** xref:7.7.adoc[4、functions and stored procedures]
-** xref:7.8.adoc[5、Built-in data types and built-in functions]
-** xref:7.9.adoc[6、ports and IP]
-** xref:7.10.adoc[7、XML Function]
-** xref:7.11.adoc[8、sequence]
-** xref:7.12.adoc[9、Package]
-** xref:7.13.adoc[10、Invisible Columns]
-** xref:7.14.adoc[11、RowID Column]
-** xref:7.15.adoc[12、OUT Parameter]
-** xref:7.16.adoc[13、%Type & %Rowtype]
-** xref:7.17.adoc[14、NLS Parameters]
-** xref:7.18.adoc[15、Force View]
-** xref:7.19.adoc[16、Nested Subfunctions]
-** xref:7.20.adoc[17、sys_guid Function]
-** xref:7.21.adoc[18、Empty String to NULL]
-** xref:7.22.adoc[19、CALL INTO]
-* xref:8.adoc[Community contribution]
-* xref:9.adoc[Tool Reference]
+* Reference
+** xref:9.adoc[Tool Reference]
 * xref:10.adoc[FAQ]
