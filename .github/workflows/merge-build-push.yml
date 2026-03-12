@@ -90,6 +90,14 @@ jobs:
               else
                 echo "WARNING: DETECTED_VERSION is empty. Skipping start_page update for $PLAYBOOK_FILE."
               fi
+
+              # Add / support symbolic paths for the latest version + redirect:to
+              yq -i '.urls.latest_version_segment = "latest"' "$PLAYBOOK_FILE"
+              yq -i '.urls.latest_version_segment_strategy = "redirect:to"' "$PLAYBOOK_FILE"
+
+              echo "Set urls.latest_version_segment = latest"
+              echo "Set urls.latest_version_segment_strategy = redirect:to"
+                            
               echo "Modified content of $PLAYBOOK_FILE:"
               cat "$PLAYBOOK_FILE"
               echo "--- Finished modification for $PLAYBOOK_FILE ---"
