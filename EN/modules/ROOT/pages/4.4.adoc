@@ -143,6 +143,115 @@ We can also create a fallback server using logical replication of an updated ver
 
 This upgrade method can be used with built-in logical replication tools and external logical replication systems such as pglogical, Slony, Londiste, and Bucardo.
 
+== Use pg_upgrade to upgrade PostgreSQL to IvorySQL
+
+`pg_upgrade` supports upgrading native PostgreSQL clusters to IvorySQL. When the source cluster is native PostgreSQL and the target is an IvorySQL cluster, the `-g`（`--using-ora-pg`）parameter must be used.
+
+Upgrading from PostgreSQL to IvorySQL is considered a "cross-product" migration. It is recommended to complete comprehensive testing and validation before performing the operation in a production environment, and to develop a detailed rollback plan.
+
+=== Parameter description
+
+[cols="1,3"]
+|===
+| parameter | description
+
+| `-g` / `--using-ora-pg`
+| Indicates that the source cluster is PostgreSQL and the target is an IvorySQL cluster. When this option is enabled, `pg_upgrade` uniformly uses the PostgreSQL standard port when connecting to both clusters, ensuring proper handling of the upgrade.
+|===
+
+=== Upgrade steps
+
+==== Step 1: Initialize the new IvorySQL cluster
+
+[source,bash]
+----
+# Use IvorySQL's initdb to initialize the new cluster
+/opt/ivorysql/bin/initdb -D /data/ivorysql/data
+
+# Stop the new cluster
+/opt/ivorysql/bin/pg_ctl -D /data/ivorysql/data stop
+----
+
+==== Step 2: Stop the source PostgreSQL cluster
+
+[source,bash]
+----
+/usr/lib/postgresql/16/bin/pg_ctl -D /data/pg/data stop
+----
+
+==== Step 3: Run the upgrade check (optional)
+
+Use `-c` to perform compatibility checks only without modifying any data:
+
+[source,bash]
+----
+/opt/ivorysql/bin/pg_upgrade \
+  -b /usr/lib/postgresql/16/bin \   # Source PG executable directory
+  -B /opt/ivorysql/bin \            # Target IvorySQL executable directory
+  -d /data/pg/data \                # Source PG data directory
+  -D /data/ivorysql/data \          # Target IvorySQL data directory
+  -g \                              # Source is PostgreSQL, target is IvorySQL
+  -c                                # Check only, do not upgrade
+----
+
+==== Step 4: Perform the upgrade
+
+[source,bash]
+----
+/opt/ivorysql/bin/pg_upgrade \
+  -b /usr/lib/postgresql/16/bin \
+  -B /opt/ivorysql/bin \
+  -d /data/pg/data \
+  -D /data/ivorysql/data \
+  -g
+----
+
+==== Step 5: Start IvorySQL and verify
+
+[source,bash]
+----
+/opt/ivorysql/bin/pg_ctl -D /data/ivorysql/data start
+
+# Verify if the database is functioning properly
+/opt/ivorysql/bin/psql -p 5433 -c "SELECT version();"
+----
+
+==== Step 6: Clean up the old cluster
+
+After the upgrade is completed,`pg_upgrade` will generate a cleanup script:
+
+[source,bash]
+----
+./delete_old_cluster.sh
+----
+
+=== Quick reference for common parameters
+
+[cols="1,2,2"]
+|===
+| Parameters | Long options | Description
+
+| `-b` | `--old-bindir` | Source cluster executable directory
+| `-B` | `--new-bindir` | Target cluster executable directory
+| `-d` | `--old-datadir` | Source cluster data directory
+| `-D` | `--new-datadir` | Target cluster data directory
+| `-g` | `--using-ora-pg` | Upgrade from PostgreSQL to IvorySQL
+| `-p` | `--old-port` | Source cluster port
+| `-P` | `--new-port` | Target cluster PG port
+| `-q` | `--old-oraport` | Source cluster Oracle port
+| `-Q` | `--new-oraport` | Target cluster Oracle port
+| `-j` | `--jobs` | Number of parallel processes
+| `-k` | `--link` | Use hard links instead of file copying
+| `-c` | `--check` | Check compatibility only, do not perform the upgrade
+| `-v` | `--verbose` | Output detailed logs
+|===
+
+=== Precautions
+
+* The `-g` parameter is only used when the **source is a pure PostgreSQL cluster**、and the target is **IvorySQL** . If the source cluster is already IvorySQL, this parameter is not needed.
+* Both the source and target clusters must be in a stopped state during the upgrade.
+* Be sure to perform a complete backup of the source cluster before upgrading.
+
 == Managing IvorySQL Versions
 
 IvorySQL is based on PostgreSQL and is updated at the same frequency as PostgreSQL, with one major release per year and one minor release per quarter. IvorySQL {ivorysql-version} is based on PostgreSQL {pg-version}, and all versions of IvorySQL are backward compatible.The relevant version features can be viewed by looking at https://www.ivorysql.org/en/releases-page/[Official Website]。
