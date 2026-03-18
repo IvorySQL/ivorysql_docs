@@ -23,6 +23,7 @@ IvorySQL, as an advanced open-source database compatible with Oracle and based o
 |*9*| xref:master/ecosystem_components/pgrouting.adoc[pgrouting] | 3.8.0 | Provides routing computation for geospatial data, supporting multiple algorithms and data formats | Geospatial analysis, route planning, logistics optimization
 |*10*| xref:master/ecosystem_components/system_stats.adoc[system_stats] | 3.2 | Provide functions for accessing system-level statistics. | system monitor
 |*11*| xref:master/ecosystem_components/pg_ai_query.adoc[pg_ai_query] | 0.1.1 | AI-driven natural language to SQL extension supporting multiple LLMs | AI-assisted querying, natural language database interaction
+|*12*| xref:master/ecosystem_components/pg_stat_monitor.adoc[pg_stat_monitor] | 2.3.1 | Collects performance statistics and provides query performance insights in a single view and graphically in histogram. | Performance monitoring
 |====
 
 These plugins have all been tested and adapted by the IvorySQL team to ensure stable operation in the IvorySQL environment. Users can select appropriate plugins based on business needs to further enhance the capabilities and flexibility of the database system.

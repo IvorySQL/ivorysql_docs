@@ -37,6 +37,7 @@
 **** xref:master/ecosystem_components/pgrouting.adoc[pgrouting]
 **** xref:master/ecosystem_components/system_stats.adoc[system_stats]
 **** xref:master/ecosystem_components/wal2json.adoc[wal2json]
+**** xref:master/ecosystem_components/pg_stat_monitor.adoc[pg_stat_monitor]
 ** IvorySQL架构设计
 *** 查询处理
 **** xref:master/architecture/dual_parser.adoc[双parser]
