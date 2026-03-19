@@ -167,9 +167,6 @@ Upgrading from PostgreSQL to IvorySQL is considered a "cross-product" migration.
 ----
 # Use IvorySQL's initdb to initialize the new cluster
 /opt/ivorysql/bin/initdb -D /data/ivorysql/data
-
-# Stop the new cluster
-/opt/ivorysql/bin/pg_ctl -D /data/ivorysql/data stop
 ----
 
 ==== Step 2: Stop the source PostgreSQL cluster
@@ -213,7 +210,7 @@ Use `-c` to perform compatibility checks only without modifying any data:
 /opt/ivorysql/bin/pg_ctl -D /data/ivorysql/data start
 
 # Verify if the database is functioning properly
-/opt/ivorysql/bin/psql -p 5433 -c "SELECT version();"
+/opt/ivorysql/bin/psql -p 5432 -c "SELECT version();"
 ----
 
 ==== Step 6: Clean up the old cluster
