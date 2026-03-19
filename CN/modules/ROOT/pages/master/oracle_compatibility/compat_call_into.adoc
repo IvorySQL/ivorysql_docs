@@ -115,6 +115,14 @@ ivorysql=# PRINT default_result;
 === 在参数或INTO子句中引用绑定变量
 [source,sql]
 ----
+-- 创建独立函数 stand_alone_func
+CREATE OR REPLACE FUNCTION stand_alone_func(p_input NUMBER)
+RETURN NUMBER
+IS
+BEGIN
+    RETURN p_input * 2;
+END;
+/
 -- 设置输入绑定变量
 ivorysql=# VARIABLE input_num NUMBER = 7;
 -- 使用绑定变量作为参数调用函数
