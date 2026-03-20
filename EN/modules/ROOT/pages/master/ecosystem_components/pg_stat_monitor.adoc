@@ -1,0 +1,98 @@
+:sectnums:
+:sectnumlevels: 5
+
+= pg_stat_monitor
+
+== Overview
+
+pg_stat_monitor is a Query Performance Monitoring tool for PostgreSQL. pg_stat_monitor collects performance statistics and provides query performance insights in a single view and graphically in histogram.
+
+These insights allow database users to understand query origins, execution, planning statistics and details, query information, and metadata. This significantly improves observability, enabling users to debug and tune query performance.
+
+== Installation
+
+The IvorySQL installation package already includes the pg_stat_monitor plugin. If you installed IvorySQL using the installation package, you typically don't need to manually install pg_stat_monitor. If you installed IvorySQL from source code, you can proceed to install the pg_stat_monitor plugin also from source. The IvorySQL community provides step-by-step instructions for source code installation：
+
+To build pg_stat_monitor from source code, you require the following:
+
+* git
+* make
+* gcc
+* pg_config
+
+You can download the source code of the latest release of pg_stat_monitor from https://github.com/Percona/pg_stat_monitor/releases[the releases page on GitHub] or using git:
+
+[source,bash]
+----
+git clone https://github.com/percona/pg_stat_monitor.git
+----
+
+Compile and install the extension. Assuming IvorySQL is already installed in the environment with the installation path at /usr/ivory-5.
+
+[source,bash]
+----
+cd pg_stat_monitor
+export PG_CONFIG=/usr/ivory-5/bin/pg_config
+make USE_PGXS=1 
+make USE_PGXS=1 install
+----
+
+== Load the module
+
+Load pg_stat_monitor at the start time by adding it to the shared_preload_libraries configuration parameter. This is because pg_stat_monitor requires additional shared memory.
+
+modify the shared_preload_libraries parameter：
+
+[source,conf]
+----
+shared_preload_libraries = 'pg_stat_monitor';
+----
+
+NOTE: If you’ve added other modules to the shared_preload_libraries parameter (for example, pg_stat_statements), list all of them separated by commas for the ALTER SYSTEM command.
+
+[source,conf]
+----
+shared_preload_libraries = 'liboracle_parser, ivorysql_ora, pg_stat_statements, pg_stat_monitor';
+----
+
+Start or restart the IvorySQL instance to apply the changes.
+
+[source,bash]
+----
+pg_ctl restart -D data
+----
+
+After you have added pg_stat_monitor to the shared_preload_libraries, it starts collecting statistics data for all existing databases. To access this data, you need to create the view on every database that you wish to monitor.
+
+== Create the extension view
+
+Create the extension view with the user that has the privileges of a superuser or a database owner. Connect to psql as a superuser for a database and run the CREATE EXTENSION command:
+
+[source,sql]
+----
+CREATE EXTENSION pg_stat_monitor;
+----
+
+After the setup is complete, you can see the stats collected by pg_stat_monitor.
+
+== Usage
+
+To obtain query execution time information as an example, connect to the database and execute the following SQL：
+
+[source,sql]
+----
+SELECT  userid,  total_exec_time, min_exec_time, max_exec_time, mean_exec_time, query FROM pg_stat_monitor;
+----
+
+[source,text]
+----
+userid | total_exec_time | min_exec_time | max_exec_time | mean_exec_time |                                            query
+--------+-----------------+---------------+---------------+----------------+----------------------------------------------------------------------------------------------
+     10 |        1.532168 |      0.749108 |       0.78306 |       0.766084 | SELECT userid,  datname, queryid, substr(query,$1, $2) AS query, calls FROM pg_stat_monitor
+     10 |        0.755857 |      0.755857 |      0.755857 |       0.755857 | SELECT application_name, client_ip, substr(query,$1,$2) as query FROM pg_stat_monitor
+     10 |               0 |             0 |             0 |              0 | SELECT  userid,  total_time, min_time, max_time, mean_time, query FROM pg_stat_monitor;
+     10 |               0 |             0 |             0 |              0 | SELECT  userid,  total_exec_time, min_time, max_time, mean_time, query FROM pg_stat_monitor;
+(4 rows)
+----
+
+For more information on using pg_stat_monitor, please refer to pg_stat_monitor https://docs.percona.com/pg-stat-monitor/user_guide.html[ Official documentation]

@@ -1,0 +1,98 @@
+:sectnums:
+:sectnumlevels: 5
+
+= pg_stat_monitor
+
+== 概述
+
+pg_stat_monitor 是 PostgreSQL 的查询性能监控工具。它能收集性能统计数据，并通过统一视图和直方图形式直观展示查询性能指标。
+
+该工具可帮助数据库用户全面掌握查询来源、执行情况、计划统计与详细信息，以及查询元数据。这极大地提升了可观测性，使用户能够有效调试和优化查询性能。
+
+== 安装
+
+IvorySQL的安装包里已经集成了pg_stat_monitor插件，如果使用安装包安装的IvorySQL，通常不需要再手动安装pg_stat_monitor。如您使用源码方式安装了IvorySQL，可以继续通过源码方式继续安装pg_stat_monitor插件，IvorySQL社区为您提供了源码安装步骤：
+
+要从源代码构建 pg_stat_monitor，您需要以下组件:
+
+* git
+* make
+* gcc
+* pg_config
+
+您可以从 https://github.com/Percona/pg_stat_monitor/releases[GitHub 上的发布页面] 下载 pg_stat_monitor 指定版本的源代码，或者使用 git 命令：
+
+[source,bash]
+----
+git clone https://github.com/percona/pg_stat_monitor.git
+----
+
+编译并安装扩展程序，假如环境中已经安装了IvorySQL，安装路径为/usr/ivory-5
+
+[source,bash]
+----
+cd pg_stat_monitor
+export PG_CONFIG=/usr/ivory-5/bin/pg_config
+make USE_PGXS=1 
+make USE_PGXS=1 install
+----
+
+== 加载模块
+
+在启动时，将 pg_stat_monitor 添加到 shared_preload_libraries 配置参数中，以加载该库。这是因为 pg_stat_monitor 需要额外的共享内存。
+
+修改 shared_preload_libraries 参数：
+
+[source,conf]
+----
+shared_preload_libraries = 'pg_stat_monitor';
+----
+
+注意：若 shared_preload_libraries 参数中已存在其他模块（例如 pg_stat_statements），需用逗号分隔全部列出。pg_stat_monitor 必须排在 pg_stat_statements 之后，例如：
+
+[source,conf]
+----
+shared_preload_libraries = 'liboracle_parser, ivorysql_ora, pg_stat_statements, pg_stat_monitor';
+----
+
+配置完成后，重启 IvorySQL实例使配置生效。
+
+[source,bash]
+----
+pg_ctl restart -D data
+----
+
+将 pg_stat_monitor 添加至 shared_preload_libraries 后，该扩展会立即开始收集所有现有数据库的统计信息。要查看监控数据，需在每个待监控的数据库中创建视图。
+
+== 创建扩展视图
+
+请使用具有超级用户或数据库所有者权限的账户执行以下操作。以超级用户身份连接至目标数据库，运行以下命令创建扩展：
+
+[source,sql]
+----
+CREATE EXTENSION pg_stat_monitor;
+----
+
+完成设置后，即可查看pg_stat_monitor收集的统计信息。
+
+== 使用
+
+以获取查询执行时间信息为例，连接数据库执行以下SQL：
+
+[source,sql]
+----
+SELECT  userid,  total_exec_time, min_exec_time, max_exec_time, mean_exec_time, query FROM pg_stat_monitor;
+----
+
+[source,text]
+----
+userid | total_exec_time | min_exec_time | max_exec_time | mean_exec_time |                                            query
+--------+-----------------+---------------+---------------+----------------+----------------------------------------------------------------------------------------------
+     10 |        1.532168 |      0.749108 |       0.78306 |       0.766084 | SELECT userid,  datname, queryid, substr(query,$1, $2) AS query, calls FROM pg_stat_monitor
+     10 |        0.755857 |      0.755857 |      0.755857 |       0.755857 | SELECT application_name, client_ip, substr(query,$1,$2) as query FROM pg_stat_monitor
+     10 |               0 |             0 |             0 |              0 | SELECT  userid,  total_time, min_time, max_time, mean_time, query FROM pg_stat_monitor;
+     10 |               0 |             0 |             0 |              0 | SELECT  userid,  total_exec_time, min_time, max_time, mean_time, query FROM pg_stat_monitor;
+(4 rows)
+----
+
+更多关于pg_stat_monitor的使用，请参阅 pg_stat_monitor https://docs.percona.com/pg-stat-monitor/user_guide.html[官方文档]
