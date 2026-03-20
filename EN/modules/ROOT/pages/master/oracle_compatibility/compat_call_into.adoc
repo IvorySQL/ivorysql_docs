@@ -115,6 +115,14 @@ ivorysql=# PRINT default_result;
 === Reference bind variables in parameters or INTO clauses
 [source,sql]
 ----
+-- Create functions stand_alone_func
+CREATE OR REPLACE FUNCTION stand_alone_func(p_input NUMBER)
+RETURN NUMBER
+IS
+BEGIN
+    RETURN p_input * 2;
+END;
+/
 -- Set input bind variables
 ivorysql=# VARIABLE input_num NUMBER = 7;
 -- Call a function using bind variables as parameters
