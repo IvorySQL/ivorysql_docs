@@ -1,0 +1,200 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_curl
+
+== Overview
+
+pg_curl is a PostgreSQL extension based on libcurl that brings cURL's powerful data transfer capabilities directly into the database, allowing users to perform network protocol data transfer operations through SQL function calls without relying on external programs or middleware.
+
+Unlike lightweight extensions that only support HTTP, pg_curl fully encapsulates the libcurl easy interface API and supports more than twenty protocols including DICT, FILE, FTP, FTPS, GOPHER, HTTP, HTTPS, IMAP, IMAPS, LDAP, LDAPS, MQTT, POP3, POP3S, RTMP, RTMPS, RTSP, SCP, SFTP, SMB, SMBS, SMTP, SMTPS, TELNET, TFTP, WS, and WSS, providing extremely rich network interaction capabilities.
+
+Typical use cases include: sending HTTP notifications to external systems from triggers or stored procedures; sending emails directly from the database; uploading or downloading files via FTP/SFTP; calling third-party REST APIs and writing results back to database tables; and integrating with MQTT message brokers, LDAP directories, and other backend services in data processing workflows.
+
+pg_curl is licensed under the MIT License. Project repository: https://github.com/RekGRpth/pg_curl
+
+== Features
+
+* *Multi-protocol support*: Based on libcurl, supports more than twenty protocols including HTTP/HTTPS, FTP/FTPS, SMTP/SMTPS, IMAP, POP3, SCP, SFTP, MQTT, and LDAP, covering the vast majority of network integration scenarios.
+* *Full HTTP method support*: Supports standard HTTP methods including GET, POST (URL-encoded, JSON, multipart/form-data), PUT, DELETE, and PATCH. Custom methods can be specified via `curl_easy_setopt_customrequest`.
+* *Flexible request construction*: Provides fine-grained `curl_easy_setopt_*` functions to precisely control request headers, authentication, timeouts, proxies, TLS certificates, cookies, and more.
+* *Multiple authentication methods*: Supports Basic Auth (username/password), Bearer Token, NTLM, Digest, OAuth, and other authentication mechanisms.
+* *File transfer*: Supports uploading (via `curl_easy_setopt_readdata`) and downloading files over FTP/FTPS/SFTP/SCP, with upload data passed directly as `bytea` type.
+* *Email sending*: Send emails directly from the database over SMTP/SMTPS, with support for setting sender, recipient, mail headers, and MIME body.
+* *Response parsing*: Provides `curl_easy_getinfo_data_in()`, `curl_easy_getinfo_header_in()`, and other functions to retrieve response body and headers. Headers can be parsed into a key-value table using regular expressions.
+* *Error handling*: `curl_easy_getinfo_errcode()`, `curl_easy_getinfo_errdesc()`, and `curl_easy_getinfo_errbuf()` provide complete error codes and descriptions for debugging.
+* *Timeout and interruption*: By registering a progress callback with libcurl that periodically checks PostgreSQL's cancellation flag (`QueryCancelPending`), requests can be interrupted by `statement_timeout`, `pg_cancel_backend()`, and similar mechanisms, preventing long-running requests from blocking connections.
+* *URL encoding utilities*: Built-in `curl_easy_escape()` and `curl_easy_unescape()` functions for URL encoding and decoding in SQL.
+
+== Installation
+
+pg_curl is not bundled in IvorySQL RPM/DEB packages and must be compiled and installed from source.
+
+[TIP]
+The following example environment is Ubuntu 24.04 (x86_64) with IvorySQL 5 or later installed at `/usr/local/ivorysql/ivorysql-5`.
+
+=== Install Dependencies
+
+pg_curl depends on the system libcurl development library. Ensure it is installed before building:
+
+[source,shell]
+----
+sudo apt install libcurl4-openssl-dev
+----
+
+=== Build and Install from Source
+
+Clone the source code from https://github.com/RekGRpth/pg_curl and run the build:
+
+[source,shell]
+----
+git clone https://github.com/RekGRpth/pg_curl.git
+cd pg_curl
+# Ensure pg_config is accessible, or specify it explicitly via PG_CONFIG
+PG_CONFIG=/usr/local/ivorysql/ivorysql-5/bin/pg_config make
+PG_CONFIG=/usr/local/ivorysql/ivorysql-5/bin/pg_config sudo make install
+----
+
+After a successful installation, `pg_curl.so` and the corresponding SQL scripts will be placed in IvorySQL's extension directory.
+
+== Create Extension and Verify Version
+
+Connect to the database using psql (either PG mode port 5432 or Oracle mode port 1521), then run:
+
+[source,sql]
+----
+CREATE EXTENSION pg_curl;
+
+SELECT name, default_version, installed_version, comment
+  FROM pg_available_extensions
+ WHERE name = 'pg_curl';
+----
+
+Expected output:
+
+[source,text]
+----
+  name   | default_version | installed_version |                                                                comment
+---------+-----------------+-------------------+----------------------------------------------------------------------------------------------------------------------------------------
+ pg_curl | 2.4             | 2.4               | PostgreSQL cURL allows most curl actions, including data transfer with URL syntax via HTTP, HTTPS, FTP, FTPS, GOPHER, TFTP, SCP, ...
+(1 row)
+----
+
+== Usage
+
+pg_curl follows a "configure, execute, retrieve" pattern. The core workflow is:
+
+. Call `curl_easy_reset()` to initialize (or reset) the current cURL session.
+. Call `curl_easy_setopt_*`, `curl_header_append`, `curl_postfield_append`, and other functions to configure request parameters.
+. Call `curl_easy_perform()` to execute the request.
+. Call `curl_easy_getinfo_*` functions to retrieve the response or error information.
+
+=== HTTP GET
+
+[source,sql]
+----
+BEGIN;
+SELECT curl_easy_reset();
+SELECT curl_easy_setopt_url('https://httpbin.org/get?');
+SELECT curl_url_append('key1', 'value1');
+SELECT curl_url_append('key2', 'hello world');  -- automatically URL-encoded
+SELECT curl_easy_perform();
+SELECT convert_from(curl_easy_getinfo_data_in(), 'utf-8');
+END;
+----
+
+=== HTTP POST (JSON)
+
+Form POST (`curl_postfield_append`) and multipart POST (`curl_mime_data`) follow the same pattern — simply replace the data-setting function.
+
+[source,sql]
+----
+BEGIN;
+SELECT curl_easy_reset();
+SELECT curl_easy_setopt_postfields(convert_to('{"name":"IvorySQL"}', 'utf-8'));
+SELECT curl_easy_setopt_url('https://httpbin.org/post');
+SELECT curl_header_append('Content-Type', 'application/json; charset=utf-8');
+SELECT curl_easy_perform();
+SELECT convert_from(curl_easy_getinfo_data_in(), 'utf-8');
+END;
+----
+
+=== Authentication and Request Headers
+
+Basic Auth uses `curl_easy_setopt_username` / `curl_easy_setopt_password`. Bearer Token and other custom headers are added via `curl_header_append`:
+
+[source,sql]
+----
+BEGIN;
+SELECT curl_easy_reset();
+SELECT curl_easy_setopt_url('https://httpbin.org/bearer');
+SELECT curl_header_append('Authorization', 'Bearer <your_token>');
+SELECT curl_easy_perform();
+SELECT convert_from(curl_easy_getinfo_data_in(), 'utf-8')::jsonb;
+END;
+----
+
+=== Error Handling and Timeouts
+
+After `curl_easy_perform()` returns, check the execution status with the following functions (`errcode` of 0 indicates success):
+
+[source,sql]
+----
+BEGIN;
+SELECT curl_easy_reset();
+SELECT curl_easy_setopt_url('https://httpbin.org/get');
+SELECT curl_easy_perform();
+SELECT
+    curl_easy_getinfo_errcode() AS errcode,
+    curl_easy_getinfo_errdesc() AS errdesc;
+END;
+----
+
+pg_curl checks PostgreSQL's cancellation flag via a libcurl progress callback. When `statement_timeout` fires, the in-progress request is immediately aborted and the current transaction is rolled back:
+
+[source,sql]
+----
+BEGIN;
+SET LOCAL statement_timeout = '3s';
+SELECT curl_easy_reset();
+SELECT curl_easy_setopt_url('https://httpbin.org/delay/10');
+SELECT curl_easy_perform();  -- raises query_canceled after timeout, transaction rolls back
+END;
+----
+
+== IvorySQL Adaptation Notes
+
+=== Dual-Port Compatibility
+
+IvorySQL uses a dual-port architecture supporting both PostgreSQL mode (default port *5432*) and Oracle-compatible mode (default port *1521*):
+
+* Port *5432* (PG mode): accepts standard PostgreSQL SQL syntax.
+* Port *1521* (Oracle mode): accepts Oracle-compatible SQL syntax.
+
+pg_curl works normally in both modes. `CREATE EXTENSION pg_curl` succeeds on both port 1521 and port 5432.
+
+=== Oracle Mode Notes
+
+When using pg_curl in Oracle mode (port 1521):
+
+* All pg_curl functions are invoked via plain `SELECT` statements (e.g. `SELECT curl_easy_reset()`), which are valid in Oracle mode. The Oracle-style `SELECT curl_easy_reset() FROM DUAL` syntax also works.
+* The `ivorysql.enable_emptystring_to_NULL` parameter affects how empty strings are handled. The regression tests set `SET ivorysql.enable_emptystring_to_NULL = 'off'` to ensure empty-value parameters (such as empty form fields) are passed as expected. Configure this parameter according to your production requirements.
+
+=== Using pg_curl in PL/iSQL
+
+pg_curl can be called from IvorySQL's PL/iSQL (the Oracle-compatible procedural language) to push external notifications automatically when data changes. PL/iSQL uses Oracle-style `IS` syntax for procedure declarations, and function return values are discarded by assigning them to a local variable:
+
+[source,sql]
+----
+-- Call pg_curl inside a PL/iSQL stored procedure (Oracle mode, IS syntax)
+CREATE OR REPLACE PROCEDURE notify_external(p_payload IN VARCHAR2) IS
+    v_ok BOOLEAN;
+BEGIN
+    v_ok := curl_easy_reset();
+    v_ok := curl_easy_setopt_postfields(convert_to(p_payload, 'utf-8'));
+    v_ok := curl_easy_setopt_url('https://hooks.example.com/notify');
+    v_ok := curl_header_append('Content-Type', 'application/json');
+    v_ok := curl_easy_perform();
+END;
+----
