@@ -1,0 +1,106 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= Global Unique Index
+
+== Overview
+
+The Global Unique Index is a cross-partition uniqueness constraint feature provided by IvorySQL for partitioned tables.
+
+Standard PostgreSQL unique indexes only enforce uniqueness within a single partition and cannot guarantee uniqueness across partitions. IvorySQL introduces the `GLOBAL` keyword: when specified during unique index creation, the database scans all partitions on every INSERT or UPDATE to ensure no duplicate values exist across the entire partitioned table.
+
+This feature is supported in both PG-compatible mode and Oracle-compatible mode.
+
+== Syntax
+
+[source,sql]
+----
+CREATE UNIQUE INDEX [ index_name ] ON partitioned_table ( column [, ...] ) GLOBAL;
+----
+
+Parameter description:
+
+- `UNIQUE`: must be used together with `GLOBAL` to specify the uniqueness constraint;
+- `GLOBAL`: enables cross-partition uniqueness checking; only valid on partitioned tables;
+- `index_name`: optional; if omitted, the database generates an index name automatically.
+
+== Test Cases
+
+=== Create a Partitioned Table and Global Unique Index
+
+[source,sql]
+----
+-- Create a partitioned table
+CREATE TABLE gidxpart (a int, b int, c text) PARTITION BY RANGE (a);
+CREATE TABLE gidxpart1 PARTITION OF gidxpart FOR VALUES FROM (1)   TO (10);
+CREATE TABLE gidxpart2 PARTITION OF gidxpart FOR VALUES FROM (10)  TO (100);
+CREATE TABLE gidxpart3 PARTITION OF gidxpart FOR VALUES FROM (100) TO (200);
+
+-- Create a global unique index with an explicit name
+CREATE UNIQUE INDEX gidx_u ON gidxpart USING btree(b) GLOBAL;
+
+-- Create a global unique index without specifying a name
+CREATE UNIQUE INDEX ON gidxpart (b) GLOBAL;
+----
+
+=== INSERT: Cross-Partition Uniqueness Validation
+
+[source,sql]
+----
+-- These inserts succeed (no duplicate values in column b across partitions)
+INSERT INTO gidxpart VALUES (1,   1,   'first');
+INSERT INTO gidxpart VALUES (11,  11,  'eleventh');
+INSERT INTO gidxpart VALUES (2,   120, 'second');
+INSERT INTO gidxpart VALUES (12,  2,   'twelfth');
+INSERT INTO gidxpart VALUES (150, 13,  'no duplicate b');
+
+-- These inserts fail: b=11 already exists in another partition
+INSERT INTO gidxpart VALUES (2,   11, 'duplicated (b)=(11) on other partition');
+-- ERROR: duplicate key value violates unique constraint
+
+INSERT INTO gidxpart VALUES (12,  1,  'duplicated (b)=(1) on other partition');
+-- ERROR: duplicate key value violates unique constraint
+
+INSERT INTO gidxpart VALUES (150, 11, 'duplicated (b)=(11) on other partition');
+-- ERROR: duplicate key value violates unique constraint
+----
+
+=== UPDATE: Cross-Partition Uniqueness Validation
+
+[source,sql]
+----
+-- UPDATE operations are also subject to the global unique index
+UPDATE gidxpart SET b = 2 WHERE a = 2;
+-- ERROR: duplicate key value violates unique constraint (b=2 already exists)
+
+UPDATE gidxpart SET b = 12 WHERE a = 12;
+-- Succeeds (b=12 is unique across all partitions)
+----
+
+=== Partition ATTACH and DETACH
+
+[source,sql]
+----
+-- Create a standalone table for ATTACH testing
+CREATE TABLE gidxpart_new (a int, b int, c text);
+INSERT INTO gidxpart_new VALUES (100001, 11, 'conflict with gidxpart1');
+
+-- ATTACH fails if the new partition contains values that duplicate existing ones
+ALTER TABLE gidxpart ATTACH PARTITION gidxpart_new
+    FOR VALUES FROM (100000) TO (199999);
+-- ERROR: duplicate key value violates unique constraint
+
+-- DETACH is allowed; the partition's global index reverts to a regular local index
+ALTER TABLE gidxpart DETACH PARTITION gidxpart2;
+----
+
+== Limitations
+
+. The `GLOBAL` keyword must be used together with `UNIQUE`; global non-unique indexes are not supported;
+. Global unique indexes are only applicable to **partitioned tables**; the keyword is not valid on regular tables;
+. Every INSERT or UPDATE requires scanning all partitions to verify uniqueness, which introduces **performance overhead** when the number of partitions or data volume is large;
+. When attaching a partition via `ATTACH PARTITION`, the operation will fail if the new partition contains data that duplicates values in existing partitions;
+. After a partition is detached with `DETACH PARTITION`, the corresponding global index automatically reverts to a regular local (partition-level) index;
+. Creating a global unique index independently on a sub-partition (second-level partition) is not supported; cross-partition uniqueness is managed exclusively at the top-level partitioned table.
