@@ -1,0 +1,91 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_textsearch
+
+== 概述
+pg_textsearch 是由Timescale团队开发的一个PostgreSQL扩展，旨在为Postgres提供高性能、现代化的全文搜索能力，并针对AI工作负载和混合搜索进行了优化。
+
+== 安装
+
+[TIP]
+源码安装环境为 Ubuntu 24.04(x86_64)，环境中已经安装了IvorySQL5及以上版本，安装路径为/usr/ivory-5
+
+=== 源码安装
+
+[literal]
+----
+# 从 wget https://github.com/timescale/pg_textsearch/archive/refs/tags/v0.6.1.tar.gz 下载源码包
+
+tar xzvf v0.6.1.tar.gz
+cd pg_textsearch-0.6.1
+
+# 编译安装插件
+make PG_CONFIG=/usr/ivory-5/bin/pg_config
+make PG_CONFIG=/usr/ivory-5/bin/pg_config install
+
+----
+
+[TIP]
+如果出现找不到xlocale.h的错误，需要手动修改 /usr/ivory-5/include/postgresql/server/pg_config.h 
+删除或者注释掉 #define HAVE_XLOCALE_H 1 这一行
+
+=== 修改数据库配置文件
+
+修改 ivorysql.conf 文件，添加 pg_textsearch 到 shared_preload_libraries
+
+[literal]
+----
+shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_textsearch' 
+----
+
+重启数据库后配置生效。
+
+=== 创建Extension
+
+[literal]
+----
+postgres=# create extension pg_textsearch;
+WARNING:  pg_textsearch v0.6.1 is a prerelease. Do not use in production.
+CREATE EXTENSION
+----
+
+== 使用
+
+创建一个带有文本内容的表：
+[literal]
+----
+postgres=# CREATE TABLE documents (id bigserial PRIMARY KEY, content text);
+CREATE TABLE
+
+postgres=# INSERT INTO documents (content) VALUES
+    ('PostgreSQL is a powerful database system'),
+    ('BM25 is an effective ranking function'),
+    ('Full text search with custom scoring');
+INSERT 0 3
+----
+
+在文本列上创建 pg_textsearch 索引
+[literal]
+----
+postgres=# CREATE INDEX docs_idx ON documents USING bm25(content) WITH (text_config='english');
+NOTICE:  BM25 index build started for relation docs_idx
+NOTICE:  Using text search configuration: english
+NOTICE:  Using index options: k1=1.20, b=0.75
+NOTICE:  BM25 index build completed: 3 documents, avg_length=4.33
+CREATE INDEX
+----
+
+使用@操作符获取最相关的文档：
+[literal]
+----
+postgres=# SELECT * FROM documents ORDER BY content <@> 'database system' LIMIT 5;
+ id |                 content                  
+----+------------------------------------------
+  1 | PostgreSQL is a powerful database system
+  2 | BM25 is an effective ranking function
+  3 | Full text search with custom scoring
+(3 rows)
+----
+

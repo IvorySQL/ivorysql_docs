@@ -53,6 +53,7 @@
 *** xref:master/ecosystem_components/wal2json.adoc[wal2json]
 *** xref:master/ecosystem_components/pg_stat_monitor.adoc[pg_stat_monitor]
 *** xref:master/ecosystem_components/pg_ai_query.adoc[pg_ai_query]
+*** xref:master/ecosystem_components/pg_textsearch.adoc[pg_textsearch]
 * 监控运维
 ** xref:master/getting-started/daily_monitoring.adoc[日常监控]
 ** xref:master/getting-started/daily_maintenance.adoc[日常维护]

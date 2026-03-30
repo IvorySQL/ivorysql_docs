@@ -1,0 +1,88 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_textsearch
+
+== Overview
+pg_textsearch is a PostgreSQL extension developed by the Timescale team. It is designed to provide high-performance, modern full-text search capabilities for Postgres, and is optimized for AI workloads and hybrid search.
+
+== Installation
+
+[TIP]
+The source code installation environment is Ubuntu 24.04 (x86_64), in which IvorySQL 5 or a later version has been installed. The installation path is /usr/ivory-5.
+
+=== Source Code Installation
+
+[literal]
+----
+# download source code package from: https://github.com/timescale/pg_textsearch/archive/refs/tags/v0.6.1.tar.gz
+
+tar xzvf v0.6.1.tar.gz
+cd pg_textsearch-0.6.1
+
+# compile and install the extension
+make PG_CONFIG=/usr/ivory-5/bin/pg_config
+make PG_CONFIG=/usr/ivory-5/bin/pg_config install
+----
+
+[TIP]
+If there is error "xlocale.h: No such file or directory" during compilation, user should remove the 
+line of "#define HAVE_XLOCALE_H 1" from file /usr/ivory-5/include/postgresql/server/pg_config.h. 
+
+=== Modify the configuration file
+
+Modify the ivorysql.conf file to add pg_textsearch into shared_preload_libraries.
+[literal]
+----
+shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_textsearch' 
+----
+
+Then restart the database. 
+
+=== Create Extension
+
+[literal]
+----
+postgres=# create extension pg_textsearch;
+WARNING:  pg_textsearch v0.6.1 is a prerelease. Do not use in production.
+CREATE EXTENSION
+----
+
+== Use
+
+Create a table with text content: 
+[literal]
+----
+postgres=# CREATE TABLE documents (id bigserial PRIMARY KEY, content text);
+CREATE TABLE
+
+postgres=# INSERT INTO documents (content) VALUES
+    ('PostgreSQL is a powerful database system'),
+    ('BM25 is an effective ranking function'),
+    ('Full text search with custom scoring');
+INSERT 0 3
+----
+
+Create a pg_textsearch index on the text column: 
+[literal]
+----
+postgres=# CREATE INDEX docs_idx ON documents USING bm25(content) WITH (text_config='english');
+NOTICE:  BM25 index build started for relation docs_idx
+NOTICE:  Using text search configuration: english
+NOTICE:  Using index options: k1=1.20, b=0.75
+NOTICE:  BM25 index build completed: 3 documents, avg_length=4.33
+CREATE INDEX
+----
+
+Get the most relevant documents using the <@> operator: 
+[literal]
+----
+postgres=# SELECT * FROM documents ORDER BY content <@> 'database system' LIMIT 5;
+ id |                 content                  
+----+------------------------------------------
+  1 | PostgreSQL is a powerful database system
+  2 | BM25 is an effective ranking function
+  3 | Full text search with custom scoring
+(3 rows)
+----
