@@ -16,7 +16,7 @@ pg_textsearch 是由Timescale团队开发的一个PostgreSQL扩展，旨在为Po
 
 [literal]
 ----
-# 从 wget https://github.com/timescale/pg_textsearch/archive/refs/tags/v0.6.1.tar.gz 下载源码包
+# 从 https://github.com/timescale/pg_textsearch/archive/refs/tags/v0.6.1.tar.gz 下载源码包
 
 tar xzvf v0.6.1.tar.gz
 cd pg_textsearch-0.6.1
@@ -66,7 +66,7 @@ postgres=# INSERT INTO documents (content) VALUES
 INSERT 0 3
 ----
 
-在文本列上创建 pg_textsearch 索引
+在文本列上创建 pg_textsearch 索引:
 [literal]
 ----
 postgres=# CREATE INDEX docs_idx ON documents USING bm25(content) WITH (text_config='english');
