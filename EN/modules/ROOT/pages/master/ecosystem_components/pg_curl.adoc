@@ -29,8 +29,6 @@ pg_curl is licensed under the MIT License. Project repository: https://github.co
 
 == Installation
 
-pg_curl is not bundled in IvorySQL RPM/DEB packages and must be compiled and installed from source.
-
 [TIP]
 The following example environment is Ubuntu 24.04 (x86_64) with IvorySQL 5 or later installed at `/usr/local/ivorysql/ivorysql-5`.
 

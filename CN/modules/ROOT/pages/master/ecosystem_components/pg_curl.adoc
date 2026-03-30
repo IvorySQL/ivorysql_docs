@@ -29,8 +29,6 @@ pg_curl 采用 MIT 许可证，项目地址：https://github.com/RekGRpth/pg_cur
 
 == 安装
 
-IvorySQL 的 RPM/DEB 安装包目前未内置 pg_curl，需要从源码编译安装。
-
 [TIP]
 以下示例环境为 Ubuntu 24.04（x86_64），已安装 IvorySQL 5 及以上版本，安装路径为 `/usr/local/ivorysql/ivorysql-5`。
 
