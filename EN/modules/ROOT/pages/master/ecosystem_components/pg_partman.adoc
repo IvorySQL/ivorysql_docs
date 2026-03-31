@@ -1,0 +1,195 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_partman
+
+== Overview
+pg_partman is used to simplify and automate the management of PostgreSQL's native declarative partitioned tables. It provides functionality for automatic creation, maintenance, and cleanup of partitions, especially for time-based and integer-based range partitioning.
+
+PostgreSQL supports 3 types of partitioning: range partitioning, list partitioning, and hash partitioning. Among these, the pg_partman extension does not support hash partitioning and has limited support for list partitioning. It is primarily designed for range partitioning based on time (such as day, week, month) or numeric ranges (such as auto-increment IDs).
+
+Note: Since pg_partman is a PostgreSQL extension specifically designed for PG native partition management, it is not supported under Oracle compatibility mode.
+
+Project URL: <https://github.com/pgpartman/pg_partman>
+
+Version: 5.2-STABLE
+
+License: PostgreSQL License
+
+== Installation and Enablement
+
+=== Prerequisites
+IvorySQL 5.0 is installed, and the pg_config command can be successfully executed from the command line.
+
+=== Source Installation
+Get the source code from https://github.com/pgpartman/pg_partman:
+[literal]
+----
+git clone https://github.com/pgpartman/pg_partman.git
+cd pg_partman
+git switch 5.2-STABLE
+
+make && sudo make install
+----
+
+=== Enable Extension
+[literal]
+----
+-- Log in to the database
+CREATE SCHEMA partman;
+CREATE EXTENSION pg_partman SCHEMA partman;
+----
+
+[NOTE]
+After pg_partman is installed and enabled, it does not automatically create a SCHEMA. If not specifically specified, PostgreSQL will install the extension objects into the first valid SCHEMA in the current search_path (usually public). It is recommended to install it into a dedicated SCHEMA.
+
+== Usage Workflow
+pg_partman itself does not create partitioned parent tables. Its main function is to automatically create and maintain partition child tables based on existing partitioned tables. Therefore, before using pg_partman, you must first manually create a parent table with partitioning enabled. After the parent table is created, register it with pg_partman for management. During registration, you will specify the partitioning strategy and other parameters. Upon successful registration, a template table named template_[schema]_[table_name] will be created in the database. This template table does not store data but serves as the template for all child partitions. After registration, you must create and clean up partitions by manually calling or automatically calling run_maintenance()/run_maintenance_proc() through scripts.
+
+Below are two use cases. For other usage requirements, please refer to the https://github.com/pgpartman/pg_partman/blob/master/doc/pg_partman.md[pg_partman official documentation].
+
+== Case 1: Time-based Partitioning
+Scenario: There is a logs table that generates large amounts of data daily. You want to automatically create child partitions by day and retain only the last 30 days of data, automatically deleting older partitions.
+
+=== Manually Create Partitioned Parent Table
+[literal]
+----
+CREATE TABLE public.logs (
+    id BIGSERIAL,
+    log_time TIMESTAMPTZ NOT NULL DEFAULT now(),
+    message TEXT
+) PARTITION BY RANGE (log_time);
+----
+
+=== Register Partitioned Parent Table with pg_partman
+Register the logs table with daily partitioning, pre-create 3 future partitions starting from the specified date, and retain the last 30 days:
+[literal]
+----
+SELECT partman.create_parent(
+    p_parent_table => 'public.logs',   -- Partitioned parent table to manage, must include SCHEMA explicitly
+    p_control => 'log_time',           -- Partition column
+    p_interval => '1 day',             -- Partition by day
+    p_type => 'range',                 -- Use range partitioning
+    p_premake => 3,                    -- Pre-create 3 future partitions
+    p_start_partition => '2025-12-24', -- Starting partition
+    p_default_table => false           -- Whether to create a default partition
+);
+----
+
+The above SQL will create daily partitions starting from 2025-12-24 and pre-create 3 future partitions based on the current server time. Partition naming uses the partition table's start time as a suffix.
+
+[literal]
+----
+INSERT INTO public.logs (log_time) VALUES ('2025-12-28 00:01:00');
+----
+
+=== Configure Retention (Optional)
+[literal]
+----
+UPDATE partman.part_config
+SET retention = '30 days'
+WHERE parent_table = 'public.logs';
+----
+
+=== Manual Maintenance
+[literal]
+----
+select partman.run_maintenance();
+----
+Or
+[literal]
+----
+CALL partman.run_maintenance_proc();
+----
+
+[NOTE]
+====
+When calling run_maintenance(), new partition tables are automatically pre-generated based on the partitioning strategy. The pre-generation baseline is the data in the table's partition column. If the most recently inserted data has a log_time of 20251228, then three child partitions (logs_p20251229/logs_p20251230/logs_p20251231) will be pre-generated based on this baseline.
+
+Additionally, run_maintenance() also executes the cleanup mechanism. The cleanup mechanism is based on server time. In the example above, child tables older than 30 days from the current server time will be removed from the parent table's records, but not actually deleted to avoid accidental data loss. At this point, using \d+ logs to view the partition information of the parent table, you won't see the tables removed more than 30 days ago. However, using \dt to view all tables in the database, you can see that the removed child partitions still exist. These child tables can be manually deleted.
+====
+
+=== Automatic Maintenance
+Using the operating system's crontab:
+
+Create a shell script /usr/local/bin/partman_maintenance.sh:
+[literal]
+----
+cd /usr/local/bin
+vi partman_maintenance.sh
+----
+Script content:
+[literal]
+----
+#!/bin/bash
+psql -U [db_username] -d [db_name] -c "CALL partman.run_maintenance_proc();"
+----
+
+Grant execute permission:
+[literal]
+----
+chmod +x partman_maintenance.sh
+----
+
+Configure execution schedule:
+[literal]
+----
+crontab -e
+# Add a line to execute once daily at 1 AM
+0 1 * * * /usr/local/bin/partman_maintenance.sh
+----
+
+== Case 2: Auto-increment ID-based Partitioning
+Scenario: Create an orders table with a new partition for every 10,000 IDs.
+
+=== Manually Create Partitioned Parent Table
+[literal]
+----
+CREATE TABLE orders (
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY, -- Partition key
+    amount NUMERIC
+);
+----
+
+=== Register Partitioned Parent Table with pg_partman
+[literal]
+----
+SELECT partman.create_parent(
+    p_parent_table => 'public.orders', -- Partitioned parent table to manage, must include SCHEMA
+    p_control => 'id',                 -- Partition column
+    p_interval => '10000',             -- One partition per 10,000 records
+    p_type => 'range',                 -- Use range partitioning
+    p_premake => 3,                    -- Pre-create 3 future partitions
+    p_start_partition => '0',          -- Starting partition
+    p_default_table => false           -- Whether to create a default partition
+);
+----
+
+=== Manual Maintenance
+[literal]
+----
+CALL partman.run_maintenance_proc();
+----
+
+== Common Operations
+
+=== Get Partitioned Parent Tables Managed by pg_partman
+[literal]
+----
+SELECT parent_table FROM partman.part_config;
+----
+
+=== Remove a Partitioned Parent Table from pg_partman Management
+Delete maintenance information:
+[literal]
+----
+DELETE FROM partman.part_config
+WHERE parent_table = 'table_name';
+----
+
+Delete the template:
+[literal]
+----
+DROP TABLE template_[schema]_[table_name];
+----
