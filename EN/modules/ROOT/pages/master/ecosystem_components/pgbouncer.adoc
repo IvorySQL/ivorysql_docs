@@ -1,0 +1,220 @@
+:sectnums:
+:sectnumlevels: 5
+
+= PgBouncer
+
+== Overview
+
+PgBouncer is a lightweight connection pooling middleware that sits between the application layer and the database. It reduces connection overhead, protects database resources, and improves application concurrency performance by reusing backend connections.
+
+PgBouncer uses the standard PostgreSQL communication protocol, which IvorySQL fully supports.
+
+*Three Connection Pooling Modes:*
+
+[cols="1,2,2"]
+|===
+| Mode | Description | Use Case
+
+| session
+| Client exclusively holds one backend connection for the duration of the session
+| Required for in-process COMMIT and full session features
+
+| transaction
+| Connection is returned to the pool after each transaction
+| Most commonly used, highest connection reuse rate
+
+| statement
+| Connection is returned after each statement
+| Most restrictive, does not support explicit transactions
+|===
+
+== Installation
+
+[TIP]
+Source installation was tested on Ubuntu 24.04.
+
+=== Dependencies
+
+[literal]
+----
+# Ubuntu / Debian
+sudo apt install libevent-dev libssl-dev pkg-config
+
+# RHEL / Rocky Linux
+sudo dnf install libevent-devel openssl-devel pkgconfig
+----
+
+=== Source Installation
+
+[literal]
+----
+git clone https://github.com/pgbouncer/pgbouncer.git
+cd pgbouncer
+
+./autogen.sh
+
+./configure \
+    --prefix=/usr/ivory-5 \
+    --with-openssl \
+    --with-pam
+
+make -j4
+make install
+cp pgbouncer /usr/ivory-5/bin/
+----
+
+=== Verify Installation
+
+[literal]
+----
+pgbouncer --version
+# PgBouncer 1.25.1
+# libevent 2.1.12-stable
+# tls: OpenSSL 3.0.2 15 Mar 2022
+----
+
+== Configuration
+
+=== Connecting to IvorySQL PG Mode (Port 5432)
+
+Create `/etc/pgbouncer/pgbouncer.ini`:
+
+[literal]
+----
+[databases]
+postgres = host=127.0.0.1 port=5432 dbname=postgres
+
+[pgbouncer]
+listen_addr = 127.0.0.1
+listen_port = 6432
+auth_type = trust
+auth_file = /etc/pgbouncer/userlist.txt
+pool_mode = transaction
+max_client_conn = 200
+default_pool_size = 20
+logfile = /var/log/pgbouncer/pgbouncer.log
+pidfile = /var/run/pgbouncer/pgbouncer.pid
+----
+
+=== Connecting to IvorySQL Oracle Compatible Mode (Port 1521)
+
+[literal]
+----
+[databases]
+postgres = host=127.0.0.1 port=1521 dbname=postgres
+
+[pgbouncer]
+listen_addr = 127.0.0.1
+listen_port = 2521
+auth_type = trust
+auth_file = /etc/pgbouncer/userlist.txt
+
+# Oracle compatible mode recommends session mode
+pool_mode = session
+
+max_client_conn = 200
+default_pool_size = 20
+logfile = /var/log/pgbouncer/pgbouncer_oracle.log
+pidfile = /var/run/pgbouncer/pgbouncer_oracle.pid
+----
+
+=== User Authentication File
+
+[literal]
+----
+# /etc/pgbouncer/userlist.txt
+# Format: "username" "password" (trust mode can leave password empty)
+"postgres" ""
+"app_user" "app_password"
+----
+
+=== Start and Stop
+
+[literal]
+----
+# Foreground mode (for debugging)
+pgbouncer /etc/pgbouncer/pgbouncer.ini
+
+# Daemon mode
+pgbouncer -d /etc/pgbouncer/pgbouncer.ini
+
+# Reload configuration (without interrupting connections)
+kill -HUP $(cat /var/run/pgbouncer/pgbouncer.pid)
+
+# Stop
+kill -INT $(cat /var/run/pgbouncer/pgbouncer.pid)
+----
+
+== Usage
+
+=== Client Connection
+
+Connecting through PgBouncer uses the exact same syntax as connecting directly to IvorySQL, only the port changes:
+
+[literal]
+----
+# PG mode (via PgBouncer)
+psql -U postgres -p 6432 -d postgres
+
+# Oracle compatible mode (via PgBouncer)
+psql -U postgres -p 2521 -d postgres
+----
+
+=== Admin Console
+
+PgBouncer provides a built-in administration database:
+
+[literal]
+----
+psql -U postgres -p 6432 -d pgbouncer
+----
+
+[literal]
+----
+-- View pool status
+SHOW POOLS;
+
+-- View statistics
+SHOW STATS;
+
+-- View client connections
+SHOW CLIENTS;
+
+-- View backend connections
+SHOW SERVERS;
+
+-- Reload configuration
+RELOAD;
+----
+
+=== Oracle Compatible Mode
+
+[literal]
+----
+-- Verify Oracle mode is active
+SHOW ivorysql.compatible_mode;
+--  ivorysql.compatible_mode
+-- --------------------------
+--  oracle
+
+-- Oracle data types and functions
+CREATE TABLE bouncer_test (
+    id     NUMBER(10) PRIMARY KEY,
+    name   VARCHAR2(100),
+    hired  DATE DEFAULT SYSDATE
+);
+
+INSERT INTO bouncer_test VALUES (1, 'Alice', SYSDATE);
+
+SELECT id,
+       NVL(name, 'N/A')                   AS name,
+       DECODE(id, 1, 'CEO', 'Staff')       AS title,
+       TO_CHAR(hired, 'YYYY-MM-DD')        AS hire_date
+FROM bouncer_test;
+
+-- Oracle sequences
+CREATE SEQUENCE ora_seq START WITH 100 INCREMENT BY 10;
+SELECT ora_seq.NEXTVAL FROM DUAL;   -- 100
+SELECT ora_seq.NEXTVAL FROM DUAL;   -- 110
+SELECT ora_seq.CURRVAL FROM DUAL;   -- 110
+----

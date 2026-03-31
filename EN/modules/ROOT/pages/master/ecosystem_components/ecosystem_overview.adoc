@@ -25,6 +25,7 @@ IvorySQL, as an advanced open-source database compatible with Oracle and based o
 |*11*| xref:master/ecosystem_components/pg_ai_query.adoc[pg_ai_query] | 0.1.1 | AI-driven natural language to SQL extension supporting multiple LLMs | AI-assisted querying, natural language database interaction
 |*12*| xref:master/ecosystem_components/pg_stat_monitor.adoc[pg_stat_monitor] | 2.3.1 | Collects performance statistics and provides query performance insights in a single view and graphically in histogram. | Performance monitoring
 |*13*| xref:master/ecosystem_components/pg_partman.adoc[pg_partman] | 5.2 | Automates the creation, maintenance, and cleanup of native partition subtables. | Large-Scale Data Storage Management
+|*14*| xref:master/ecosystem_components/pg_curl.adoc[pg_curl] | 2.4 | A libcurl-based network transfer extension supporting HTTP/HTTPS, FTP, SMTP, IMAP, and 20+ other protocols, enabling network data transfer operations directly in SQL | REST API integration, email sending, file transfer, external system notifications
 |====
 
 These plugins have all been tested and adapted by the IvorySQL team to ensure stable operation in the IvorySQL environment. Users can select appropriate plugins based on business needs to further enhance the capabilities and flexibility of the database system.
