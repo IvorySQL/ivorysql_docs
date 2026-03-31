@@ -56,6 +56,7 @@
 *** xref:master/ecosystem_components/pg_partman.adoc[pg_partman]
 *** xref:master/ecosystem_components/pgbouncer.adoc[pgbouncer]
 *** xref:master/ecosystem_components/pg_curl.adoc[pg_curl]
+*** xref:master/ecosystem_components/pg_textsearch.adoc[pg_textsearch]
 * Monitor and O&M
 ** xref:master/getting-started/daily_monitoring.adoc[Monitoring]
 ** xref:master/getting-started/daily_maintenance.adoc[Maintenance]
