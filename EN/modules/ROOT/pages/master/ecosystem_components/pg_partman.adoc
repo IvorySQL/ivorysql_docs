@@ -9,7 +9,11 @@ pg_partman is used to simplify and automate the management of PostgreSQL's nativ
 
 PostgreSQL supports 3 types of partitioning: range partitioning, list partitioning, and hash partitioning. Among these, the pg_partman extension does not support hash partitioning and has limited support for list partitioning. It is primarily designed for range partitioning based on time (such as day, week, month) or numeric ranges (such as auto-increment IDs).
 
+Note: Since pg_partman is a PostgreSQL extension specifically designed for PG native partition management, it is not supported under Oracle compatibility mode.
+
 Project URL: <https://github.com/pgpartman/pg_partman>
+
+Version: 5.2-STABLE
 
 License: PostgreSQL License
 

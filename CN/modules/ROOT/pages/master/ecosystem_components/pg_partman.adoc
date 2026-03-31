@@ -9,7 +9,11 @@ pg_partman 用于简化和自动化对 PostgreSQL 原生声明式分区表的管
 
 PostgreSQL 支持的 3 种分区方式：范围分区、列表分区、哈希分区。其中，pg_partman 扩展不支持哈希分区，对列表分区支持有限，它主要用于按时间（如天、周、月）或数值区间（如自增 ID）进行的范围分区。
 
+注意，pg_partman 作为 PostgreSQL 的扩展，专门设计用于对 PostgreSQL 的分区表进行管理，所以它不支持在 Oracle 兼容模式下运行。
+
 项目地址：<https://github.com/pgpartman/pg_partman>
+
+版本：5.2-STABLE
 
 开源协议：PostgreSQL License
 
