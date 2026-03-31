@@ -1,0 +1,106 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= 全局唯一索引
+
+== 功能介绍
+
+全局唯一索引（Global Unique Index）是 IvorySQL 针对分区表提供的跨分区唯一性约束能力。
+
+标准 PostgreSQL 的唯一索引仅在单个分区内强制执行唯一性，无法保证跨分区的数据唯一。IvorySQL 引入 `GLOBAL` 关键字，在创建唯一索引时指定该关键字后，数据库在执行插入或更新操作时会扫描所有分区，确保整张分区表范围内不存在重复数据。
+
+该功能同时支持 PG 兼容模式与 Oracle 兼容模式。
+
+== 语法
+
+[source,sql]
+----
+CREATE UNIQUE INDEX [ index_name ] ON partitioned_table ( column [, ...] ) GLOBAL;
+----
+
+参数说明：
+
+- `UNIQUE`：必须与 `GLOBAL` 同时使用，指定唯一性约束；
+- `GLOBAL`：启用跨分区唯一性检查，仅对分区表有效；
+- `index_name`：可选，省略时数据库自动生成索引名。
+
+== 测试用例
+
+=== 创建分区表与全局唯一索引
+
+[source,sql]
+----
+-- 创建分区表
+CREATE TABLE gidxpart (a int, b int, c text) PARTITION BY RANGE (a);
+CREATE TABLE gidxpart1 PARTITION OF gidxpart FOR VALUES FROM (1) TO (10);
+CREATE TABLE gidxpart2 PARTITION OF gidxpart FOR VALUES FROM (10) TO (100);
+CREATE TABLE gidxpart3 PARTITION OF gidxpart FOR VALUES FROM (100) TO (200);
+
+-- 在分区表上创建全局唯一索引（指定索引名）
+CREATE UNIQUE INDEX gidx_u ON gidxpart USING btree(b) GLOBAL;
+
+-- 在分区表上创建全局唯一索引（不指定索引名）
+CREATE UNIQUE INDEX ON gidxpart (b) GLOBAL;
+----
+
+=== 插入数据：跨分区唯一性验证
+
+[source,sql]
+----
+-- 以下插入成功（各分区间 b 列无重复）
+INSERT INTO gidxpart VALUES (1, 1, 'first');
+INSERT INTO gidxpart VALUES (11, 11, 'eleventh');
+INSERT INTO gidxpart VALUES (2, 120, 'second');
+INSERT INTO gidxpart VALUES (12, 2, 'twelfth');
+INSERT INTO gidxpart VALUES (150, 13, 'no duplicate b');
+
+-- 以下插入失败：b=11 已存在于其他分区，违反跨分区唯一性约束
+INSERT INTO gidxpart VALUES (2, 11, 'duplicated (b)=(11) on other partition');
+-- ERROR: duplicate key value violates unique constraint
+
+INSERT INTO gidxpart VALUES (12, 1, 'duplicated (b)=(1) on other partition');
+-- ERROR: duplicate key value violates unique constraint
+
+INSERT INTO gidxpart VALUES (150, 11, 'duplicated (b)=(11) on other partition');
+-- ERROR: duplicate key value violates unique constraint
+----
+
+=== 更新数据：跨分区唯一性验证
+
+[source,sql]
+----
+-- 更新操作同样受全局唯一索引约束
+UPDATE gidxpart SET b = 2 WHERE a = 2;
+-- ERROR: duplicate key value violates unique constraint（b=2 已存在）
+
+UPDATE gidxpart SET b = 12 WHERE a = 12;
+-- 成功（b=12 在全局范围内唯一）
+----
+
+=== 分区的 ATTACH 与 DETACH
+
+[source,sql]
+----
+-- 创建一个独立的表，用于后续 ATTACH
+CREATE TABLE gidxpart_new (a int, b int, c text);
+INSERT INTO gidxpart_new VALUES (100001, 11, 'conflict with gidxpart1');
+
+-- ATTACH 时若存在跨分区重复值，操作将失败
+ALTER TABLE gidxpart ATTACH PARTITION gidxpart_new
+    FOR VALUES FROM (100000) TO (199999);
+-- ERROR: duplicate key value violates unique constraint
+
+-- DETACH 分区后，该分区的全局索引类型恢复为普通索引
+ALTER TABLE gidxpart DETACH PARTITION gidxpart2;
+----
+
+== 功能限制
+
+. `GLOBAL` 关键字必须与 `UNIQUE` 配合使用，不支持创建全局非唯一索引；
+. 全局唯一索引仅适用于**分区表**，普通表不支持该关键字；
+. 每次插入或更新操作均需扫描所有分区以验证唯一性，在分区数量较多或数据量较大时存在**性能开销**；
+. 通过 `ATTACH PARTITION` 挂载分区时，若新分区中存在与其他分区重复的数据，挂载操作将失败；
+. 分区被 `DETACH` 后，其对应的全局索引自动降级为普通局部索引；
+. 不支持在子分区（二级分区）上单独创建全局唯一索引，全局唯一性约束由顶层分区表统一管理。
