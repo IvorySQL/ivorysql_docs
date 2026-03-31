@@ -1,0 +1,220 @@
+:sectnums:
+:sectnumlevels: 5
+
+= PgBouncer
+
+== 概述
+
+PgBouncer 是轻量级连接池中间件，部署在应用层与数据库之间，通过复用后端连接来降低连接开销、保护数据库资源、提高应用并发性能。
+
+PgBouncer 使用标准 PostgreSQL 通信协议，IvorySQL 完全兼容该协议。
+
+*三种连接池模式：*
+
+[cols="1,2,2"]
+|===
+| 模式 | 说明 | 适用场景
+
+| session
+| 客户端连接期间独占一个后端连接
+| 需要过程内 COMMIT、完整会话特性
+
+| transaction
+| 每个事务结束后归还连接
+| 最常用，连接复用率最高
+
+| statement
+| 每条语句后归还连接
+| 限制最多，不支持显式事务
+|===
+
+== 安装
+
+[TIP]
+源码测试安装环境为 Ubuntu 24.04。
+
+=== 依赖
+
+[literal]
+----
+# Ubuntu / Debian
+sudo apt install libevent-dev libssl-dev pkg-config
+
+# RHEL / Rocky Linux
+sudo dnf install libevent-devel openssl-devel pkgconfig
+----
+
+=== 源码安装
+
+[literal]
+----
+git clone https://github.com/pgbouncer/pgbouncer.git
+cd pgbouncer
+
+./autogen.sh
+
+./configure \
+    --prefix=/usr/ivory-5 \
+    --with-openssl \
+    --with-pam
+
+make -j4
+make install
+cp pgbouncer /usr/ivory-5/bin/
+----
+
+=== 验证安装
+
+[literal]
+----
+pgbouncer --version
+# PgBouncer 1.25.1
+# libevent 2.1.12-stable
+# tls: OpenSSL 3.0.2 15 Mar 2022
+----
+
+== 配置
+
+=== 连接 IvorySQL PG 模式（端口 5432）
+
+创建 `/etc/pgbouncer/pgbouncer.ini`：
+
+[literal]
+----
+[databases]
+postgres = host=127.0.0.1 port=5432 dbname=postgres
+
+[pgbouncer]
+listen_addr = 127.0.0.1
+listen_port = 6432
+auth_type = trust
+auth_file = /etc/pgbouncer/userlist.txt
+pool_mode = transaction
+max_client_conn = 200
+default_pool_size = 20
+logfile = /var/log/pgbouncer/pgbouncer.log
+pidfile = /var/run/pgbouncer/pgbouncer.pid
+----
+
+=== 连接 IvorySQL Oracle 兼容模式（端口 1521）
+
+[literal]
+----
+[databases]
+postgres = host=127.0.0.1 port=1521 dbname=postgres
+
+[pgbouncer]
+listen_addr = 127.0.0.1
+listen_port = 2521
+auth_type = trust
+auth_file = /etc/pgbouncer/userlist.txt
+
+# Oracle 兼容模式建议使用 session 模式
+pool_mode = session
+
+max_client_conn = 200
+default_pool_size = 20
+logfile = /var/log/pgbouncer/pgbouncer_oracle.log
+pidfile = /var/run/pgbouncer/pgbouncer_oracle.pid
+----
+
+=== 用户认证文件
+
+[literal]
+----
+# /etc/pgbouncer/userlist.txt
+# 格式："用户名" "密码"（trust 模式密码留空）
+"postgres" ""
+"app_user" "app_password"
+----
+
+=== 启动与停止
+
+[literal]
+----
+# 前台启动（调试）
+pgbouncer /etc/pgbouncer/pgbouncer.ini
+
+# 后台启动
+pgbouncer -d /etc/pgbouncer/pgbouncer.ini
+
+# 重载配置（不中断连接）
+kill -HUP $(cat /var/run/pgbouncer/pgbouncer.pid)
+
+# 停止
+kill -INT $(cat /var/run/pgbouncer/pgbouncer.pid)
+----
+
+== 使用
+
+=== 客户端连接
+
+通过 PgBouncer 连接与直连 IvorySQL 语法完全一致，只需修改端口：
+
+[literal]
+----
+# PG 模式（经由 PgBouncer）
+psql -U postgres -p 6432 -d postgres
+
+# Oracle 兼容模式（经由 PgBouncer）
+psql -U postgres -p 2521 -d postgres
+----
+
+=== 管理控制台
+
+PgBouncer 提供内置管理数据库：
+
+[literal]
+----
+psql -U postgres -p 6432 -d pgbouncer
+----
+
+[literal]
+----
+-- 查看连接池状态
+SHOW POOLS;
+
+-- 查看统计信息
+SHOW STATS;
+
+-- 查看客户端连接
+SHOW CLIENTS;
+
+-- 查看后端连接
+SHOW SERVERS;
+
+-- 重载配置
+RELOAD;
+----
+
+=== Oracle 兼容模式
+
+[literal]
+----
+-- 确认 Oracle 模式已激活
+SHOW ivorysql.compatible_mode;
+--  ivorysql.compatible_mode
+-- --------------------------
+--  oracle
+
+-- Oracle 数据类型与函数
+CREATE TABLE bouncer_test (
+    id     NUMBER(10) PRIMARY KEY,
+    name   VARCHAR2(100),
+    hired  DATE DEFAULT SYSDATE
+);
+
+INSERT INTO bouncer_test VALUES (1, 'Alice', SYSDATE);
+
+SELECT id,
+       NVL(name, 'N/A')                   AS name,
+       DECODE(id, 1, 'CEO', 'Staff')       AS title,
+       TO_CHAR(hired, 'YYYY-MM-DD')        AS hire_date
+FROM bouncer_test;
+
+-- Oracle 序列
+CREATE SEQUENCE ora_seq START WITH 100 INCREMENT BY 10;
+SELECT ora_seq.NEXTVAL FROM DUAL;   -- 100
+SELECT ora_seq.NEXTVAL FROM DUAL;   -- 110
+SELECT ora_seq.CURRVAL FROM DUAL;   -- 110
+----
