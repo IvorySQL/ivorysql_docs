@@ -1,0 +1,198 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_curl
+
+== 概述
+
+pg_curl 是一个基于 libcurl 的 PostgreSQL 扩展，它将 cURL 的强大数据传输能力直接引入数据库内部，允许用户通过 SQL 函数调用完成各种网络协议的数据传输操作，无需借助外部程序或中间件。
+
+与只支持 HTTP 的轻量级扩展不同，pg_curl 全面封装了 libcurl 的 easy interface API，支持 DICT、FILE、FTP、FTPS、GOPHER、HTTP、HTTPS、IMAP、IMAPS、LDAP、LDAPS、MQTT、POP3、POP3S、RTMP、RTMPS、RTSP、SCP、SFTP、SMB、SMBS、SMTP、SMTPS、TELNET、TFTP、WS 和 WSS 等二十余种协议，提供了极为丰富的网络交互能力。
+
+典型应用场景包括：在触发器或存储过程中向外部系统发送 HTTP 通知；直接从数据库发送邮件；通过 FTP/SFTP 上传或下载文件；调用第三方 REST API 并将结果写回数据库表；以及在数据处理流程中与 MQTT 消息代理、LDAP 目录等各类后端服务进行集成。
+
+pg_curl 采用 MIT 许可证，项目地址：https://github.com/RekGRpth/pg_curl 。
+
+== 功能特点
+
+* *多协议支持*：基于 libcurl，支持 HTTP/HTTPS、FTP/FTPS、SMTP/SMTPS、IMAP、POP3、SCP、SFTP、MQTT、LDAP 等二十余种协议，覆盖绝大多数网络集成场景。
+* *完整的 HTTP 方法支持*：支持 GET、POST（URL 编码、JSON、multipart/form-data）、PUT、DELETE、PATCH 等标准 HTTP 方法，并可通过 `curl_easy_setopt_customrequest` 指定任意自定义方法。
+* *灵活的请求构造*：提供细粒度的 `curl_easy_setopt_*` 系列函数，可精确控制请求头、认证信息、超时、代理、TLS 证书、Cookie 等各项参数。
+* *多种认证方式*：支持 Basic Auth（用户名/密码）、Bearer Token、NTLM、Digest、OAuth 等多种认证机制。
+* *文件传输*：支持通过 FTP/FTPS/SFTP/SCP 上传（`curl_easy_setopt_readdata`）和下载文件，上传数据以 `bytea` 类型直接传入。
+* *邮件发送*：通过 SMTP/SMTPS 直接在数据库内发送邮件，支持设置发件人、收件人、邮件头及 MIME 正文。
+* *响应解析*：提供 `curl_easy_getinfo_data_in()`、`curl_easy_getinfo_header_in()` 等函数获取响应体和响应头，并可通过正则表达式将头信息解析为键值表。
+* *错误处理*：`curl_easy_getinfo_errcode()`、`curl_easy_getinfo_errdesc()` 及 `curl_easy_getinfo_errbuf()` 提供完整的错误码和错误描述，便于调试。
+* *超时与中断*：通过向 libcurl 注册进度回调并周期性检查 PostgreSQL 的取消标志（`QueryCancelPending`），支持被 `statement_timeout`、`pg_cancel_backend()` 等方式中断，防止长时间请求阻塞连接。
+* *URL 编码工具*：内置 `curl_easy_escape()` 和 `curl_easy_unescape()` 函数，方便在 SQL 中进行 URL 编码和解码。
+
+== 安装
+
+[TIP]
+以下示例环境为 Ubuntu 24.04（x86_64），已安装 IvorySQL 5 及以上版本，安装路径为 `/usr/local/ivorysql/ivorysql-5`。
+
+=== 安装依赖
+
+pg_curl 依赖系统的 libcurl 开发库，安装前需确认已安装该依赖：
+
+[source,shell]
+----
+sudo apt install libcurl4-openssl-dev
+----
+
+=== 源码编译安装
+
+从 https://github.com/RekGRpth/pg_curl 获取源码，然后执行编译安装：
+
+[source,shell]
+----
+git clone https://github.com/RekGRpth/pg_curl.git
+cd pg_curl
+# 确保 pg_config 可访问，或通过 PG_CONFIG 显式指定
+PG_CONFIG=/usr/local/ivorysql/ivorysql-5/bin/pg_config make
+PG_CONFIG=/usr/local/ivorysql/ivorysql-5/bin/pg_config make install
+----
+
+安装成功后，`pg_curl.so` 及对应的 SQL 脚本会被放置到 IvorySQL 的扩展目录中。
+
+== 创建 Extension 并验证版本
+
+使用 psql 连接到数据库（PG 模式端口 5432 或 Oracle 模式端口 1521 均可），执行如下命令：
+
+[source,sql]
+----
+CREATE EXTENSION pg_curl;
+
+SELECT name, default_version, installed_version, comment
+  FROM pg_available_extensions
+ WHERE name = 'pg_curl';
+----
+
+预期输出类似：
+
+[source,text]
+----
+  name   | default_version | installed_version |                                                                comment
+---------+-----------------+-------------------+----------------------------------------------------------------------------------------------------------------------------------------
+ pg_curl | 2.4             | 2.4               | PostgreSQL cURL allows most curl actions, including data transfer with URL syntax via HTTP, HTTPS, FTP, FTPS, GOPHER, TFTP, SCP, ...
+(1 row)
+----
+
+== 使用
+
+pg_curl 采用"先配置、再执行、后取结果"的调用模式，核心流程如下：
+
+. 调用 `curl_easy_reset()` 初始化（或重置）当前 cURL 会话。
+. 调用各 `curl_easy_setopt_*`、`curl_header_append`、`curl_postfield_append` 等函数配置请求参数。
+. 调用 `curl_easy_perform()` 执行请求。
+. 调用 `curl_easy_getinfo_*` 系列函数获取响应结果或错误信息。
+
+=== HTTP GET
+
+[source,sql]
+----
+BEGIN;
+SELECT curl_easy_reset();
+SELECT curl_easy_setopt_url('https://httpbin.org/get?');
+SELECT curl_url_append('key1', 'value1');
+SELECT curl_url_append('key2', 'hello world');  -- 自动 URL 编码
+SELECT curl_easy_perform();
+SELECT convert_from(curl_easy_getinfo_data_in(), 'utf-8');
+END;
+----
+
+=== HTTP POST（JSON）
+
+POST 表单（`curl_postfield_append`）和 multipart（`curl_mime_data`）的用法与此类似，替换数据设置函数即可。
+
+[source,sql]
+----
+BEGIN;
+SELECT curl_easy_reset();
+SELECT curl_easy_setopt_postfields(convert_to('{"name":"IvorySQL"}', 'utf-8'));
+SELECT curl_easy_setopt_url('https://httpbin.org/post');
+SELECT curl_header_append('Content-Type', 'application/json; charset=utf-8');
+SELECT curl_easy_perform();
+SELECT convert_from(curl_easy_getinfo_data_in(), 'utf-8');
+END;
+----
+
+=== 认证与请求头
+
+Basic Auth 使用 `curl_easy_setopt_username` / `curl_easy_setopt_password`；Bearer Token 及其他自定义头均通过 `curl_header_append` 添加：
+
+[source,sql]
+----
+BEGIN;
+SELECT curl_easy_reset();
+SELECT curl_easy_setopt_url('https://httpbin.org/bearer');
+SELECT curl_header_append('Authorization', 'Bearer <your_token>');
+SELECT curl_easy_perform();
+SELECT convert_from(curl_easy_getinfo_data_in(), 'utf-8')::jsonb;
+END;
+----
+
+=== 错误处理与超时
+
+`curl_easy_perform()` 成功返回后，可通过以下函数检查执行状态（`errcode` 为 0 表示成功）：
+
+[source,sql]
+----
+BEGIN;
+SELECT curl_easy_reset();
+SELECT curl_easy_setopt_url('https://httpbin.org/get');
+SELECT curl_easy_perform();
+SELECT
+    curl_easy_getinfo_errcode() AS errcode,
+    curl_easy_getinfo_errdesc() AS errdesc;
+END;
+----
+
+pg_curl 通过 libcurl 进度回调检查 PostgreSQL 取消标志，`statement_timeout` 触发时请求会被立即中止并回滚当前事务：
+
+[source,sql]
+----
+BEGIN;
+SET LOCAL statement_timeout = '3s';
+SELECT curl_easy_reset();
+SELECT curl_easy_setopt_url('https://httpbin.org/delay/10');
+SELECT curl_easy_perform();  -- 超时后抛出 query_canceled，事务回滚
+END;
+----
+
+== IvorySQL 适配说明
+
+=== 双端口兼容
+
+IvorySQL 采用双端口架构，同时支持 PostgreSQL 模式（默认端口 *5432*）和 Oracle 兼容模式（默认端口 *1521*）：
+
+* 连接 *5432* 端口（PG 模式）：接受标准 PostgreSQL SQL 语法。
+* 连接 *1521* 端口（Oracle 模式）：接受 Oracle 兼容 SQL 语法。
+
+pg_curl 在两种模式下均可正常使用，`CREATE EXTENSION pg_curl` 在 1521 和 5432 端口均能成功执行。
+
+=== Oracle 模式注意事项
+
+在 Oracle 模式（1521 端口）下使用 pg_curl 时，以下几点需要注意：
+
+* pg_curl 的所有函数均通过普通 `SELECT` 语句调用（如 `SELECT curl_easy_reset()`），在 Oracle 模式下同样有效；也可以使用 Oracle 惯用的 `SELECT curl_easy_reset() FROM DUAL` 写法。
+* `ivorysql.enable_emptystring_to_NULL` 参数会影响空字符串的处理行为。回归测试中已设置 `SET ivorysql.enable_emptystring_to_NULL = 'off'` 以确保空值参数（如空表单字段）按预期传递，生产环境中需根据实际需求配置该参数。
+
+=== 在 PL/iSQL 中使用
+
+pg_curl 可在 IvorySQL 的 PL/iSQL（Oracle 兼容存储过程语言）中调用，实现数据变更时自动推送外部通知。PL/iSQL 使用 Oracle 风格的 `IS` 关键字声明存储过程，调用返回值的函数时通过赋值给局部变量来丢弃结果：
+
+[source,sql]
+----
+-- 在 PL/iSQL 存储过程中调用 pg_curl（Oracle 模式，IS 语法）
+CREATE OR REPLACE PROCEDURE notify_external(p_payload IN VARCHAR2) IS
+    v_ok BOOLEAN;
+BEGIN
+    v_ok := curl_easy_reset();
+    v_ok := curl_easy_setopt_postfields(convert_to(p_payload, 'utf-8'));
+    v_ok := curl_easy_setopt_url('https://hooks.example.com/notify');
+    v_ok := curl_header_append('Content-Type', 'application/json');
+    v_ok := curl_easy_perform();
+END;
+----

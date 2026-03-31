@@ -53,6 +53,7 @@
 *** xref:master/ecosystem_components/pg_ai_query.adoc[pg_ai_query]
 *** xref:master/ecosystem_components/wal2json.adoc[wal2json]
 *** xref:master/ecosystem_components/pg_stat_monitor.adoc[pg_stat_monitor]
+*** xref:master/ecosystem_components/pg_curl.adoc[pg_curl]
 * Monitor and O&M
 ** xref:master/getting-started/daily_monitoring.adoc[Monitoring]
 ** xref:master/getting-started/daily_maintenance.adoc[Maintenance]
