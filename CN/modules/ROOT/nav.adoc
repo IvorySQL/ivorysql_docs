@@ -30,6 +30,7 @@
 ** xref:v1.17/18.adoc[8、内置数据类型与内置函数]
 ** xref:v1.17/19.adoc[9、新增Oracle兼容模式的端口与IP]
 ** xref:v1.17/41.adoc[10、全局唯一索引]
+** xref:v1.17/42.adoc[11、ALTER TABLE 修改列类型时自动重建依赖视图]
 * xref:v1.17/20.adoc[社区贡献指南]
 * xref:v1.17/21.adoc[工具参考]
 * xref:v1.17/22.adoc[FAQ]

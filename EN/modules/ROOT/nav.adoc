@@ -30,6 +30,7 @@
 ** xref:v1.17/18.adoc[8、Built-in data types and built-in functions]
 ** xref:v1.17/19.adoc[9、Added Oracle compatibility mode ports and IP]
 ** xref:v1.17/41.adoc[10、Global Unique Index]
+** xref:v1.17/42.adoc[11、Auto-Rebuild Dependent Views on ALTER TABLE Column Type Change]
 * xref:v1.17/20.adoc[Community contribution]
 * xref:v1.17/21.adoc[Tool Reference]
 * xref:v1.17/22.adoc[FAQ]
