@@ -1,0 +1,129 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= 新增无主键表默认支持逻辑复制
+
+== 功能介绍
+
+在 PostgreSQL/IvorySQL 的逻辑复制中，UPDATE 和 DELETE 操作需要依赖复制标识（Replica Identity）来定位订阅端的目标行。默认情况下，表使用 `REPLICA IDENTITY DEFAULT`，此时系统依赖主键（Primary Key）来定位行。如果表没有主键，复制策略将回退为 `REPLICA IDENTITY NOTHING`，此时 UPDATE 和 DELETE 操作将因无法定位行而报错。
+
+IvorySQL 新增了 GUC 参数 `logical_replication_fallback_to_full_identity`。当该参数开启后，如果表的复制标识为 `DEFAULT` 且没有主键，系统会自动将其回退为 `REPLICA IDENTITY FULL`——即在 WAL 中记录完整的旧行数据，使无主键表的 UPDATE 和 DELETE 操作能够通过逻辑复制正常执行。
+
+该功能仅在发布端（Publisher）生效，订阅端无需任何额外配置。
+
+== 参数说明
+
+[source,sql]
+----
+# postgresql.conf
+logical_replication_fallback_to_full_identity = on
+----
+
+参数说明：
+
+- 类型：`boolean`；
+- 默认值：`off`；
+- 作用域：`sighup`，可通过修改 `postgresql.conf` 后执行 `SELECT pg_reload_conf();` 使配置生效，无需重启数据库；
+- 适用节点：仅在发布端（Publisher）生效，订阅端无需配置。
+
+== 测试用例
+
+=== 未开启参数时，无主键表的 UPDATE 和 DELETE 复制失败
+
+[source,sql]
+----
+-- 发布端：创建无主键表
+CREATE TABLE test_no_pk (id int, name text);
+
+-- 订阅端：创建相同的表结构
+CREATE TABLE test_no_pk (id int, name text);
+
+-- 发布端：创建发布并添加表
+CREATE PUBLICATION tap_pub FOR TABLE test_no_pk;
+
+-- 订阅端：创建订阅
+CREATE SUBSCRIPTION tap_sub CONNECTION 'host=publisher dbname=postgres' PUBLICATION tap_pub;
+
+-- 发布端：INSERT 操作始终正常（不依赖复制标识）
+INSERT INTO test_no_pk VALUES (1, 'alice');
+
+-- 发布端：UPDATE 操作失败（无主键，无法定位目标行）
+UPDATE test_no_pk SET name = 'bob' WHERE id = 1;
+-- ERROR:  cannot update table "test_no_pk" because it does not have a replica identity and publishes updates
+
+-- 发布端：DELETE 操作同样失败
+DELETE FROM test_no_pk WHERE id = 1;
+-- ERROR:  cannot delete from table "test_no_pk" because it does not have a replica identity and publishes deletes
+----
+
+=== 开启参数后，无主键表的 UPDATE 和 DELETE 复制正常
+
+[source,sql]
+----
+-- 发布端：开启参数并重新加载配置
+ALTER SYSTEM SET logical_replication_fallback_to_full_identity = on;
+SELECT pg_reload_conf();
+
+-- 发布端：INSERT 正常
+INSERT INTO test_no_pk VALUES (1, 'alice');
+
+-- 发布端：UPDATE 正常（自动按 FULL 方式记录完整旧行数据）
+UPDATE test_no_pk SET name = 'bob' WHERE id = 1;
+
+-- 发布端：DELETE 正常
+DELETE FROM test_no_pk WHERE id = 1;
+----
+
+=== 参数不影响有主键的表
+
+[source,sql]
+----
+-- 有主键的表始终使用主键定位行，不受该参数影响
+CREATE TABLE test_with_pk (id int PRIMARY KEY, name text);
+
+-- 无论参数是否开启，UPDATE 和 DELETE 均正常工作
+INSERT INTO test_with_pk VALUES (1, 'alice');
+UPDATE test_with_pk SET name = 'bob' WHERE id = 1;
+DELETE FROM test_with_pk WHERE id = 1;
+----
+
+=== 参数不影响显式设置为 REPLICA IDENTITY NOTHING 的表
+
+[source,sql]
+----
+-- 创建表并显式设置为 REPLICA IDENTITY NOTHING
+CREATE TABLE test_nothing (id int, data text);
+ALTER TABLE test_nothing REPLICA IDENTITY NOTHING;
+
+-- 即使开启了 logical_replication_fallback_to_full_identity，
+-- UPDATE 和 DELETE 仍然失败（参数不会覆盖显式的 NOTHING 设置）
+INSERT INTO test_nothing VALUES (1, 'test');
+UPDATE test_nothing SET data = 'modified' WHERE id = 1;
+-- ERROR:  cannot update table "test_nothing" because it does not have a replica identity and publishes updates
+
+DELETE FROM test_nothing WHERE id = 1;
+-- ERROR:  cannot delete from table "test_nothing" because it does not have a replica identity and publishes deletes
+----
+
+=== 运行时动态切换参数
+
+[source,sql]
+----
+-- 关闭参数：无主键表的 UPDATE/DELETE 将恢复为报错行为
+ALTER SYSTEM SET logical_replication_fallback_to_full_identity = off;
+SELECT pg_reload_conf();
+
+-- 开启参数：无主键表的 UPDATE/DELETE 将正常工作
+ALTER SYSTEM SET logical_replication_fallback_to_full_identity = on;
+SELECT pg_reload_conf();
+----
+
+== 功能限制
+
+. 该参数仅对复制标识为 `REPLICA IDENTITY DEFAULT` 且没有主键的表生效；已显式设置为 `FULL`、`USING INDEX` 或 `NOTHING` 的表不受影响；
+. 开启该参数后，无主键表的 UPDATE 和 DELETE 会在 WAL 中记录完整的旧行数据（与 `REPLICA IDENTITY FULL` 效果相同），相比有主键时只记录主键列，会增加 WAL 体积和网络传输量；
+. 该参数仅在发布端生效，订阅端无需配置；
+. INSERT 操作不依赖复制标识，无论该参数是否开启均可正常复制；
+. 该参数不替代显式的 `ALTER TABLE ... REPLICA IDENTITY FULL` 设置，也不会覆盖显式设置为 `NOTHING` 的表。

@@ -29,7 +29,9 @@
 ** xref:v1.17/17.adoc[7、兼容Oracle函数与存储过程]
 ** xref:v1.17/18.adoc[8、内置数据类型与内置函数]
 ** xref:v1.17/19.adoc[9、新增Oracle兼容模式的端口与IP]
-** xref:v1.17/41.adoc[10、全局唯一索引]
+* IvorySQL试验田
+** xref:v1.17/41.adoc[1、全局唯一索引]
+** xref:v1.17/42.adoc[2、新增无主键表默认支持逻辑复制]
 * xref:v1.17/20.adoc[社区贡献指南]
 * xref:v1.17/21.adoc[工具参考]
 * xref:v1.17/22.adoc[FAQ]
