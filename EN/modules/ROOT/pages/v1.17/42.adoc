@@ -1,0 +1,129 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= Default Logical Replication Support for Tables Without Primary Key
+
+== Overview
+
+In PostgreSQL/IvorySQL logical replication, UPDATE and DELETE operations rely on the Replica Identity to locate target rows on the subscriber side. By default, tables use `REPLICA IDENTITY DEFAULT`, where the system relies on the Primary Key to locate rows. If a table has no primary key, the replication strategy falls back to `REPLICA IDENTITY NOTHING`, causing UPDATE and DELETE operations to fail because the target rows cannot be located.
+
+IvorySQL introduces the GUC parameter `logical_replication_fallback_to_full_identity`. When this parameter is enabled, if a table's replica identity is `DEFAULT` and it has no primary key, the system automatically falls back to `REPLICA IDENTITY FULL` — recording the complete old row data in the WAL, allowing UPDATE and DELETE operations on tables without a primary key to work correctly through logical replication.
+
+This feature only takes effect on the publisher side; no additional configuration is required on the subscriber side.
+
+== Parameter Description
+
+[source,sql]
+----
+# postgresql.conf
+logical_replication_fallback_to_full_identity = on
+----
+
+Parameter description:
+
+- Type: `boolean`;
+- Default value: `off`;
+- Scope: `sighup`; takes effect by modifying `postgresql.conf` and executing `SELECT pg_reload_conf();`, no database restart required;
+- Applicable node: only takes effect on the publisher side; no configuration needed on the subscriber side.
+
+== Test Cases
+
+=== Without the Parameter Enabled, UPDATE and DELETE Replication Fails for Tables Without Primary Key
+
+[source,sql]
+----
+-- Publisher: create a table without a primary key
+CREATE TABLE test_no_pk (id int, name text);
+
+-- Subscriber: create the same table structure
+CREATE TABLE test_no_pk (id int, name text);
+
+-- Publisher: create a publication and add the table
+CREATE PUBLICATION tap_pub FOR TABLE test_no_pk;
+
+-- Subscriber: create a subscription
+CREATE SUBSCRIPTION tap_sub CONNECTION 'host=publisher dbname=postgres' PUBLICATION tap_pub;
+
+-- Publisher: INSERT operations always work (do not depend on replica identity)
+INSERT INTO test_no_pk VALUES (1, 'alice');
+
+-- Publisher: UPDATE fails (no primary key, cannot locate the target row)
+UPDATE test_no_pk SET name = 'bob' WHERE id = 1;
+-- ERROR:  cannot update table "test_no_pk" because it does not have a replica identity and publishes updates
+
+-- Publisher: DELETE also fails
+DELETE FROM test_no_pk WHERE id = 1;
+-- ERROR:  cannot delete from table "test_no_pk" because it does not have a replica identity and publishes deletes
+----
+
+=== With the Parameter Enabled, UPDATE and DELETE Replication Works for Tables Without Primary Key
+
+[source,sql]
+----
+-- Publisher: enable the parameter and reload the configuration
+ALTER SYSTEM SET logical_replication_fallback_to_full_identity = on;
+SELECT pg_reload_conf();
+
+-- Publisher: INSERT works
+INSERT INTO test_no_pk VALUES (1, 'alice');
+
+-- Publisher: UPDATE works (automatically records the complete old row data in FULL mode)
+UPDATE test_no_pk SET name = 'bob' WHERE id = 1;
+
+-- Publisher: DELETE works
+DELETE FROM test_no_pk WHERE id = 1;
+----
+
+=== The Parameter Does Not Affect Tables With a Primary Key
+
+[source,sql]
+----
+-- Tables with a primary key always use the primary key to locate rows, regardless of this parameter
+CREATE TABLE test_with_pk (id int PRIMARY KEY, name text);
+
+-- Whether the parameter is enabled or not, UPDATE and DELETE work normally
+INSERT INTO test_with_pk VALUES (1, 'alice');
+UPDATE test_with_pk SET name = 'bob' WHERE id = 1;
+DELETE FROM test_with_pk WHERE id = 1;
+----
+
+=== The Parameter Does Not Affect Tables Explicitly Set to REPLICA IDENTITY NOTHING
+
+[source,sql]
+----
+-- Create a table and explicitly set it to REPLICA IDENTITY NOTHING
+CREATE TABLE test_nothing (id int, data text);
+ALTER TABLE test_nothing REPLICA IDENTITY NOTHING;
+
+-- Even with logical_replication_fallback_to_full_identity enabled,
+-- UPDATE and DELETE still fail (the parameter does not override an explicit NOTHING setting)
+INSERT INTO test_nothing VALUES (1, 'test');
+UPDATE test_nothing SET data = 'modified' WHERE id = 1;
+-- ERROR:  cannot update table "test_nothing" because it does not have a replica identity and publishes updates
+
+DELETE FROM test_nothing WHERE id = 1;
+-- ERROR:  cannot delete from table "test_nothing" because it does not have a replica identity and publishes deletes
+----
+
+=== Dynamically Switching the Parameter at Runtime
+
+[source,sql]
+----
+-- Disable the parameter: UPDATE/DELETE on tables without a primary key will revert to error behavior
+ALTER SYSTEM SET logical_replication_fallback_to_full_identity = off;
+SELECT pg_reload_conf();
+
+-- Enable the parameter: UPDATE/DELETE on tables without a primary key will work normally
+ALTER SYSTEM SET logical_replication_fallback_to_full_identity = on;
+SELECT pg_reload_conf();
+----
+
+== Limitations
+
+. This parameter only takes effect for tables whose replica identity is `REPLICA IDENTITY DEFAULT` and that have no primary key; tables explicitly set to `FULL`, `USING INDEX`, or `NOTHING` are not affected;
+. When this parameter is enabled, UPDATE and DELETE on tables without a primary key will record the complete old row data in the WAL (same effect as `REPLICA IDENTITY FULL`), which increases WAL size and network traffic compared to recording only primary key columns when a primary key exists;
+. This parameter only takes effect on the publisher side; no configuration is needed on the subscriber side;
+. INSERT operations do not depend on replica identity and can always be replicated normally, regardless of whether this parameter is enabled;
+. This parameter does not replace an explicit `ALTER TABLE ... REPLICA IDENTITY FULL` setting, nor does it override tables explicitly set to `NOTHING`.
