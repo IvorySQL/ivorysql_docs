@@ -32,6 +32,7 @@
 * IvorySQL Experimental Features
 ** xref:v1.17/41.adoc[1、Global Unique Index]
 ** xref:v1.17/42.adoc[2、Default Logical Replication Support for Tables Without Primary Key]
+** xref:v1.17/43.adoc[3、Rebuild View After Column Type Changed]
 * xref:v1.17/20.adoc[Community contribution]
 * xref:v1.17/21.adoc[Tool Reference]
 * xref:v1.17/22.adoc[FAQ]

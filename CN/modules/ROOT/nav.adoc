@@ -32,6 +32,7 @@
 * IvorySQL试验田
 ** xref:v1.17/41.adoc[1、全局唯一索引]
 ** xref:v1.17/42.adoc[2、新增无主键表默认支持逻辑复制]
+** xref:v1.17/43.adoc[3、修改列类型时自动重建依赖视图]
 * xref:v1.17/20.adoc[社区贡献指南]
 * xref:v1.17/21.adoc[工具参考]
 * xref:v1.17/22.adoc[FAQ]
