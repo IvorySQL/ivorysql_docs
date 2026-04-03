@@ -1,0 +1,213 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_hint_plan
+
+== 概述
+
+pg_hint_plan 是一个扩展，允许通过 SQL 注释中的 hints 来控制 PostgreSQL/IvorySQL 的执行计划。它能够在不修改 SQL 逻辑的情况下优化查询性能，在 PostgreSQL 和 Oracle 兼容模式下均可正常工作。
+
+本项目针对 IvorySQL 5 进行适配，源码仓库位于 <https://github.com/ossc-db/pg_hint_plan>。
+
+== 安装
+
+[TIP]
+源码安装环境为 Ubuntu 24.04(x86_64)，环境中已经安装了IvorySQL 5及以上版本，安装路径为/usr/ivory-5
+
+=== 源码安装
+
+[literal]
+----
+# 克隆 PG18 分支源码
+
+git clone --branch PG18 https://github.com/ossc-db/pg_hint_plan.git
+cd pg_hint_plan
+
+# 编译安装插件
+make PG_CONFIG=/usr/ivory-5/bin/pg_config
+make PG_CONFIG=/usr/ivory-5/bin/pg_config install
+
+----
+
+=== 修改数据库配置文件
+
+修改 ivorysql.conf 文件，添加 pg_hint_plan 到 shared_preload_libraries：
+
+[literal]
+----
+shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_hint_plan'
+----
+
+重启数据库后配置生效。
+
+=== 加载扩展
+
+[literal]
+----
+postgres=# LOAD 'pg_hint_plan';
+LOAD
+----
+
+== Hint 类型
+
+pg_hint_plan 提供了多种类型的 hints 来控制查询执行计划的不同方面。
+
+=== 扫描方法 Hints
+
+指定表扫描方法的 hints：
+
+* `SeqScan(table)` - 顺序扫描
+* `IndexScan(table[ index])` - 索引扫描，可指定索引名
+* `BitmapScan(table[ index])` - 位图扫描，可指定索引名
+* `TidScan(table)` - TID 扫描
+
+否定形式的 hints（禁止使用某种扫描方法）：
+
+* `NoSeqScan(table)`
+* `NoIndexScan(table)`
+* `NoBitmapScan(table)`
+* `NoTidScan(table)`
+
+=== 连接方法 Hints
+
+指定表连接方法的 hints：
+
+* `HashJoin(table table[ table...])` - 哈希连接
+* `NestedLoop(table table[ table...])` - 嵌套循环连接
+* `MergeJoin(table table[ table...])` - 合并连接
+
+否定形式的 hints：
+
+* `NoHashJoin(table table)`
+* `NoNestedLoop(table table)`
+* `NoMergeJoin(table table)`
+
+=== 连接顺序 Hints
+
+* `Leading(table table[ table...])` - 指定连接顺序，表按顺序连接
+
+=== 并行执行 Hints
+
+* `Parallel(table count[ workers])` - 设置并行工作进程数量
+    * `count` - 是否使用并行（0 表示不使用，1 表示使用）
+    * `workers` - 并行工作进程数量（可选，默认值为规划器计算的值）
+
+=== 其他 Hints
+
+* `Set(enable_*)` - 设置 GUC 参数
+* `Rows(table table[ table...] correction)` - 修正行数估计值
+
+== 使用示例
+
+=== 基本用法示例
+
+使用 HashJoin 和 SeqScan hints：
+
+[literal]
+----
+postgres=# /*+
+   HashJoin(a b)
+   SeqScan(a)
+*/
+EXPLAIN SELECT *
+FROM pgbench_branches b
+JOIN pgbench_accounts a ON b.bid = a.bid
+ORDER BY a.aid;
+----
+
+=== 复杂多 Hint 示例
+
+组合使用多个 hints 来控制复杂查询的执行计划：
+
+[literal]
+----
+postgres=# /*+
+   NestedLoop(t1 t2)
+   IndexScan(t2 t2_pkey)
+   MergeJoin(t1 t2 t3)
+   Leading(t1 t2 t3)
+*/
+EXPLAIN SELECT * FROM table1 t1
+JOIN table2 t2 ON t1.id = t2.id
+JOIN table3 t3 ON t2.id = t3.id;
+----
+
+=== 并行执行示例
+
+为多个表设置并行度和连接方法：
+
+[literal]
+----
+postgres=# /*+
+   Parallel(t1 3)
+   Parallel(t2 5)
+   HashJoin(t1 t2)
+*/
+EXPLAIN SELECT * FROM large_table1 t1
+JOIN large_table2 t2 ON t1.id = t2.id;
+----
+
+=== 指定索引扫描示例
+
+强制使用特定索引进行扫描：
+
+[literal]
+----
+postgres=# /*+
+   IndexScan(employees emp_name_idx)
+*/
+EXPLAIN SELECT * FROM employees
+WHERE last_name = 'SMITH';
+----
+
+== Hint 表（可选功能）
+
+pg_hint_plan 提供了一个可选的 hint 表功能，可以在表中持久化存储 hints。
+
+=== 创建 Hint 表
+
+[literal]
+----
+postgres=# CREATE TABLE hint_plan.hints (
+    id serial PRIMARY KEY,
+    norm_query_string text NOT NULL,
+    application_name text,
+    hints text NOT NULL,
+    CONSTRAINT hint_plan_hints_norm_query_string_key UNIQUE (norm_query_string, application_name)
+);
+----
+
+=== 插入 Hints
+
+[literal]
+----
+postgres=# INSERT INTO hint_plan.hints (norm_query_string, application_name, hints)
+VALUES (
+    'SELECT * FROM table1 WHERE id = ?;',
+    'psql',
+    'SeqScan(table1)'
+);
+----
+
+通过 hint 表，可以为特定查询自动应用 hints，无需修改 SQL 语句。
+
+== IvorySQL 兼容性
+
+=== Oracle 兼容模式
+
+pg_hint_plan 在 PostgreSQL 和 Oracle 兼容模式下均可正常工作。hint 语法保持一致，并与 IvorySQL 特有的数据类型（VARCHAR2、NUMBER 等）兼容。
+
+=== Oracle 模式示例
+
+[literal]
+----
+-- 连接到 1521 端口（Oracle 模式）
+postgres=# /*+
+   IndexScan(employees emp_name_idx)
+*/
+SELECT * FROM employees WHERE last_name = 'SMITH';
+----
+
+在 Oracle 兼容模式下，hint 的使用方法与 PostgreSQL 模式完全相同，可以正常控制包含 IvorySQL 特有数据类型和语法的查询执行计划。
+
