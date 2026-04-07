@@ -1,0 +1,171 @@
+:sectnums:
+:sectnumlevels: 5  
+
+:imagesdir: ./_images
+
+= Rebuild View After Column Type Changed
+
+== Feature Overview    
+
+In standard PostgreSQL, if a column is referenced by a view, attempting to change its data type via `ALTER TABLE ... ALTER COLUMN ... TYPE` results
+ in an immediate error:
+
+----     
+ERROR: cannot alter type of a column used by a view or rule
+----     
+
+Users are required to manually drop all dependent views, perform the column type change, and then recreate each view one by one — a tedious and 
+error-prone process that becomes particularly difficult when multiple levels of cascaded view dependencies exist.
+
+IvorySQL enhances this behavior: when a column type change is executed, the database automatically saves the definitions of all dependent views    
+(including indirectly dependent cascaded views), and after completing the type change, rebuilds those views in the correct dependency order —
+entirely transparent to the user. If an error occurs during rebuilding (for example, a view uses an operator not supported by the new type), the 
+entire `ALTER TABLE` operation is rolled back, ensuring data consistency.
+
+This feature is supported in both PG-compatible mode and Oracle-compatible mode. 
+
+== Syntax 
+
+The syntax is identical to the standard `ALTER TABLE` — no additional keywords are required:  
+
+[source,sql] 
+---- 
+ALTER TABLE table_name ALTER COLUMN column_name TYPE new_type;
+----
+
+Parameter description: 
+
+- `table_name`: The target table name, optionally schema-qualified; 
+- `column_name`: The name of the column whose type is to be changed;
+- `new_type`: The target data type, which must be compatible with the original type or implicitly castable.
+
+== Test Cases
+
+=== Single View Dependency: Automatic Rebuild
+
+[source,sql]
+----
+-- Create the base table
+CREATE TABLE t (a int, b text); 
+ 
+-- Create a view that references column a  
+CREATE VIEW v AS SELECT a, b FROM t;
+
+-- Standard PostgreSQL would error here; IvorySQL rebuilds the view automatically 
+ALTER TABLE t ALTER COLUMN a TYPE bigint;
+
+-- Verify the view is still valid and the column type has been updated
+SELECT pg_typeof(a) FROM v LIMIT 1;
+-- Returns: bigint     
+ 
+\d v  
+                 View "public.v"
+ Column |  Type  | Collation | Nullable | Default 
+--------+--------+-----------+----------+---------
+ a      | bigint |           |          | 
+ b      | text   |           |          | 
+----            
+
+=== Cascaded View Dependencies: Ordered Automatic Rebuild
+
+[source,sql] 
+----
+-- Create the base table  
+CREATE TABLE t (a int, b text);
+
+-- Create two levels of view dependency: v2 depends on v1, v1 depends on t 
+CREATE VIEW v1 AS SELECT a, b FROM t;
+CREATE VIEW v2 AS SELECT a FROM v1;  
+
+-- Change the column type; v1 and v2 are automatically rebuilt in dependency order 
+ALTER TABLE t ALTER COLUMN a TYPE bigint;
+
+-- Verify both views have been correctly rebuilt
+SELECT pg_typeof(a) FROM v1 LIMIT 1;
+-- Returns: bigint      
+ pg_typeof 
+-----------
+(0 rows)
+ 
+SELECT pg_typeof(a) FROM v2 LIMIT 1;  
+-- Returns: bigint
+ pg_typeof 
+-----------
+(0 rows)
+----
+
+=== Preserving View Options: security_barrier
+
+[source,sql]    
+----
+-- Create a view with the security_barrier option   
+CREATE VIEW v WITH (security_barrier) AS SELECT a, b FROM t;
+
+ALTER TABLE t ALTER COLUMN a TYPE bigint;
+
+-- Verify the security_barrier option is correctly preserved after rebuild 
+SELECT relname, reloptions FROM pg_class WHERE relname = 'v';
+-- reloptions: {security_barrier=true}    
+ relname |       reloptions        
+---------+-------------------------
+ v       | {security_barrier=true}
+(1 row)                        
+----  
+
+=== Preserving View Options: WITH CHECK OPTION 
+ 
+[source,sql]  
+----  
+-- Create a view with WITH LOCAL CHECK OPTION
+CREATE VIEW v AS SELECT a, b FROM t WHERE a > 0
+    WITH LOCAL CHECK OPTION;
+
+ALTER TABLE t ALTER COLUMN a TYPE bigint;
+
+-- Verify the CHECK OPTION is correctly preserved after rebuild
+\d+ v
+                              View "public.v"
+ Column |  Type  | Collation | Nullable | Default | Storage  | Description 
+--------+--------+-----------+----------+---------+----------+-------------
+ a      | bigint |           |          |         | plain    | 
+ b      | text   |           |          |         | extended | 
+View definition:
+ SELECT t.a,
+    t.b
+   FROM t
+  WHERE t.a > 0;
+Options: check_option=local
+----
+ 
+=== Full Rollback on Rebuild Failure 
+
+[source,sql]
+----
+CREATE TABLE t (a int, b text);
+CREATE VIEW v AS SELECT a::integer + 1 AS a_plus FROM t;
+
+-- If the new type is incompatible with expressions in the view, the entire operation rolls back.
+-- For example, changing a to type text makes the expression a::integer + 1 invalid.  
+ALTER TABLE t ALTER COLUMN a TYPE text;    
+-- ERROR: operator does not exist: text + integer   
+-- HINT: ...
+-- ROLLBACK                                                                                                                                        
+
+-- Confirm that the table structure and view are both unaffected
+\d t
+                 Table "public.t"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ a      | integer |           |          | 
+ b      | text    |           |          | 
+----     
+
+== Limitations
+
+. If a view uses an operator or function incompatible with the new column type (e.g., arithmetic on a `text` column), the rebuild will fail and the
+ entire `ALTER TABLE` operation will be rolled back;
+. Only **views** are automatically rebuilt; **rules** that depend on the affected column will still cause an error;       
+. The column type change must satisfy PostgreSQL's type casting rules; arbitrary conversions between unrelated types are not supported;       
+. Views are rebuilt in topological dependency order; circular dependencies (normally prevented by the database) are not handled;              
+. The rebuild process runs within the same transaction, meaning dependent views are unavailable during the operation — this may affect concurrent 
+queries in high-concurrency environments.           

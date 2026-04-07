@@ -1,0 +1,170 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= 修改列类型时自动重建依赖视图
+
+== 功能介绍
+
+在标准 PostgreSQL 中，若某列被视图所引用，执行 `ALTER TABLE ... ALTER COLUMN ... TYPE` 修改该列的数据类型时，数据库会直接报错：
+ 
+----
+ERROR: cannot alter type of a column used by a view or rule
+----
+ 
+用户必须手动删除所有依赖视图，完成列类型修改后再逐一重建，操作繁琐且容易出错，在存在多层视图依赖时尤为困难。
+
+IvorySQL 对此行为进行了增强：执行列类型变更时，数据库会自动保存所有依赖视图（包括间接依赖的级联视图）的定义，在完成类型修改后按正确顺序重建这些视图
+，对用户完全透明。若重建过程中发生错误（例如视图使用了新类型不支持的操作符），整个 `ALTER TABLE` 操作将整体回滚，保证数据一致性。
+
+该功能同时支持 PG 兼容模式与 Oracle 兼容模式。
+ 
+== 语法
+
+语法与标准 `ALTER TABLE` 完全一致，无需额外关键字：
+ 
+[source,sql] 
+----            
+ALTER TABLE table_name ALTER COLUMN column_name TYPE new_type;
+----
+
+参数说明：
+ 
+- `table_name`：目标表名，可带 schema 前缀；
+- `column_name`：需要修改类型的列名；
+- `new_type`：目标数据类型，需与原类型兼容或可隐式转换。
+
+== 测试用例
+                                                                                                                                                   
+=== 单视图依赖：自动重建
+ 
+[source,sql]
+----      
+-- 创建基表
+CREATE TABLE t (a int, b text);
+
+-- 创建依赖列 a 的视图 
+CREATE VIEW v AS SELECT a, b FROM t;
+
+-- 标准 PostgreSQL 此处会报错，IvorySQL 自动重建视图 
+ALTER TABLE t ALTER COLUMN a TYPE bigint;
+
+-- 验证视图仍然有效，且列类型已更新
+SELECT pg_typeof(a) FROM v LIMIT 1; 
+-- 返回 bigint
+ pg_typeof 
+-----------
+(0 rows)
+
+ 
+\d v  
+                 View "public.v"
+ Column |  Type  | Collation | Nullable | Default 
+--------+--------+-----------+----------+---------
+ a      | bigint |           |          | 
+ b      | text   |           |          | 
+---- 
+
+=== 级联视图依赖：按序自动重建
+ 
+[source,sql] 
+---- 
+-- 创建基表
+CREATE TABLE t (a int, b text);
+
+-- 创建两层视图依赖：v2 依赖 v1，v1 依赖 t 
+CREATE VIEW v1 AS SELECT a, b FROM t;
+CREATE VIEW v2 AS SELECT a FROM v1;  
+
+-- 修改列类型，自动按依赖顺序重建 v1、v2
+ALTER TABLE t ALTER COLUMN a TYPE bigint;
+
+-- 验证两个视图均已正确重建 
+SELECT pg_typeof(a) FROM v1 LIMIT 1;
+-- 返回 bigint 
+ pg_typeof 
+-----------
+(0 rows)
+
+SELECT pg_typeof(a) FROM v2 LIMIT 1; 
+-- 返回 bigint
+ pg_typeof 
+-----------
+(0 rows)
+---- 
+
+=== 保留视图选项：security_barrier 
+ 
+[source,sql]
+----     
+-- 创建带 security_barrier 选项的视图
+CREATE VIEW v WITH (security_barrier) AS SELECT a, b FROM t;
+
+ALTER TABLE t ALTER COLUMN a TYPE bigint;
+
+-- 验证 security_barrier 选项在重建后被正确保留
+SELECT relname, reloptions FROM pg_class WHERE relname = 'v';
+-- reloptions: {security_barrier=true}  
+ relname |       reloptions        
+---------+-------------------------
+ v       | {security_barrier=true}
+(1 row)                        
+---- 
+
+=== 保留视图选项：WITH CHECK OPTION 
+
+[source,sql]
+----
+-- 创建带 WITH LOCAL CHECK OPTION 的视图  
+CREATE VIEW v AS SELECT a, b FROM t WHERE a > 0
+    WITH LOCAL CHECK OPTION;
+
+ALTER TABLE t ALTER COLUMN a TYPE bigint;
+
+-- 验证 CHECK OPTION 在重建后被正确保留
+\d+ v
+                              View "public.v"
+ Column |  Type  | Collation | Nullable | Default | Storage  | Description 
+--------+--------+-----------+----------+---------+----------+-------------
+ a      | bigint |           |          |         | plain    | 
+ b      | text   |           |          |         | extended | 
+View definition:
+ SELECT t.a,
+    t.b
+   FROM t
+  WHERE t.a > 0;
+Options: check_option=local
+----
+
+=== 重建失败时整体回滚
+
+[source,sql]
+----
+CREATE TABLE t (a int, b text);
+CREATE VIEW v AS SELECT a::integer + 1 AS a_plus FROM t;
+
+-- 若新类型与视图中的表达式不兼容，整个操作回滚
+-- 例如将 a 改为 text 类型，视图中的 a::integer + 1 将无法执行 
+ALTER TABLE t ALTER COLUMN a TYPE text;  
+ERROR:  operator does not exist: text + integer
+LINE 1: ALTER TABLE t ALTER COLUMN a TYPE text;
+                                               ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+
+-- 确认表结构与视图均未受影响 
+\d t
+                 Table "public.t"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ a      | integer |           |          | 
+ b      | text    |           |          | 
+---- 
+
+== 功能限制
+
+. 若视图中使用了与新列类型不兼容的操作符或函数（例如对 `text` 类型列执行算术运算），重建将失败，整个 `ALTER TABLE` 操作回滚； 
+. 仅支持视图（view）的自动重建，依赖该列的**规则（rule）**仍会报错；
+. 列类型变更需满足 PostgreSQL 类型转换规则，不支持任意两种类型之间的直接转换；
+. 视图重建按依赖拓扑顺序执行，循环依赖（通常由数据库约束避免）不在处理范围内；
+. 重建过程在同一事务内完成，期间依赖视图处于不可用状态，高并发场景下需注意对查询的影响。
