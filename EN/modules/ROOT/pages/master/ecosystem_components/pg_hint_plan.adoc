@@ -8,7 +8,6 @@
 
 pg_hint_plan is an extension that allows controlling PostgreSQL/IvorySQL execution plans using SQL comment hints. It optimizes query performance without modifying SQL logic and works in both PostgreSQL and Oracle compatibility modes.
 
-This project is adapted for IvorySQL 5, based on the PG18 branch. The source repository is located at <https://github.com/ossc-db/pg_hint_plan>.
 
 == Installation
 
