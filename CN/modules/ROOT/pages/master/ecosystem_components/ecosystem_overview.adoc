@@ -25,6 +25,7 @@ IvorySQL 作为一款兼容 Oracle 且基于 PostgreSQL 的高级开源数据库
 | 12 | xref:master/ecosystem_components/pg_stat_monitor.adoc[pg_stat_monitor] | 2.3.1 | 收集性能统计数据，并通过统一视图和直方图形式直观展示查询性能指标。 | 性能监控
 | 13 | xref:master/ecosystem_components/pg_partman.adoc[pg_partman] | 5.2 | 辅助管理原生分区表，自动创建、维护、清理分区子表 | 海量数据存储管理
 | 14 | xref:master/ecosystem_components/pg_curl.adoc[pg_curl] | 2.4 | 基于 libcurl 的网络传输扩展，支持 HTTP/HTTPS、FTP、SMTP、IMAP 等二十余种协议，可在 SQL 中完成各类网络数据传输操作 | REST API 集成、邮件发送、文件传输、外部系统通知
+| 15 | xref:master/ecosystem_components/pg_hint_plan.adoc[pg_hint_plan] | PG18 | 通过SQL注释中的hints控制执行计划，在不修改SQL逻辑的情况下优化查询性能 | 查询性能优化、执行计划调优、数据库性能分析
 |====
 
 这些插件均经过 IvorySQL 团队的测试和适配，确保在 IvorySQL 环境下稳定运行。用户可以根据业务需求选择合适的插件，进一步提升数据库系统的能力和灵活性。
