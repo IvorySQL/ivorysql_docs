@@ -1,0 +1,211 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_hint_plan
+
+== Overview
+
+pg_hint_plan is an extension that allows controlling PostgreSQL/IvorySQL execution plans using SQL comment hints. It optimizes query performance without modifying SQL logic and works in both PostgreSQL and Oracle compatibility modes.
+
+
+== Installation
+
+[TIP]
+The source installation environment is Ubuntu 24.04(x86_64), with IvorySQL 5 or above installed at /usr/ivory-5
+
+=== Install from Source
+
+[literal]
+----
+# Clone PG18 branch source code
+
+git clone --branch PG18 https://github.com/ossc-db/pg_hint_plan.git
+cd pg_hint_plan
+
+# Compile and install the extension
+make PG_CONFIG=/usr/ivory-5/bin/pg_config
+make PG_CONFIG=/usr/ivory-5/bin/pg_config install
+
+----
+
+=== Modify Database Configuration File
+
+Modify the ivorysql.conf file to add pg_hint_plan to shared_preload_libraries:
+
+[literal]
+----
+shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_hint_plan'
+----
+
+Restart the database for the configuration to take effect.
+
+=== Load Extension
+
+[literal]
+----
+postgres=# LOAD 'pg_hint_plan';
+LOAD
+----
+
+== Hint Types
+
+pg_hint_plan provides various types of hints to control different aspects of query execution plans.
+
+=== Scan Method Hints
+
+Hints specifying table scan methods:
+
+* `SeqScan(table)` - Sequential scan
+* `IndexScan(table[ index])` - Index scan, optionally specifying index name
+* `BitmapScan(table[ index])` - Bitmap scan, optionally specifying index name
+* `TidScan(table)` - TID scan
+
+Negative form hints (prohibit using a specific scan method):
+
+* `NoSeqScan(table)`
+* `NoIndexScan(table)`
+* `NoBitmapScan(table)`
+* `NoTidScan(table)`
+
+=== Join Method Hints
+
+Hints specifying table join methods:
+
+* `HashJoin(table table[ table...])` - Hash join
+* `NestedLoop(table table[ table...])` - Nested loop join
+* `MergeJoin(table table[ table...])` - Merge join
+
+Negative form hints:
+
+* `NoHashJoin(table table)`
+* `NoNestedLoop(table table)`
+* `NoMergeJoin(table table)`
+
+=== Join Order Hints
+
+* `Leading(table table[ table...])` - Specify join order, tables are joined in sequence
+
+=== Parallel Execution Hints
+
+* `Parallel(table count[ workers])` - Set number of parallel worker processes
+    * `count` - Whether to use parallel (0 means no, 1 means yes)
+    * `workers` - Number of parallel worker processes (optional, defaults to planner-calculated value)
+
+=== Other Hints
+
+* `Set(enable_*)` - Set GUC parameters
+* `Rows(table table[ table...] correction)` - Correct rows estimate
+
+== Usage Examples
+
+=== Basic Usage Example
+
+Using HashJoin and SeqScan hints:
+
+[literal]
+----
+postgres=# /*+
+   HashJoin(a b)
+   SeqScan(a)
+*/
+EXPLAIN SELECT *
+FROM pgbench_branches b
+JOIN pgbench_accounts a ON b.bid = a.bid
+ORDER BY a.aid;
+----
+
+=== Complex Multi-Hint Example
+
+Combining multiple hints to control execution plan for complex queries:
+
+[literal]
+----
+postgres=# /*+
+   NestedLoop(t1 t2)
+   IndexScan(t2 t2_pkey)
+   MergeJoin(t1 t2 t3)
+   Leading(t1 t2 t3)
+*/
+EXPLAIN SELECT * FROM table1 t1
+JOIN table2 t2 ON t1.id = t2.id
+JOIN table3 t3 ON t2.id = t3.id;
+----
+
+=== Parallel Execution Example
+
+Setting parallel degree and join methods for multiple tables:
+
+[literal]
+----
+postgres=# /*+
+   Parallel(t1 3)
+   Parallel(t2 5)
+   HashJoin(t1 t2)
+*/
+EXPLAIN SELECT * FROM large_table1 t1
+JOIN large_table2 t2 ON t1.id = t2.id;
+----
+
+=== Specify Index Scan Example
+
+Force scanning using a specific index:
+
+[literal]
+----
+postgres=# /*+
+   IndexScan(employees emp_name_idx)
+*/
+EXPLAIN SELECT * FROM employees
+WHERE last_name = 'SMITH';
+----
+
+== Hint Table (Optional Feature)
+
+pg_hint_plan provides an optional hint table feature for persistently storing hints.
+
+=== Create Hint Table
+
+[literal]
+----
+postgres=# CREATE TABLE hint_plan.hints (
+    id serial PRIMARY KEY,
+    norm_query_string text NOT NULL,
+    application_name text,
+    hints text NOT NULL,
+    CONSTRAINT hint_plan_hints_norm_query_string_key UNIQUE (norm_query_string, application_name)
+);
+----
+
+=== Insert Hints
+
+[literal]
+----
+postgres=# INSERT INTO hint_plan.hints (norm_query_string, application_name, hints)
+VALUES (
+    'SELECT * FROM table1 WHERE id = ?;',
+    'psql',
+    'SeqScan(table1)'
+);
+----
+
+Through the hint table, hints can be automatically applied to specific queries without modifying SQL statements.
+
+== IvorySQL Compatibility
+
+=== Oracle Compatibility Mode
+
+pg_hint_plan works in both PostgreSQL and Oracle compatibility modes. The hint syntax remains consistent and is compatible with IvorySQL-specific data types (VARCHAR2, NUMBER, etc.).
+
+=== Oracle Mode Example
+
+[literal]
+----
+-- Connect to port 1521 (Oracle mode)
+postgres=# /*+
+   IndexScan(employees emp_name_idx)
+*/
+SELECT * FROM employees WHERE last_name = 'SMITH';
+----
+
+In Oracle compatibility mode, hint usage is identical to PostgreSQL mode and can normally control query execution plans containing IvorySQL-specific data types and syntax.
