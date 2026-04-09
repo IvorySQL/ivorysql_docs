@@ -1,0 +1,108 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= redis_fdw
+
+== Overview
+redis_fdw enables the connection between PostgreSQL and the Redis key-value database, supporting operations such as SELECT, INSERT, UPDATE, and DELETE. It is compatible with PostgreSQL 10+ and Redis versions around 6.0, and can handle various data types including hashes and lists. It works in both PostgreSQL and Oracle compatibility modes..
+
+== Installation
+
+[TIP]
+The source code installation environment is Ubuntu 24.04 (x86_64), in which IvorySQL 5 or a later version has been installed. The installation path is /usr/ivory-5.
+
+=== Source Code Installation
+
+[literal]
+----
+# Install Hiredis lib
+wget https://github.com/redis/hiredis/archive/refs/tags/v1.3.0.tar.gz
+tar xzvf v1.3.0.tar.gz
+cd hiredis-1.3.0
+make
+sudo make install
+sudo ldconfig
+
+# Install local Redis server
+sudo apt update
+sudo apt install -y redis-server
+
+# Local Redis server is running on 127.0.0.1:6379
+
+# Create an administrator user using the redis-cli command:
+# (Temporarily created users will be lost after Redis restarts.)
+# User: highgo, password: Admin@123
+ACL SETUSER highgo on >Admin@123 ~* +@all
+
+# Download source code of redis_fdw
+git clone https://github.com/pg-redis-fdw/redis_fdw.git -b REL_18_STABLE
+cd redis_fdw
+
+# Compile and install redis_fdw extension
+make PG_CONFIG=/usr/ivory-5/bin/pg_config
+sudo make install PG_CONFIG=/usr/ivory-5/bin/pg_config
+
+----
+
+[TIP]
+If there is error "xlocale.h: No such file or directory" during compilation, user should remove the line of "#define HAVE_XLOCALE_H 1" from file /usr/ivory-5/include/postgresql/server/pg_config.h.
+
+=== Create extension
+
+[literal]
+----
+postgres=# create extension redis_fdw;
+CREATE EXTENSION
+----
+
+== Usage
+
+[literal]
+----
+// Create a foreign server with appropriate configuration
+postgres=# CREATE SERVER redis_server 
+postgres-#     FOREIGN DATA WRAPPER redis_fdw
+postgres-#     OPTIONS ( address '127.0.0.1', port '6379');
+CREATE SERVER
+----
+
+[literal]
+----
+// User mapping
+postgres=# CREATE USER MAPPING FOR highgo
+postgres-#  SERVER redis_server
+postgres-#  OPTIONS (password 'Admin@123');
+CREATE USER MAPPING
+----
+
+[literal]
+----
+// Create a simple table
+postgres=# CREATE FOREIGN TABLE redis_db0 (
+postgres(#   key text,
+postgres(#   val text
+postgres(# )
+postgres-# SERVER redis_server
+postgres-# OPTIONS (
+postgres(#   database '0'
+postgres(# );
+CREATE FOREIGN TABLE
+----
+
+[literal]
+----
+// Insert data
+postgres=# insert into redis_db0 values('k2', 'v2');
+INSERT 0 1
+----
+
+[literal]
+----
+// Read the data
+postgres=# select * from redis_db0;
+ key | val 
+-----+-----
+ k2  | v2
+(1 row)
+----
