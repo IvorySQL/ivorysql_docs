@@ -48,8 +48,9 @@ sudo dnf install libevent-devel openssl-devel pkgconfig
 
 [literal]
 ----
-git clone https://github.com/pgbouncer/pgbouncer.git
-cd pgbouncer
+wget https://github.com/pgbouncer/pgbouncer/archive/refs/tags/pgbouncer_1_25_1.zip
+unzip pgbouncer_1_25_1.zip
+cd pgbouncer_1_25_1
 
 ./autogen.sh
 
