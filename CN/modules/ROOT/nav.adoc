@@ -55,7 +55,7 @@
 *** xref:master/ecosystem_components/pg_ai_query.adoc[pg_ai_query]
 *** xref:master/ecosystem_components/pg_partman.adoc[pg_partman]
 *** xref:master/ecosystem_components/pgbouncer.adoc[pgbouncer]
-*** xref:master/ecosystem_components/age.adoc[AGE]
+*** xref:master/ecosystem_components/age.adoc[age]
 *** xref:master/ecosystem_components/pg_curl.adoc[pg_curl]
 *** xref:master/ecosystem_components/pg_textsearch.adoc[pg_textsearch]
 *** xref:master/ecosystem_components/pg_hint_plan.adoc[pg_hint_plan]

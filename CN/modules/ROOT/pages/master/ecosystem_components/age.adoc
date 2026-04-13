@@ -133,46 +133,26 @@ SELECT * FROM pg_extension WHERE extname = 'age';
 
 == 使用
 
-=== 创建图数据库
-
 [literal]
 ----
--- 加载 AGE 语言
-LOAD 'age';
+要创建图，使用位于 ag_catalog 命名空间中的 create_graph 函数。
 
--- 加载 Cypher 函数
-SET search_path = ag_catalog, "$user", public;
-
--- 创建图（graph）
 SELECT create_graph('graph_name');
-----
 
-=== 创建顶点
+要创建带有标签和属性的单个顶点，使用 CREATE 子句。
 
-创建带标签和属性的单个顶点：
-
-[literal]
-----
 SELECT *
 FROM cypher('graph_name', $$
     CREATE (:label {property:"Node A"})
 $$) as (v agtype);
-----
 
-[literal]
-----
 SELECT *
 FROM cypher('graph_name', $$
     CREATE (:label {property:"Node B"})
 $$) as (v agtype);
-----
 
-=== 创建边
+要在两个节点之间创建边并设置其属性：
 
-在两个节点之间创建边并设置属性：
-
-[literal]
-----
 SELECT *
 FROM cypher('graph_name', $$
     MATCH (a:label), (b:label)
@@ -180,95 +160,14 @@ FROM cypher('graph_name', $$
     CREATE (a)-[e:RELTYPE {property:a.property + '<->' + b.property}]->(b)
     RETURN e
 $$) as (e agtype);
-----
-
-=== 查询图数据
 
 查询连接的节点：
 
-[literal]
-----
 SELECT * from cypher('graph_name', $$
-    MATCH (V)-[R]-(V2)
-    RETURN V,R,V2
+        MATCH (V)-[R]-(V2)
+        RETURN V,R,V2
 $$) as (V agtype, R agtype, V2 agtype);
-----
 
-=== 基本查询示例
-
-[literal]
-----
--- 查询所有节点
-SELECT * FROM cypher('graph_name', $$
-    MATCH (V)
-    RETURN V
-$$) as (V agtype);
-
--- 查询特定标签的节点
-SELECT * FROM cypher('graph_name', $$
-    MATCH (V:label)
-    RETURN V
-$$) as (V agtype);
-
--- 查询特定属性的节点
-SELECT * FROM cypher('graph_name', $$
-    MATCH (V:label {property: "Node A"})
-    RETURN V
-$$) as (V agtype);
-
--- 查询所有边
-SELECT * FROM cypher('graph_name', $$
-    MATCH ()-[R]->()
-    RETURN R
-$$) as (R agtype);
-
--- 查询特定类型的边
-SELECT * FROM cypher('graph_name', $$
-    MATCH ()-[R:RELTYPE]->()
-    RETURN R
-$$) as (R agtype);
-----
-
-=== 更新和删除
-
-[literal]
-----
--- 更新节点属性
-SELECT * FROM cypher('graph_name', $$
-    MATCH (V:label {property: "Node A"})
-    SET V.property = "Updated Node A"
-    RETURN V
-$$) as (V agtype);
-
--- 删除边
-SELECT * FROM cypher('graph_name', $$
-    MATCH (a:label {property: "Node A"})-[r:RELTYPE]->(b:label {property: "Node B"})
-    DELETE r
-$$) as (r agtype);
-
--- 删除节点（必须先删除相关的边）
-SELECT * FROM cypher('graph_name', $$
-    MATCH (V:label {property: "Node B"})
-    DETACH DELETE V
-$$) as (V agtype);
-----
-
-=== 与 SQL 结合使用
-
-[literal]
-----
--- 将图查询结果用于关系表查询
-SELECT * FROM cypher('graph_name', $$
-    MATCH (V:label)
-    RETURN V.property AS name
-$$) as (name text)
-WHERE name IS NOT NULL;
-
--- 统计节点数量
-SELECT count(*) FROM cypher('graph_name', $$
-    MATCH (V)
-    RETURN V
-$$) as (V agtype);
 ----
 
 == 管理命令

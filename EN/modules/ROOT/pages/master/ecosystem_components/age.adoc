@@ -133,158 +133,40 @@ SELECT * FROM pg_extension WHERE extname = 'age';
 
 == Usage
 
-=== Create a Graph Database
-
 [literal]
 ----
--- Load AGE language
-LOAD 'age';
+To create a graph, use the create_graph function located in the ag_catalog namespace.
 
--- Load Cypher functions
-SET search_path = ag_catalog, "$user", public;
-
--- Create a graph
 SELECT create_graph('graph_name');
-----
 
-=== Create Vertices
+To create a single vertex with label and properties, use the CREATE clause.
 
-To create a single vertex with label and properties:
-
-[literal]
-----
-SELECT *
+SELECT * 
 FROM cypher('graph_name', $$
     CREATE (:label {property:"Node A"})
 $$) as (v agtype);
-----
 
-[literal]
-----
-SELECT *
+SELECT * 
 FROM cypher('graph_name', $$
     CREATE (:label {property:"Node B"})
 $$) as (v agtype);
-----
-
-=== Create Edges
 
 To create an edge between two nodes and set its properties:
 
-[literal]
-----
-SELECT *
+SELECT * 
 FROM cypher('graph_name', $$
     MATCH (a:label), (b:label)
     WHERE a.property = 'Node A' AND b.property = 'Node B'
     CREATE (a)-[e:RELTYPE {property:a.property + '<->' + b.property}]->(b)
     RETURN e
 $$) as (e agtype);
-----
-
-=== Query Graph Data
 
 And to query the connected nodes:
 
-[literal]
-----
 SELECT * from cypher('graph_name', $$
-    MATCH (V)-[R]-(V2)
-    RETURN V,R,V2
+        MATCH (V)-[R]-(V2)
+        RETURN V,R,V2
 $$) as (V agtype, R agtype, V2 agtype);
+
 ----
 
-=== Basic Query Examples
-
-[literal]
-----
--- Query all vertices
-SELECT * FROM cypher('graph_name', $$
-    MATCH (V)
-    RETURN V
-$$) as (V agtype);
-
--- Query vertices with specific label
-SELECT * FROM cypher('graph_name', $$
-    MATCH (V:label)
-    RETURN V
-$$) as (V agtype);
-
--- Query vertices with specific property
-SELECT * FROM cypher('graph_name', $$
-    MATCH (V:label {property: "Node A"})
-    RETURN V
-$$) as (V agtype);
-
--- Query all edges
-SELECT * FROM cypher('graph_name', $$
-    MATCH ()-[R]->()
-    RETURN R
-$$) as (R agtype);
-
--- Query edges by type
-SELECT * FROM cypher('graph_name', $$
-    MATCH ()-[R:RELTYPE]->()
-    RETURN R
-$$) as (R agtype);
-----
-
-=== Update and Delete
-
-[literal]
-----
--- Update vertex properties
-SELECT * FROM cypher('graph_name', $$
-    MATCH (V:label {property: "Node A"})
-    SET V.property = "Updated Node A"
-    RETURN V
-$$) as (V agtype);
-
--- Delete edge
-SELECT * FROM cypher('graph_name', $$
-    MATCH (a:label {property: "Node A"})-[r:RELTYPE]->(b:label {property: "Node B"})
-    DELETE r
-$$) as (r agtype);
-
--- Delete vertex (must delete related edges first)
-SELECT * FROM cypher('graph_name', $$
-    MATCH (V:label {property: "Node B"})
-    DETACH DELETE V
-$$) as (V agtype);
-----
-
-=== Combining with SQL
-
-[literal]
-----
--- Use graph query results in relational queries
-SELECT * FROM cypher('graph_name', $$
-    MATCH (V:label)
-    RETURN V.property AS name
-$$) as (name text)
-WHERE name IS NOT NULL;
-
--- Count vertices
-SELECT count(*) FROM cypher('graph_name', $$
-    MATCH (V)
-    RETURN V
-$$) as (V agtype);
-----
-
-== Management Commands
-
-[literal]
-----
--- List all graphs
-SELECT * FROM ag_graph;
-
--- Delete graph (deletes all related vertices and edges)
-SELECT drop_graph('graph_name', true);
-
--- View graph statistics
-SELECT
-    graph_name,
-    (SELECT count(*) FROM ag_vertex WHERE graph_id = ag_graph.graph_id) AS vertex_count,
-    (SELECT count(*) FROM ag_edge WHERE graph_id = ag_graph.graph_id) AS edge_count
-FROM ag_graph;
-----
