@@ -60,6 +60,8 @@ You can upload your modified bugs, new functions and other codes to your persona
 
 The IvorySQL community provides Chinese and English documents. English documents are saved in ... document repository, Chinese documents are saved in i18n document repository. You can contribute to one of them or both.
 
+When you add or update a plugin compatibility document, you must also update the plugin summary table in xref:master/ecosystem_components/ecosystem_overview.adoc[ecosystem_overview.adoc]. Keep the plugin name, version, function description, use cases, and link to the detail page in sync so that the overview page and the detail page stay consistent.
+
 ==== Test IvorySQL and Report Bugs
 
 GitHub:  https://github.com/IvorySQL/IvorySQL 
@@ -98,7 +100,7 @@ If the change you're working on touches functionality that is common between Pos
 
 ==== Patch submission
 
-Once you are ready to share your work with the IvorySQL core team and the rest of the IvorySQL community, you should push all the commits to a branch in your own repository forked from the official IvorySQL and send us a pull request.
+Once you are ready to share your work with the IvorySQL core team and the rest of the IvorySQL community, you should first create or claim the corresponding GitHub Issue, then push all the commits to a branch in your own repository forked from the official IvorySQL and send us a pull request. Every pull request must correspond to at least one Issue so that the change request, discussion, review, and merge result remain traceable.
 
 ==== Patch review
 
@@ -197,6 +199,8 @@ Click submit new issue button. WELL DONE!
 
 2 Click the fork button in the upper right corner, Wait for the fork to finish
 
+Before you start coding or editing documents, make sure there is a corresponding GitHub Issue for the change. You can create a new Issue or claim an existing one, but do not submit a PR without an associated Issue.
+
 === Second: Clone the warehouse to local
 
 ```
@@ -237,9 +241,13 @@ Git push -u origin new-branch-name
 
 2 Click Compare & pull request button and create a PR.
 
+3 In the PR title or description, explicitly reference the corresponding Issue number, for example `Fixes #123` or `Refs #123`.
+
 == **Submit PR**
 
 A PR submission should contain only one function or one bug. Prohibit submitting multiple functions at one time.
+
+Every GitHub PR must have a corresponding Issue. A PR without an associated Issue does not meet the community contribution process requirements.
 
 === First:Create a Pull Request
 
@@ -258,6 +266,8 @@ Describe the function
 leave a comment
 Give a detailed description of the submission function
 ```
+
+Reference the related Issue in the PR description and keep the Issue number visible to reviewers, for example `Fixes #123`.
 
 === Third:Submit PR
 
