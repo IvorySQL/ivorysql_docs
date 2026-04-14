@@ -66,6 +66,8 @@ IvorySQL是在GitHub上开发的，任何希望对其作出贡献的人都必须
 
 IvorySQL社区提供的是中英文文档。英文文档保存在...文档存储库中，中文文档保存在i18n文档存储库中。您可以为任一文档存储库做出贡献。
 
+如果您新增或更新某个插件适配文档，请同步更新 xref:./5.0.adoc[IvorySQL生态插件适配列表] 概述页面中的插件表格，至少补充或更新插件名称、版本、功能描述、适用场景以及详情页链接，确保概述页与插件详情页信息一致。
+
 ==== 测试IvorySQL和报告问题
 
 GitHub:  https://github.com/IvorySQL/IvorySQL 
@@ -106,7 +108,7 @@ IvorySQL官网下载：https://github.com/IvorySQL/Ivory-www
 
 ==== 补丁提交 
 
-一旦您准备好与IvorySQL核心团队和IvorySQL社区的其他成员共享您的工作，您应该将所有提交推送到从官方IvorySQL派生的您自己的存储库中，并向我们发送请求。
+一旦您准备好与IvorySQL核心团队和IvorySQL社区的其他成员共享您的工作，请先创建或认领对应的 GitHub Issue，然后将所有提交推送到从官方IvorySQL派生的您自己的存储库中，并向我们发送 Pull Request。所有 PR 都必须至少对应一个 Issue，用于关联需求、缺陷、讨论、评审和合并结果。
 
 ==== 补丁审查 
 
