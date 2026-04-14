@@ -1,0 +1,189 @@
+:sectnums:
+:sectnumlevels: 5
+
+= Apache AGE
+
+== 概述
+
+Apache AGE 是一个 PostgreSQL 扩展，为关系型数据库提供图数据库处理能力。AGE 代表 *Adaptive Graph Engine*（自适应图引擎），它将图数据库的功能引入 PostgreSQL，允许用户在同一数据库中同时使用关系模型和图模型。
+
+Apache AGE 是 Apache 软件基金会的顶级项目，完全兼容 openCypher 查询语言（Neo4j 使用的图查询语言）。
+
+*核心特性：*
+
+[cols="1,2"]
+|===
+| 特性 | 描述
+
+| openCypher 支持
+| 完整支持 openCypher 查询语言，行业标准的图查询语言
+
+| 混合数据库
+| 在同一数据库中同时使用关系型和图数据模型
+
+| ACID 事务
+| 继承 PostgreSQL 的完整 ACID 事务支持
+
+| SQL 集成
+| 可将 Cypher 图查询与 SQL 查询无缝集成
+
+| 属性图模型
+| 支持带有属性的顶点和边的属性图模型
+
+| 图遍历
+| 高效的图遍历和模式匹配能力
+
+| 免费开源
+| Apache 2.0 许可证，完全开源
+|===
+
+== 应用场景
+
+* 社交网络分析（好友关系、关注关系、影响力分析）
+* 知识图谱构建与推理
+* 欺诈检测（金融交易网络分析）
+* 推荐系统（基于关系链的推荐）
+* 网络与 IT 基础设施管理
+* 路径规划与物流优化
+* 访问控制与权限管理
+
+== 安装
+
+[TIP]
+源码测试安装环境为 Ubuntu 24.04。
+
+=== 依赖
+
+[literal]
+----
+# Ubuntu / Debian
+sudo apt install build-essential libreadline-dev zlib1g-dev flex bison libxml2-dev libxslt-dev libssl-dev libxml2-utils xsltproc ccache libssl-dev pkg-config
+
+# 安装 AGE 依赖
+sudo apt install python3 python3-pip python3-dev
+pip3 install antlr4-runtime4
+----
+
+=== 从源码安装
+
+[literal]
+----
+# 下载 Apache AGE 1.7.0 源码包
+wget https://github.com/apache/age/releases/download/PG18%2Fv1.7.0-rc0/apache-age-1.7.0-src.tar.gz
+
+# 解压
+tar -xzf apache-age-1.7.0-src.tar.gz
+cd apache-age-1.7.0-src
+
+# 编译安装
+make install
+
+# 或指定 IvorySQL 安装路径
+make install PG_CONFIG=/usr/ivory-5/bin/pg_config
+----
+
+=== 验证安装
+
+[literal]
+----
+# 检查 AGE 扩展
+ls /usr/ivory-5/lib/age--*.so
+----
+
+== 配置
+
+=== 修改 IvorySQL 配置
+
+编辑 `postgresql.conf` 或 `ivorysql.conf`：
+
+[literal]
+----
+# 预加载 AGE 扩展（推荐）
+shared_preload_libraries = 'age'
+
+# 或者在数据库级别加载（不需要重启）
+# shared_preload_libraries = ''
+----
+
+[literal]
+----
+# 重启 IvorySQL 使配置生效
+# 使用 systemd
+sudo systemctl restart ivorysql-5
+
+# 或手动重启
+pg_ctl restart -D /usr/ivory-5/data
+----
+
+=== 创建扩展
+
+连接到 IvorySQL 并创建 AGE 扩展：
+
+[literal]
+----
+# 连接到数据库
+psql -U postgres -d postgres
+
+# 创建 AGE 扩展
+CREATE EXTENSION age;
+
+# 验证安装
+SELECT * FROM pg_extension WHERE extname = 'age';
+----
+
+== 使用
+
+[literal]
+----
+要创建图，使用位于 ag_catalog 命名空间中的 create_graph 函数。
+
+SELECT create_graph('graph_name');
+
+要创建带有标签和属性的单个顶点，使用 CREATE 子句。
+
+SELECT *
+FROM cypher('graph_name', $$
+    CREATE (:label {property:"Node A"})
+$$) as (v agtype);
+
+SELECT *
+FROM cypher('graph_name', $$
+    CREATE (:label {property:"Node B"})
+$$) as (v agtype);
+
+要在两个节点之间创建边并设置其属性：
+
+SELECT *
+FROM cypher('graph_name', $$
+    MATCH (a:label), (b:label)
+    WHERE a.property = 'Node A' AND b.property = 'Node B'
+    CREATE (a)-[e:RELTYPE {property:a.property + '<->' + b.property}]->(b)
+    RETURN e
+$$) as (e agtype);
+
+查询连接的节点：
+
+SELECT * from cypher('graph_name', $$
+        MATCH (V)-[R]-(V2)
+        RETURN V,R,V2
+$$) as (V agtype, R agtype, V2 agtype);
+
+----
+
+== 管理命令
+
+[literal]
+----
+-- 列出所有图
+SELECT * FROM ag_graph;
+
+-- 删除图（删除所有相关顶点和边）
+SELECT drop_graph('graph_name', true);
+
+-- 查看图统计信息
+SELECT
+    graph_name,
+    (SELECT count(*) FROM ag_vertex WHERE graph_id = ag_graph.graph_id) AS vertex_count,
+    (SELECT count(*) FROM ag_edge WHERE graph_id = ag_graph.graph_id) AS edge_count
+FROM ag_graph;
+----

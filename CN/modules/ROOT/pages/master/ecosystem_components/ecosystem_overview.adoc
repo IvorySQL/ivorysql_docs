@@ -25,11 +25,12 @@ IvorySQL 作为一款兼容 Oracle 且基于 PostgreSQL 的高级开源数据库
 | 12 | xref:master/ecosystem_components/pg_stat_monitor.adoc[pg_stat_monitor] | 2.3.1 | 收集性能统计数据，并通过统一视图和直方图形式直观展示查询性能指标。 | 性能监控
 | 13 | xref:master/ecosystem_components/pg_ai_query.adoc[pg_ai_query] | 0.1.1 | AI驱动的自然语言转SQL扩展，支持多种大语言模型 | AI辅助查询、自然语言数据库交互
 | 14 | xref:master/ecosystem_components/pg_partman.adoc[pg_partman] | 5.2 | 辅助管理原生分区表，自动创建、维护、清理分区子表 | 海量数据存储管理
-| 15 | xref:master/ecosystem_components/pgbouncer.adoc[pgbouncer] | x.x | | 
+| 15 | xref:master/ecosystem_components/pgbouncer.adoc[pgbouncer] | 1.25.1 | PostgreSQL 轻量级连接池，提供连接复用和高效连接管理 | 高并发连接管理、连接复用、减少数据库连接开销 
 | 16 | xref:master/ecosystem_components/pg_curl.adoc[pg_curl] | 2.4 | 基于 libcurl 的网络传输扩展，支持 HTTP/HTTPS、FTP、SMTP、IMAP 等二十余种协议，可在 SQL 中完成各类网络数据传输操作 | REST API 集成、邮件发送、文件传输、外部系统通知
 | 17 | xref:master/ecosystem_components/pg_textsearch.adoc[pg_textsearch] | 0.6.1 | 提供全文检索能力，支持文本分词、索引构建与高效全文查询 | 文档检索与内容搜索
 | 18 | xref:master/ecosystem_components/pg_hint_plan.adoc[pg_hint_plan] | PG18 | 通过SQL注释中的hints控制执行计划，在不修改SQL逻辑的情况下优化查询性能 | 查询性能优化、执行计划调优、数据库性能分析
 | 19 | xref:master/ecosystem_components/redis_fdw.adoc[redis_fdw] | PG18 | 将 Redis 数据映射为 PostgreSQL 外部表，支持通过标准 SELECT/INSERT/UPDATE/DELETE 语句读写 Redis | 统一 SQL 查询、轻量级数据同步、透明化缓存读写及跨库数据分析
+| 20 | xref:master/ecosystem_components/age.adoc[Apache AGE] | 1.7.0 | 为 IvorySQL 提供图数据库处理能力，支持 openCypher 查询语言，实现关系型与图数据库的混合使用 | 社交网络分析、知识图谱、欺诈检测、推荐系统、路径规划
 |====
 
 这些插件均经过 IvorySQL 团队的测试和适配，确保在 IvorySQL 环境下稳定运行。用户可以根据业务需求选择合适的插件，进一步提升数据库系统的能力和灵活性。

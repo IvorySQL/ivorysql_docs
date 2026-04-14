@@ -26,11 +26,12 @@ IvorySQL, as an advanced open-source database compatible with Oracle and based o
 |*12*| xref:master/ecosystem_components/pg_stat_monitor.adoc[pg_stat_monitor] | 2.3.1 | Collects performance statistics and provides query performance insights in a single view and graphically in histogram. | Performance monitoring
 |*13*| xref:master/ecosystem_components/pg_ai_query.adoc[pg_ai_query] | 0.1.1 | AI-driven natural language to SQL extension supporting multiple LLMs | AI-assisted querying, natural language database interaction
 |*14*| xref:master/ecosystem_components/pg_partman.adoc[pg_partman] | 5.2 | Automates the creation, maintenance, and cleanup of native partition subtables. | Large-Scale Data Storage Management
-|*15*| xref:master/ecosystem_components/pgbouncer.adoc[pgbouncer] | x.x |  |
+|*15*| xref:master/ecosystem_components/pgbouncer.adoc[pgbouncer] | 1.25.1 | Lightweight connection pooler for PostgreSQL  | High-concurrency connection management, connection reuse, reduced database connection overhead
 |*16*| xref:master/ecosystem_components/pg_curl.adoc[pg_curl] | 2.4 | A libcurl-based network transfer extension supporting HTTP/HTTPS, FTP, SMTP, IMAP, and 20+ other protocols, enabling network data transfer operations directly in SQL | REST API integration, email sending, file transfer, external system notifications
 |*17*| xref:master/ecosystem_components/pg_textsearch.adoc[pg_textsearch] | 0.6.1 | enhances PostgreSQL with full-text search capabilities, enabling fast text indexing, tokenization, and efficient full-text querying | document and content retrieval
 |*18*| xref:master/ecosystem_components/pg_hint_plan.adoc[pg_hint_plan] | PG18 | Controls execution plans via SQL comment hints, optimizing query performance without modifying SQL logic | Query performance optimization, execution plan tuning, database performance analysis
 |*19*| xref:master/ecosystem_components/redis_fdw.adoc[redis_fdw] | PG18 | connects PostgreSQL with Redis, supporting standard SQL operations including SELECT, INSERT, UPDATE, and DELETE | unified SQL querying, lightweight data synchronization, transparent cache access, and cross-database data analysis
+|*20*| xref:master/ecosystem_components/age.adoc[Apache AGE] | 1.7.0 | Provides graph database capabilities to IvorySQL, supports openCypher query language, enabling hybrid use of relational and graph databases | Social network analysis, knowledge graphs, fraud detection, recommendation systems, route planning
 |====
 
 These plugins have all been tested and adapted by the IvorySQL team to ensure stable operation in the IvorySQL environment. Users can select appropriate plugins based on business needs to further enhance the capabilities and flexibility of the database system.

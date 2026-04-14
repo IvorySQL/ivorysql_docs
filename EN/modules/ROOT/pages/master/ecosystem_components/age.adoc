@@ -1,0 +1,172 @@
+:sectnums:
+:sectnumlevels: 5
+
+= Apache AGE
+
+== Overview
+
+Apache AGE is a PostgreSQL extension that provides graph database capabilities to relational databases. AGE stands for *Adaptive Graph Engine*, which brings graph database functionality to PostgreSQL, allowing users to use both relational and graph models in the same database.
+
+Apache AGE is a top-level project of the Apache Software Foundation and fully supports the openCypher query language (the graph query language used by Neo4j).
+
+*Core Features:*
+
+[cols="1,2"]
+|===
+| Feature | Description
+
+| openCypher Support
+| Full support for openCypher query language, the industry standard for graph queries
+
+| Hybrid Database
+| Use both relational and graph data models in the same database
+
+| ACID Transactions
+| Full ACID transaction support inherited from PostgreSQL
+
+| SQL Integration
+| Seamless integration of Cypher graph queries with SQL queries
+
+| Property Graph Model
+| Support for property graphs with vertices and edges with attributes
+
+| Graph Traversal
+| Efficient graph traversal and pattern matching capabilities
+
+| Free and Open Source
+| Apache 2.0 License, fully open source
+|===
+
+== Use Cases
+
+* Social network analysis (friend relationships, follower relationships, influence analysis)
+* Knowledge graph construction and reasoning
+* Fraud detection (financial transaction network analysis)
+* Recommendation systems (relationship chain-based recommendations)
+* Network and IT infrastructure management
+* Route planning and logistics optimization
+* Access control and permission management
+
+== Installation
+
+[TIP]
+Source installation was tested on Ubuntu 24.04.
+
+=== Dependencies
+
+[literal]
+----
+# Ubuntu / Debian
+sudo apt install build-essential libreadline-dev zlib1g-dev flex bison libxml2-dev libxslt-dev libssl-dev libxml2-utils xsltproc ccache libssl-dev pkg-config
+
+# Install AGE dependencies
+sudo apt install python3 python3-pip python3-dev
+pip3 install antlr4-runtime4
+----
+
+=== Install from Source
+
+[literal]
+----
+# Download Apache AGE 1.7.0 source package
+wget https://github.com/apache/age/releases/download/PG18%2Fv1.7.0-rc0/apache-age-1.7.0-src.tar.gz
+
+# Extract
+tar -xzf apache-age-1.7.0-src.tar.gz
+cd apache-age-1.7.0-src
+
+# Compile and install
+make install
+
+# Or specify IvorySQL installation path
+make install PG_CONFIG=/usr/ivory-5/bin/pg_config
+----
+
+=== Verify Installation
+
+[literal]
+----
+# Check AGE extension
+ls /usr/ivory-5/lib/age--*.so
+----
+
+== Configuration
+
+=== Modify IvorySQL Configuration
+
+Edit `postgresql.conf` or `ivorysql.conf`:
+
+[literal]
+----
+# Preload AGE extension (recommended)
+shared_preload_libraries = 'age'
+
+# Or load at database level (no restart required)
+# shared_preload_libraries = ''
+----
+
+[literal]
+----
+# Restart IvorySQL for configuration to take effect
+# Using systemd
+sudo systemctl restart ivorysql-5
+
+# Or manually restart
+pg_ctl restart -D /usr/ivory-5/data
+----
+
+=== Create Extension
+
+Connect to IvorySQL and create the AGE extension:
+
+[literal]
+----
+# Connect to database
+psql -U postgres -d postgres
+
+# Create AGE extension
+CREATE EXTENSION age;
+
+# Verify installation
+SELECT * FROM pg_extension WHERE extname = 'age';
+----
+
+== Usage
+
+[literal]
+----
+To create a graph, use the create_graph function located in the ag_catalog namespace.
+
+SELECT create_graph('graph_name');
+
+To create a single vertex with label and properties, use the CREATE clause.
+
+SELECT * 
+FROM cypher('graph_name', $$
+    CREATE (:label {property:"Node A"})
+$$) as (v agtype);
+
+SELECT * 
+FROM cypher('graph_name', $$
+    CREATE (:label {property:"Node B"})
+$$) as (v agtype);
+
+To create an edge between two nodes and set its properties:
+
+SELECT * 
+FROM cypher('graph_name', $$
+    MATCH (a:label), (b:label)
+    WHERE a.property = 'Node A' AND b.property = 'Node B'
+    CREATE (a)-[e:RELTYPE {property:a.property + '<->' + b.property}]->(b)
+    RETURN e
+$$) as (e agtype);
+
+And to query the connected nodes:
+
+SELECT * from cypher('graph_name', $$
+        MATCH (V)-[R]-(V2)
+        RETURN V,R,V2
+$$) as (V agtype, R agtype, V2 agtype);
+
+----
+
