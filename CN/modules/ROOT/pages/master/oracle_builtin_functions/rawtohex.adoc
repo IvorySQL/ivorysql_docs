@@ -1,0 +1,55 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+
+= **功能概述**
+
+IvorySQL提供兼容Oracle内置函数 ```RAWTOHEX('parameter')``` ，用于将RAW类型转换成十六进制字符串。
+
+== 实现原理
+
+PostgreSQL 提供的pg_catalog.encode(bytea, 'hex')函数，可直接完成二进制到十六进制的转换。
+考虑到当前系统中已经存在的HEXTORAW函数通过封装pg_catalog.decode 的SQL方式实现，本次开发的 
+RAWTOHEX 函数将使用相同的方式来实现，即使用 SQL 函数包装 PostgreSQL 内置函数pg_catalog.encode，
+而非编写 C 扩展。
+
+raw、text、bytea以及varchar2这四种类型做为输入需要被支持。
+sys.raw 是 bytea 的 domain 类型（typtype = 'd'，typbasetype = bytea），PostgreSQL 支持 domain 到 base type 的隐式转换，RAWTOHEX(bytea) 可自动接受 sys.raw 输入。
+sys.oravarcharchar（即 varchar2）到 pg_catalog.text 存在 IMPLICIT cast（datatype--1.0.sql），RAWTOHEX(text) 可自动接受 varchar2 输入。
+因此，定义两个重载（而不是四个）。
+
+```
+sys.rawtohex(bytea)  RETURNS varchar2
+sys.rawtohex(text)   RETURNS varchar2
+```
+
+具体功能则是在 `builtin_functions--1.0.sql` 中实现。
+```sql
+/* support rawtohex function for oracle compatibility */
+CREATE OR REPLACE FUNCTION sys.rawtohex(bytea)
+RETURNS varchar2
+AS $$ SELECT CASE WHEN pg_catalog.octet_length($1) > 0 THEN upper(pg_catalog.encode($1, 'hex'))::varchar2 END; $$ 
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION sys.rawtohex(text)
+RETURNS varchar2
+AS $$ SELECT CASE WHEN pg_catalog.octet_length($1) > 0 THEN upper(pg_catalog.encode($1::bytea, 'hex'))::varchar2 END; $$ 
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+```
+
+== RAWTOHEX 典型用例
+[cols="8,2"]
+|====
+|*用例语句*|*返回值*
+|SELECT sys.rawtohex('\xDEADBEEF'::bytea); | DEADBEEF
+|SELECT sys.rawtohex('\xFF'::raw); | FF
+|SELECT sys.rawtohex('hello'::text); | 68656C6C6F
+|SELECT sys.rawtohex('hello'::varchar2); | 68656C6C6F
+|====
