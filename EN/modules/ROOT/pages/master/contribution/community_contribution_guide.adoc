@@ -249,13 +249,7 @@ A PR submission should contain only one function or one bug. Prohibit submitting
 
 Every GitHub PR must have a corresponding Issue. A PR without an associated Issue does not meet the community contribution process requirements.
 
-=== First:Create a Pull Request
-
-1 Open your warehouse: https://github.com/$user/docs-cn[https://github.com/$user/IvorySQL] ($user is your GitHub ID) 。
-
-2 Click Compare & pull request button.
-
-=== Second:Fill in PR information
+=== Fill in PR information
 
 ```
 Fix test
@@ -269,7 +263,7 @@ Give a detailed description of the submission function
 
 Reference the related Issue in the PR description and keep the Issue number visible to reviewers, for example `Fixes #123`.
 
-=== Third:Submit PR
+=== Submit PR
 
 Click Create pull request button. WELL DONE!
 
