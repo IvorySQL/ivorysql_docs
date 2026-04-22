@@ -93,6 +93,10 @@ IvorySQL源码托管在github: <https://github.com/IvorySQL>。
 
 我们欢迎代码、文档、测试等各类贡献。
 
+==== 文档贡献
+
+如果您新增或更新某个插件适配文档，请同步更新 xref:./5.0.adoc[IvorySQL生态插件适配列表] 概述页面中的插件表格，至少补充或更新插件名称、版本、功能描述、适用场景以及详情页链接，确保概述页与插件详情页信息一致。
+
 ==== 签署CLA
 在提交代码或文档贡献之前，为了确保代码合法合规，个人或企业贡献者需要签署贡献者许可协议(CLA)。签署CLA是IvorySQL社区接受贡献的必要条件，以确保您的贡献被合法分发。请根据下列链接下载CLA进行签署并将签署后的CLA发送至 cla@ivorysql.org。
 
@@ -125,6 +129,8 @@ IvorySQL源码托管在github: <https://github.com/IvorySQL>。
 ==== 开发与提交Pull Request
 对于提交一个PR应该保持一个功能，或者一个bug提交一次。禁止多个功能一次提交。
 
+提交 GitHub PR 之前，请先创建或认领对应的 Issue。所有 PR 都必须有至少一个对应的 Issue，用于关联需求、缺陷、讨论、评审和合并结果；没有对应 Issue 的 PR 不符合社区贡献流程。
+
 ===== Fork仓库
 
 前往项目主页，点击Fork按钮，将IvorySQL项目Fork到您自己的GitHub账户中。
@@ -153,6 +159,8 @@ Fix test
 leave a comment
 对该提交功能进行比较详细的描述
 ```
+
+请在 PR 标题或描述中显式关联对应 Issue 编号，例如 `Fixes #123` 或 `Refs #123`。
 
 点击Create pull request 按钮即可提交。
 
