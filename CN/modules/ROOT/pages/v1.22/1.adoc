@@ -1,0 +1,67 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+## 版本介绍
+
+[**发行日期：2026年4月21日**]
+
+IvorySQL 1.22 基于 PostgreSQL 14.22，包含多种错误修复。
+
+## 增强功能
+
+- PostgreSQL 14.18-14.22 增强
+1. 避免在检查声明为 GB18030 编码的无效编码字符串时发生一字节缓冲区越界读取。
+2. 正确处理分区表上的自引用外键。
+3. 加强规划器估算函数中的安全检查。
+4. 防止 pg_dump 脚本被用于攻击执行恢复操作的用户。
+5. 在 `CREATE STATISTICS` 中检查对 schema 的 `CREATE` 权限。
+6. 避免 libpq 中分配大小计算时的整数溢出。
+7. 防范 `oidvector`/`int2vector` 的意外维度。
+8. 加固选择性估算器，防止其被附加到接受意外数据类型的操作符上。
+9. 修复在重放由旧版本生成的多事务截断 WAL 记录后的失败问题。
+10. 避免 `substring()` 应用于"toast"数据时产生无效编码的错误报告。
+更多详情，请访问 link:https://www.postgresql.org/docs/release/14.22/[PostgreSQL 发布说明]。
+
+## 主要特性
+
+- 升级至 PG 14.22 内核：link:https://github.com/IvorySQL/IvorySQL/pull/1223[Feature #1223] +
+    PostgreSQL 内核升级至 14.22 版本。
+
+- 全平台打包 +
+    提供 X86、ARM、MIPS、LoongArch 架构的多平台介质包。
+
+- PostgreSQL 扩展 +
+    新增支持 7 个 PostgreSQL 扩展：PostGIS、pgRouting、PGroonga、ddlx、pgsql-http、pgvector、pgvectorscale。
+
+- 全局唯一索引：link:https://github.com/IvorySQL/IvorySQL/pull/1230[Feature #1230] +
+    提供使用非分区键确保跨分区唯一性的分区表唯一索引，在 Postgres 和 Oracle 兼容模式下均可用，并支持创建、附加、分离、插入和更新操作。
+
+- 基表列类型变更时自动重建视图：link:https://github.com/IvorySQL/IvorySQL/pull/1224[Feature #1224] +
+    当执行列类型变更时，数据库自动保存所有依赖视图的定义，并在完成类型变更后按照正确的依赖顺序重建这些视图。
+
+- 无主键表的逻辑复制回退至 FULL IDENTITY：link:https://github.com/IvorySQL/IvorySQL/pull/1227[Feature #1227] +
+    引入新的 GUC 参数 logical_replication_fallback_to_full_identity，允许逻辑复制对配置为 DEFAULT IDENTITY 但缺少主键的表自动回退至 REPLICA IDENTITY FULL。
+
+## 源代码
+
+IvorySQL 的研发工作主要通过以下两个核心代码库进行维护：
+- IvorySQL 数据库源代码：https://github.com/IvorySQL/IvorySQL
+- IvorySQL 官方网站：https://github.com/IvorySQL/Ivory-www
+
+## 贡献人员
+以下个人（按字母顺序排列）作为补丁作者、提交者、审阅者、测试者或问题报告者为本版本做出了贡献。
+
+* Chao Li
+* David Zhang
+* Grant Zhou
+* Oreo Yang
+* Shuntian Jiao
+* Steven Niu
+* Xiaohui Liu
+* Xinjie LYU
+* Xueyu Gao
+* Zheng Tao
+* Zhenhao Pan
+
+link:https://github.com/IvorySQL/IvorySQL/compare/IvorySQL_1.17...IvorySQL_1.22[完整变更日志]

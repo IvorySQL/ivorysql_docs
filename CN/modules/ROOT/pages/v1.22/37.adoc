@@ -13,7 +13,7 @@ pg_cron 是 PostgreSQL 的开源定时任务扩展，允许直接在数据库内
 == 安装配置
 
 [TIP]
-源码安装环境为 Ubuntu 24.04(x86_64)，环境中已经安装了IvorySQL1.17及以上版本，安装路径为/usr/local/ivorysql/ivorysql-1
+源码安装环境为 Ubuntu 24.04(x86_64)，环境中已经安装了IvorySQL1.22及以上版本，安装路径为/usr/local/ivorysql/ivorysql-1
 
 === 源码安装
 
