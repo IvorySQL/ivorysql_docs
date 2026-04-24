@@ -1,0 +1,57 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+
+= **Feature Overview**
+
+IvorySQL provides compatibility with Oracle's built-in function ```RAWTOHEX('parameter')```, which is used to convert RAW to a character value containing its hexadecimal representation.   
+
+== Implementation Principle
+
+The function pg_catalog.encode(bytea, 'hex') provided by PostgreSQL can directly convert binary data to hexadecimal.
+
+Given that the existing HEXTORAW function in the current system is implemented by wrapping pg_catalog.decode using SQL, the RAWTOHEX function developed this time will be implemented in the same way. That is, it will be a SQL function wrapping the PostgreSQL built-in function pg_catalog.encode, rather than implementing it via a C extension.
+
+The following four types need to be supported as input: raw, text, bytea, and varchar2.
+
+sys.raw is a domain type of bytea (typtype = 'd', typbasetype = bytea). PostgreSQL supports implicit conversion from a domain type to its base type, so RAWTOHEX(bytea) can automatically accept sys.raw as input.
+
+There is an IMPLICIT cast from sys.oravarcharchar (i.e., varchar2) to pg_catalog.text (defined in datatype--1.0.sql), so RAWTOHEX(text) can automatically accept varchar2 as input.
+
+Therefore, two overloaded versions (rather than four) will be defined.
+
+```
+sys.rawtohex(bytea)  RETURNS varchar2
+sys.rawtohex(text)   RETURNS varchar2
+```
+
+The specific functionality is implemented in builtin_functions—1.0.sql. 
+```sql
+/* support rawtohex function for oracle compatibility */
+CREATE OR REPLACE FUNCTION sys.rawtohex(bytea)
+RETURNS varchar2
+AS $$ SELECT CASE WHEN pg_catalog.octet_length($1) > 0 THEN upper(pg_catalog.encode($1, 'hex'))::varchar2 END; $$ 
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION sys.rawtohex(text)
+RETURNS varchar2
+AS $$ SELECT CASE WHEN pg_catalog.octet_length($1) > 0 THEN upper(pg_catalog.encode($1::bytea, 'hex'))::varchar2 END; $$ 
+LANGUAGE SQL
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+```
+
+== RAWTOHEX use cases
+[cols="8,2"]
+|====
+|*SQL statement *|*return value*
+|SELECT sys.rawtohex('\xDEADBEEF'::bytea); | DEADBEEF
+|SELECT sys.rawtohex('\xFF'::raw); | FF
+|SELECT sys.rawtohex('hello'::text); | 68656C6C6F
+|SELECT sys.rawtohex('hello'::varchar2); | 68656C6C6F
+|====

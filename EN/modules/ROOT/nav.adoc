@@ -93,6 +93,7 @@
 ** Built-in Functions
 *** xref:master/oracle_builtin_functions/sys_context.adoc[sys_context]
 *** xref:master/oracle_builtin_functions/userenv.adoc[userenv]
+*** xref:master/oracle_builtin_functions/rawtohex.adoc[rawtohex]
 ** xref:master/gb18030.adoc[GB18030 Character Set]
 * Reference
 ** xref:master/tools_reference.adoc[Tool Reference]

@@ -93,6 +93,7 @@
 *** 内置函数
 **** xref:master/oracle_builtin_functions/sys_context.adoc[sys_context]
 **** xref:master/oracle_builtin_functions/userenv.adoc[userenv]
+**** xref:master/oracle_builtin_functions/rawtohex.adoc[rawtohex]
 *** xref:master/gb18030.adoc[国标GB18030]
 * 参考指南
 ** xref:master/tools_reference.adoc[工具参考]
