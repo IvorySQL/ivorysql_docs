@@ -1,0 +1,235 @@
+:sectnums:
+: sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= Read-Only View
+
+== Purpose
+
+Oracle database supports using the `WITH READ ONLY` clause when creating views to set them as read-only, preventing any data modification operations (INSERT, UPDATE, DELETE, MERGE) on the view. To provide Oracle compatibility, IvorySQL implements the read-only view feature. Once a view is marked as read-only, any DML operations attempting to modify the view's data will be rejected, ensuring behavioral consistency for Oracle applications running on IvorySQL.
+
+== Implementation Details
+
+=== Syntax and Parsing
+
+==== Syntax Rule Extension
+
+The `READ_ONLY_OPTION` enum value was added in the `ora_gram.y` file, and the `opt_check_option` syntax rule was extended:
+
+[source,yacc]
+----
+opt_check_option:
+    WITH CHECK OPTION { $$ = CASCADED_CHECK_OPTION; }
+    | WITH CASCADED CHECK OPTION { $$ = CASCADED_CHECK_OPTION; }
+    | WITH LOCAL CHECK OPTION { $$ = LOCAL_CHECK_OPTION; }
+    | WITH READ ONLY { $$ = READ_ONLY_OPTION; }  /* New */
+    | /* EMPTY */ { $$ = NO_CHECK_OPTION; }
+    ;
+----
+
+==== ViewStmt Structure Extension
+
+In the `parsenodes.h` file, the `ViewCheckOption` enum was extended with `READ_ONLY_OPTION`, and the `ViewStmt` structure was extended with a `readOnly` field:
+
+[source,c]
+----
+typedef enum ViewCheckOption {
+    NO_CHECK_OPTION,
+    LOCAL_CHECK_OPTION,
+    CASCADED_CHECK_OPTION,
+    READ_ONLY_OPTION, /* WITH READ ONLY (Oracle compat) */
+} ViewCheckOption;
+
+typedef struct ViewStmt {
+    // ... other fields
+    bool readOnly; /* WITH READ ONLY (Oracle compat) */
+} ViewStmt;
+----
+
+The `readOnly` flag is set during parsing:
+
+[source,c]
+----
+n->readOnly = ($10 == READ_ONLY_OPTION);
+n->withCheckOption = n->readOnly ? NO_CHECK_OPTION : $10;
+----
+
+Note that `WITH READ ONLY` and `WITH CHECK OPTION` are mutually exclusive and cannot be used together.
+
+=== Relation Options System
+
+==== read_only Relation Option
+
+The `read_only` view relation option was defined in the `reloptions.c` file:
+
+[source,c]
+----
+/* reloptions.c */
+{
+    {"read_only",
+     "Prevents INSERT, UPDATE, and DELETE on this view (Oracle compatibility)",
+     RELOPT_KIND_VIEW,
+     AccessExclusiveLock},
+    false
+},
+
+/* in view_reloptions() function */
+{"read_only", RELOPT_TYPE_BOOL,
+ offsetof(ViewOptions, read_only)},
+----
+
+==== ViewOptions Structure Extension
+
+In the `rel.h` file, the `ViewOptions` structure was extended with a `read_only` field:
+
+[source,c]
+----
+typedef struct ViewOptions {
+    // ... other fields
+    bool read_only; /* WITH READ ONLY (Oracle compat) */
+} ViewOptions;
+----
+
+==== RelationIsReadOnlyView Macro
+
+The `RelationIsReadOnlyView` macro allows quick determination of whether a view is read-only:
+
+[source,c]
+----
+#define RelationIsReadOnlyView(relation) \
+    (AssertMacro(relation->rd_rel->relkind == RELKIND_VIEW), \
+     (relation)->rd_options && \
+     ((ViewOptions *) (relation)->rd_options)->read_only)
+----
+
+=== View Creation Processing
+
+The `WITH READ ONLY` option is handled in the `DefineView` function in the `view.c` file:
+
+[source,c]
+----
+/* Handle WITH READ ONLY in DefineView() */
+if (stmt->readOnly)
+{
+    /* Set read_only relation option */
+    options = transformViewOptions(RelationGetRelid(newRelationView),
+                                   stmt->options, true);
+    setRelOptions(newRelationView, options, true, AccessExclusiveLock);
+}
+----
+
+`WITH READ ONLY` is also supported in the `compile_force_view_internal` function to ensure FORCE VIEW can properly use the read-only attribute.
+
+=== DML Execution Interception
+
+==== Execution Layer Interception
+
+In the `CheckValidResultRel()` function in `execMain.c`, DML operations on read-only views are intercepted:
+
+[source,c]
+----
+/* execMain.c */
+if (RelationIsReadOnlyView(resultRel))
+    ereport(ERROR,
+        (errcode(ERRCODE_WRONG_OBJECT_TYPE),
+         errmsg("cannot modify view \"%s\"",
+                RelationGetRelationName(resultRel)),
+         errhint("The view is defined as read-only.")));
+----
+
+When executing INSERT, UPDATE, DELETE, or MERGE statements, an error is thrown if the target view is marked as read-only.
+
+==== Rewrite Layer Interception
+
+The same check was added in the `rewriteTargetView()` function in `rewriteHandler.c`:
+
+[source,c]
+----
+/* rewriteHandler.c */
+if (RelationIsReadOnlyView(view))
+    ereport(ERROR,
+        (errcode(ERRCODE_WRONG_OBJECT_TYPE),
+         errmsg("cannot modify view \"%s\"",
+                RelationGetRelationName(view)),
+         errhint("The view is defined as read-only.")));
+----
+
+This ensures that modifications to read-only views are also blocked at the query rewrite layer.
+
+=== pg_dump Support
+
+Support for exporting and restoring the `WITH READ ONLY` attribute was added in `pg_dump.c`:
+
+[source,c]
+----
+/* pg_dump.h - TableInfo structure new field */
+typedef struct _tableInfo {
+    // ... other fields
+    bool readOnly; /* WITH READ ONLY (Oracle compat) */
+    // ... other fields
+} _tableInfo;
+
+/* pg_dump.c - extract read_only option */
+if (strcmp(options[i].defname, "read_only") == 0)
+    info->readOnly = defGetBoolean(options[i].def);
+----
+
+During export, the `dumpTableSchema()` and `dumpRule()` functions output the `WITH READ ONLY` clause in the appropriate location, ensuring the read-only attribute is preserved during database migration.
+
+== Usage Examples
+
+=== Creating a Read-Only View
+
+[source,sql]
+----
+-- Create a view with WITH READ ONLY
+CREATE VIEW emp_view AS
+SELECT * FROM employees
+WITH READ ONLY;
+
+-- DML on read-only view will be rejected
+INSERT INTO emp_view VALUES (1, 'John', 5000);
+-- ERROR: cannot modify view "emp_view"
+-- HINT: The view is defined as read-only.
+
+UPDATE emp_view SET salary = 6000 WHERE id = 1;
+-- ERROR: cannot modify view "emp_view"
+-- HINT: The view is defined as read-only.
+
+DELETE FROM emp_view WHERE id = 1;
+-- ERROR: cannot modify view "emp_view"
+-- HINT: The view is defined as read-only.
+----
+
+=== Create or Replace Read-Only View
+
+[source,sql]
+----
+-- Use OR REPLACE to preserve read-only attribute
+CREATE OR REPLACE VIEW emp_view AS
+SELECT id, name, department FROM employees
+WITH READ ONLY;
+----
+
+=== FORCE VIEW with Read-Only Attribute
+
+[source,sql]
+----
+-- Create FORCE VIEW and set as read-only
+CREATE OR REPLACE FORCE VIEW emp_force_view AS
+SELECT * FROM employees
+WITH READ ONLY;
+----
+
+=== Mutual Exclusivity with WITH CHECK OPTION
+
+[source,sql]
+----
+-- Error: WITH READ ONLY and WITH CHECK OPTION cannot be used together
+CREATE VIEW emp_view AS
+SELECT * FROM employees
+WITH CHECK OPTION
+WITH READ ONLY;
+-- ERROR: READ ONLY and CHECK OPTION are mutually exclusive
+----

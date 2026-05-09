@@ -1,0 +1,235 @@
+:sectnums:
+: sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= 视图只读属性
+
+== 目的
+
+Oracle 数据库支持在创建视图时使用 `WITH READ ONLY` 子句，将视图设置为只读状态，防止对视图执行任何数据修改操作（INSERT、UPDATE、DELETE、MERGE）。为了兼容 Oracle 的这一特性，IvorySQL 实现了视图只读属性功能。当视图被标记为只读后，任何试图修改视图数据的 DML 操作都会被拒绝，从而保证 Oracle 应用程序在 IvorySQL 上的行为一致性。
+
+== 实现说明
+
+=== 语法与解析
+
+==== 语法规则扩展
+
+在 `ora_gram.y` 文件中添加了 `READ_ONLY_OPTION` 枚举值，并扩展了 `opt_check_option` 语法规则：
+
+[source,yacc]
+----
+opt_check_option:
+    WITH CHECK OPTION { $$ = CASCADED_CHECK_OPTION; }
+    | WITH CASCADED CHECK OPTION { $$ = CASCADED_CHECK_OPTION; }
+    | WITH LOCAL CHECK OPTION { $$ = LOCAL_CHECK_OPTION; }
+    | WITH READ ONLY { $$ = READ_ONLY_OPTION; }  /* 新增 */
+    | /* EMPTY */ { $$ = NO_CHECK_OPTION; }
+    ;
+----
+
+==== ViewStmt 结构体扩展
+
+在 `parsenodes.h` 文件中，`ViewCheckOption` 枚举新增 `READ_ONLY_OPTION` 选项，`ViewStmt` 结构体新增 `readOnly` 字段：
+
+[source,c]
+----
+typedef enum ViewCheckOption {
+    NO_CHECK_OPTION,
+    LOCAL_CHECK_OPTION,
+    CASCADED_CHECK_OPTION,
+    READ_ONLY_OPTION, /* WITH READ ONLY (Oracle compat) */
+} ViewCheckOption;
+
+typedef struct ViewStmt {
+    // ... 其他字段
+    bool readOnly; /* WITH READ ONLY (Oracle compat) */
+} ViewStmt;
+----
+
+解析时设置 `readOnly` 标志：
+
+[source,c]
+----
+n->readOnly = ($10 == READ_ONLY_OPTION);
+n->withCheckOption = n->readOnly ? NO_CHECK_OPTION : $10;
+----
+
+需要注意的是，`WITH READ ONLY` 与 `WITH CHECK OPTION` 是互斥的，不能同时使用。
+
+=== 关系选项系统
+
+==== read_only 关系选项
+
+在 `reloptions.c` 文件中定义了 `read_only` 视图关系选项：
+
+[source,c]
+----
+/* reloptions.c */
+{
+    {"read_only",
+     "Prevents INSERT, UPDATE, and DELETE on this view (Oracle compatibility)",
+     RELOPT_KIND_VIEW,
+     AccessExclusiveLock},
+    false
+},
+
+/* view_reloptions() 函数中 */
+{"read_only", RELOPT_TYPE_BOOL,
+ offsetof(ViewOptions, read_only)},
+----
+
+==== ViewOptions 结构体扩展
+
+在 `rel.h` 文件中，`ViewOptions` 结构体新增 `read_only` 字段：
+
+[source,c]
+----
+typedef struct ViewOptions {
+    // ... 其他字段
+    bool read_only; /* WITH READ ONLY (Oracle compat) */
+} ViewOptions;
+----
+
+==== RelationIsReadOnlyView 宏
+
+通过 `RelationIsReadOnlyView` 宏可以快速判断视图是否为只读：
+
+[source,c]
+----
+#define RelationIsReadOnlyView(relation) \
+    (AssertMacro(relation->rd_rel->relkind == RELKIND_VIEW), \
+     (relation)->rd_options && \
+     ((ViewOptions *) (relation)->rd_options)->read_only)
+----
+
+=== 视图创建处理
+
+在 `view.c` 文件的 `DefineView` 函数中处理 `WITH READ ONLY` 选项：
+
+[source,c]
+----
+/* DefineView() 中处理 WITH READ ONLY */
+if (stmt->readOnly)
+{
+    /* 设置 read_only 关系选项 */
+    options = transformViewOptions(RelationGetRelid(newRelationView),
+                                   stmt->options, true);
+    setRelOptions(newRelationView, options, true, AccessExclusiveLock);
+}
+----
+
+同时在 `compile_force_view_internal` 函数中也支持 `WITH READ ONLY`，确保 FORCE VIEW 可以正常使用只读属性。
+
+=== DML 执行拦截
+
+==== 执行层拦截
+
+在 `execMain.c` 文件的 `CheckValidResultRel()` 函数中，对只读视图的 DML 操作进行拦截：
+
+[source,c]
+----
+/* execMain.c */
+if (RelationIsReadOnlyView(resultRel))
+    ereport(ERROR,
+        (errcode(ERRCODE_WRONG_OBJECT_TYPE),
+         errmsg("cannot modify view \"%s\"",
+                RelationGetRelationName(resultRel)),
+         errhint("The view is defined as read-only.")));
+----
+
+当执行 INSERT、UPDATE、DELETE 或 MERGE 语句时，如果目标视图被标记为只读，将抛出错误。
+
+==== 重写层拦截
+
+在 `rewriteHandler.c` 文件的 `rewriteTargetView()` 函数中也添加了相同的检查：
+
+[source,c]
+----
+/* rewriteHandler.c */
+if (RelationIsReadOnlyView(view))
+    ereport(ERROR,
+        (errcode(ERRCODE_WRONG_OBJECT_TYPE),
+         errmsg("cannot modify view \"%s\"",
+                RelationGetRelationName(view)),
+         errhint("The view is defined as read-only.")));
+----
+
+这确保了在查询重写层面也能阻止对只读视图的修改操作。
+
+=== pg_dump 支持
+
+在 `pg_dump.c` 文件中添加了对 `WITH READ ONLY` 属性的导出和恢复支持：
+
+[source,c]
+----
+/* pg_dump.h - TableInfo 结构体新增字段 */
+typedef struct _tableInfo {
+    // ... 其他字段
+    bool readOnly; /* WITH READ ONLY (Oracle compat) */
+    // ... 其他字段
+} _tableInfo;
+
+/* pg_dump.c - 提取 read_only 选项 */
+if (strcmp(options[i].defname, "read_only") == 0)
+    info->readOnly = defGetBoolean(options[i].def);
+----
+
+导出时，`dumpTableSchema()` 和 `dumpRule()` 函数会在适当位置输出 `WITH READ ONLY` 子句，确保只读属性在数据库迁移过程中得以保留。
+
+== 使用示例
+
+=== 创建只读视图
+
+[source,sql]
+----
+-- 创建带 WITH READ ONLY 的视图
+CREATE VIEW emp_view AS
+SELECT * FROM employees
+WITH READ ONLY;
+
+-- 在只读视图上执行 DML 将被拒绝
+INSERT INTO emp_view VALUES (1, 'John', 5000);
+-- ERROR: cannot modify view "emp_view"
+-- HINT: The view is defined as read-only.
+
+UPDATE emp_view SET salary = 6000 WHERE id = 1;
+-- ERROR: cannot modify view "emp_view"
+-- HINT: The view is defined as read-only.
+
+DELETE FROM emp_view WHERE id = 1;
+-- ERROR: cannot modify view "emp_view"
+-- HINT: The view is defined as read-only.
+----
+
+=== 创建或替换只读视图
+
+[source,sql]
+----
+-- 使用 OR REPLACE 保留只读属性
+CREATE OR REPLACE VIEW emp_view AS
+SELECT id, name, department FROM employees
+WITH READ ONLY;
+----
+
+=== FORCE VIEW 与只读属性结合
+
+[source,sql]
+----
+-- 创建 FORCE VIEW 并设置为只读
+CREATE OR REPLACE FORCE VIEW emp_force_view AS
+SELECT * FROM employees
+WITH READ ONLY;
+----
+
+=== 与 WITH CHECK OPTION 的互斥性
+
+[source,sql]
+----
+-- 错误: WITH READ ONLY 和 WITH CHECK OPTION 不能同时使用
+CREATE VIEW emp_view AS
+SELECT * FROM employees
+WITH CHECK OPTION
+WITH READ ONLY;
+-- ERROR: READ ONLY and CHECK OPTION are mutually exclusive
+----
