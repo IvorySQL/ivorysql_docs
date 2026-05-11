@@ -364,6 +364,8 @@ https://github.com/IvorySQL/ivory-operator/tree/IVYO_REL_5_STABLE[https://github
 
 如果服务器可以直接访问到docker hub,可以跳过该章节。否则需要在所有的K8S集群节点提前load 如下docker镜像
 
+TIP: 国内用户可使用 IvorySQL 社区的 Harbor 镜像服务（https://registry.highgo.com/[https://registry.highgo.com/]）拉取以下镜像，将 `docker.io/` 替换为 `registry.highgo.com/` 即可。
+
 [literal]
 ----
 docker.io/ivorysql/pgadmin:ubi8-9.9-5.0-1

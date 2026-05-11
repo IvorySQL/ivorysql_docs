@@ -111,6 +111,8 @@ ivorysql  3238  1551  0 20:35 pts/0    00:00:00 grep --color=auto postgres
 $ docker pull ivorysql/ivorysql:5.0-ubi8
 ```
 
+TIP: Users in China can also pull from the IvorySQL community Harbor registry (https://registry.highgo.com/[https://registry.highgo.com/]) for faster downloads, e.g. `docker pull registry.highgo.com/ivorysql/ivorysql:5.0-ubi8`.
+
 ** Running IvorySQL
 ```
 $ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:5.0-ubi8

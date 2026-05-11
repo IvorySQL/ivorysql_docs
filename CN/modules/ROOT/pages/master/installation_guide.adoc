@@ -43,6 +43,8 @@ $ sudo dnf install -y ivorysql5-5.0
 $ docker pull ivorysql/ivorysql:5.0-ubi8
 ```
 
+TIP: 国内用户也可使用 IvorySQL 社区的 Harbor 镜像服务（https://registry.highgo.com/[https://registry.highgo.com/]）加速拉取，将上述地址替换为 `registry.highgo.com/ivorysql/ivorysql:5.0-ubi8` 即可。
+
 ** 运行IvorySQL
 ```
 $ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:5.0-ubi8
