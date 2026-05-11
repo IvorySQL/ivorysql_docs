@@ -47,7 +47,7 @@ $ sudo dnf install -y ivorysql5-{ivorysql-version}
 $ docker pull ivorysql/IvorySQL {ivorysql-version}-ubi8
 ```
 
-TIP: Users in China can also pull from the IvorySQL community Harbor registry (https://registry.highgo.com/[https://registry.highgo.com/]) for faster downloads — replace the image reference above with `registry.highgo.com/ivorysql/ivorysql:{ivorysql-version}-ubi8`.
+TIP: Users in China can also pull from the IvorySQL community Harbor registry for faster downloads — replace the image reference above with `registry.highgo.com/ivorysql/ivorysql:{ivorysql-version}-ubi8`.
 
 ** Run IvorySQL
 
