@@ -6,7 +6,7 @@
 
 [TIP]
 ====
-除 Docker Hub 外，IvorySQL 社区还为国内用户提供 Harbor 镜像服务：https://registry.highgo.com/[https://registry.highgo.com/]。将本章节中的镜像地址前缀替换为 `registry.highgo.com/` 即可使用，例如 `registry.highgo.com/ivorysql/ivorysql:5.0-ubi8`。
+除 Docker Hub 外，IvorySQL 社区还为国内用户提供 Harbor 镜像服务。将本章节中的镜像地址前缀替换为 `registry.highgo.com/` 即可使用，例如 `registry.highgo.com/ivorysql/ivorysql:5.0-ubi8`。
 ====
 
 == docker方式运行
