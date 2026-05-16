@@ -26,6 +26,7 @@
 ** xref:master/oracle_compatibility/compat_sys_guid.adoc[17、sys_guid 函数]
 ** xref:master/oracle_compatibility/compat_empty_string_to_null.adoc[18、空字符串转null]
 ** xref:master/oracle_compatibility/compat_call_into.adoc[19、CALL INTO]
+** xref:master/oracle_compatibility/compat_read_only_view.adoc[20、视图只读]
 * 容器化与云服务
 ** 容器化指南
 *** xref:master/containerization/k8s_deployment.adoc[K8S部署]
@@ -90,6 +91,7 @@
 **** xref:master/compatibility_features_design/sys_guid_function.adoc[sys_guid 函数]
 **** xref:master/compatibility_features_design/empty_string_to_null.adoc[空字符串转null]
 **** xref:master/compatibility_features_design/call_into.adoc[CALL INTO]
+**** xref:master/compatibility_features_design/read_only_view.adoc[视图只读]
 *** 内置函数
 **** xref:master/oracle_builtin_functions/sys_context.adoc[sys_context]
 **** xref:master/oracle_builtin_functions/userenv.adoc[userenv]

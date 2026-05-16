@@ -1,0 +1,168 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= Read Only View
+
+== 目的
+
+本文档解释 IvorySQL 中 `WITH READ ONLY` 视图的功能，实现只读视图功能以保持与 Oracle 行为一致。
+
+== 功能说明
+
+- `WITH READ ONLY`：创建视图时指定此选项，可防止对视图进行 INSERT、UPDATE、DELETE 和 MERGE 操作。
+- 存储方式：`read_only=true` 存储在视图的 `reloptions` 中。
+- 互斥性：`WITH READ ONLY` 和 `WITH CHECK OPTION` 互斥，不能同时指定。
+- Force View 支持：可以与 `FORCE VIEW` 一起使用，只读属性会在视图成功编译后生效。
+- CREATE OR REPLACE 行为：如果使用 `CREATE OR REPLACE VIEW` 重新创建视图时未指定 `WITH READ ONLY`，则会清除只读属性。
+
+== 测试用例
+
+=== 创建只读视图
+
+[source,sql]
+----
+-- 创建基础表
+CREATE TABLE t_ro (a int, b text);
+INSERT INTO t_ro VALUES (1, 'hello'), (2, 'world');
+
+-- 创建只读视图，SELECT 成功
+CREATE VIEW ro_view AS SELECT * FROM t_ro WITH READ ONLY;
+SELECT * FROM ro_view ORDER BY a;
+-- 期望输出：
+--  a |   b
+-- ---+-------
+--  1 | hello
+--  2 | world
+----
+
+=== 验证 DML 被阻止
+
+[source,sql]
+----
+-- INSERT 被阻止
+INSERT INTO ro_view VALUES (3, 'fail');
+-- 期望输出：ERROR: cannot modify view "ro_view"
+-- HINT: The view is defined as read-only.
+
+-- UPDATE 被阻止
+UPDATE ro_view SET b = 'fail' WHERE a = 1;
+-- 期望输出：ERROR: cannot modify view "ro_view"
+-- HINT: The view is defined as read-only.
+
+-- DELETE 被阻止
+DELETE FROM ro_view WHERE a = 1;
+-- 期望输出：ERROR: cannot modify view "ro_view"
+-- HINT: The view is defined as read-only.
+----
+
+=== MERGE 命令被阻止
+
+[source,sql]
+----
+-- MERGE with INSERT action
+MERGE INTO ro_view USING (SELECT 4 AS a, 'merge_ins' AS b) AS src
+ON (ro_view.a = src.a)
+WHEN NOT MATCHED THEN INSERT VALUES (src.a, src.b);
+-- 期望输出：ERROR: cannot modify view "ro_view"
+-- HINT: The view is defined as read-only.
+
+-- MERGE with UPDATE action
+MERGE INTO ro_view USING (SELECT 1 AS a, 'merge_upd' AS b) AS src
+ON (ro_view.a = src.a)
+WHEN MATCHED THEN UPDATE SET b = src.b;
+-- 期望输出：ERROR: cannot modify view "ro_view"
+-- HINT: The view is defined as read-only.
+----
+
+=== CREATE OR REPLACE 行为
+
+[source,sql]
+----
+-- 重新创建视图时保留 WITH READ ONLY：DML 仍然被阻止
+CREATE OR REPLACE VIEW ro_view AS SELECT a, b FROM t_ro WITH READ ONLY;
+INSERT INTO ro_view VALUES (3, 'fail');
+-- 期望输出：ERROR: cannot modify view "ro_view"
+-- HINT: The view is defined as read-only.
+
+-- 重新创建视图时不指定 WITH READ ONLY：只读属性被清除，视图变为可更新
+CREATE OR REPLACE VIEW ro_view AS SELECT a, b FROM t_ro;
+INSERT INTO ro_view VALUES (3, 'now_writable');
+SELECT * FROM ro_view ORDER BY a;
+-- 期望输出：
+--  a |      b
+-- ---+--------------
+--  1 | hello
+--  2 | world
+--  3 | now_writable
+----
+
+=== FORCE VIEW 与 WITH READ ONLY
+
+[source,sql]
+----
+-- 创建时基础表不存在，视图为占位符
+CREATE FORCE VIEW force_ro_view AS SELECT * FROM nonexistent_for_ro WITH READ ONLY;
+-- 期望输出：WARNING: View created with compilation errors
+
+-- 创建基础表
+CREATE TABLE nonexistent_for_ro (a int, b text);
+
+-- 显式编译视图
+ALTER VIEW force_ro_view COMPILE;
+
+-- 编译成功后 DML 被阻止
+INSERT INTO force_ro_view VALUES (1, 'fail');
+-- 期望输出：ERROR: cannot modify view "force_ro_view"
+-- HINT: The view is defined as read-only.
+----
+
+=== 递归视图与 WITH READ ONLY
+
+[source,sql]
+----
+CREATE RECURSIVE VIEW ro_recursive_view (a) AS
+    SELECT 1
+    UNION ALL
+    SELECT a + 1 FROM ro_recursive_view WHERE a < 3
+WITH READ ONLY;
+
+SELECT * FROM ro_recursive_view ORDER BY a;
+-- 期望输出：
+--  a
+-- ---
+--  1
+--  2
+--  3
+
+INSERT INTO ro_recursive_view VALUES (99);
+-- 期望输出：ERROR: cannot modify view "ro_recursive_view"
+-- HINT: The view is defined as read-only.
+----
+
+=== 验证 reloptions 存储
+
+[source,sql]
+----
+SELECT relname, reloptions
+FROM pg_class
+WHERE relname IN ('ro_view', 'ro_recursive_view', 'force_ro_view')
+ORDER BY relname;
+-- 期望输出：
+--       relname      |    reloptions
+-- -------------------+------------------
+--  force_ro_view     | {read_only=true}
+--  ro_recursive_view | {read_only=true}
+--  ro_view           | 
+----
+
+=== 清理
+
+[source,sql]
+----
+DROP VIEW IF EXISTS ro_view;
+DROP VIEW IF EXISTS force_ro_view;
+DROP TABLE t_ro;
+DROP TABLE IF EXISTS nonexistent_for_ro;
+----

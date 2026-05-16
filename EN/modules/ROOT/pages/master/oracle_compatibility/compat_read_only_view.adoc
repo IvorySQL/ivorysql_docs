@@ -1,0 +1,168 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= Read Only View
+
+== Purpose
+
+This document describes the purpose of `WITH READ ONLY` views in IvorySQL, implementing read-only view functionality to maintain compatibility with Oracle behavior.
+
+== Functionality Description
+
+- `WITH READ ONLY`: When specified during view creation, this option prevents INSERT, UPDATE, DELETE, and MERGE operations on the view.
+- Storage: `read_only=true` is stored in the view's `reloptions`.
+- Mutually Exclusive: `WITH READ ONLY` and `WITH CHECK OPTION` are mutually exclusive and cannot be specified together.
+- Force View Support: Can be used with `FORCE VIEW`; the read-only attribute takes effect after the view compiles successfully.
+- CREATE OR REPLACE Behavior: If a view is recreated using `CREATE OR REPLACE VIEW` without specifying `WITH READ ONLY`, the read-only attribute is cleared.
+
+== Test Cases
+
+=== Creating a Read Only View
+
+[source,sql]
+----
+-- Create base table
+CREATE TABLE t_ro (a int, b text);
+INSERT INTO t_ro VALUES (1, 'hello'), (2, 'world');
+
+-- Create read-only view, SELECT succeeds
+CREATE VIEW ro_view AS SELECT * FROM t_ro WITH READ ONLY;
+SELECT * FROM ro_view ORDER BY a;
+-- Expected output:
+--  a |   b
+-- ---+-------
+--  1 | hello
+--  2 | world
+----
+
+=== Verify DML is Blocked
+
+[source,sql]
+----
+-- INSERT is blocked
+INSERT INTO ro_view VALUES (3, 'fail');
+-- Expected output: ERROR: cannot modify view "ro_view"
+-- HINT: The view is defined as read-only.
+
+-- UPDATE is blocked
+UPDATE ro_view SET b = 'fail' WHERE a = 1;
+-- Expected output: ERROR: cannot modify view "ro_view"
+-- HINT: The view is defined as read-only.
+
+-- DELETE is blocked
+DELETE FROM ro_view WHERE a = 1;
+-- Expected output: ERROR: cannot modify view "ro_view"
+-- HINT: The view is defined as read-only.
+----
+
+=== MERGE Command is Blocked
+
+[source,sql]
+----
+-- MERGE with INSERT action
+MERGE INTO ro_view USING (SELECT 4 AS a, 'merge_ins' AS b) AS src
+ON (ro_view.a = src.a)
+WHEN NOT MATCHED THEN INSERT VALUES (src.a, src.b);
+-- Expected output: ERROR: cannot modify view "ro_view"
+-- HINT: The view is defined as read-only.
+
+-- MERGE with UPDATE action
+MERGE INTO ro_view USING (SELECT 1 AS a, 'merge_upd' AS b) AS src
+ON (ro_view.a = src.a)
+WHEN MATCHED THEN UPDATE SET b = src.b;
+-- Expected output: ERROR: cannot modify view "ro_view"
+-- HINT: The view is defined as read-only.
+----
+
+=== CREATE OR REPLACE Behavior
+
+[source,sql]
+----
+-- Recreating view with WITH READ ONLY: DML is still blocked
+CREATE OR REPLACE VIEW ro_view AS SELECT a, b FROM t_ro WITH READ ONLY;
+INSERT INTO ro_view VALUES (3, 'fail');
+-- Expected output: ERROR: cannot modify view "ro_view"
+-- HINT: The view is defined as read-only.
+
+-- Recreating view without WITH READ ONLY: read-only attribute is cleared, view becomes updatable
+CREATE OR REPLACE VIEW ro_view AS SELECT a, b FROM t_ro;
+INSERT INTO ro_view VALUES (3, 'now_writable');
+SELECT * FROM ro_view ORDER BY a;
+-- Expected output:
+--  a |      b
+-- ---+--------------
+--  1 | hello
+--  2 | world
+--  3 | now_writable
+----
+
+=== FORCE VIEW with WITH READ ONLY
+
+[source,sql]
+----
+-- Base table does not exist at creation time, view is a placeholder
+CREATE FORCE VIEW force_ro_view AS SELECT * FROM nonexistent_for_ro WITH READ ONLY;
+-- Expected output: WARNING: View created with compilation errors
+
+-- Create base table
+CREATE TABLE nonexistent_for_ro (a int, b text);
+
+-- Explicitly compile view
+ALTER VIEW force_ro_view COMPILE;
+
+-- After successful compilation, DML is blocked
+INSERT INTO force_ro_view VALUES (1, 'fail');
+-- Expected output: ERROR: cannot modify view "force_ro_view"
+-- HINT: The view is defined as read-only.
+----
+
+=== Recursive View with WITH READ ONLY
+
+[source,sql]
+----
+CREATE RECURSIVE VIEW ro_recursive_view (a) AS
+    SELECT 1
+    UNION ALL
+    SELECT a + 1 FROM ro_recursive_view WHERE a < 3
+WITH READ ONLY;
+
+SELECT * FROM ro_recursive_view ORDER BY a;
+-- Expected output:
+--  a
+-- ---
+--  1
+--  2
+--  3
+
+INSERT INTO ro_recursive_view VALUES (99);
+-- Expected output: ERROR: cannot modify view "ro_recursive_view"
+-- HINT: The view is defined as read-only.
+----
+
+=== Verify reloptions Storage
+
+[source,sql]
+----
+SELECT relname, reloptions
+FROM pg_class
+WHERE relname IN ('ro_view', 'ro_recursive_view', 'force_ro_view')
+ORDER BY relname;
+-- Expected output:
+--       relname      |    reloptions
+-- -------------------+------------------
+--  force_ro_view     | {read_only=true}
+--  ro_recursive_view | {read_only=true}
+--  ro_view           | 
+----
+
+=== Cleanup
+
+[source,sql]
+----
+DROP VIEW IF EXISTS ro_view;
+DROP VIEW IF EXISTS force_ro_view;
+DROP TABLE t_ro;
+DROP TABLE IF EXISTS nonexistent_for_ro;
+----
