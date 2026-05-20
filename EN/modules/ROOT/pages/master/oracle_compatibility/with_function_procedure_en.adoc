@@ -1,0 +1,345 @@
+:sectnums:
+:sectnumlevels: 5
+
+= WITH FUNCTION/PROCEDURE
+
+== Purpose
+
+This document explains the `WITH FUNCTION` and `WITH PROCEDURE` features in IvorySQL,
+which implement Oracle-style inline PL/SQL functions and procedures inside SQL statements.
+
+`WITH FUNCTION/PROCEDURE` is Oracle's _Subquery Factoring with PL/SQL Declarations_ feature.
+It allows PL/SQL functions and procedures to be defined directly inside the WITH clause
+(Common Table Expression, CTE) of a SQL statement.
+
+== Feature Description
+
+=== Basic Syntax
+
+In Oracle-compatible mode (`compatible_db = ORA_PARSER`), the WITH clause supports the
+following extended syntax:
+
+[source,sql]
+----
+WITH
+  FUNCTION func_name ( [ param_list ] ) RETURN return_type
+  { IS | AS }
+  [ declare_section ]
+  BEGIN
+      statements
+  END [ func_name ] ;
+
+  PROCEDURE proc_name ( [ param_list ] )
+  { IS | AS }
+  [ declare_section ]
+  BEGIN
+      statements
+  END [ proc_name ] ;
+
+  cte_name AS ( SELECT ... )
+SELECT ...
+----
+
+=== Key Characteristics
+
+- **Scope-limited**: Functions/procedures defined in the WITH clause are visible only within
+  the current SQL statement.
+- **Mixed usage**: Function/procedure definitions can be interleaved with standard CTEs
+  (`AS (SELECT ...)`).
+- **Full PL/SQL syntax**: The function body supports the complete PL/SQL syntax (`BEGIN...END`).
+- **No system catalog writes**: Definitions are automatically destroyed after execution;
+  they are not persisted to `pg_proc`.
+- **SELECT context only**: Valid in SELECT statements and INSERT...SELECT statements.
+  Using WITH FUNCTION before UPDATE, DELETE, or MERGE raises an error (consistent with
+  Oracle behavior).
+
+=== Parameter Modes
+
+Inline procedures support the standard Oracle parameter modes:
+
+- `IN` (default): input parameter
+- `OUT`: output parameter
+- `IN OUT`: bidirectional parameter
+
+Inline functions only support `IN` parameters.
+
+== Supported Statement Types
+
+WITH inline functions/procedures are only allowed in the following top-level statements:
+
+- `SELECT` statements (most common)
+- `INSERT ... SELECT` statements (Oracle-compatible form; WITH FUNCTION appears after
+  `INSERT INTO`)
+
+The following statements are **not supported** (Oracle does not allow them;
+`ERRCODE_FEATURE_NOT_SUPPORTED` is raised):
+
+- `WITH FUNCTION ... UPDATE ...`: WITH FUNCTION cannot precede UPDATE
+- `WITH FUNCTION ... DELETE ...`: WITH FUNCTION cannot precede DELETE
+- `WITH FUNCTION ... MERGE ...`: WITH FUNCTION cannot precede MERGE
+
+To share reusable logic inside DML statements, define a schema-level function with
+`CREATE FUNCTION` instead.
+
+== Syntax Examples
+
+=== Simplest Inline Function
+
+[source,sql]
+----
+WITH
+  FUNCTION double_it(n NUMBER) RETURN NUMBER AS
+  BEGIN RETURN n * 2; END;
+SELECT double_it(5) FROM dual;
+-- Expected output: 10
+----
+
+=== Function Mixed with a CTE
+
+[source,sql]
+----
+WITH
+  FUNCTION tax(amt NUMBER) RETURN NUMBER AS
+  BEGIN RETURN amt * 0.1; END;
+  orders AS (SELECT 100 AS amount)
+SELECT amount, tax(amount) FROM orders;
+-- Expected output: 100 | 10
+----
+
+=== Multiple Inline Functions
+
+[source,sql]
+----
+WITH
+  FUNCTION add1(n NUMBER) RETURN NUMBER AS BEGIN RETURN n+1; END;
+  FUNCTION mul2(n NUMBER) RETURN NUMBER AS BEGIN RETURN n*2; END;
+SELECT mul2(add1(3)) FROM dual;
+-- Expected output: 8
+----
+
+=== Recursive Function
+
+[source,sql]
+----
+WITH
+  FUNCTION factorial(n NUMBER) RETURN NUMBER AS
+  BEGIN
+    IF n <= 1 THEN RETURN 1; END IF;
+    RETURN n * factorial(n-1);
+  END;
+SELECT factorial(5) FROM dual;
+-- Expected output: 120
+----
+
+=== OUT Parameters (PROCEDURE Only)
+
+WITH FUNCTION does not allow `OUT` or `IN OUT` parameters (consistent with Oracle
+ORA-06572 behavior). Only WITH PROCEDURE may declare `OUT` / `IN OUT` parameters.
+
+[source,sql]
+----
+-- Correct: PROCEDURE may declare OUT parameters
+WITH
+  PROCEDURE swap(val IN NUMBER, result OUT NUMBER) AS
+  BEGIN
+    result := val * 10;
+  END;
+SELECT 1 FROM dual;  -- the procedure is called by another subprogram inside the same
+                     -- WITH block, not directly from a SELECT expression
+
+-- Error: FUNCTION does not allow OUT parameters
+WITH
+  FUNCTION bad_func(val NUMBER, result OUT NUMBER) RETURN NUMBER AS
+  BEGIN RETURN val; END;
+SELECT bad_func(5) FROM dual;
+-- Expected output: ERROR: WITH FUNCTION "bad_func" cannot declare OUT or IN OUT parameters
+----
+
+=== Default Parameter Values
+
+[source,sql]
+----
+WITH
+  FUNCTION calc(n NUMBER DEFAULT 10) RETURN NUMBER AS
+  BEGIN RETURN n * 2; END;
+SELECT calc() FROM dual;
+-- Expected output: 20
+----
+
+=== Exception Handling
+
+[source,sql]
+----
+WITH
+  FUNCTION safe_div(a NUMBER, b NUMBER) RETURN NUMBER AS
+  BEGIN
+    RETURN a / b;
+  EXCEPTION
+    WHEN OTHERS THEN RETURN NULL;
+  END;
+SELECT safe_div(1, 0) FROM dual;
+-- Expected output: NULL
+----
+
+=== Integration with DML
+
+[source,sql]
+----
+-- Allowed: INSERT INTO ... WITH FUNCTION ... SELECT ... (Oracle-compatible form)
+WITH
+  FUNCTION get_bonus(sal NUMBER) RETURN NUMBER AS
+  BEGIN RETURN sal * 1.2; END;
+INSERT INTO emp_bonus (empno, bonus)
+SELECT empno, get_bonus(sal) FROM emp WHERE deptno = 10;
+----
+
+NOTE: Oracle does not allow WITH FUNCTION to precede UPDATE, DELETE, or MERGE.
+IvorySQL enforces the same restriction; such usage raises `ERRCODE_FEATURE_NOT_SUPPORTED`.
+
+== Scope and Visibility
+
+=== Scope Rules
+
+- The scope of an inline function/procedure is limited to the SQL statement in which it
+  is defined (including subqueries within that statement).
+- Functions/procedures may reference each other regardless of declaration order (mutual
+  recursion is supported).
+- An inline definition shadows any existing database function with the same name and
+  signature (WITH definition takes precedence).
+- Defining two functions/procedures with the same name and parameter types in a single
+  WITH clause is not allowed.
+
+=== Visibility Inside Subqueries
+
+[source,sql]
+----
+WITH
+  FUNCTION add_tax(n NUMBER) RETURN NUMBER AS
+  BEGIN RETURN n * 1.1; END;
+SELECT * FROM (SELECT add_tax(amount) AS total FROM orders);
+----
+
+== Relationship with Existing Features
+
+|===
+| Existing Feature | Relationship
+
+| PL/iSQL nested subprograms
+| Directly reused: leverages the existing compile/execute infrastructure.
+
+| Standard CTE (`WITH...AS (SELECT ...)`)
+| Coexists: can be mixed in the same WITH clause.
+
+| `RECURSIVE` CTE
+| Coexists: WITH RECURSIVE and inline functions can appear together.
+
+| Oracle Package
+| Similar: package procedures/functions are also registered temporarily at session level.
+
+| PL/iSQL `CREATE FUNCTION`
+| Different: WITH inline functions are not persisted and are not written to the system catalog.
+|===
+
+== Error Handling
+
+=== Duplicate Definition
+
+[source,sql]
+----
+WITH
+  FUNCTION dup(n NUMBER) RETURN NUMBER AS BEGIN RETURN n; END;
+  FUNCTION dup(n NUMBER) RETURN NUMBER AS BEGIN RETURN n * 2; END;
+SELECT dup(1) FROM dual;
+-- Expected output: ERROR: WITH clause function "dup" is defined more than once with the same argument types
+----
+
+=== Usage in PG_PARSER Mode
+
+[source,sql]
+----
+-- Attempting to use WITH FUNCTION syntax in PG_PARSER mode
+SET compatible_db = PG_PARSER;
+WITH FUNCTION foo(n NUMBER) RETURN NUMBER AS BEGIN RETURN n; END;
+SELECT foo(1);
+-- Expected output: ERROR: syntax error at or near "FUNCTION"
+----
+
+=== Function Body Syntax Error
+
+[source,sql]
+----
+WITH
+  FUNCTION broken(n NUMBER) RETURN NUMBER AS
+  BEGIN
+    RETRUN n;  -- typo
+  END;
+SELECT broken(1) FROM dual;
+-- Expected output: ERROR: syntax error at or near "RETRUN"
+----
+
+=== Rejection of Table Function Usage
+
+[source,sql]
+----
+WITH
+  FUNCTION get_rows(n NUMBER) RETURN NUMBER AS
+  BEGIN RETURN n; END;
+SELECT * FROM get_rows(5);
+-- Expected output: ERROR: WITH clause function cannot be used as a table or set-returning function
+----
+
+=== Rejection of Qualified Names
+
+[source,sql]
+----
+WITH
+  FUNCTION public.qual_func(n NUMBER) RETURN NUMBER IS
+  BEGIN RETURN n; END;
+SELECT qual_func(1) FROM dual;
+-- Expected output: ERROR: qualified name is not allowed in WITH FUNCTION declaration
+----
+
+== EXPLAIN Output
+
+=== Basic Output
+
+[source,sql]
+----
+EXPLAIN WITH
+  FUNCTION add_one(n NUMBER) RETURN NUMBER AS BEGIN RETURN n + 1; END;
+SELECT add_one(5) FROM dual;
+-- Expected output includes: WITH Function: add_one(number) RETURN number
+----
+
+=== VERBOSE Mode
+
+[source,sql]
+----
+EXPLAIN (VERBOSE ON) WITH
+  FUNCTION double(n NUMBER) RETURN NUMBER AS
+  BEGIN RETURN n * 2; END;
+SELECT double(3) FROM dual;
+-- Expected output includes: Body: BEGIN RETURN n * 2; END
+----
+
+== Restrictions and Constraints
+
+1. **Oracle parser mode only**: This feature is active only when `compatible_db = ORA_PARSER`.
+2. **No system catalog writes**: Inline functions/procedures are registered dynamically during
+   statement execution and deregistered immediately after; nothing is written to `pg_proc`.
+3. **Transaction-safe**: Registration and deregistration are fully transparent to transactions;
+   no WAL is generated.
+4. **Concurrency-safe**: Each concurrent session has its own independent inline
+   function/procedure registration context.
+5. **Scope-limited**: An inline function cannot be called outside the statement that defines it.
+6. **No polymorphic parameters**: Declaring parameters with types such as `ANYELEMENT` will
+   fail at call time.
+7. **Not usable as a table function**: `SELECT * FROM with_func(...)` is rejected.
+
+== Cleanup
+
+[source,sql]
+----
+-- The scope of WITH FUNCTION/PROCEDURE ends automatically with the statement.
+-- No manual cleanup is required.
+----
