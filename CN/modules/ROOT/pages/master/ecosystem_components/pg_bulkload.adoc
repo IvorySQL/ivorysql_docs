@@ -1,0 +1,81 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_bulkload 
+
+== 概述
+pg_bulkload 是 PostgreSQL  高性能批量数据导入插件，可绕过常规读写机制大幅提升文本数据入库效率，支持数据过滤、错误容错、并行加载与断点恢复，适用于海量历史数据迁移、数仓批量同步、离线日志入库等大批量数据加载场景，相比原生 COPY 命令导入速度显著提升。
+
+== 安装
+IvorySQL的安装包里已经集成了pg_bulkload插件，如果使用安装包安装的IvorySQL，通常不需要再手动安装pg_bulkload即可使用。其它安装方式可以参考下面的源码安装步骤。
+
+[TIP]
+源码安装环境为 Ubuntu 24.04(x86_64)，环境中已经安装了IvorySQL5及以上版本，安装路径为/usr/ivory-5
+
+=== 源码安装
+从https://github.com/ossc-db/pg_bulkload/releases/tag/VERSION3_1_23 下载 pg_bulkload v3.1.23代码。
+
+** 安装依赖
+[literal]
+----
+sudo apt install gawk 
+----
+
+** 安装pg_bulkload
+[literal]
+----
+# 源代码解压缩后进入其目录
+cd pg_bulkload-VERSION3_1_23
+ 
+# 修改 Makefile 以适应IvorySQl的 non-PIE 静态库
+ 
+ LDFLAGS+=-Wl,--build-id                                                                                                                        
++                                                                                                                                               
++# Workaround for non-PIE static libraries (e.g., IvorySQL's libpgcommon.a)                                                                     
++# Some distributions build libpgcommon.a without -fPIE, causing link failures                                                                  
++# when the system defaults to PIE executables.                                                                                                 
++ifdef DISABLE_PIE                                                                                                                              
++CFLAGS+=-no-pie                                                                                                                                
++LDFLAGS+=-no-pie                                                                                                                               
++endif 
+
+# 编译代码，设置PG_CONFIG环境变量值为pg_config路径，eg：/usr/ivory-5/bin/pg_config
+make PG_CONFIG=/usr/ivory-5/bin/pg_config clean
+make PG_CONFIG=/usr/ivory-5/bin/pg_config DISABLE_PIE=1
+sudo make PG_CONFIG=/usr/ivory-5/bin/pg_config   
+----
+
+== 创建Extension
+psql 连接到数据库，执行如下命令：
+[literal]
+----
+ivorysql=# CREATE extension pg_bulkload;
+CREATE EXTENSION
+
+ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'pg_bulkload';
+    name     | default_version | installed_version |                             comment                             
+-------------+-----------------+-------------------+-----------------------------------------------------------------
+ pg_bulkload | 3.1.23          | 3.1.23            | pg_bulkload is a high speed data loading utility for PostgreSQL
+(1 row)
+----
+
+== 使用
+[literal]
+----
+ivorysql=# create database testdb; 
+CREATE DATABASE
+
+ivorysql=# \c testdb
+You are now connected to database "testdb" as user "highgo".
+
+testdb=# create table tb_asher (id int,name text);
+CREATE TABLE
+testdb=# \q
+
+# 模拟CSV 文件 
+seq 100000| awk '{print $0"|asher"}' > bulk_asher.txt
+
+# 将bulk_asher.txt里的数据加载到testdb 库下的 tb_asher表中
+/usr/ivory-5/bin/pg_bulkload -i ./bulk_asher.txt -O tb_asher  -l ./tb_asher_output.log -P ./tb_asher_bad.txt  -o "TYPE=CSV" -o "DELIMITER=|" -d testdb -U highgo -h 127.0.0.1
+----
