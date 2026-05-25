@@ -1,0 +1,111 @@
+:sectnums:
+:sectnumlevels: 5
+
+= pg_show_plans
+
+== Overview
+
+pg_show_plans is a PostgreSQL extension that shows the query plans of all currently running SQL statements. Query plans can be displayed in several formats, including `TEXT`, `JSON`, and `YAML`.
+
+NOTE: This extension creates a hash table within shared memory. The hash table is not resizable — no new plans can be added once it has been filled up.
+
+== Installation
+
+[TIP]
+The source installation environment is Ubuntu 24.04 (x86_64), with IvorySQL 5 or above installed at `/usr/ivory-5`.
+
+=== Install from Source
+
+Make sure `pg_config` is available on your PATH.
+
+[source,bash]
+----
+git clone https://github.com/cybertec-postgresql/pg_show_plans.git
+cd pg_show_plans
+
+make PG_CONFIG=/usr/ivory-5/bin/pg_config
+make PG_CONFIG=/usr/ivory-5/bin/pg_config install
+----
+
+=== Configure shared_preload_libraries
+
+Add `pg_show_plans` to the `shared_preload_libraries` parameter in `ivorysql.conf`:
+
+[source,conf]
+----
+shared_preload_libraries = 'liboracle_parser, ivorysql_ora, pg_show_plans'
+----
+
+Restart the IvorySQL instance to apply the change:
+
+[source,bash]
+----
+pg_ctl restart -D data
+----
+
+=== Create the Extension
+
+After the server has restarted, connect to the target database and create the extension:
+
+[source,sql]
+----
+CREATE EXTENSION pg_show_plans;
+----
+
+== Usage
+
+=== View Current Query Plans
+
+Use the `pg_show_plans` view to inspect the execution plans of all currently running SQL statements:
+
+[source,sql]
+----
+SELECT * FROM pg_show_plans;
+----
+
+[source,text]
+----
+  pid  | level | userid | dbid  |                                 plan
+-------+-------+--------+-------+-----------------------------------------------------------------------
+ 11473 |     0 |     10 | 16384 | Function Scan on pg_show_plans  (cost=0.00..10.00 rows=1000 width=56)
+ 11504 |     0 |     10 | 16384 | Function Scan on print_item  (cost=0.25..10.25 rows=1000 width=524)
+ 11504 |     1 |     10 | 16384 | Result  (cost=0.00..0.01 rows=1 width=4)
+(3 rows)
+----
+
+=== View Query Plans with SQL Text
+
+Use the `pg_show_plans_q` view to see query plans together with the corresponding SQL statement. This view joins `pg_show_plans` with `pg_stat_activity`:
+
+[source,sql]
+----
+SELECT * FROM pg_show_plans_q;
+----
+
+[source,text]
+----
+-[ RECORD 1 ]------------------------------------------------------------------------------------
+pid   | 11473
+level | 0
+plan  | Sort  (cost=72.08..74.58 rows=1000 width=80)
+      |   Sort Key: pg_show_plans.pid, pg_show_plans.level
+      |   ->  Hash Left Join  (cost=2.25..22.25 rows=1000 width=80)
+      |         Hash Cond: (pg_show_plans.pid = s.pid)
+      |         Join Filter: (pg_show_plans.level = 0)
+      |         ->  Function Scan on pg_show_plans  (cost=0.00..10.00 rows=1000 width=48)
+      |         ->  Hash  (cost=1.00..1.00 rows=100 width=44)
+      |               ->  Function Scan on pg_stat_get_activity s  (cost=0.00..1.00 rows=100 width=44)
+query | SELECT p.pid, p.level, p.plan, a.query FROM pg_show_plans p
+      |    LEFT JOIN pg_stat_activity a
+      |    ON p.pid = a.pid AND p.level = 0 ORDER BY p.pid, p.level;
+-[ RECORD 2 ]------------------------------------------------------------------------------------
+pid   | 11517
+level | 0
+plan  | Function Scan on print_item  (cost=0.25..10.25 rows=1000 width=524)
+query | SELECT * FROM print_item(1,20);
+-[ RECORD 3 ]------------------------------------------------------------------------------------
+pid   | 11517
+level | 1
+plan  | Result  (cost=0.00..0.01 rows=1 width=4)
+query |
+----
