@@ -1,0 +1,65 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_bigm 
+
+== 概述
+pg_bigm 为 IvorySQL 提供二元分词全文检索能力，适配中日韩文本，快速实现模糊检索与相似度查询。
+
+== 安装
+IvorySQL的安装包里已经集成了 pg_bigm 插件，如果使用安装包安装的IvorySQL，通常不需要再手动安装 pg_bigm 即可使用。其它安装方式可以参考下面的源码安装步骤。
+
+[TIP]
+源码安装环境为 Ubuntu 24.04(x86_64)，环境中已经安装了IvorySQL5及以上版本，安装路径为/usr/ivory-5
+
+=== 源码安装
+从https://github.com/pgbigm/pg_bigm/releases/tag/v1.2-20250903 下载 pg_bigm v1.2 代码。
+
+** 安装 pg_bigm
+[literal]
+----
+# 源代码解压缩后进入其目录
+cd pg_bigm-1.2-20250903
+ 
+# 编译代码，设置PG_CONFIG环境变量值为pg_config路径，eg：/usr/ivory-5/bin/pg_config
+make USE_PGXS=1 PG_CONFIG=/usr/ivory-5/bin/pg_config 
+sudo make USE_PGXS=1 PG_CONFIG=/usr/ivory-5/bin/pg_config install
+----
+
+== 创建Extension
+psql 连接到数据库，执行如下命令：
+[literal]
+----
+ivorysql=# CREATE EXTENSION pg_bigm;
+CREATE EXTENSION
+
+ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'pg_bigm';
+  name   | default_version | installed_version |                             comment                              
+---------+-----------------+-------------------+------------------------------------------------------------------
+ pg_bigm | 1.2             | 1.2               | text similarity measurement and index searching based on bigrams
+(1 row)
+----
+
+== 使用
+[literal]
+----
+# 首先创建索引
+CREATE TABLE pg_tools (tool text, description text);
+
+INSERT INTO pg_tools VALUES ('pg_hint_plan', 'Tool that allows a user to specify an optimizer HINT to PostgreSQL');
+INSERT INTO pg_tools VALUES ('pg_dbms_stats', 'Tool that allows a user to stabilize planner statistics in PostgreSQL');
+INSERT INTO pg_tools VALUES ('pg_bigm', 'Tool that provides 2-gram full text search capability in PostgreSQL');
+INSERT INTO pg_tools VALUES ('pg_trgm', 'Tool that provides 3-gram full text search capability in PostgreSQL');
+
+CREATE INDEX pg_tools_idx ON pg_tools USING gin (description gin_bigm_ops);
+
+# 执行全文检索
+SELECT * FROM pg_tools WHERE description LIKE '%search%';
+
+  tool   |                             description                             
+---------+---------------------------------------------------------------------
+ pg_bigm | Tool that provides 2-gram full text search capability in PostgreSQL
+ pg_trgm | Tool that provides 3-gram full text search capability in PostgreSQL
+(2 rows)
+----

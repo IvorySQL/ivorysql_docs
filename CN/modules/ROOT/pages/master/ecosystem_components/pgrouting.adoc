@@ -39,7 +39,7 @@ make
 sudo make install
 ```
 
-== 创建Extension并确认ddlx版本
+== 创建Extension并确认版本
 
 psql 连接到数据库，执行如下命令：
 ```
