@@ -1,0 +1,313 @@
+:sectnums:
+:sectnumlevels: 5
+
+= WITH FUNCTION/PROCEDURE
+
+== 目的
+
+本文档解释 IvorySQL 中 `WITH FUNCTION` 和 `WITH PROCEDURE` 的用途，实现 Oracle 风格的 SQL 内嵌 PL/SQL 函数和过程功能。
+
+`WITH FUNCTION/PROCEDURE` 是 Oracle 数据库的 Subquery Factoring with PL/SQL Declarations 特性，允许在 SQL 的 WITH 子句（公共表表达式，CTE）中直接定义 PL/SQL 函数和过程。
+
+== 功能说明
+
+=== 基本语法
+
+在 Oracle 兼容模式（`compatible_db = ORA_PARSER`）下，WITH 子句支持以下扩展语法：
+
+[source,sql]
+----
+WITH
+  FUNCTION func_name ( [ param_list ] ) RETURN return_type
+  { IS | AS }
+  [ declare_section ]
+  BEGIN
+      statements
+  END [ func_name ] ;
+
+  PROCEDURE proc_name ( [ param_list ] )
+  { IS | AS }
+  [ declare_section ]
+  BEGIN
+      statements
+  END [ proc_name ] ;
+
+  cte_name AS ( SELECT ... )
+SELECT ...
+----
+
+=== 核心特性
+
+- **作用域限制**：函数/过程在 WITH 子句中定义，作用域仅限于当前 SQL 语句
+- **混合排列**：函数/过程定义可与 CTE（AS (SELECT ...)）混合使用
+- **完整 PL/SQL 语法**：函数体支持完整的 PL/SQL 语法（BEGIN...END）
+- **不写入系统目录**：执行结束后自动销毁，不持久化到 `pg_proc`
+- **仅 SELECT 上下文**：适用于 SELECT 语句及 INSERT...SELECT 语句；位于 UPDATE、DELETE、MERGE 之前时报错（与 Oracle 行为一致）
+
+=== 参数模式
+
+内嵌过程支持标准 Oracle 参数模式：
+
+- `IN`（默认）：输入参数
+- `OUT`：输出参数
+- `IN OUT`：双向参数
+
+内嵌函数仅支持`IN`类型输入参数。
+
+== 支持的语句类型
+
+WITH 内嵌函数/过程仅允许出现在以下顶层语句中：
+
+- `SELECT` 语句（最常见）
+- `INSERT ... SELECT` 语句（Oracle 兼容形式，WITH FUNCTION 位于 INSERT INTO 之后）
+
+以下语句**不支持**（Oracle 不允许，报 `ERRCODE_FEATURE_NOT_SUPPORTED`）：
+
+- `WITH FUNCTION ... UPDATE ...`：WITH FUNCTION 不能位于 UPDATE 之前
+- `WITH FUNCTION ... DELETE ...`：WITH FUNCTION 不能位于 DELETE 之前
+- `WITH FUNCTION ... MERGE ...`：WITH FUNCTION 不能位于 MERGE 之前
+
+如需在 DML 中使用可复用逻辑，应定义 schema 级别的函数（`CREATE FUNCTION`）。
+
+== 语法示例
+
+=== 最简单的内嵌函数
+
+[source,sql]
+----
+WITH
+  FUNCTION double_it(n NUMBER) RETURN NUMBER AS
+  BEGIN RETURN n * 2; END;
+SELECT double_it(5) FROM dual;
+-- 期望输出：10
+----
+
+=== 函数与 CTE 混合
+
+[source,sql]
+----
+WITH
+  FUNCTION tax(amt NUMBER) RETURN NUMBER AS
+  BEGIN RETURN amt * 0.1; END;
+  orders AS (SELECT 100 AS amount)
+SELECT amount, tax(amount) FROM orders;
+-- 期望输出：100 | 10
+----
+
+=== 多个内嵌函数
+
+[source,sql]
+----
+WITH
+  FUNCTION add1(n NUMBER) RETURN NUMBER AS BEGIN RETURN n+1; END;
+  FUNCTION mul2(n NUMBER) RETURN NUMBER AS BEGIN RETURN n*2; END;
+SELECT mul2(add1(3)) FROM dual;
+-- 期望输出：8
+----
+
+=== 递归函数
+
+[source,sql]
+----
+WITH
+  FUNCTION factorial(n NUMBER) RETURN NUMBER AS
+  BEGIN
+    IF n <= 1 THEN RETURN 1; END IF;
+    RETURN n * factorial(n-1);
+  END;
+SELECT factorial(5) FROM dual;
+-- 期望输出：120
+----
+
+=== OUT 参数（仅限 PROCEDURE）
+
+WITH FUNCTION 不允许声明 `OUT` / `IN OUT` 参数（与 Oracle ORA-06572 行为一致）；
+仅 WITH PROCEDURE 允许 `OUT` / `IN OUT` 参数。
+
+[source,sql]
+----
+-- 正确：PROCEDURE 可声明 OUT 参数
+WITH
+  PROCEDURE swap(val IN NUMBER, result OUT NUMBER) AS
+  BEGIN
+    result := val * 10;
+  END;
+SELECT 1 FROM dual;  -- 过程由同一 WITH 块内的其他子程序调用，不直接出现在 SELECT 表达式中
+
+-- 错误：FUNCTION 不允许 OUT 参数
+WITH
+  FUNCTION bad_func(val NUMBER, result OUT NUMBER) RETURN NUMBER AS
+  BEGIN RETURN val; END;
+SELECT bad_func(5) FROM dual;
+-- 期望输出：ERROR: WITH FUNCTION "bad_func" cannot declare OUT or IN OUT parameters
+----
+
+=== 默认参数值
+
+[source,sql]
+----
+WITH
+  FUNCTION calc(n NUMBER DEFAULT 10) RETURN NUMBER AS
+  BEGIN RETURN n * 2; END;
+SELECT calc() FROM dual;
+-- 期望输出：20
+----
+
+=== 异常处理
+
+[source,sql]
+----
+WITH
+  FUNCTION safe_div(a NUMBER, b NUMBER) RETURN NUMBER AS
+  BEGIN
+    RETURN a / b;
+  EXCEPTION
+    WHEN OTHERS THEN RETURN NULL;
+  END;
+SELECT safe_div(1, 0) FROM dual;
+-- 期望输出：NULL
+----
+
+=== 与 DML 集成
+
+[source,sql]
+----
+-- 允许：INSERT INTO ... WITH FUNCTION ... SELECT ...（Oracle 兼容形式）
+WITH
+  FUNCTION get_bonus(sal NUMBER) RETURN NUMBER AS
+  BEGIN RETURN sal * 1.2; END;
+INSERT INTO emp_bonus (empno, bonus)
+SELECT empno, get_bonus(sal) FROM emp WHERE deptno = 10;
+----
+
+NOTE: Oracle 不允许 WITH FUNCTION 位于 UPDATE、DELETE、MERGE 之前。
+IvorySQL 遵循相同限制，此类用法会报 `ERRCODE_FEATURE_NOT_SUPPORTED` 错误。
+
+== 作用域与可见性
+
+=== 作用域规则
+
+- 内嵌函数/过程的作用域仅限当前 SQL 语句（及其子查询）
+- 函数/过程可相互引用（前向声明后定义，支持互递归）
+- 函数/过程不能与当前数据库中已有的同名同签名函数冲突（WITH 定义优先）
+- 同一 WITH 子句中不允许定义同名、同参数类型的函数/过程
+
+=== 子查询中可见
+
+[source,sql]
+----
+WITH
+  FUNCTION add_tax(n NUMBER) RETURN NUMBER AS
+  BEGIN RETURN n * 1.1; END;
+SELECT * FROM (SELECT add_tax(amount) AS total FROM orders);
+----
+
+== 与现有功能的关系
+
+| 现有功能 | 关系 |
+|---------|------|
+| PL/iSQL 嵌套子程序 | 直接复用：利用现有编译/执行基础设施 |
+| 标准 CTE（WITH...AS (SELECT ...)） | 共存：在同一 WITH 子句中混用 |
+| `RECURSIVE` CTE | 共存：WITH RECURSIVE 与内嵌函数可同时使用 |
+| Oracle Package | 类似：Package 的过程/函数也是 session 级临时注册 |
+| PL/iSQL `CREATE FUNCTION` | 不同：WITH 内嵌函数不持久化，不写入系统目录 |
+
+== 错误处理
+
+=== 重复定义
+
+[source,sql]
+----
+WITH
+  FUNCTION dup(n NUMBER) RETURN NUMBER AS BEGIN RETURN n; END;
+  FUNCTION dup(n NUMBER) RETURN NUMBER AS BEGIN RETURN n * 2; END;
+SELECT dup(1) FROM dual;
+-- 期望输出：ERROR: WITH clause function "dup" is defined more than once with the same argument types
+----
+
+=== 在 PG_PARSER 模式下使用
+
+[source,sql]
+----
+-- 在 PG_PARSER 模式下尝试使用 WITH FUNCTION 语法
+SET compatible_db = PG_PARSER;
+WITH FUNCTION foo(n NUMBER) RETURN NUMBER AS BEGIN RETURN n; END;
+SELECT foo(1);
+-- 期望输出：ERROR: syntax error at or near "FUNCTION"
+----
+
+=== 函数体语法错误
+
+[source,sql]
+----
+WITH
+  FUNCTION broken(n NUMBER) RETURN NUMBER AS
+  BEGIN
+    RETRUN n;  -- 拼写错误
+  END;
+SELECT broken(1) FROM dual;
+-- 期望输出：ERROR: syntax error at or near "RETRUN"
+----
+
+=== 表函数用法拒绝
+
+[source,sql]
+----
+WITH
+  FUNCTION get_rows(n NUMBER) RETURN NUMBER AS
+  BEGIN RETURN n; END;
+SELECT * FROM get_rows(5);
+-- 期望输出：ERROR: WITH clause function cannot be used as a table or set-returning function
+----
+
+=== 限定名拒绝
+
+[source,sql]
+----
+WITH
+  FUNCTION public.qual_func(n NUMBER) RETURN NUMBER IS
+  BEGIN RETURN n; END;
+SELECT qual_func(1) FROM dual;
+-- 期望输出：ERROR: qualified name is not allowed in WITH FUNCTION declaration
+----
+
+== EXPLAIN 输出
+
+=== 基本输出
+
+[source,sql]
+----
+EXPLAIN WITH
+  FUNCTION add_one(n NUMBER) RETURN NUMBER AS BEGIN RETURN n + 1; END;
+SELECT add_one(5) FROM dual;
+-- 期望输出包含：WITH Function: add_one(number) RETURN number
+----
+
+=== VERBOSE 模式
+
+[source,sql]
+----
+EXPLAIN (VERBOSE ON) WITH
+  FUNCTION double(n NUMBER) RETURN NUMBER AS
+  BEGIN RETURN n * 2; END;
+SELECT double(3) FROM dual;
+-- 期望输出包含：Body: BEGIN RETURN n * 2; END
+----
+
+== 限制与约束
+
+1. **仅 Oracle 解析器模式**：该特性仅在 `compatible_db = ORA_PARSER` 时生效
+2. **不写入系统目录**：内嵌函数/过程在语句执行期间动态注册，执行结束后撤销
+3. **事务安全**：注册和撤销对事务完全透明，不产生 WAL 日志
+4. **并发安全**：多个并发会话各自拥有独立的内嵌函数/过程注册上下文
+5. **作用域限制**：内嵌函数不能在定义它的语句外部调用
+6. **不支持多态参数**：声明 `ANYELEMENT` 等多态参数会在调用时失败
+7. **不支持表函数用法**：`SELECT * FROM with_func(...)` 会被拒绝
+
+== 清理
+
+[source,sql]
+----
+-- WITH FUNCTION/PROCEDURE 的作用域随语句结束自动清理
+-- 无需手动执行清理操作
+----

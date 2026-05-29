@@ -1,0 +1,784 @@
+:sectnums:
+:sectnumlevels: 5
+
+= WITH FUNCTION/PROCEDURE Implementation Notes
+
+== Purpose
+
+This document describes the internal implementation of the `WITH FUNCTION` and
+`WITH PROCEDURE` features in IvorySQL. The feature allows PL/SQL functions and
+procedures to be defined directly inside the WITH clause (Common Table Expression, CTE)
+of a SQL statement, implementing Oracle's _Subquery Factoring with PL/SQL Declarations_.
+
+== Implementation Overview
+
+=== Layered Architecture
+
+The implementation spans four layers:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  Layer 1: Oracle Parser  (ora_gram.y + liboracle_parser.c)          │
+│  - Extend with_clause grammar to allow plsql_declarations           │
+│  - Reuse OraBody_FUNC lexer mechanism to capture body as Sconst     │
+│  - Output: WithClause { plsql_defs: [InlineFunctionDef...], ctes: [...]}│
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  Layer 2: Semantic Analysis  (parse_cte.c + parse_func.c)           │
+│  - transformWithClause() processes InlineFunctionDef nodes          │
+│  - Resolve function signatures; register in ParseState.p_with_func_list│
+│  - p_subprocfunc_hook intercepts call resolution for WITH functions  │
+│  - FuncExpr.function_from = FUNC_FROM_WITH_CLAUSE ('w')             │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  Layer 3: Planner  (planner.c / createplan.c)                       │
+│  - Copy Query.withFuncDefs into PlannedStmt.withFuncDefs            │
+│  - No additional cost model changes                                 │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  Layer 4: Executor  (execExpr.c + pl_handler.c)                     │
+│  - ExecInitFunc() recognizes FUNC_FROM_WITH_CLAUSE                  │
+│  - Compiles WITH function body on demand (lazy compilation)         │
+│  - Compilation result cached in EState.es_with_func_container       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+=== Grammar and Parsing
+
+==== Grammar Rule Extension
+
+The `with_clause` grammar rule in `ora_gram.y` is extended as follows:
+
+[source,yacc]
+----
+with_clause:
+    WITH plsql_declarations cte_list
+        {
+            WithClause *n = makeNode(WithClause);
+            n->plsql_defs = $2;
+            n->ctes = $3;
+            n->recursive = false;
+            n->location = @1;
+            $$ = n;
+        }
+    | WITH plsql_declarations
+        {
+            WithClause *n = makeNode(WithClause);
+            n->plsql_defs = $2;
+            n->ctes = NIL;
+            n->recursive = false;
+            n->location = @1;
+            $$ = n;
+        }
+    | WITH cte_list                          /* existing syntax unchanged */
+    | WITH_LA cte_list                       /* existing */
+    | WITH RECURSIVE cte_list               /* existing */
+    ;
+
+plsql_declarations:
+    plsql_declaration
+        { $$ = list_make1($1); }
+    | plsql_declarations plsql_declaration
+        { $$ = lappend($1, $2); }
+    ;
+
+plsql_declaration:
+    FUNCTION ora_func_name opt_ora_func_args_with_defaults
+    RETURN func_return
+    ora_func_is_or_as Sconst ';'
+        {
+            InlineFunctionDef *n = makeNode(InlineFunctionDef);
+            n->funcname = strVal(llast($2));
+            n->args = $3;
+            n->rettype = $5;
+            n->is_proc = false;
+            n->src = $7;
+            n->location = @2;
+            $$ = (Node *) n;
+        }
+    | PROCEDURE ora_func_name opt_procedure_args_with_defaults
+    ora_func_is_or_as Sconst ';'
+        {
+            InlineFunctionDef *n = makeNode(InlineFunctionDef);
+            n->funcname = strVal(llast($2));
+            n->args = $3;
+            n->rettype = NULL;
+            n->is_proc = true;
+            n->src = $5;
+            n->location = @2;
+            $$ = (Node *) n;
+        }
+    ;
+----
+
+==== Reuse of the OraBody_FUNC Mechanism
+
+The Oracle parser already has a `set_oracle_plsql_body(OraBody_FUNC)` mechanism that
+captures the entire PL/SQL body after IS/AS as a single Sconst string. WITH FUNCTION
+reuses this mechanism directly; no changes to the lexer are required.
+
+[source,c]
+----
+/* ora_gram.y */
+ora_func_is_or_as:
+    IS  { set_oracle_plsql_body(yyscanner, OraBody_FUNC); }
+    | AS { set_oracle_plsql_body(yyscanner, OraBody_FUNC); }
+    ;
+----
+
+The lexer (`liboracle_parser.c:439-652`) enters body-capture mode, tracking the
+BEGIN/END/FUNCTION/PROCEDURE nesting depth until the outermost END, and returns the
+entire text as a single SCONST token.
+
+==== Handling Grammar Ambiguity
+
+Both `FUNCTION` and `PROCEDURE` are `unreserved_keyword` tokens and can therefore be
+used as CTE names. The LALR(1) state table disambiguates automatically based on the
+token that follows:
+
+|===
+| Token after `WITH FUNCTION\|PROCEDURE` | LALR(1) action | Path taken
+
+| **IDENT** / plain identifier
+| shift (enters `ora_func_name`)
+| plsql_declaration
+
+| **`AS`**
+| reduce
+| CTE without column-name list
+
+| **`(`**
+| reduce
+| CTE with column-name list
+|===
+
+=== AST Node Design
+
+==== InlineFunctionDef Node
+
+A new AST node represents an inline function/procedure definition inside the WITH clause:
+
+[source,c]
+----
+/* parsenodes.h */
+typedef struct InlineFunctionDef
+{
+    NodeTag     type;           /* T_InlineFunctionDef */
+    char       *funcname;       /* unqualified function/procedure name */
+    List       *args;           /* list of FunctionParameter nodes */
+    TypeName   *rettype;        /* return type (NULL for procedures) */
+    bool        is_proc;        /* true = procedure, false = function */
+    char       *src;            /* raw body text (full IS/AS...END text) */
+    ParseLoc    location;       /* position in the original SQL text */
+} InlineFunctionDef;
+----
+
+==== WithClause Extension
+
+[source,c]
+----
+/* parsenodes.h */
+typedef struct WithClause
+{
+    NodeTag     type;
+    List       *plsql_defs;    /* NEW: InlineFunctionDef list (ORA mode) */
+    List       *ctes;          /* existing: CommonTableExpr list */
+    bool        recursive;     /* true = WITH RECURSIVE */
+    ParseLoc    location;
+} WithClause;
+----
+
+==== FuncExpr Extension
+
+A new function-origin tag is added in `primnodes.h`:
+
+[source,c]
+----
+/* primnodes.h */
+#define FUNC_FROM_WITH_CLAUSE    'w'   /* inline function from WITH clause */
+
+/* Update macro to exclude 'w' from the pg_proc path */
+#define FUNC_EXPR_FROM_PG_PROC(function_from) \
+    (function_from != FUNC_FROM_SUBPROCFUNC && \
+     function_from != FUNC_FROM_PACKAGE && \
+     function_from != FUNC_FROM_PACKGE_INITBODY && \
+     function_from != FUNC_FROM_WITH_CLAUSE)
+----
+
+==== WithFuncEntry Structure
+
+A lightweight structure added to ParseState stores function signatures:
+
+[source,c]
+----
+/* parse_node.h */
+typedef struct WithFuncEntry
+{
+    char       *funcname;
+    List       *argtypes;          /* list of Oids */
+    Oid         rettype;
+    bool        is_proc;
+    int         funcindex;         /* corresponds to FuncExpr.funcid */
+    InlineFunctionDef *def;        /* pointer to the original definition node */
+} WithFuncEntry;
+----
+
+==== WithFuncContainer Runtime Container
+
+[source,c]
+----
+/* pl_handler.h */
+typedef struct WithFuncContainer
+{
+    int                        nfuncs;   /* number of WITH functions */
+    PLiSQL_subproc_function  **funcs;    /* array of compiled functions */
+    MemoryContext              mcxt;     /* memory context for this container */
+} WithFuncContainer;
+----
+
+=== Semantic Analysis
+
+==== transformWithClause Extension
+
+`transformWithFuncDefs()` is implemented in the new file `parse_with_plsql.c` and called
+from `transformWithClause()` in `parse_cte.c`:
+
+[source,c]
+----
+/* parse_with_plsql.c */
+static void
+transformWithFuncDefs(ParseState *pstate, List *plsql_defs)
+{
+    int funcindex = 0;
+    ListCell *lc;
+
+    foreach(lc, plsql_defs)
+    {
+        InlineFunctionDef *ifd = (InlineFunctionDef *) lfirst(lc);
+        WithFuncEntry *entry = palloc(sizeof(WithFuncEntry));
+
+        /* resolve parameter types */
+        entry->argtypes = resolveWithFuncArgTypes(pstate, ifd->args);
+
+        /* resolve return type */
+        entry->rettype = ifd->rettype ?
+            typenameTypeId(pstate, ifd->rettype) : InvalidOid;
+
+        entry->funcname  = ifd->funcname;
+        entry->is_proc   = ifd->is_proc;
+        entry->funcindex = funcindex++;
+        entry->def       = ifd;
+
+        /* check for duplicate definition */
+        checkDuplicateWithFunc(pstate->p_with_func_list, entry);
+
+        pstate->p_with_func_list = lappend(pstate->p_with_func_list, entry);
+    }
+
+    /* install the function lookup hook */
+    if (pstate->p_subprocfunc_hook == NULL)
+        pstate->p_subprocfunc_hook = withFuncLookupHook;
+}
+----
+
+==== Function Call Resolution Hook
+
+`withFuncLookupHook` intercepts calls to inline functions defined in the WITH clause:
+
+[source,c]
+----
+/* parse_with_plsql.c */
+static FuncDetailCode
+withFuncLookupHook(ParseState *pstate, List *funcname,
+                   List **fargs, List *fargnames, int nargs,
+                   Oid *argtypes, bool expand_variadic, bool expand_defaults,
+                   bool proc_call, Oid *funcid, Oid *rettype, bool *retset,
+                   int *nvargs, Oid *vatype, Oid **true_typeids,
+                   List **argdefaults, void **pfunc)
+{
+    char *fname;
+    ListCell *lc;
+
+    if (list_length(funcname) != 1)
+        return FUNCDETAIL_NOTFOUND;
+
+    fname = strVal(linitial(funcname));
+
+    foreach(lc, pstate->p_with_func_list)
+    {
+        WithFuncEntry *entry = (WithFuncEntry *) lfirst(lc);
+
+        if (strcmp(entry->funcname, fname) != 0)
+            continue;
+
+        /* check argument count and type compatibility */
+        if (!matchWithFuncArgs(entry, nargs, argtypes, fargnames,
+                               true_typeids, argdefaults))
+            continue;
+
+        *funcid  = (Oid) entry->funcindex;
+        *rettype = entry->rettype;
+        *retset  = false;
+        *nvargs  = 0;
+        *vatype  = InvalidOid;
+        *pfunc   = NULL;
+
+        return entry->is_proc ? FUNCDETAIL_PROCEDURE : FUNCDETAIL_NORMAL;
+    }
+
+    return FUNCDETAIL_NOTFOUND;
+}
+----
+
+=== Executor Design
+
+==== ExecInitFunc Extension
+
+`FUNC_FROM_WITH_CLAUSE` is recognized in `execExpr.c`:
+
+[source,c]
+----
+/* execExpr.c */
+if (funcexpr->function_from == FUNC_FROM_WITH_CLAUSE)
+{
+    scratch->d.func.finfo     = palloc0(sizeof(FmgrInfo));
+    scratch->d.func.fcinfo_data = palloc0(SizeForFunctionCallInfo(nargs));
+    flinfo = scratch->d.func.finfo;
+    fcinfo = scratch->d.func.fcinfo_data;
+
+    /* use the dedicated dispatch function */
+    flinfo->fn_addr = plisql_with_func_call_handler;
+    flinfo->fn_oid  = funcid;
+
+    /* fn_extra stores the EState pointer */
+    flinfo->fn_extra = state->parent->state;
+
+    fmgr_info_set_expr((Node *) node, flinfo);
+    InitFunctionCallInfoData(*fcinfo, flinfo, nargs, inputcollid, NULL, NULL);
+    scratch->d.func.fn_addr = flinfo->fn_addr;
+    scratch->d.func.nargs   = nargs;
+    return;
+}
+----
+
+==== Runtime Dispatch Function
+
+[source,c]
+----
+/* pl_handler.c */
+Datum
+plisql_with_func_call_handler(PG_FUNCTION_ARGS)
+{
+    EState     *estate = (EState *) fcinfo->flinfo->fn_extra;
+    int         funcindex = (int) fcinfo->flinfo->fn_oid;
+    WithFuncContainer *container;
+
+    /* lazy load: compile all WITH functions on first call */
+    if (estate->es_with_func_container == NULL)
+        estate->es_with_func_container = buildWithFuncContainer(estate);
+
+    container = estate->es_with_func_container;
+
+    Assert(funcindex >= 0 && funcindex < container->nfuncs);
+    subprocfunc = container->funcs[funcindex];
+
+    return execWithFunction(subprocfunc, fcinfo);
+}
+----
+
+==== WithFuncContainer Compilation
+
+[source,c]
+----
+/* pl_handler.c */
+WithFuncContainer *
+buildWithFuncContainer(EState *estate)
+{
+    PlannedStmt     *pstmt    = estate->es_plannedstmt;
+    MemoryContext    oldcxt   = MemoryContextSwitchTo(estate->es_query_cxt);
+    WithFuncContainer *container;
+    int             nfuncs, i;
+    ListCell        *lc;
+
+    nfuncs = list_length(pstmt->withFuncDefs);
+    container = palloc0(sizeof(WithFuncContainer));
+    container->nfuncs = nfuncs;
+    container->funcs  = palloc0(nfuncs * sizeof(PLiSQL_subproc_function *));
+    container->mcxt   = CurrentMemoryContext;
+
+    /* establish a shared compilation context to support cross-function calls */
+    plisql_push_subproc_func();
+    plisql_start_subproc_func();
+
+    /* Pass 1: register all function signatures */
+    i = 0;
+    foreach(lc, pstmt->withFuncDefs)
+    {
+        InlineFunctionDef *ifd = (InlineFunctionDef *) lfirst(lc);
+        List *argitems = buildArgItemsFromFuncParams(ifd->args);
+        PLiSQL_type *rettype = ifd->rettype ?
+            buildPLiSQLType(ifd->rettype) : NULL;
+
+        PLiSQL_subproc_function *subprocfunc =
+            plisql_build_subproc_function(ifd->funcname, argitems,
+                                          rettype, ifd->location);
+        subprocfunc->is_proc = ifd->is_proc;
+        subprocfunc->src     = ifd->src;
+
+        container->funcs[i++] = subprocfunc;
+    }
+
+    /* Pass 2: compile each function body */
+    i = 0;
+    foreach(lc, pstmt->withFuncDefs)
+    {
+        InlineFunctionDef *ifd = (InlineFunctionDef *) lfirst(lc);
+        PLiSQL_subproc_function *subprocfunc = container->funcs[i++];
+
+        PLiSQL_stmt_block *action =
+            compileWithFuncBody(ifd->src, subprocfunc);
+
+        plisql_set_subprocfunc_action(subprocfunc, action);
+    }
+
+    plisql_pop_subproc_func();
+
+    MemoryContextSwitchTo(oldcxt);
+    return container;
+}
+----
+
+=== Memory Lifecycle
+
+[source]
+----
+SQL text parsing phase
+  ├── InlineFunctionDef nodes
+  │     Lifetime: same as the parse tree (ParseState.p_mem_cxt)
+  └── WithFuncEntry list
+        Lifetime: same as ParseState
+
+Query analysis phase
+  └── Query.withFuncDefs  (InlineFunctionDef list, pointer copy)
+        Lifetime: same as Query
+
+Planning phase
+  └── PlannedStmt.withFuncDefs  (same)
+        Lifetime: same as PlannedStmt (may be held by plancache)
+
+Execution phase
+  ├── EState.es_with_func_container  (WithFuncContainer)
+  │     Memory context: estate->es_query_cxt
+  │     Lifetime: bound to EState, freed at ExecutorEnd()
+  ├── PLiSQL_subproc_function array
+  │     Lifetime: same as WithFuncContainer
+  └── PLiSQL_function  (compilation result)
+        Lifetime: freed when query execution ends
+----
+
+=== Key Design Principles
+
+1. **Reuse OraBody_FUNC**: The Oracle parser's existing
+   `set_oracle_plsql_body(OraBody_FUNC)` mechanism is reused directly; no changes to
+   the lexer are needed.
+
+2. **No system catalog writes**: Compiled results are stored locally in EState, not
+   written to `pg_proc`, generate no WAL, and are freed automatically at transaction end.
+
+3. **Deferred compilation**: Function bodies are compiled during executor initialization
+   (`ExecInitFunc`), not during parsing or planning. This avoids lifecycle issues that
+   would arise from storing compiled pointers inside Plan nodes (which may be cached).
+
+4. **Isolated from PG_PARSER**: All new logic is guarded by
+   `compatible_db == ORA_PARSER`; the standard PostgreSQL parser path is unaffected.
+
+5. **Two-pass compilation**: A two-pass design supports mutual calls between functions
+   (Pass 1 registers all signatures; Pass 2 compiles each function body).
+
+=== Cross-Function Calls
+
+Thanks to the two-pass compilation design, **the declaration order of functions inside
+the WITH clause does not matter**: A can call B even if B is defined after A, and vice
+versa. No Oracle PL/SQL-style explicit forward declarations are required.
+
+[source,sql]
+----
+-- Cross-function call example
+WITH
+  FUNCTION mul2(n NUMBER) RETURN NUMBER AS BEGIN RETURN n*2; END;
+  FUNCTION add1(n NUMBER) RETURN NUMBER AS BEGIN RETURN n+1; END;
+SELECT mul2(add1(3)) FROM dual;  -- add1 is defined second, but mul2 can call it
+----
+
+=== EXPLAIN Output
+
+==== Basic Output
+
+[source,sql]
+----
+EXPLAIN WITH
+  FUNCTION add_one(n NUMBER) RETURN NUMBER AS BEGIN RETURN n + 1; END;
+SELECT add_one(5) FROM dual;
+----
+Output includes: `WITH Function: add_one(number) RETURN number`
+
+==== VERBOSE Mode
+
+[source,sql]
+----
+EXPLAIN (VERBOSE ON) WITH
+  FUNCTION double(n NUMBER) RETURN NUMBER AS
+  BEGIN RETURN n * 2; END;
+SELECT double(3) FROM dual;
+----
+Output includes: `Body: BEGIN RETURN n * 2; END`
+
+=== Error Handling
+
+==== Duplicate Definition
+
+[source,sql]
+----
+WITH
+  FUNCTION dup(n NUMBER) RETURN NUMBER AS BEGIN RETURN n; END;
+  FUNCTION dup(n NUMBER) RETURN NUMBER AS BEGIN RETURN n * 2; END;
+SELECT dup(1) FROM dual;
+-- ERROR: WITH clause function "dup" is defined more than once with the same argument types
+----
+
+==== Rejection in PG_PARSER Mode
+
+[source,sql]
+----
+SET compatible_db = PG_PARSER;
+WITH FUNCTION foo(n NUMBER) RETURN NUMBER AS BEGIN RETURN n; END;
+SELECT foo(1);
+-- ERROR: syntax error at or near "FUNCTION"
+----
+
+==== Function Body Compilation Error
+
+[source,sql]
+----
+WITH
+  FUNCTION broken(n NUMBER) RETURN NUMBER AS
+  BEGIN
+    RETRUN n;  -- typo
+  END;
+SELECT broken(1) FROM dual;
+-- ERROR: syntax error at or near "RETRUN"
+----
+Error context: `while compiling WITH FUNCTION "broken_body"`
+
+==== Rejection of Table Function Usage
+
+[source,sql]
+----
+WITH
+  FUNCTION get_rows(n NUMBER) RETURN NUMBER AS
+  BEGIN RETURN n; END;
+SELECT * FROM get_rows(5);
+-- ERROR: WITH clause function cannot be used as a table or set-returning function
+----
+
+==== Rejection of Qualified Names
+
+[source,sql]
+----
+WITH
+  FUNCTION public.qual_func(n NUMBER) RETURN NUMBER IS
+  BEGIN RETURN n; END;
+SELECT qual_func(1) FROM dual;
+-- ERROR: qualified name is not allowed in WITH FUNCTION declaration
+----
+
+=== File Inventory
+
+==== New Files
+
+|===
+| File | Description
+
+| `src/backend/oracle_parser/ora_with_function.c`
+| WITH function runtime logic stub
+
+| `src/backend/parser/parse_with_plsql.c`
+| `transformWithFuncDefs`, `withFuncLookupHook`
+
+| `src/include/oracle_parser/ora_with_function.h`
+| Header: `WithFuncEntry`, `WithFuncContainer`
+
+| `src/oracle_test/regress/sql/with_function.sql`
+| Regression tests (32 test cases)
+
+| `src/oracle_test/regress/expected/with_function.out`
+| Expected output for regression tests
+|===
+
+==== Modified Existing Files
+
+|===
+| File | Changes
+
+| `src/include/nodes/parsenodes.h`
+| Add `InlineFunctionDef`; extend `WithClause.plsql_defs` and `Query.withFuncDefs`
+
+| `src/include/nodes/plannodes.h`
+| Extend `PlannedStmt.withFuncDefs`
+
+| `src/include/nodes/primnodes.h`
+| Add `FUNC_FROM_WITH_CLAUSE = 'w'`; update `FUNC_EXPR_FROM_PG_PROC` macro
+
+| `src/include/nodes/execnodes.h`
+| Extend `EState.es_with_func_container`
+
+| `src/include/parser/parse_node.h`
+| Extend `ParseState.p_with_func_list`
+
+| `src/backend/oracle_parser/ora_gram.y`
+| Extend `with_clause`; add `plsql_declarations` / `plsql_declaration` productions
+
+| `src/backend/parser/parse_cte.c`
+| `transformWithClause()` calls `transformWithFuncDefs`
+
+| `src/backend/parser/parse_func.c`
+| FuncExpr tagging logic; default-argument sync; `FUNC_MAX_ARGS` boundary check
+
+| `src/backend/parser/analyze.c`
+| Propagate `withFuncDefs` into Query node
+
+| `src/backend/optimizer/plan/planner.c`
+| Propagate `withFuncDefs` into PlannedStmt
+
+| `src/backend/optimizer/plan/setrefs.c`
+| Skip reference resolution for WITH-clause functions
+
+| `src/backend/executor/execExpr.c`
+| `ExecInitFunc()` handles WITH functions; three-level EState lookup chain
+
+| `src/backend/executor/execSRF.c`
+| `init_sexpr` early-rejects WITH functions (cannot be used as table/SRF)
+
+| `src/backend/executor/execTuples.c`
+| Explicitly exclude `FUNC_FROM_WITH_CLAUSE` from subproc return-type change path
+
+| `src/backend/utils/fmgr/funcapi.c`
+| `get_internal_function_result_type` early-rejects WITH functions
+
+| `src/backend/commands/explain.c`
+| EXPLAIN output: `WITH Function:` / `WITH Procedure:` signatures; VERBOSE Body output
+
+| `src/backend/commands/explain.c` (MERGE path)
+| `IvytransformMergeStmt` sets `qry->withFuncDefs` (fixes T16 MERGE crash)
+
+| `src/pl/plisql/src/pl_handler.c`
+| `buildWithFuncContainer`, `plisql_get_with_func`, `buildParamListForFunc` (typmod fix),
+  WITH-function compile error callback
+
+| `src/pl/plisql/src/pl_comp.c`
+| `plisql_parser_setup` gates `p_with_func_list` exposure via `is_with_clause_func` flag
+  (prevents scope leakage)
+
+| `src/pl/plisql/src/plisql.h`
+| Add `PLiSQL_function.is_with_clause_func` field
+
+| `src/oracle_fe_utils/ora_psqlscan.l`
+| psql client scanner: recognize `WITH FUNCTION/PROCEDURE` and `EXPLAIN WITH ...`;
+  handle labeled END; handle nested BEGIN
+|===
+
+=== Automatically Generated Node Infrastructure Files
+
+PostgreSQL 16+ introduced a node-infrastructure code generator
+(`src/backend/nodes/gen_node_support.pl`). After the `InlineFunctionDef` node is added
+to the header, the build system automatically regenerates:
+
+|===
+| Auto-generated File | Contents
+
+| `copyfuncs.funcs.c` / `copyfuncs.switch.c`
+| `_copyInlineFunctionDef`
+
+| `equalfuncs.funcs.c` / `equalfuncs.switch.c`
+| `_equalInlineFunctionDef`
+
+| `outfuncs.funcs.c` / `outfuncs.switch.c`
+| `_outInlineFunctionDef`
+
+| `readfuncs.funcs.c` / `readfuncs.switch.c`
+| `_readInlineFunctionDef`
+
+| `nodetags.h`
+| `T_InlineFunctionDef = 498`
+
+| `queryjumblefuncs.funcs.c`
+| `_jumbleInlineFunctionDef`
+|===
+
+== Usage Examples
+
+=== Simplest Inline Function
+
+[source,sql]
+----
+WITH
+  FUNCTION double_it(n NUMBER) RETURN NUMBER AS
+  BEGIN RETURN n * 2; END;
+SELECT double_it(5) FROM dual;
+-- Output: 10
+----
+
+=== Function Mixed with a CTE
+
+[source,sql]
+----
+WITH
+  FUNCTION tax(amt NUMBER) RETURN NUMBER AS
+  BEGIN RETURN amt * 0.1; END;
+  orders AS (SELECT 100 AS amount)
+SELECT amount, tax(amount) FROM orders;
+-- Output: 100 | 10
+----
+
+=== Multiple Inline Functions
+
+[source,sql]
+----
+WITH
+  FUNCTION add1(n NUMBER) RETURN NUMBER AS BEGIN RETURN n+1; END;
+  FUNCTION mul2(n NUMBER) RETURN NUMBER AS BEGIN RETURN n*2; END;
+SELECT mul2(add1(3)) FROM dual;
+-- Output: 8
+----
+
+=== Recursive Function
+
+[source,sql]
+----
+WITH
+  FUNCTION factorial(n NUMBER) RETURN NUMBER AS
+  BEGIN
+    IF n <= 1 THEN RETURN 1; END IF;
+    RETURN n * factorial(n-1);
+  END;
+SELECT factorial(5) FROM dual;
+-- Output: 120
+----
+
+=== Integration with DML
+
+[source,sql]
+----
+-- Allowed: INSERT with inline function
+WITH
+  FUNCTION get_bonus(sal NUMBER) RETURN NUMBER AS
+  BEGIN RETURN sal * 1.2; END;
+INSERT INTO emp_bonus (empno, bonus)
+SELECT empno, get_bonus(sal) FROM emp WHERE deptno = 10;
+----
+
+NOTE: Oracle does not allow WITH FUNCTION to precede UPDATE, DELETE, or MERGE.
+IvorySQL enforces the same restriction; such usage raises `ERRCODE_FEATURE_NOT_SUPPORTED`.

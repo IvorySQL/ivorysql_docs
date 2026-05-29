@@ -82,3 +82,5 @@ IvorySQL is a powerful open source object-relational database management system 
 * sys_guid Function
 * Empty String to NULL
 * CALL INTO
+* View Read Only
+* WITH FUNCTION/PROCEDURE

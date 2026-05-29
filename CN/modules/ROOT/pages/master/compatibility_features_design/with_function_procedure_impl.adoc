@@ -1,0 +1,676 @@
+:sectnums:
+:sectnumlevels: 5
+
+= WITH FUNCTION/PROCEDURE 实现说明
+
+== 目的
+
+本文档详细说明 IvorySQL 中 `WITH FUNCTION` 和 `WITH PROCEDURE` 功能的实现原理。该功能允许在 SQL 的 WITH 子句（公共表表达式，CTE）中直接定义 PL/SQL 函数和过程，实现 Oracle 的 Subquery Factoring with PL/SQL Declarations 特性。
+
+== 实现说明
+
+=== 系统分层架构
+
+WITH 函数/过程的实现贯穿四个层次：
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  Layer 1: Oracle 解析器  (ora_gram.y + liboracle_parser.c)          │
+│  ─ 扩展 with_clause 语法，允许 plsql_declarations                   │
+│  ─ 复用 OraBody_FUNC 词法机制将函数体捕获为 Sconst                  │
+│  ─ 输出: WithClause { plsql_defs: [InlineFunctionDef...], ctes: [...]}│
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  Layer 2: 语义分析  (parse_cte.c + parse_func.c)                    │
+│  ─ transformWithClause() 处理 InlineFunctionDef 节点                │
+│  ─ 解析函数签名，注册到 ParseState.p_with_func_list                 │
+│  ─ p_subprocfunc_hook 拦截对 WITH 函数的调用解析                    │
+│  ─ FuncExpr.function_from = FUNC_FROM_WITH_CLAUSE ('w')             │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  Layer 3: 规划器  (planner.c / createplan.c)                        │
+│  ─ 将 Query.withFuncDefs 复制到 PlannedStmt.withFuncDefs           │
+│  ─ 无额外代价模型变更                                               │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  Layer 4: 执行器  (execExpr.c + pl_handler.c)                       │
+│  ─ ExecInitFunc() 识别 FUNC_FROM_WITH_CLAUSE                        │
+│  ─ 按需编译 WITH 函数体                                             │
+│  ─ 编译结果缓存在 EState.es_with_func_container                    │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+=== 语法与解析
+
+==== 语法规则扩展
+
+在 `ora_gram.y` 文件中扩展 `with_clause` 语法规则：
+
+[source,yacc]
+----
+with_clause:
+    WITH plsql_declarations cte_list
+        {
+            WithClause *n = makeNode(WithClause);
+            n->plsql_defs = $2;
+            n->ctes = $3;
+            n->recursive = false;
+            n->location = @1;
+            $$ = n;
+        }
+    | WITH plsql_declarations
+        {
+            WithClause *n = makeNode(WithClause);
+            n->plsql_defs = $2;
+            n->ctes = NIL;
+            n->recursive = false;
+            n->location = @1;
+            $$ = n;
+        }
+    | WITH cte_list                          /* 现有语法保持不变 */
+    | WITH_LA cte_list                       /* 现有 */
+    | WITH RECURSIVE cte_list               /* 现有 */
+    ;
+
+plsql_declarations:
+    plsql_declaration
+        { $$ = list_make1($1); }
+    | plsql_declarations plsql_declaration
+        { $$ = lappend($1, $2); }
+    ;
+
+plsql_declaration:
+    FUNCTION ora_func_name opt_ora_func_args_with_defaults
+    RETURN func_return
+    ora_func_is_or_as Sconst ';'
+        {
+            InlineFunctionDef *n = makeNode(InlineFunctionDef);
+            n->funcname = strVal(llast($2));
+            n->args = $3;
+            n->rettype = $5;
+            n->is_proc = false;
+            n->src = $7;
+            n->location = @2;
+            $$ = (Node *) n;
+        }
+    | PROCEDURE ora_func_name opt_procedure_args_with_defaults
+    ora_func_is_or_as Sconst ';'
+        {
+            InlineFunctionDef *n = makeNode(InlineFunctionDef);
+            n->funcname = strVal(llast($2));
+            n->args = $3;
+            n->rettype = NULL;
+            n->is_proc = true;
+            n->src = $5;
+            n->location = @2;
+            $$ = (Node *) n;
+        }
+    ;
+----
+
+==== OraBody_FUNC 机制复用
+
+Oracle 解析器已有 `set_oracle_plsql_body(OraBody_FUNC)` 机制，能将 IS/AS 后的 PL/SQL 体完整捕获为 Sconst 字符串。WITH FUNCTION 直接复用此机制，无需改动词法分析器。
+
+[source,c]
+----
+/* ora_gram.y */
+ora_func_is_or_as:
+    IS  { set_oracle_plsql_body(yyscanner, OraBody_FUNC); }
+    | AS { set_oracle_plsql_body(yyscanner, OraBody_FUNC); }
+    ;
+----
+
+词法分析器（`liboracle_parser.c:439-652`）进入体捕获模式，跟踪 BEGIN/END/FUNCTION/PROCEDURE 嵌套深度，直到最外层 END 处停止，将全部文本作为单个 SCONST 返回。
+
+==== 语法歧义处理
+
+`FUNCTION` 和 `PROCEDURE` 都是 `unreserved_keyword`，可作 CTE 名。LALR(1) 状态表基于"第二个 token"自动消歧：
+
+| `WITH FUNCTION|PROCEDURE` 后第一个 token | LALR(1) 动作 | 走向 |
+|--------------------------------|-------------|------|
+| **IDENT** / 普通标识符 | shift（进入 `ora_func_name`） | plsql_declaration |
+| **`AS`** | reduce | CTE 无列名列表 |
+| **`(`** | reduce | CTE 有列名列表 |
+
+=== AST 节点设计
+
+==== InlineFunctionDef 节点
+
+新增 AST 节点表示 WITH 子句中的内嵌函数/过程定义：
+
+[source,c]
+----
+/* parsenodes.h */
+typedef struct InlineFunctionDef
+{
+    NodeTag     type;           /* T_InlineFunctionDef */
+    char       *funcname;       /* 函数/过程名（非限定名） */
+    List       *args;           /* FunctionParameter 节点列表 */
+    TypeName   *rettype;        /* 返回类型（过程为 NULL） */
+    bool        is_proc;        /* true = 过程，false = 函数 */
+    char       *src;            /* 函数体原始文本（IS/AS...END 全文） */
+    ParseLoc    location;       /* 在原始 SQL 中的位置 */
+} InlineFunctionDef;
+----
+
+==== WithClause 扩展
+
+[source,c]
+----
+/* parsenodes.h */
+typedef struct WithClause
+{
+    NodeTag     type;
+    List       *plsql_defs;    /* 新增：InlineFunctionDef 节点列表（ORA 模式） */
+    List       *ctes;          /* 现有：CommonTableExpr 节点列表 */
+    bool        recursive;     /* true = WITH RECURSIVE */
+    ParseLoc    location;
+} WithClause;
+----
+
+==== FuncExpr 扩展
+
+在 `primnodes.h` 中新增函数来源标识：
+
+[source,c]
+----
+/* primnodes.h */
+#define FUNC_FROM_WITH_CLAUSE    'w'   /* WITH 子句内嵌函数 */
+
+/* 更新宏，将 'w' 纳入非 pg_proc 函数 */
+#define FUNC_EXPR_FROM_PG_PROC(function_from) \
+    (function_from != FUNC_FROM_SUBPROCFUNC && \
+     function_from != FUNC_FROM_PACKAGE && \
+     function_from != FUNC_FROM_PACKGE_INITBODY && \
+     function_from != FUNC_FROM_WITH_CLAUSE)
+----
+
+==== WithFuncEntry 结构体
+
+ParseState 中新增轻量结构体用于存储函数签名：
+
+[source,c]
+----
+/* parse_node.h */
+typedef struct WithFuncEntry
+{
+    char       *funcname;
+    List       *argtypes;          /* Oid 列表 */
+    Oid         rettype;
+    bool        is_proc;
+    int         funcindex;         /* 对应 FuncExpr.funcid */
+    InlineFunctionDef *def;        /* 指向原始定义节点 */
+} WithFuncEntry;
+----
+
+==== WithFuncContainer 运行时容器
+
+[source,c]
+----
+/* pl_handler.h */
+typedef struct WithFuncContainer
+{
+    int                        nfuncs;   /* WITH 函数数量 */
+    PLiSQL_subproc_function  **funcs;    /* 编译后的函数数组 */
+    MemoryContext              mcxt;     /* 本容器的内存上下文 */
+} WithFuncContainer;
+----
+
+=== 语义分析
+
+==== transformWithClause 扩展
+
+在 `parse_cte.c` 中新增 `transformWithFuncDefs()` 函数：
+
+[source,c]
+----
+/* parse_with_plsql.c */
+static void
+transformWithFuncDefs(ParseState *pstate, List *plsql_defs)
+{
+    int funcindex = 0;
+    ListCell *lc;
+
+    foreach(lc, plsql_defs)
+    {
+        InlineFunctionDef *ifd = (InlineFunctionDef *) lfirst(lc);
+        WithFuncEntry *entry = palloc(sizeof(WithFuncEntry));
+
+        /* 解析参数类型 */
+        entry->argtypes = resolveWithFuncArgTypes(pstate, ifd->args);
+
+        /* 解析返回类型 */
+        entry->rettype = ifd->rettype ?
+            typenameTypeId(pstate, ifd->rettype) : InvalidOid;
+
+        entry->funcname  = ifd->funcname;
+        entry->is_proc   = ifd->is_proc;
+        entry->funcindex = funcindex++;
+        entry->def       = ifd;
+
+        /* 检查重复定义 */
+        checkDuplicateWithFunc(pstate->p_with_func_list, entry);
+
+        pstate->p_with_func_list = lappend(pstate->p_with_func_list, entry);
+    }
+
+    /* 安装函数查找钩子 */
+    if (pstate->p_subprocfunc_hook == NULL)
+        pstate->p_subprocfunc_hook = withFuncLookupHook;
+}
+----
+
+==== 函数调用解析钩子
+
+`withFuncLookupHook` 拦截对 WITH 子句内嵌函数的调用：
+
+[source,c]
+----
+/* parse_with_plsql.c */
+static FuncDetailCode
+withFuncLookupHook(ParseState *pstate, List *funcname,
+                   List **fargs, List *fargnames, int nargs,
+                   Oid *argtypes, bool expand_variadic, bool expand_defaults,
+                   bool proc_call, Oid *funcid, Oid *rettype, bool *retset,
+                   int *nvargs, Oid *vatype, Oid **true_typeids,
+                   List **argdefaults, void **pfunc)
+{
+    char *fname;
+    ListCell *lc;
+
+    if (list_length(funcname) != 1)
+        return FUNCDETAIL_NOTFOUND;
+
+    fname = strVal(linitial(funcname));
+
+    foreach(lc, pstate->p_with_func_list)
+    {
+        WithFuncEntry *entry = (WithFuncEntry *) lfirst(lc);
+
+        if (strcmp(entry->funcname, fname) != 0)
+            continue;
+
+        /* 检查参数数量和类型匹配 */
+        if (!matchWithFuncArgs(entry, nargs, argtypes, fargnames,
+                               true_typeids, argdefaults))
+            continue;
+
+        *funcid  = (Oid) entry->funcindex;
+        *rettype = entry->rettype;
+        *retset  = false;
+        *nvargs  = 0;
+        *vatype  = InvalidOid;
+        *pfunc   = NULL;
+
+        return entry->is_proc ? FUNCDETAIL_PROCEDURE : FUNCDETAIL_NORMAL;
+    }
+
+    return FUNCDETAIL_NOTFOUND;
+}
+----
+
+=== 执行器设计
+
+==== ExecInitFunc 扩展
+
+在 `execExpr.c` 中识别 `FUNC_FROM_WITH_CLAUSE`：
+
+[source,c]
+----
+/* execExpr.c */
+if (funcexpr->function_from == FUNC_FROM_WITH_CLAUSE)
+{
+    scratch->d.func.finfo     = palloc0(sizeof(FmgrInfo));
+    scratch->d.func.fcinfo_data = palloc0(SizeForFunctionCallInfo(nargs));
+    flinfo = scratch->d.func.finfo;
+    fcinfo = scratch->d.func.fcinfo_data;
+
+    /* 使用专用调度函数 */
+    flinfo->fn_addr = plisql_with_func_call_handler;
+    flinfo->fn_oid  = funcid;
+
+    /* fn_extra 存储 EState 指针 */
+    flinfo->fn_extra = state->parent->state;
+
+    fmgr_info_set_expr((Node *) node, flinfo);
+    InitFunctionCallInfoData(*fcinfo, flinfo, nargs, inputcollid, NULL, NULL);
+    scratch->d.func.fn_addr = flinfo->fn_addr;
+    scratch->d.func.nargs   = nargs;
+    return;
+}
+----
+
+==== 运行时调度函数
+
+[source,c]
+----
+/* pl_handler.c */
+Datum
+plisql_with_func_call_handler(PG_FUNCTION_ARGS)
+{
+    EState     *estate = (EState *) fcinfo->flinfo->fn_extra;
+    int         funcindex = (int) fcinfo->flinfo->fn_oid;
+    WithFuncContainer *container;
+
+    /* 懒加载：首次调用时编译所有 WITH 函数 */
+    if (estate->es_with_func_container == NULL)
+        estate->es_with_func_container = buildWithFuncContainer(estate);
+
+    container = estate->es_with_func_container;
+
+    Assert(funcindex >= 0 && funcindex < container->nfuncs);
+    subprocfunc = container->funcs[funcindex];
+
+    return execWithFunction(subprocfunc, fcinfo);
+}
+----
+
+==== WithFuncContainer 编译
+
+[source,c]
+----
+/* pl_handler.c */
+WithFuncContainer *
+buildWithFuncContainer(EState *estate)
+{
+    PlannedStmt     *pstmt    = estate->es_plannedstmt;
+    MemoryContext    oldcxt   = MemoryContextSwitchTo(estate->es_query_cxt);
+    WithFuncContainer *container;
+    int             nfuncs, i;
+    ListCell        *lc;
+
+    nfuncs = list_length(pstmt->withFuncDefs);
+    container = palloc0(sizeof(WithFuncContainer));
+    container->nfuncs = nfuncs;
+    container->funcs  = palloc0(nfuncs * sizeof(PLiSQL_subproc_function *));
+    container->mcxt   = CurrentMemoryContext;
+
+    /* 编译阶段：建立共享编译上下文，以支持函数间互调 */
+    plisql_push_subproc_func();
+    plisql_start_subproc_func();
+
+    /* Pass 1：注册所有函数签名 */
+    i = 0;
+    foreach(lc, pstmt->withFuncDefs)
+    {
+        InlineFunctionDef *ifd = (InlineFunctionDef *) lfirst(lc);
+        List *argitems = buildArgItemsFromFuncParams(ifd->args);
+        PLiSQL_type *rettype = ifd->rettype ?
+            buildPLiSQLType(ifd->rettype) : NULL;
+
+        PLiSQL_subproc_function *subprocfunc =
+            plisql_build_subproc_function(ifd->funcname, argitems,
+                                          rettype, ifd->location);
+        subprocfunc->is_proc = ifd->is_proc;
+        subprocfunc->src     = ifd->src;
+
+        container->funcs[i++] = subprocfunc;
+    }
+
+    /* Pass 2：编译每个函数体 */
+    i = 0;
+    foreach(lc, pstmt->withFuncDefs)
+    {
+        InlineFunctionDef *ifd = (InlineFunctionDef *) lfirst(lc);
+        PLiSQL_subproc_function *subprocfunc = container->funcs[i++];
+
+        PLiSQL_stmt_block *action =
+            compileWithFuncBody(ifd->src, subprocfunc);
+
+        plisql_set_subprocfunc_action(subprocfunc, action);
+    }
+
+    plisql_pop_subproc_func();
+
+    MemoryContextSwitchTo(oldcxt);
+    return container;
+}
+----
+
+=== 内存生命周期
+
+[source]
+----
+SQL 文本解析阶段
+  ├── InlineFunctionDef 节点
+  │     生命周期：与解析树相同（ParseState.p_mem_cxt）
+  └── WithFuncEntry 列表
+        生命周期：与 ParseState 相同
+
+查询分析阶段
+  └── Query.withFuncDefs（InlineFunctionDef 列表，复制指针）
+        生命周期：与 Query 相同
+
+规划阶段
+  └── PlannedStmt.withFuncDefs（同上）
+        生命周期：与 PlannedStmt 相同（可被 plancache 持有）
+
+执行阶段
+  ├── EState.es_with_func_container（WithFuncContainer）
+  │     内存上下文：estate->es_query_cxt
+  │     生命周期：绑定到 EState，ExecutorEnd() 时释放
+  ├── PLiSQL_subproc_function 数组
+  │     生命周期：与 WithFuncContainer 相同
+  └── PLiSQL_function（编译结果）
+        生命周期：查询执行结束时自动释放
+----
+
+=== 关键设计原则
+
+1. **复用 OraBody_FUNC**：Oracle 解析器已有 `set_oracle_plsql_body(OraBody_FUNC)` 机制，WITH FUNCTION 直接复用，无需改动词法分析器。
+
+2. **不写入系统目录**：WITH 函数的编译结果存储在 EState 本地，不写入 `pg_proc`，不产生 WAL，事务结束自动释放。
+
+3. **延迟编译**：函数体在执行器初始化阶段（`ExecInitFunc`）才真正编译，解析和规划阶段只处理签名，避免了在 Plan 节点中存储指针的生命周期问题。
+
+4. **与 PG_PARSER 隔离**：所有新逻辑受 `compatible_db == ORA_PARSER` 守卫，PostgreSQL 原有解析器路径不受影响。
+
+5. **两阶段编译**：通过 two-pass 设计支持函数间互调（Pass 1 注册签名，Pass 2 编译函数体）。
+
+=== 函数间互调
+
+得益于 two-pass 编译设计，**WITH 子句内函数互调对声明顺序没有限制**：A 可以调用在 A 之后定义的 B，反之亦然。无需 Oracle PL/SQL 风格的显式前向声明。
+
+[source,sql]
+----
+-- 函数互调示例
+WITH
+  FUNCTION mul2(n NUMBER) RETURN NUMBER AS BEGIN RETURN n*2; END;
+  FUNCTION add1(n NUMBER) RETURN NUMBER AS BEGIN RETURN n+1; END;
+SELECT mul2(add1(3)) FROM dual;  -- add1 先定义但 mul2 可以调用它
+----
+
+=== EXPLAIN 输出
+
+==== 基本输出
+
+[source,sql]
+----
+EXPLAIN WITH
+  FUNCTION add_one(n NUMBER) RETURN NUMBER AS BEGIN RETURN n + 1; END;
+SELECT add_one(5) FROM dual;
+----
+输出包含：`WITH Function: add_one(number) RETURN number`
+
+==== VERBOSE 模式
+
+[source,sql]
+----
+EXPLAIN (VERBOSE ON) WITH
+  FUNCTION double(n NUMBER) RETURN NUMBER AS
+  BEGIN RETURN n * 2; END;
+SELECT double(3) FROM dual;
+----
+输出包含：`Body: BEGIN RETURN n * 2; END`
+
+=== 错误处理
+
+==== 重复定义检查
+
+[source,sql]
+----
+WITH
+  FUNCTION dup(n NUMBER) RETURN NUMBER AS BEGIN RETURN n; END;
+  FUNCTION dup(n NUMBER) RETURN NUMBER AS BEGIN RETURN n * 2; END;
+SELECT dup(1) FROM dual;
+-- ERROR: WITH clause function "dup" is defined more than once
+----
+
+==== PG_PARSER 模式拒绝
+
+[source,sql]
+----
+SET compatible_db = PG_PARSER;
+WITH FUNCTION foo(n NUMBER) RETURN NUMBER AS BEGIN RETURN n; END;
+SELECT foo(1);
+-- ERROR: syntax error at or near "FUNCTION"
+----
+
+==== 函数体编译错误
+
+[source,sql]
+----
+WITH
+  FUNCTION broken(n NUMBER) RETURN NUMBER AS
+  BEGIN
+    RETRUN n;  -- 拼写错误
+  END;
+SELECT broken(1) FROM dual;
+-- ERROR: syntax error at or near "RETRUN"
+----
+错误上下文：`while compiling WITH FUNCTION "broken_body"`
+
+==== 表函数用法拒绝
+
+[source,sql]
+----
+WITH
+  FUNCTION get_rows(n NUMBER) RETURN NUMBER AS
+  BEGIN RETURN n; END;
+SELECT * FROM get_rows(5);
+-- ERROR: WITH clause function cannot be used as a table function
+----
+
+==== 限定名拒绝
+
+[source,sql]
+----
+WITH
+  FUNCTION public.qual_func(n NUMBER) RETURN NUMBER IS
+  BEGIN RETURN n; END;
+SELECT qual_func(1) FROM dual;
+-- ERROR: qualified name is not allowed in WITH FUNCTION declaration
+----
+
+=== 扩展的文件清单
+
+==== 新增文件
+
+| 文件 | 说明 |
+|------|------|
+| `src/backend/oracle_parser/ora_with_function.c` | WITH 函数运行时逻辑 |
+| `src/backend/parser/parse_with_plsql.c` | `transformWithFuncDefs`、`withFuncLookupHook` |
+| `src/include/oracle_parser/ora_with_function.h` | 头文件：`WithFuncEntry`、`WithFuncContainer` |
+| `src/oracle_test/regress/sql/with_function.sql` | 回归测试（32 用例） |
+
+==== 修改现有文件
+
+| 文件 | 修改内容 |
+|------|----------|
+| `src/include/nodes/parsenodes.h` | 添加 `InlineFunctionDef`；扩展 `WithClause.plsql_defs` 和 `Query.withFuncDefs` |
+| `src/include/nodes/plannodes.h` | 扩展 `PlannedStmt.withFuncDefs` |
+| `src/include/nodes/primnodes.h` | 添加 `FUNC_FROM_WITH_CLAUSE = 'w'` |
+| `src/include/nodes/execnodes.h` | 扩展 `EState.es_with_func_container` |
+| `src/include/parser/parse_node.h` | 扩展 `ParseState.p_with_func_list` |
+| `src/backend/oracle_parser/ora_gram.y` | 扩展 `with_clause`、新增 `plsql_declarations`/`plsql_declaration` |
+| `src/backend/parser/parse_cte.c` | `transformWithClause()` 调用 `transformWithFuncDefs` |
+| `src/backend/parser/parse_func.c` | FuncExpr 标记逻辑 |
+| `src/backend/parser/analyze.c` | 传递 `withFuncDefs` 到 Query 节点 |
+| `src/backend/optimizer/plan/planner.c` | 传递 `withFuncDefs` 到 PlannedStmt |
+| `src/backend/executor/execExpr.c` | `ExecInitFunc()` 处理 WITH 函数 |
+| `src/pl/plisql/src/pl_handler.c` | `buildWithFuncContainer`、`plisql_with_func_call_handler` |
+| `src/pl/plisql/src/pl_comp.c` | `plisql_parser_setup` 根据 flag gate `p_with_func_list` |
+| `src/backend/commands/explain.c` | EXPLAIN 输出 `WITH Function:` / `WITH Procedure:` |
+| `src/oracle_fe_utils/ora_psqlscan.l` | psql 客户端扫描器识别 `WITH FUNCTION/PROCEDURE` |
+
+=== 节点函数自动生成
+
+PostgreSQL 16+ 引入了节点基础设施代码生成器（`src/backend/nodes/gen_node_support.pl`）。新增 `InlineFunctionDef` 节点后，构建系统自动重跑生成器，产出：
+
+| 自动生成的文件 | 包含内容 |
+|--------------|---------|
+| `copyfuncs.funcs.c` / `copyfuncs.switch.c` | `_copyInlineFunctionDef` |
+| `equalfuncs.funcs.c` / `equalfuncs.switch.c` | `_equalInlineFunctionDef` |
+| `outfuncs.funcs.c` / `outfuncs.switch.c` | `_outInlineFunctionDef` |
+| `readfuncs.funcs.c` / `readfuncs.switch.c` | `_readInlineFunctionDef` |
+| `nodetags.h` | `T_InlineFunctionDef = 498` |
+| `queryjumblefuncs.funcs.c` | `_jumbleInlineFunctionDef` |
+
+== 使用示例
+
+=== 最简单的内嵌函数
+
+[source,sql]
+----
+WITH
+  FUNCTION double_it(n NUMBER) RETURN NUMBER AS
+  BEGIN RETURN n * 2; END;
+SELECT double_it(5) FROM dual;
+-- 输出：10
+----
+
+=== 函数与 CTE 混合
+
+[source,sql]
+----
+WITH
+  FUNCTION tax(amt NUMBER) RETURN NUMBER AS
+  BEGIN RETURN amt * 0.1; END;
+  orders AS (SELECT 100 AS amount)
+SELECT amount, tax(amount) FROM orders;
+-- 输出：100 | 10
+----
+
+=== 多个内嵌函数
+
+[source,sql]
+----
+WITH
+  FUNCTION add1(n NUMBER) RETURN NUMBER AS BEGIN RETURN n+1; END;
+  FUNCTION mul2(n NUMBER) RETURN NUMBER AS BEGIN RETURN n*2; END;
+SELECT mul2(add1(3)) FROM dual;
+-- 输出：8
+----
+
+=== 递归函数
+
+[source,sql]
+----
+WITH
+  FUNCTION factorial(n NUMBER) RETURN NUMBER AS
+  BEGIN
+    IF n <= 1 THEN RETURN 1; END IF;
+    RETURN n * factorial(n-1);
+  END;
+SELECT factorial(5) FROM dual;
+-- 输出：120
+----
+
+=== 与 DML 集成
+
+[source,sql]
+----
+-- INSERT 中使用内嵌函数
+WITH
+  FUNCTION get_bonus(sal NUMBER) RETURN NUMBER AS
+  BEGIN RETURN sal * 1.2; END;
+INSERT INTO emp_bonus (empno, bonus)
+SELECT empno, get_bonus(sal) FROM emp WHERE deptno = 10;
+
+----
+
+NOTE: Oracle 不允许 WITH FUNCTION 位于 UPDATE、DELETE、MERGE 之前；IvorySQL 遵循相同限制，此类用法报 `ERRCODE_FEATURE_NOT_SUPPORTED` 错误。
