@@ -14,7 +14,7 @@ If you have any comments or suggestions about the documentation, please submit t
 
 ## Prerequisites
 
-(1) Download the Asciidoc or Typora document editor.
+(1) Download the Markdown or Typora document editor.
 
 (2) Check if the upstream repository has updates. If so, please sync to your own fork first:
 
@@ -46,7 +46,7 @@ You can start with any of the following to help improve the documentation at [Iv
 
 ## Writing Guidelines
 
-IvorySQL documentation is written in AsciiDoc. Please refer to the [adoc syntax quick reference](./adoc_syntax_quick_reference.md) for details.
+IvorySQL documentation is written in Markdown. Please refer to the [markdown syntax quick reference](./markdown_syntax_quick_reference.md) for details.
 
 ## Local Site Generation
 
