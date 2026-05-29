@@ -1,0 +1,65 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_bigm
+
+== Overview
+pg_bigm provides bigram-based full-text search capabilities for IvorySQL. It is optimized for Chinese, Japanese, and Korean (CJK) text, enabling fuzzy search and similarity queries.
+
+== Installation
+The IvorySQL installation package already includes the pg_bigm extension. If you installed IvorySQL using the installation package, you typically do not need to manually install pg_bigm. For other installation methods, refer to the source code installation steps below.
+
+[TIP]
+The source code installation environment is Ubuntu 24.04 (x86_64), with IvorySQL 5 or later already installed at `/usr/ivory-5`.
+
+=== Source Code Installation
+Download the pg_bigm v1.2 source code from https://github.com/pgbigm/pg_bigm/releases/tag/v1.2-20250903.
+
+** Install pg_bigm
+[literal]
+----
+# Extract the source code and enter its directory
+cd pg_bigm-1.2-20250903
+
+# Build the code, setting the PG_CONFIG environment variable to the path of pg_config, e.g., /usr/ivory-5/bin/pg_config
+make USE_PGXS=1 PG_CONFIG=/usr/ivory-5/bin/pg_config
+sudo make USE_PGXS=1 PG_CONFIG=/usr/ivory-5/bin/pg_config install
+----
+
+== Create Extension
+Connect to the database via psql and execute the following commands:
+[literal]
+----
+ivorysql=# CREATE EXTENSION pg_bigm;
+CREATE EXTENSION
+
+ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'pg_bigm';
+  name   | default_version | installed_version |                             comment
+---------+-----------------+-------------------+------------------------------------------------------------------
+ pg_bigm | 1.2             | 1.2               | text similarity measurement and index searching based on bigrams
+(1 row)
+----
+
+== Usage
+[literal]
+----
+# First, create the index
+CREATE TABLE pg_tools (tool text, description text);
+
+INSERT INTO pg_tools VALUES ('pg_hint_plan', 'Tool that allows a user to specify an optimizer HINT to PostgreSQL');
+INSERT INTO pg_tools VALUES ('pg_dbms_stats', 'Tool that allows a user to stabilize planner statistics in PostgreSQL');
+INSERT INTO pg_tools VALUES ('pg_bigm', 'Tool that provides 2-gram full text search capability in PostgreSQL');
+INSERT INTO pg_tools VALUES ('pg_trgm', 'Tool that provides 3-gram full text search capability in PostgreSQL');
+
+CREATE INDEX pg_tools_idx ON pg_tools USING gin (description gin_bigm_ops);
+
+# Execute full-text search
+SELECT * FROM pg_tools WHERE description LIKE '%search%';
+
+  tool   |                             description
+---------+---------------------------------------------------------------------
+ pg_bigm | Tool that provides 2-gram full text search capability in PostgreSQL
+ pg_trgm | Tool that provides 3-gram full text search capability in PostgreSQL
+(2 rows)
+----
