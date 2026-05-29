@@ -62,6 +62,7 @@
 *** xref:master/ecosystem_components/pg_textsearch.adoc[pg_textsearch]
 *** xref:master/ecosystem_components/pg_hint_plan.adoc[pg_hint_plan]
 *** xref:master/ecosystem_components/redis_fdw.adoc[redis_fdw]
+*** xref:master/ecosystem_components/pg_show_plans.adoc[pg_show_plans]
 * Monitor and O&M
 ** xref:master/getting-started/daily_monitoring.adoc[Monitoring]
 ** xref:master/getting-started/daily_maintenance.adoc[Maintenance]
