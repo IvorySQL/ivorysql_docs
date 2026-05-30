@@ -13,7 +13,7 @@
 
 ## 准备工作
 
-（1）下载Asciidoc或者Typora文档编辑器。
+（1）下载Markdown或者Typora文档编辑器。
 
 （2）检查源仓库是否有更新，如果有更新请先更新并同步到自己的仓库。如有更新请参阅以下步骤，更新至最新版本：
 
@@ -51,7 +51,7 @@ IvorySQL社区提供双语文档。英文文档保存在EN/中，中文文档保
 
 ## 规范说明
 
-IvorySQL文档是用“asciidoc”编写，具体请参考[adoc规范](./adoc_syntax_quick_reference.md)。
+IvorySQL文档是用“Markdown”编写，具体请参考[Markdown规范](./markdown_syntax_quick_reference.md)。
 
 ## 本地网页生成
 通过之前的内容，您就可以进行文档贡献，最终push到您个人的ivorysql_docs仓库中。
@@ -77,7 +77,7 @@ npm install  antora@3.1.7
 npm install @antora/pdf-extension
 npm install @antora/lunr-extension
 npm install nodejieba
-npm install @asciidoctor/core asciidoctor-pdf
+npm install @Markdowntor/core Markdowntor-pdf
 npx antora -v
 alias antora='npx antora' #将npx antora更名为antora
 antora -v
@@ -100,7 +100,7 @@ antora -v
 
     然后耐心等待，当成功运行结束后，你就可以到../demo 中查看自己生成的网页了。
 
-检查之后，你就可以开始提交[PR](https://github.com/IvorySQL/ivorysql_docs/blob/v5.0/CN/modules/ROOT/pages/v5.0/32.adoc)，感谢您对社区的贡献^ _ ^，我们会在审核过后，考虑是否更新网站。
+检查之后，你就可以开始提交[PR](https://github.com/IvorySQL/ivorysql_docs/blob/v5.0/CN/modules/ROOT/pages/v5.0/32.md)，感谢您对社区的贡献^ _ ^，我们会在审核过后，考虑是否更新网站。
 
 ## Autobuild
 
