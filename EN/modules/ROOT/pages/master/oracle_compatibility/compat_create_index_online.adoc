@@ -1,0 +1,116 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= ONLINE Parameter for CREATE INDEX
+
+== Purpose
+
+This document explains the behavior of the `ONLINE` parameter when creating an index in IvorySQL. This parameter is implemented to maintain compatibility with Oracle behavior.
+
+== Feature Description
+
+- When specified during index creation, the `ONLINE` parameter allows concurrent DML operations, similar to PostgreSQL's `CONCURRENTLY`, but cannot be used together with `CONCURRENTLY`.
+- `ONLINE` must be supported in any position after the closing `)` of the column list and before the `WHERE` clause, regardless of the order relative to other attributes such as `TABLESPACE` and `PARALLEL` (if supported).
+- `CREATE INDEX ... ONLINE` on a temporary table is automatically downgraded to a regular build (no error, consistent with `CONCURRENTLY` behavior).
+- `CREATE INDEX ... ONLINE` on a partitioned table is **automatically downgraded to a regular build** (no error).
+
+== Test Cases
+
+=== Test Environment Setup
+
+[source,sql]
+----
+-- Basic test table
+CREATE TABLE tbl_ci_online (
+    id      NUMBER(10)    PRIMARY KEY,
+    name    VARCHAR2(100),
+    dept_id NUMBER(10),
+    salary  NUMBER(10,2),
+    status  VARCHAR2(20)
+);
+INSERT INTO tbl_ci_online
+    SELECT g, 'name'||g, MOD(g,20), g*100.0, CASE WHEN MOD(g,2)=0 THEN 'ACTIVE' ELSE 'INACTIVE' END
+    FROM generate_series(1, 1000) g;
+
+-- Unique index test table
+CREATE TABLE tbl_ci_unique (
+    id    NUMBER(10)    PRIMARY KEY,
+    email VARCHAR2(200) NOT NULL
+);
+INSERT INTO tbl_ci_unique SELECT g, 'user'||g||'@example.com' FROM generate_series(1, 200) g;
+
+-- Partitioned table
+CREATE TABLE tbl_ci_part (
+    id     NUMBER(10),
+    region VARCHAR2(20)
+) PARTITION BY RANGE (id);
+CREATE TABLE tbl_ci_part_p1 PARTITION OF tbl_ci_part FOR VALUES FROM (1)    TO (501);
+CREATE TABLE tbl_ci_part_p2 PARTITION OF tbl_ci_part FOR VALUES FROM (501)  TO (1001);
+INSERT INTO tbl_ci_part SELECT g, CASE WHEN g<=500 THEN 'east' ELSE 'west' END
+    FROM generate_series(1, 1000) g;
+----
+
+=== Basic ONLINE Build
+
+[source,sql]
+----
+-- Simplest form
+CREATE INDEX idx_online_name ON tbl_ci_online (name) ONLINE;
+
+-- Verify the index was created and is valid
+SELECT indisvalid FROM pg_index
+  WHERE indexrelid = 'idx_online_name'::regclass;
+-- Expected: t
+
+-- Multi-column index
+CREATE INDEX idx_online_multi ON tbl_ci_online (dept_id, salary) ONLINE;
+
+-- Expression index
+CREATE INDEX idx_online_expr ON tbl_ci_online (lower(name)) ONLINE;
+----
+
+=== ONLINE on Partitioned Table
+
+[source,sql]
+----
+-- ONLINE on parent of partitioned table
+-- Note: ONLINE on a partitioned table is silently downgraded to a regular build,
+-- consistent with Oracle behavior
+CREATE INDEX idx_part_online ON tbl_ci_part (id) ONLINE;
+
+-- Verify the index was created and is valid (downgraded to regular build;
+-- parent index and all partition child indexes are VALID)
+SELECT c.relname, i.indisvalid
+FROM pg_index i
+JOIN pg_class c ON c.oid = i.indexrelid
+WHERE c.relname LIKE '%idx_part_online%'
+ORDER BY c.relname;
+-- Expected: idx_part_online (parent) and both partition child indexes have indisvalid = t
+
+-- Partitioned table ONLINE + TABLESPACE
+CREATE INDEX idx_part_online_tbs ON tbl_ci_part (region) ONLINE TABLESPACE pg_default;
+----
+
+=== CONCURRENTLY and ONLINE Are Mutually Exclusive
+
+[source,sql]
+----
+-- CONCURRENTLY first, ONLINE after
+CREATE INDEX CONCURRENTLY idx_both ON tbl_ci_online (name) ONLINE;
+-- Expected: ERROR: cannot use both CONCURRENTLY and ONLINE
+
+-- Verify existing CONCURRENTLY syntax is unaffected
+CREATE INDEX CONCURRENTLY idx_still_conc ON tbl_ci_online (dept_id);
+-- Expected: success
+----
+
+=== Test Environment Cleanup
+
+[source,sql]
+----
+DROP TABLE IF EXISTS tbl_ci_online  CASCADE;
+DROP TABLE IF EXISTS tbl_ci_part    CASCADE;
+DROP TABLE IF EXISTS tbl_ci_unique  CASCADE;
+----

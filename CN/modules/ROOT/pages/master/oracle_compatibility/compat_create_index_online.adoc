@@ -1,0 +1,115 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= 索引 ONLINE 参数
+
+== 目的
+
+本文档解释 IvorySQL 中 `ONLINE` 参数在创建索引时的功能，实现该参数功能以保持与 Oracle 行为一致。
+
+== 功能说明
+
+- `ONLINE` 参数在创建索引时被指定，可允许 DML 并发执行，类似 PostgreSQL 中的 `CONCURRENTLY`，但不能与 `CONCURRENTLY` 同时出现。
+- `ONLINE` 必须支持出现在列列表 `)` 之后、`WHERE` 子句之前的任意位置，且与 `TABLESPACE`、`PARALLEL`（如已支持）等其他属性的顺序无关。
+- 临时表上的 `CREATE INDEX ... ONLINE` 自动降级为普通构建（不报错，与 `CONCURRENTLY` 行为一致）。
+- 分区表上的 `CREATE INDEX ... ONLINE` **自动降级为普通构建**（不报错）。  
+
+== 测试用例
+
+=== 测试环境准备
+
+[source,sql]
+----
+-- 基础测试表
+CREATE TABLE tbl_ci_online (
+    id      NUMBER(10)    PRIMARY KEY,
+    name    VARCHAR2(100),
+    dept_id NUMBER(10),
+    salary  NUMBER(10,2),
+    status  VARCHAR2(20)
+);
+INSERT INTO tbl_ci_online
+    SELECT g, 'name'||g, MOD(g,20), g*100.0, CASE WHEN MOD(g,2)=0 THEN 'ACTIVE' ELSE 'INACTIVE' END
+    FROM generate_series(1, 1000) g;
+
+-- 唯一索引测试表
+CREATE TABLE tbl_ci_unique (
+    id    NUMBER(10)    PRIMARY KEY,
+    email VARCHAR2(200) NOT NULL
+);
+INSERT INTO tbl_ci_unique SELECT g, 'user'||g||'@example.com' FROM generate_series(1, 200) g;
+
+-- 分区表
+CREATE TABLE tbl_ci_part (
+    id     NUMBER(10),
+    region VARCHAR2(20)
+) PARTITION BY RANGE (id);
+CREATE TABLE tbl_ci_part_p1 PARTITION OF tbl_ci_part FOR VALUES FROM (1)    TO (501);
+CREATE TABLE tbl_ci_part_p2 PARTITION OF tbl_ci_part FOR VALUES FROM (501)  TO (1001);
+INSERT INTO tbl_ci_part SELECT g, CASE WHEN g<=500 THEN 'east' ELSE 'west' END
+    FROM generate_series(1, 1000) g;
+----
+
+=== 基础 ONLINE 构建
+
+[source,sql]
+----
+-- 最简单形式
+CREATE INDEX idx_online_name ON tbl_ci_online (name) ONLINE;
+
+-- 验证索引已建立并有效
+SELECT indisvalid FROM pg_index
+  WHERE indexrelid = 'idx_online_name'::regclass;
+-- 期望：t
+
+-- 多列索引
+CREATE INDEX idx_online_multi ON tbl_ci_online (dept_id, salary) ONLINE;
+
+-- 表达式索引
+CREATE INDEX idx_online_expr ON tbl_ci_online (lower(name)) ONLINE;
+----
+
+=== 分区表 ONLINE
+
+[source,sql]
+----
+-- 分区表父级索引 ONLINE
+-- 注：ONLINE 在分区表上静默降级为普通构建，与 Oracle 行为一致
+CREATE INDEX idx_part_online ON tbl_ci_part (id) ONLINE;
+
+-- 验证索引已创建且有效（降级为普通构建，父级索引 + 各分区子索引均 VALID）
+SELECT c.relname, i.indisvalid
+FROM pg_index i
+JOIN pg_class c ON c.oid = i.indexrelid
+WHERE c.relname LIKE '%idx_part_online%'
+ORDER BY c.relname;
+-- 期望：idx_part_online（父）及两个分区子索引 indisvalid = t
+
+-- 分区表 ONLINE + TABLESPACE
+CREATE INDEX idx_part_online_tbs ON tbl_ci_part (region) ONLINE TABLESPACE pg_default;
+----
+
+=== CONCURRENTLY 与 ONLINE 互斥
+
+[source,sql]
+----
+-- CONCURRENTLY 在前，ONLINE 在后
+CREATE INDEX CONCURRENTLY idx_both ON tbl_ci_online (name) ONLINE;
+-- 期望：ERROR: cannot use both CONCURRENTLY and ONLINE
+
+-- 验证原有 CONCURRENTLY 语法不受影响
+CREATE INDEX CONCURRENTLY idx_still_conc ON tbl_ci_online (dept_id);
+-- 期望：成功
+----
+
+=== 测试环境清理
+
+[source,sql]
+----
+DROP TABLE IF EXISTS tbl_ci_online  CASCADE;
+DROP TABLE IF EXISTS tbl_ci_part    CASCADE;
+DROP TABLE IF EXISTS tbl_ci_unique  CASCADE;
+----
+
