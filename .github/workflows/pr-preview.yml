@@ -62,6 +62,8 @@ jobs:
 
               yq -i ".content.sources[0].url = \"$NEW_LOCAL_URL\"" "$PLAYBOOK_FILE"
 
+              yq -i ".ui.bundle.url = \"./entemplates.zip\"" "$PLAYBOOK_FILE"
+
               yq -i ".content.sources[0].branches = [\"HEAD\"]" "$PLAYBOOK_FILE"
               
               yq -i ".content.sources[0].edit_url = false" "$PLAYBOOK_FILE"

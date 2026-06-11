@@ -1,0 +1,142 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= 索引 ONLINE 参数
+
+== 目的
+
+IvorySQL 数据库支持在创建索引时使用 `ONLINE` 参数，用于在线创建索引，同时不阻塞DML操作。
+
+== 实现说明
+
+=== 数据结构扩展
+
+`IndexStmt` 新增 `online_keyword` 字段。
+
+[source,c]
+----
+bool    transformed;        /* true when transformIndexStmt is finished */
+bool    concurrent;         /* should this be a concurrent index build? */
+bool    online_keyword;     /* was ONLINE keyword used (as opposed to CONCURRENTLY)? */
+----
+
+=== 语法与解析
+
+==== 语法规则扩展
+
+在 `ora_gram.y` 文件中引入一个弹性选项列表 `create_index_opt_list` / `create_index_opt`，类似现有的 `rebuild_index_opt_list`：
+
+[source,yacc]
+----
+create_index_opt_list:
+    create_index_opt_list create_index_opt  { $$ = lappend($1, $2); }
+  | /* EMPTY */                             { $$ = NIL; }
+;
+
+create_index_opt:
+    ONLINE
+        { $$ = makeDefElem("online", (Node *) makeBoolean(true), @1); }
+  | TABLESPACE name
+        { $$ = makeDefElem("tablespace", (Node *) makeString($2), @1); }
+;
+----
+
+修改 `IndexStmt` 的两个产生式，将 `OptTableSpace` 替换为 `create_index_opt_list`，并在 action 中从选项列表中提取 `online` 和 `tablespace`。
+[source,yacc]
+----
+IndexStmt: CREATE opt_unique INDEX opt_concurrently opt_single_name
+           ON relation_expr access_method_clause '(' index_params ')'
+           opt_include opt_unique_null_treatment opt_reloptions
+           create_index_opt_list where_clause
+    {
+        IndexStmt *n = makeNode(IndexStmt);
+        bool        online = false;
+        bool        online_seen = false;
+        char       *tablespace = NULL;
+        ListCell   *lc;
+
+        /* 解析 create_index_opt_list，提取 online 和 tablespace */
+        foreach(lc, $15)
+        {
+            DefElem *opt = (DefElem *) lfirst(lc);
+
+            if (strcmp(opt->defname, "online") == 0)
+            {
+                if (online_seen)
+                    ereport(ERROR,
+                            (errcode(ERRCODE_SYNTAX_ERROR),
+                             errmsg("ONLINE specified multiple times"),
+                             parser_errposition(opt->location)));
+                online = defGetBoolean(opt);
+                online_seen = true;
+            }
+            else if (strcmp(opt->defname, "tablespace") == 0)
+            {
+                if (tablespace != NULL)
+                    ereport(ERROR,
+                            (errcode(ERRCODE_SYNTAX_ERROR),
+                             errmsg("TABLESPACE specified multiple times"),
+                             parser_errposition(opt->location)));
+                tablespace = defGetString(opt);
+            }
+        }
+
+        /* CONCURRENTLY 与 ONLINE 互斥 */
+        if ($4 && online)
+            ereport(ERROR,
+                    (errcode(ERRCODE_SYNTAX_ERROR),
+                     errmsg("cannot use both CONCURRENTLY and ONLINE"),
+                     parser_errposition(@4)));
+
+        n->unique          = $2;
+        n->concurrent      = $4 || online;
+        n->online_keyword  = online;
+        n->idxname         = $5;
+        n->relation        = $7;
+        n->accessMethod    = $8;
+        n->indexParams     = $10;
+        n->indexIncludingParams = $12;
+        n->nulls_not_distinct   = !$13;
+        n->options         = $14;       /* opt_reloptions (WITH clause) */
+        n->tableSpace      = tablespace;
+        n->whereClause     = $16;
+        n->excludeOpNames  = NIL;
+        n->idxcomment      = NULL;
+        n->indexOid        = InvalidOid;
+        n->oldNumber       = InvalidRelFileNumber;
+        n->oldCreateSubid  = InvalidSubTransactionId;
+        n->oldFirstRelfilelocatorSubid = InvalidSubTransactionId;
+        n->primary         = false;
+        n->isconstraint    = false;
+        n->deferrable      = false;
+        n->initdeferred    = false;
+        n->transformed     = false;
+        n->if_not_exists   = false;
+        n->reset_default_tblspc = false;
+        $$ = (Node *) n;
+    }
+----
+
+==== 执行层修改（`indexcmds.c`）
+
+`DefineIndex()` 中已有临时表降级逻辑（`concurrent = false` when temp table），需在相同位置补充分区表的降级逻辑：
+
+[source,c]
+----
+/* 已有：临时表降级 */
+if (stmt->concurrent && get_rel_persistence(tableId) != RELPERSISTENCE_TEMP)
+    concurrent = true;
+else
+    concurrent = false;
+
+/* 新增：分区表降级
+ * Oracle 对分区表 CREATE INDEX ONLINE 返回成功（全局非分区索引）。
+ * PostgreSQL 的 concurrent + partitioned 路径会报错，因此在 Oracle 解析器
+ * 模式下（stmt->online_keyword = true）对分区表静默降级为普通构建。
+ */
+if (concurrent && partitioned && stmt->online_keyword)
+    concurrent = false;
+----
+

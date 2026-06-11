@@ -1,0 +1,143 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= ONLINE Parameter for CREATE INDEX
+
+== Purpose
+
+IvorySQL supports the `ONLINE` parameter when creating an index, allowing indexes to be built online without blocking DML operations.
+
+== Implementation Notes
+
+=== Data Structure Extension
+
+A new `online_keyword` field is added to `IndexStmt`.
+
+[source,c]
+----
+bool    transformed;        /* true when transformIndexStmt is finished */
+bool    concurrent;         /* should this be a concurrent index build? */
+bool    online_keyword;     /* was ONLINE keyword used (as opposed to CONCURRENTLY)? */
+----
+
+=== Syntax and Parsing
+
+==== Grammar Rule Extension
+
+A flexible option list `create_index_opt_list` / `create_index_opt` is introduced in `ora_gram.y`, similar to the existing `rebuild_index_opt_list`:
+
+[source,yacc]
+----
+create_index_opt_list:
+    create_index_opt_list create_index_opt  { $$ = lappend($1, $2); }
+  | /* EMPTY */                             { $$ = NIL; }
+;
+
+create_index_opt:
+    ONLINE
+        { $$ = makeDefElem("online", (Node *) makeBoolean(true), @1); }
+  | TABLESPACE name
+        { $$ = makeDefElem("tablespace", (Node *) makeString($2), @1); }
+;
+----
+
+The two productions for `IndexStmt` are modified to replace `OptTableSpace` with `create_index_opt_list`, extracting `online` and `tablespace` from the option list in the action:
+
+[source,yacc]
+----
+IndexStmt: CREATE opt_unique INDEX opt_concurrently opt_single_name
+           ON relation_expr access_method_clause '(' index_params ')'
+           opt_include opt_unique_null_treatment opt_reloptions
+           create_index_opt_list where_clause
+    {
+        IndexStmt *n = makeNode(IndexStmt);
+        bool        online = false;
+        bool        online_seen = false;
+        char       *tablespace = NULL;
+        ListCell   *lc;
+
+        /* Parse create_index_opt_list, extract online and tablespace */
+        foreach(lc, $15)
+        {
+            DefElem *opt = (DefElem *) lfirst(lc);
+
+            if (strcmp(opt->defname, "online") == 0)
+            {
+                if (online_seen)
+                    ereport(ERROR,
+                            (errcode(ERRCODE_SYNTAX_ERROR),
+                             errmsg("ONLINE specified multiple times"),
+                             parser_errposition(opt->location)));
+                online = defGetBoolean(opt);
+                online_seen = true;
+            }
+            else if (strcmp(opt->defname, "tablespace") == 0)
+            {
+                if (tablespace != NULL)
+                    ereport(ERROR,
+                            (errcode(ERRCODE_SYNTAX_ERROR),
+                             errmsg("TABLESPACE specified multiple times"),
+                             parser_errposition(opt->location)));
+                tablespace = defGetString(opt);
+            }
+        }
+
+        /* CONCURRENTLY and ONLINE are mutually exclusive */
+        if ($4 && online)
+            ereport(ERROR,
+                    (errcode(ERRCODE_SYNTAX_ERROR),
+                     errmsg("cannot use both CONCURRENTLY and ONLINE"),
+                     parser_errposition(@4)));
+
+        n->unique          = $2;
+        n->concurrent      = $4 || online;
+        n->online_keyword  = online;
+        n->idxname         = $5;
+        n->relation        = $7;
+        n->accessMethod    = $8;
+        n->indexParams     = $10;
+        n->indexIncludingParams = $12;
+        n->nulls_not_distinct   = !$13;
+        n->options         = $14;       /* opt_reloptions (WITH clause) */
+        n->tableSpace      = tablespace;
+        n->whereClause     = $16;
+        n->excludeOpNames  = NIL;
+        n->idxcomment      = NULL;
+        n->indexOid        = InvalidOid;
+        n->oldNumber       = InvalidRelFileNumber;
+        n->oldCreateSubid  = InvalidSubTransactionId;
+        n->oldFirstRelfilelocatorSubid = InvalidSubTransactionId;
+        n->primary         = false;
+        n->isconstraint    = false;
+        n->deferrable      = false;
+        n->initdeferred    = false;
+        n->transformed     = false;
+        n->if_not_exists   = false;
+        n->reset_default_tblspc = false;
+        $$ = (Node *) n;
+    }
+----
+
+==== Executor Layer Changes (`indexcmds.c`)
+
+`DefineIndex()` already contains downgrade logic for temporary tables (`concurrent = false` when temp table). The same location must also be updated with downgrade logic for partitioned tables:
+
+[source,c]
+----
+/* Existing: downgrade for temp tables */
+if (stmt->concurrent && get_rel_persistence(tableId) != RELPERSISTENCE_TEMP)
+    concurrent = true;
+else
+    concurrent = false;
+
+/* New: downgrade for partitioned tables.
+ * Oracle returns success for CREATE INDEX ONLINE on partitioned tables
+ * (global non-partitioned index). PostgreSQL's concurrent + partitioned
+ * path raises an error, so in Oracle parser mode (stmt->online_keyword = true)
+ * we silently downgrade to a regular build for partitioned tables.
+ */
+if (concurrent && partitioned && stmt->online_keyword)
+    concurrent = false;
+----
