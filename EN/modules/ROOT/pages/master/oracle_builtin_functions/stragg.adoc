@@ -1,0 +1,148 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= Implementation of the STRAGG Aggregate Function
+
+== Purpose
+
+IvorySQL adds the `sys.stragg(text)` aggregate function to the `contrib/ivorysql_ora`
+extension, implementing string aggregation behavior compatible with Oracle's function of
+the same name: concatenating all non-NULL values within a group into a single
+comma-separated string.
+
+== Implementation Notes
+
+=== State Layout Design
+
+The STRAGG aggregate reuses the `StringInfo` state layout used by PostgreSQL's built-in
+`string_agg`, which allows direct reuse of four built-in functions —
+`string_agg_finalfn`, `string_agg_combine`, `string_agg_serialize`, and
+`string_agg_deserialize` — without implementing separate finalize, parallel combine, or
+serialization logic.
+
+The `StringInfo` state convention is as follows:
+
+[source,c]
+----
+/*
+ * data   = "," + val1 + "," + val2 + ...
+ *          A leading comma is prepended before the first value so that
+ *          the finalfn can strip it uniformly.
+ * cursor = 1
+ *          Stores the byte length of the leading delimiter (one byte for ",").
+ *          string_agg_finalfn returns &data[cursor], automatically dropping
+ *          the leading comma.
+ */
+----
+
+=== Transition Function (`stragg_transfn`)
+
+The transition function is located in
+`contrib/ivorysql_ora/src/builtin_functions/misc_functions.c`.
+
+[source,c]
+----
+PG_FUNCTION_INFO_V1(stragg_transfn);
+
+Datum
+stragg_transfn(PG_FUNCTION_ARGS)
+{
+    StringInfo  state;
+    MemoryContext aggcontext;
+    MemoryContext oldcontext;
+
+    if (!AggCheckCallContext(fcinfo, &aggcontext))
+        elog(ERROR, "stragg_transfn called in non-aggregate context");
+
+    state = PG_ARGISNULL(0) ? NULL : (StringInfo) PG_GETARG_POINTER(0);
+
+    /* Skip NULL input values, consistent with Oracle STRAGG behavior */
+    if (!PG_ARGISNULL(1))
+    {
+        text *value = PG_GETARG_TEXT_PP(1);
+
+        if (state == NULL)
+        {
+            oldcontext = MemoryContextSwitchTo(aggcontext);
+            state = makeStringInfo();
+            MemoryContextSwitchTo(oldcontext);
+
+            /* First value: prepend delimiter and record its length in cursor */
+            appendStringInfoChar(state, ',');
+            state->cursor = 1;
+        }
+        else
+        {
+            appendStringInfoChar(state, ',');
+        }
+
+        appendBinaryStringInfo(state, VARDATA_ANY(value), VARSIZE_ANY_EXHDR(value));
+    }
+
+    if (state)
+        PG_RETURN_POINTER(state);
+    PG_RETURN_NULL();
+}
+----
+
+Key design points:
+
+* The state is allocated in the aggregate memory context (`aggcontext`) and lives for
+  the entire duration of the aggregation.
+* The `StringInfo` internal buffer doubles in capacity on demand; append operations are
+  amortized O(1), giving an overall time complexity of O(N) — superior to the O(N²) of
+  a pure-SQL string-concatenation approach.
+* NULL input is detected via `PG_ARGISNULL(1)` and silently skipped, leaving the
+  accumulated state unaffected.
+
+=== SQL Definitions
+
+The transition function and aggregate are defined in
+`contrib/ivorysql_ora/src/builtin_functions/builtin_functions--1.0.sql`.
+
+[source,sql]
+----
+CREATE FUNCTION sys.stragg_transfn(internal, text)
+RETURNS internal
+AS 'MODULE_PATHNAME', 'stragg_transfn'
+LANGUAGE C
+CALLED ON NULL INPUT
+PARALLEL SAFE;
+
+CREATE AGGREGATE sys.stragg(text) (
+    SFUNC        = sys.stragg_transfn,
+    STYPE        = internal,
+    FINALFUNC    = string_agg_finalfn,
+    COMBINEFUNC  = string_agg_combine,
+    SERIALFUNC   = string_agg_serialize,
+    DESERIALFUNC = string_agg_deserialize,
+    PARALLEL     = SAFE
+);
+----
+
+`FINALFUNC`, `COMBINEFUNC`, `SERIALFUNC`, and `DESERIALFUNC` all reference PostgreSQL's
+built-in `string_agg` family directly, because STRAGG uses exactly the same `StringInfo`
+state format as `string_agg`.
+
+=== Parallel Aggregation Support
+
+By specifying `COMBINEFUNC = string_agg_combine` together with the serialize and
+deserialize functions, STRAGG supports PostgreSQL's parallel aggregation execution path.
+Each parallel worker maintains its own partial `StringInfo` state independently; the
+leader process merges them via `string_agg_combine`.
+
+=== Regression Tests
+
+Test file: `contrib/ivorysql_ora/sql/ora_stragg.sql`
+Expected output: `contrib/ivorysql_ora/expected/ora_stragg.out`
+
+`ora_stragg` has been added to the `ORA_REGRESS` list in the `Makefile` and can be run
+with:
+
+[source,bash]
+----
+cd contrib/ivorysql_ora
+make installcheck
+----

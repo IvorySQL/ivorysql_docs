@@ -1,0 +1,179 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= STRAGG Aggregate Function
+
+== Purpose
+
+This document describes the `sys.stragg` aggregate function in IvorySQL, which
+concatenates multiple string values within a group into a single comma-separated string
+in a manner compatible with Oracle.
+
+== Functional Description
+
+* `sys.stragg(text)` is an aggregate function that joins all non-NULL text values within
+  a group using a comma (`,`) as the separator.
+* NULL values are silently ignored; they do not appear in the result and do not produce
+  extra commas.
+* When all values in a group are NULL, or when the group is an empty set, the function
+  returns `NULL` (not an empty string).
+* Output order is not guaranteed. To obtain a deterministic order, use an `ORDER BY`
+  clause inside the aggregate call (a PostgreSQL aggregate extension).
+* The function is defined in the `sys` schema and is available in both Oracle
+  compatibility mode (don't need sys prefix) and PG mode.
+
+== Syntax
+
+[source,sql]
+----
+sys.stragg(expr [ORDER BY sort_expr [ASC | DESC] [, ...]])
+----
+
+[cols="1,3"]
+|===
+|Parameter |Description
+
+|`expr`
+|Any expression that can be implicitly cast to `text`. NULL values are skipped.
+
+|`ORDER BY`
+|Optional. Specifies the concatenation order within the group. If omitted, order is
+ indeterminate.
+|===
+
+Return type: `text`
+
+== Test Cases
+
+=== Test Environment Setup
+
+[source,sql]
+----
+CREATE TABLE stragg_test (dept TEXT, name TEXT);
+INSERT INTO stragg_test VALUES ('HR', 'Alice');
+INSERT INTO stragg_test VALUES ('HR', 'Bob');
+INSERT INTO stragg_test VALUES ('HR', 'Carol');
+INSERT INTO stragg_test VALUES ('IT', 'Dave');
+INSERT INTO stragg_test VALUES ('IT', 'Eve');
+----
+
+=== Basic Aggregation
+
+[source,sql]
+----
+-- Single-group aggregation with ORDER BY for deterministic output
+SELECT sys.stragg(name ORDER BY name) FROM stragg_test WHERE dept = 'HR';
+-- Expected: Alice,Bob,Carol
+
+-- Aggregation with GROUP BY, grouped by department
+SELECT dept, sys.stragg(name ORDER BY name)
+FROM stragg_test
+GROUP BY dept
+ORDER BY dept;
+-- Expected:
+--  HR | Alice,Bob,Carol
+--  IT | Dave,Eve
+----
+
+=== NULL Value Handling
+
+[source,sql]
+----
+-- Insert a row with a NULL value
+INSERT INTO stragg_test VALUES ('HR', NULL);
+
+-- NULL is ignored; result is the same as without the NULL row
+SELECT sys.stragg(name ORDER BY name) FROM stragg_test WHERE dept = 'HR';
+-- Expected: Alice,Bob,Carol
+
+-- All-NULL input returns NULL
+SELECT sys.stragg(name) IS NULL FROM stragg_test WHERE name IS NULL;
+-- Expected: t
+----
+
+=== Empty Set Handling
+
+[source,sql]
+----
+-- No matching rows: returns NULL
+SELECT sys.stragg(name) IS NULL FROM stragg_test WHERE dept = 'NONE';
+-- Expected: t
+----
+
+=== Single Value
+
+[source,sql]
+----
+-- Only one value in the group: result contains no comma
+SELECT sys.stragg(name) FROM stragg_test WHERE dept = 'IT' AND name = 'Dave';
+-- Expected: Dave
+----
+
+=== Usage in PG Compatibility Mode
+
+[source,sql]
+----
+SET ivorysql.compatible_mode = pg;
+SELECT sys.stragg(name ORDER BY name) FROM stragg_test WHERE dept = 'HR';
+-- Expected: Alice,Bob,Carol
+RESET ivorysql.compatible_mode;
+----
+
+=== Test Environment Cleanup
+
+[source,sql]
+----
+DROP TABLE stragg_test;
+----
+
+== Behavioral Differences from Oracle
+
+[cols="1,2,2"]
+|===
+|Scenario |Oracle STRAGG |IvorySQL sys.stragg
+
+|Empty set
+|`NULL`
+|`NULL` (compatible)
+
+|All-NULL group
+|`NULL`
+|`NULL` (compatible)
+
+|NULL values
+|Ignored
+|Ignored (compatible)
+
+|Concatenation order
+|Indeterminate
+|Indeterminate; can be fixed with an `ORDER BY` clause
+
+|`ORDER BY` clause
+|Not supported (no official syntax)
+|Supported (PostgreSQL aggregate extension syntax)
+|===
+
+== Comparison with LISTAGG
+
+[cols="1,2,2"]
+|===
+|Feature |`LISTAGG` (Oracle / IvorySQL) |`STRAGG` (Oracle / IvorySQL)
+
+|Separator
+|Any delimiter can be specified
+|Fixed comma
+
+|`ORDER BY`
+|Specified via `WITHIN GROUP (ORDER BY ...)`
+|Order not guaranteed; IvorySQL supports PostgreSQL aggregate `ORDER BY`
+
+|Result length limit
+|Oracle enforces a 4000-byte limit (IvorySQL checks via `ora_listagg_check`)
+|No limit
+
+|Typical use case
+|When precise control of delimiter and order is required
+|Quick concatenation; migration of legacy Oracle code
+|===
