@@ -1,21 +1,21 @@
 name: ivorysql-doc
 title: 文档中心
-version: v5.3
+version: v5.4
 start_page: welcome.adoc
 asciidoc:
-  attributes:
-    source-language: asciidoc@
-    table-caption: false
-    ivorysql-version: 5.3
-    pg-version: 18.3
-    package-link: 'https://github.com/ivorysql/ivorysql'
-    package-link-x86_64-deb: 'IvorySQL-5.3-4dfba1d-20260312.amd64.deb'
-    package-link-x86_64-rpm: 'IvorySQL-5.3-4dfba1d-20260312.x86_64.rpm'
-    package-link-aarch64-deb: 'IvorySQL-5.3-4dfba1d-20260312.arm64.deb'
-    package-link-aarch64-rpm: 'IvorySQL-5.3-4dfba1d-20260312.aarch64.rpm'
-    package-link-mips64el-deb: 'IvorySQL-5.3-4dfba1d-20260312.mips64el.deb'
-    package-link-mips64el-rpm: 'IvorySQL-5.3-4dfba1d-20260312.mips64el.rpm'
-    package-link-loongarch64-deb: 'IvorySQL-5.3-4dfba1d-20260312.loongarch64.deb'
-    package-link-loongarch64-rpm: 'IvorySQL-5.3-4dfba1d-20260312.loongarch64.rpm'
+    attributes:
+        source-language: asciidoc@
+        table-caption: false
+        ivorysql-version: 5.4
+        pg-version: 18.4
+        package-link: "https://github.com/ivorysql/ivorysql"
+        package-link-x86_64-deb: "IvorySQL-5.4-a45b045-20260615.amd64.deb"
+        package-link-x86_64-rpm: "IvorySQL-5.4-a45b045-20260615.x86_64.rpm"
+        package-link-aarch64-deb: "IvorySQL-5.4-a45b045-20260615.arm64.deb"
+        package-link-aarch64-rpm: "IvorySQL-5.4-a45b045-20260615.aarch64.rpm"
+        package-link-mips64el-deb: "IvorySQL-5.4-a45b045-20260615.mips64el.deb"
+        package-link-mips64el-rpm: "IvorySQL-5.4-a45b045-20260615.mips64el.rpm"
+        package-link-loongarch64-deb: "IvorySQL-5.4-a45b045-20260615.loongarch64.deb"
+        package-link-loongarch64-rpm: "IvorySQL-5.4-a45b045-20260615.loongarch64.rpm"
 nav:
-- modules/ROOT/nav.adoc
+    - modules/ROOT/nav.adoc
