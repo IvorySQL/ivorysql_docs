@@ -45,8 +45,6 @@ For further details, visit https://www.postgresql.org/docs/release/18.4/[Postgre
 - PostgreSQL Extensions +
   Support for 10 Additional PostgreSQL Extensions: pg_cron, pgAudit, PostGIS, pgRouting, PGroonga, ddlx, pgsql-http, system_stats, plpgsql_check, pgvector.
 
-== Fixed Issues
-
 - Enhanced the EXTRACT function support to accept additional syntax variations in SQL queries: PR https://github.com/IvorySQL/IvorySQL/pull/1222[#1222]
 
 == Source Code
@@ -62,21 +60,34 @@ IvorySQL's development is maintained across four main repositories:
 
 The following individuals (in alphabetical order) have contributed to this release as patch authors, committers, reviewers, testers, or reporters of issues.
 
+* 3296442201
+* Adria0615
+* anapplebeee
 * Cédric Villemain
 * Fawei Zhao
 * Ge Sui
 * Grant Zhou
+* hanjianqiao
+* jerome-peng
+* liketoochao
+* movead123
+* msdnchina
 * Pierre Forstmann
 * Rophy Tsai
 * Shawn Yan
 * Shuntian Jiao
 * Steven Niu
-* Xiangyu Liang
+* tian1220A
+* xiaoyu509
 * Xiaohui Liu
+* Xiangyu Liang
 * Xinjie LYU
 * Xueyu Gao
+* yes7rose
 * Yasir Hussain Shah
-* Zheng Tao
-* Zhenhao Pan
+* z20081120087
 * Zhe Zhang
+* Zhenhao Pan
+* Zheng Tao
 * Zhuoyan Shi
+* zuinuan123
