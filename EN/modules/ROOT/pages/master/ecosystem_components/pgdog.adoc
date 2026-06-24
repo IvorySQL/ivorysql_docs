@@ -75,6 +75,11 @@ Create `pgdog.toml`:
 
 [source,toml]
 ----
+[general]
+host = "0.0.0.0"
+port = 6432
+default_pool_size = 10
+
 # ---- ivory_shard: shard across two IvorySQL backends ----
 # host, port, and database_name need to be modified according to your actual setup if you are not using the environment built with the docker-compose provided in this document
 [[databases]]
@@ -132,8 +137,6 @@ Please modify the `volumes` field according to the actual location of your confi
 # Sharding test topology (standalone compose): 2 shard backends.
 #   ivory-shard0  IvorySQL 5.4 (pg) host:5443
 #   ivory-shard1  IvorySQL 5.4 (pg) host:5444
-#   pgdog-shard   PgDog sharding proxy    host:6433
-#     -> database ivory_shard sharded across ivory-shard0/1
 
 x-ivory: &ivory
   image: registry.highgo.com/ivorysql/ivorysql:5.4-bookworm
@@ -157,17 +160,6 @@ services:
     <<: *ivory
     container_name: ivory-shard1
     ports: ["5444:5432"]
-
-  pgdog-shard:
-    image: ghcr.io/pgdogdev/pgdog:latest
-    container_name: pgdog-shard
-    depends_on:
-      ivory-shard0: {condition: service_healthy}
-      ivory-shard1: {condition: service_healthy}
-    ports: ["6433:6432"]
-    volumes:
-      - ./pgdog.toml:/pgdog/pgdog.toml:ro
-      - ./users.toml:/pgdog/users.toml:ro
 ----
 
 == Usage

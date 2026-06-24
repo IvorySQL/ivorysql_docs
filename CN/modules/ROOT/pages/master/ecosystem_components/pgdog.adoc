@@ -76,6 +76,11 @@ PgDog通过两个文件进行配置：
 
 [source,toml]
 ----
+[general]
+host = "0.0.0.0"
+port = 6432
+default_pool_size = 10
+
 # ---- ivory_shard：分片到两个 IvorySQL 后端 ----
 # host、port以及database_name，如果不是使用本文提供的docker-compose搭建的环境，需要按照实际情况修改
 [[databases]]
@@ -133,8 +138,6 @@ pool_size = 10
 # 分片测试拓扑（独立 compose）：2 个分片后端。
 #   ivory-shard0  IvorySQL 5.4 (pg) host:5443
 #   ivory-shard1  IvorySQL 5.4 (pg) host:5444
-#   pgdog-shard   PgDog 分片代理    host:6433
-#     -> 库 ivory_shard 分片到 ivory-shard0/1
 
 x-ivory: &ivory
   image: registry.highgo.com/ivorysql/ivorysql:5.4-bookworm
@@ -158,17 +161,6 @@ services:
     <<: *ivory
     container_name: ivory-shard1
     ports: ["5444:5432"]
-
-  pgdog-shard:
-    image: ghcr.io/pgdogdev/pgdog:latest
-    container_name: pgdog-shard
-    depends_on:
-      ivory-shard0: {condition: service_healthy}
-      ivory-shard1: {condition: service_healthy}
-    ports: ["6433:6432"]
-    volumes:
-      - ./pgdog.toml:/pgdog/pgdog.toml:ro
-      - ./users.toml:/pgdog/users.toml:ro
 ----
 
 == 使用
