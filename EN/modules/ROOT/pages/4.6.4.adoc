@@ -4,6 +4,11 @@
 
 = Docker & Podman deployment IvorySQL
 
+[TIP]
+====
+In addition to Docker Hub, the IvorySQL community also provides a Harbor registry for users in China. Replace the image prefix used in this chapter with `registry.highgo.com/`, e.g. `registry.highgo.com/ivorysql/ivorysql:{ivorysql-version}-ubi8`.
+====
+
 == Running IvorySQL in docker
 
 ** Get IvorySQL image from Docker Hub
