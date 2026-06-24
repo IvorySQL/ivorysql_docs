@@ -44,6 +44,8 @@ $ sudo dnf install -y ivorysql5-5.0
 $ docker pull ivorysql/ivorysql:5.0-ubi8
 ```
 
+TIP: Users in China can also pull from the IvorySQL community Harbor registry for faster downloads — replace the image reference above with `registry.highgo.com/ivorysql/ivorysql:5.0-ubi8`.
+
 ** Run IvorySQL
 ```
 $ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:5.0-ubi8

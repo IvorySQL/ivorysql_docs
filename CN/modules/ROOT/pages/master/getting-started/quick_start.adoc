@@ -116,6 +116,8 @@ ivorysql  3238  1551  0 20:35 pts/0    00:00:00 grep --color=auto postgres
 $ docker pull ivorysql/ivorysql:5.0-ubi8
 ```
 
+TIP: 国内用户也可使用 IvorySQL 社区的 Harbor 镜像服务加速拉取，例如：`docker pull registry.highgo.com/ivorysql/ivorysql:5.0-ubi8`。
+
 ** 运行IvorySQL
 ```
 $ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:5.0-ubi8
