@@ -1,0 +1,290 @@
+:sectnums:
+:sectnumlevels: 5
+
+= PgDog
+
+== Overview
+PgDog is a high-performance, open-source clustering middleware (proxy tool) designed specifically for PostgreSQL and written in Rust. It integrates automatic sharding, connection pooling, and load balancing, enabling developers to achieve horizontal scaling and high-availability management of PostgreSQL databases without modifying any application code.
+
+Note that PgDog uses PostgreSQL's native pg_query module to parse statements, so it does not support running in Oracle compatibility mode.
+
+Project URL: <https://github.com/pgdogdev/pgdog>
+
+Version: v0.1.45
+
+Open-source license: AGPL-3.0 License
+
+== Installation
+
+[TIP]
+The source build was tested on Ubuntu 26.04.
+
+=== Dependencies
+
+[source,bash]
+----
+sudo apt update && \
+sudo apt install -y cmake clang curl pkg-config \
+    libssl-dev git build-essential mold rustup \
+    docker
+----
+
+[TIP]
+The instructions in this document require two IvorySQL database instances, which can be quickly set up using the docker-compose file provided in this document. To install docker-compose, refer to: <https://docs.docker.com/compose/install/linux/>
+
+=== Building from Source
+
+[source,bash]
+----
+wget https://github.com/pgdogdev/pgdog/archive/refs/tags/v0.1.45.tar.gz
+tar -zxf v0.1.45.tar.gz
+cd pgdog-0.1.45
+
+# After compilation, the executable will be generated in the `target/release` directory
+cargo build --release
+----
+
+=== Verifying the Installation
+
+[source,bash]
+----
+# At the time this document was written, PgDog is under rapid iterative development, so the output of the command below is incomplete
+./target/release/pgdog --version
+# Output: PgDog v
+----
+
+== Configuration
+
+This document configures two shards and uses PgDog's automatic sharding feature as an example.
+
+PgDog is configured through two files:
+
+[cols="1,2"]
+|===
+| File Name | Description
+
+| pgdog.toml
+| Contains basic configuration information such as PgDog's port settings and the backend PostgreSQL service configuration
+
+| users.toml
+| The username and password for accessing PgDog are configured here
+|===
+
+
+Create `pgdog.toml`:
+
+[source,toml]
+----
+# ---- ivory_shard: shard across two IvorySQL backends ----
+# host, port, and database_name need to be modified according to your actual setup if you are not using the environment built with the docker-compose provided in this document
+[[databases]]
+name = "ivory_shard"
+host = "ivory-shard0"
+port = 5432
+database_name = "testdb"
+shard = 0
+
+[[databases]]
+name = "ivory_shard"
+host = "ivory-shard1"
+port = 5432
+database_name = "testdb"
+shard = 1
+
+# ---- Shard key declaration ----
+# The configuration must match the actual table structure
+[[sharded_tables]]
+database = "ivory_shard"
+name = "orders"
+column = "customer_id"
+data_type = "bigint"
+----
+
+Create `users.toml`:
+
+[source,toml]
+----
+[admin]
+name = "admin"
+user = "admin"
+password = "pgdog" 
+
+[[users]]
+name = "ivorysql"
+password = "ivorysql"
+database = "pg_shard"
+pool_size = 10
+
+[[users]]
+name = "ivorysql"
+password = "ivorysql"
+database = "ivory_shard"
+pool_size = 10
+----
+
+Create `docker-compose.shard.yml`:
+
+[TIP]
+Please modify the `volumes` field according to the actual location of your configuration files.
+
+[source,dockerfile]
+----
+# Sharding test topology (standalone compose): 2 shard backends.
+#   ivory-shard0  IvorySQL 5.4 (pg) host:5443
+#   ivory-shard1  IvorySQL 5.4 (pg) host:5444
+#   pgdog-shard   PgDog sharding proxy    host:6433
+#     -> database ivory_shard sharded across ivory-shard0/1
+
+x-ivory: &ivory
+  image: registry.highgo.com/ivorysql/ivorysql:5.4-bookworm
+  environment: &ivoryenv
+    MODE: pg
+    IVORYSQL_USER: ivorysql
+    IVORYSQL_PASSWORD: ivorysql
+    IVORYSQL_DB: testdb
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U ivorysql -d testdb"]
+    interval: 5s
+    timeout: 3s
+    retries: 30
+
+services:
+  ivory-shard0:
+    <<: *ivory
+    container_name: ivory-shard0
+    ports: ["5443:5432"]
+  ivory-shard1:
+    <<: *ivory
+    container_name: ivory-shard1
+    ports: ["5444:5432"]
+
+  pgdog-shard:
+    image: ghcr.io/pgdogdev/pgdog:latest
+    container_name: pgdog-shard
+    depends_on:
+      ivory-shard0: {condition: service_healthy}
+      ivory-shard1: {condition: service_healthy}
+    ports: ["6433:6432"]
+    volumes:
+      - ./pgdog.toml:/pgdog/pgdog.toml:ro
+      - ./users.toml:/pgdog/users.toml:ro
+----
+
+== Usage
+
+=== Starting PgDog
+
+[source,bash]
+----
+./target/release/pgdog --config ./pgdog.toml --users ./users.toml
+----
+
+
+=== Administration Console
+
+PgDog provides a built-in administration database. The username and password are configured via the `[[admin]]` field in `users.toml`.
+
+[source,bash]
+----
+psql "postgres://admin:pgdog@localhost:6433/admin"
+----
+
+[source,sql]
+----
+-- View client connections and real-time statistics
+SHOW CLIENTS
+
+-- View PostgreSQL connections initiated by PgDog
+SHOW SERVERS
+
+-- View connection pool information
+SHOW POOLS
+
+-- View the configuration currently loaded from pgdog.toml
+SHOW CONFIG
+
+-- View connection pool statistics
+SHOW STATS
+
+-- List of PgDog processes running on the same network. Requires service discovery to be enabled
+SHOW PEERS
+
+-- Reload the configuration from disk. For which options can be changed at runtime, refer to pgdog.toml and users.toml
+RELOAD	
+
+-- Recreate all server connections using the existing configuration
+RECONNECT	
+
+-- Pause all connection pools. Clients will wait for a connection until the pools resume. Useful for performing a graceful restart of the PostgreSQL server
+PAUSE	
+
+-- Resume all connection pools. Clients can acquire connections again
+RESUME	
+
+-- List the prepared statements currently in the cache
+SHOW PREPARED	
+
+-- List the statements currently in the AST cache used for query routing
+SHOW QUERY_CACHE	
+
+-- Pause all queries in order to synchronize configuration changes across multiple PgDog instances
+MAINTENANCE	
+
+-- Show the PostgreSQL replication status for each database, including replica lag
+SHOW REPLICATION	
+----
+
+=== Connecting to PgDog
+
+[source,bash]
+----
+psql "postgres://ivorysql:ivorysql@localhost:6433/ivory_shard"
+----
+
+=== Performing Operations
+
+[TIP]
+Make sure the shard backends do not have an `orders` table; PgDog will create it automatically.
+
+[source,sql]
+----
+-- Create the table
+CREATE TABLE orders (
+    order_id    bigint, 
+    customer_id bigint, 
+    amount      numeric(10,2), 
+    PRIMARY KEY (order_id, customer_id)
+);
+
+-- Insert data: these rows will be inserted into the two shard backends respectively
+-- BUG: the `generate_series` function cannot be used here, because PgDog currently passes this function through transparently
+INSERT INTO orders values(1, 1, 1);
+INSERT INTO orders values(2, 2, 2);
+INSERT INTO orders values(3, 3, 3);
+INSERT INTO orders values(4, 4, 4);
+INSERT INTO orders values(5, 5, 5);
+INSERT INTO orders values(6, 6, 6);
+INSERT INTO orders values(7, 7, 7);
+
+-- Query the data
+SELECT * FROM orders;
+----
+
+=== Connecting to Each Shard Backend to Verify the Data
+
+[TIP]
+Here you will see that the entries in the two shard backends are not evenly distributed. This is because PgDog extracts the value of the `customer_id` field configured in `[[sharded_tables]]` and applies HASH-based sharding to it.
+
+[source,bash]
+----
+# Shard 1
+psql "postgres://ivorysql:ivorysql@localhost:5443/testdb",
+# Shard 2
+psql "postgres://ivorysql:ivorysql@localhost:5444/testdb",
+----
+
+Run the query on each shard backend to verify the data
+[source,sql]
+----
+SELECT * FROM orders;
+----
