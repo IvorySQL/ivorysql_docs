@@ -88,6 +88,8 @@ name = "ivory_shard"
 host = "ivory-shard0"
 port = 5432
 database_name = "testdb"
+user = "ivorysql"       # 如果不提供，默认使用`users.toml`中对应的`name`
+password = "ivorysql"   # 如果不提供，默认使用`users.toml`中对应的`password`
 shard = 0
 
 [[databases]]
@@ -114,12 +116,6 @@ data_type = "bigint"
 name = "admin"
 user = "admin"
 password = "pgdog" 
-
-[[users]]
-name = "ivorysql"
-password = "ivorysql"
-database = "pg_shard"
-pool_size = 10
 
 [[users]]
 name = "ivorysql"

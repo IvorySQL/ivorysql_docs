@@ -87,6 +87,8 @@ name = "ivory_shard"
 host = "ivory-shard0"
 port = 5432
 database_name = "testdb"
+user = "ivorysql"       # if not provide, using `name` in `users.toml`
+password = "ivorysql"   # if not provide, using `password` in `users.toml`
 shard = 0
 
 [[databases]]
@@ -113,12 +115,6 @@ Create `users.toml`:
 name = "admin"
 user = "admin"
 password = "pgdog" 
-
-[[users]]
-name = "ivorysql"
-password = "ivorysql"
-database = "pg_shard"
-pool_size = 10
 
 [[users]]
 name = "ivorysql"
