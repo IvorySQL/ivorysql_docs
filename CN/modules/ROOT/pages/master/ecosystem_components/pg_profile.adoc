@@ -1,0 +1,145 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_profile
+
+== 概述
+pg_profile 是一个用于 PostgreSQL 数据库性能分析的扩展工具，主要用于统计目标数据库中的资源密集型活动，帮助用户深入了解数据库运行状态、找出性能瓶颈并进行优化。它的报告本质上是“两个采样点的差量分析”，得出采样间隔内的增量负载，采样点序号从 1 开始计数。
+
+pg_profile 硬依赖 dblink 与 plpgsql（其自身完全由 SQL 和 PL/pgSQL 编写，无需任何外部库或软件）；此外，建议安装 pg_stat_statements 扩展，以便在报告中获取 SQL 语句级别的统计信息。pg_profile 的版本与 PostgreSQL 的版本强相关，当前最高支持到 PG 18，具体的版本支持情况请查看 pg_profile 官方 github 仓库的 README.
+
+IvorySQL 的 PG 模式和 Oracle 兼容模式都已经适配 pg_profile。需要注意的是，在 Oracle 兼容模式下，pg_profile 在编译前，需要手动修改扩展源码的 control.tpl 文件，增加一个配置项 `pg_dialect = true` ，否则无法正常安装。
+
+项目地址：<https://github.com/zubkov-andrei/pg_profile>
+
+开源协议：PostgreSQL License
+
+== 安装启用
+
+=== 源码编译
+IvorySQL 的 Oracle 兼容模式下安装 pg_profile，需要先修改 pg_profile 的 control.tpl 文件，增加 `pg_dialect` 配置项：
+[literal]
+----
+# pg_profile/control.tpl
+pg_dialect = true
+----
+
+执行源码编译和安装：
+[literal]
+----
+# 构建并安装 pg_profile 及其依赖扩展
+make -C contrib/dblink install
+make -C contrib/pg_stat_statements install
+make -C contrib/pg_profile install
+----
+
+安装产物为 `pg_profile.control` 与 `pg_profile--4.11.sql`。IvorySQL 的 Oracle 兼容模式下，可检查生成的 `pg_profile.control` 文件已携带 `pg_dialect` 声明：
+[literal]
+----
+default_version = '4.11'
+requires = 'dblink,plpgsql'
+superuser = false
+
+pg_dialect = true
+----
+
+=== 修改配置
+pg_profile 依赖的 pg_stat_statements 必须通过 `shared_preload_libraries` 在服务启动时加载。
+
+编辑 `ivorysql.conf` ，在 `shared_preload_libraries` 配置项末尾追加 `pg_stat_statements`：
+[literal]
+----
+# ivorysql.conf
+shared_preload_libraries = 'liboracle_parser, ivorysql_ora, pg_stat_statements'
+----
+
+=== 重启服务
+[literal]
+----
+pg_ctl -D $PGDATA restart
+----
+
+=== 安装扩展
+PG 模式与 Oracle 模式会话下命令相同：
+[literal]
+----
+CREATE SCHEMA profile;
+CREATE SCHEMA dblink;
+CREATE SCHEMA statements;
+CREATE EXTENSION dblink SCHEMA dblink;
+CREATE EXTENSION pg_stat_statements SCHEMA statements;
+CREATE EXTENSION pg_profile SCHEMA profile;
+
+SELECT extname, extversion FROM pg_extension WHERE extname = 'pg_profile';
+ extname    | extversion
+------------+------------
+ pg_profile | 4.11
+----
+
+在 Oracle 兼容模式下，可执行下面的查询语句确认 pg_profile 的扩展函数已被固定到 PG 语法解析器：
+[literal]
+----
+SELECT proname, proconfig FROM pg_proc
+WHERE proname = 'take_sample' AND proconfig IS NOT NULL LIMIT 1;
+   proname   |                          proconfig
+-------------+-------------------------------------------------------------
+ take_sample | {ivorysql.compatible_mode=pg,search_path=profile}
+----
+
+== 使用流程
+
+=== 创建样本
+[literal]
+----
+-- 第一次采样
+SELECT * FROM profile.take_sample();
+ server | result |   elapsed
+--------+--------+-------------
+ local  | OK     | 00:00:01.34
+
+-- ……业务负载运行一段时间后，再次采样
+SELECT * FROM profile.take_sample();
+----
+
+生产环境通常用定时任务周期采样（如 30 分钟一次），可配合 pg_cron 或外部 crontab：
+[literal]
+----
+*/30 * * * *   psql -c 'SELECT profile.take_sample()' >/dev/null
+----
+
+=== 查看样本
+[literal]
+----
+SELECT sample, sample_time, sizes_collected FROM profile.show_samples();
+ sample |      sample_time       | sizes_collected
+--------+------------------------+-----------------
+      1 | 2026-06-12 09:00:00+00 | t
+      2 | 2026-06-12 09:30:00+00 | t
+----
+
+=== 生成报告
+[literal]
+----
+-- 生成样本 1 到样本 2 之间的负载报告（HTML 文本）
+\o report_1_2.html
+SELECT profile.get_report(1, 2);
+\o
+----
+
+以上函数在 Oracle 模式会话（Oracle 端口/1521）中调用方式与结果完全一致。
+
+== 注意事项
+
+=== 适配说明
+IvorySQL 在 PG 模式下可直接安装使用 pg_profile 扩展，但在 Oracle 兼容模式下需要在编译时为 pg_profile 的 control.tpl 文件增加 `pg_dialect` 配置项，以启用 PG 语法解析器，避免安装失败。
+
+=== 适配边界
+`pg_dialect` 适配机制保护的是*扩展自身的代码*；调用方会话中书写的 SQL 仍按会话方言解析。在 Oracle 模式会话中调用 pg_profile 时，语句里用户自己的表达式需符合 Oracle 模式语法，例如：
+[literal]
+----
+-- Oracle 会话中：PG 风格 interval 字面量会在会话解析期报错
+SELECT profile.set_server_size_sampling('local', current_time - interval '10 minute', ...);  -- 错误
+
+-- 应使用会话方言可接受的写法，或在 PG 模式会话中执行管理操作
+----

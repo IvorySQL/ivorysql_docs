@@ -34,6 +34,7 @@ IvorySQL 作为一款兼容 Oracle 且基于 PostgreSQL 的高级开源数据库
 | 21 | xref:master/ecosystem_components/pg_show_plans.adoc[pg_show_plans] | 2.1 | 显示当前所有正在运行的 SQL 语句的执行计划，支持 TEXT、JSON、YAML 等多种输出格式 | 查询性能诊断、实时执行计划监控、慢查询分析
 | 22 | xref:master/ecosystem_components/pg_bulkload.adoc[pg_bulkload] | 3.1.23 | 为IvorySQL提供高速数据载入工具，可以跳过PG的共享缓存直接将数据导入表中 | 海量数据初始加载，历史数据归档，跨库迁移
 | 23 | xref:master/ecosystem_components/pg_bigm.adoc[pg_bigm] | 1.2 | 为 IvorySQL 提供二元分词全文检索能力，适配中日韩文本，快速实现模糊检索与相似度查询 | 中日韩文内容、商品、地址类文字搜索场景
+| 24 | xref:master/ecosystem_components/pg_profile.adoc[pg_profile] | 4.11 | 收集数据库资源密集型活动的统计，基于两次采样点的差量分析生成历史负载报告，帮助定位性能瓶颈 | 数据库性能分析
 |====
 
 这些插件均经过 IvorySQL 团队的测试和适配，确保在 IvorySQL 环境下稳定运行。用户可以根据业务需求选择合适的插件，进一步提升数据库系统的能力和灵活性。
