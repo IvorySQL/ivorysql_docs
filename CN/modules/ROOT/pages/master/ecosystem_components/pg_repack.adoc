@@ -1,0 +1,126 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_repack
+
+== 概述
+pg_repack 是 PostgreSQL 的一个扩展，用于*在线重整表和索引、消除存储膨胀*。它能达到与 `VACUUM FULL`、`CLUSTER` 类似的效果（回收空间、按索引重排物理顺序），但*几乎不阻塞业务读写*。pg_repack 通过另建新表而非原地修改的方式重整表，整个过程中只在开始和结束的瞬间持有短暂的排他锁，其余时间表都可以正常增删改查。
+
+IvorySQL 的 PG 模式和 Oracle 兼容模式都已经适配 pg_repack。需要注意的是，在 Oracle 兼容模式下，pg_repack 在编译前，需要手动修改扩展源码的 lib/pg_repack.control.in 文件，增加一个配置项 `pg_dialect = true` ，否则无法正常安装。
+
+项目地址：<https://github.com/reorg/pg_repack>
+
+官方文档：<https://reorg.github.io/pg_repack/>
+
+开源协议：BSD-3-Clause License
+
+== 原理
+`VACUUM FULL` / `CLUSTER` 在重写表时会对整张表持有 `ACCESS EXCLUSIVE` 锁，期间无法读写。pg_repack 通过“影子表 + 触发器 + 文件节点交换”的方式避免长时间锁表。
+
+=== 影子表与变更捕获
+* 创建一张与原表结构相同的影子表（`repack.table_<oid>`），并把原表数据批量拷入；
+
+* 在原表上安装行级触发器，把重整期间发生的 `INSERT` / `UPDATE` / `DELETE` 记录进日志表（`repack.log_<oid>`）；
+
+* 数据拷贝完成后回放日志，使影子表追平原表的最新状态。
+
+=== 交换与清理
+* 在系统目录层面*交换原表与影子表的物理文件节点*，这一步是瞬时的，只需短暂的排他锁；
+
+* 删除触发器、日志表等临时对象，并对新表执行 `ANALYZE`。
+
+[NOTE]
+====
+使用前提：目标表必须有*主键或非空唯一键*；操作过程中约需要*两倍表大小*的临时磁盘空间。
+====
+
+== 安装启用
+环境中已经安装了 IvorySQL5 及以上版本。pg_repack 由两部分组成：服务端扩展（`pg_repack.so` 与 SQL 脚本）和客户端命令行工具 `pg_repack`。
+
+=== 源码安装
+设置 PG_CONFIG 环境变量：
+[literal]
+----
+export PG_CONFIG=/usr/local/ivorysql/bin/pg_config
+----
+
+拉取 pg_repack 源码：
+[literal]
+----
+git clone --branch ver_1.5.3 https://github.com/reorg/pg_repack.git
+----
+
+IvorySQL 的 Oracle 兼容模式下安装 pg_repack，需要先修改 pg_repack 的 lib/pg_repack.control.in 文件，增加一个配置项 `pg_dialect = true`：
+[literal]
+----
+# pg_repack/lib/pg_repack.control.in
+pg_dialect = true
+----
+
+执行编译和安装：
+[literal]
+----
+cd pg_repack
+sudo --preserve-env=PG_CONFIG make
+sudo --preserve-env=PG_CONFIG make install
+----
+
+=== 创建扩展
+[literal]
+----
+[ivorysql@localhost ivorysql]$ psql
+psql (18.0)
+Type "help" for help.
+
+ivorysql=# CREATE EXTENSION pg_repack;
+CREATE EXTENSION
+----
+
+[NOTE]
+====
+`CREATE EXTENSION pg_repack` 需要超级用户执行；客户端工具 `pg_repack` 默认也要求以超级用户身份连接运行。安装完成后，客户端工具位于 `/usr/local/ivorysql/bin/pg_repack`。
+====
+
+== 使用流程
+pg_repack 通过命令行客户端驱动，连接参数与 psql 一致（`-h` 主机、`-p` 端口、`-U` 用户、`-d` 数据库，或使用 `PGHOST` / `PGPORT` / `PGUSER` 环境变量）。
+
+=== 重整整个数据库中所有符合条件的表
+[literal]
+----
+pg_repack -d ivorysql
+----
+
+=== 重整指定表
+推荐使用 schema.table 形式：
+[literal]
+----
+pg_repack -d ivorysql -t public.big_table
+----
+
+=== 仅重建索引
+[literal]
+----
+pg_repack -d ivorysql -t big_table --only-indexes    # 重建该表的全部索引
+pg_repack -d ivorysql -i public.big_table_idx        # 重建单个索引
+----
+
+=== 按指定列排序重建
+在线 CLUSTER 效果：
+[literal]
+----
+pg_repack -d ivorysql -t big_table -o "created_at DESC"
+----
+
+=== 迁移表及其索引到另一个表空间
+[literal]
+----
+pg_repack -d ivorysql -t big_table -s fast_ssd_ts --moveidx
+----
+
+=== 预演模式
+只显示将要执行的动作，不实际重整：
+[literal]
+----
+pg_repack -d ivorysql -t big_table --dry-run
+----
