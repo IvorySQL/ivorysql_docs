@@ -64,6 +64,10 @@
 *** xref:master/ecosystem_components/pg_hint_plan.adoc[pg_hint_plan]
 *** xref:master/ecosystem_components/redis_fdw.adoc[redis_fdw]
 *** xref:master/ecosystem_components/pg_show_plans.adoc[pg_show_plans]
+*** xref:master/ecosystem_components/pg_bulkload.adoc[pg_bulkload]
+*** xref:master/ecosystem_components/pg_bigm.adoc[pg_bigm]
+*** xref:master/ecosystem_components/pg_profile.adoc[pg_profile]
+*** xref:master/ecosystem_components/pg_repack.adoc[pg_repack]
 * Monitor and O&M
 ** xref:master/getting-started/daily_monitoring.adoc[Monitoring]
 ** xref:master/getting-started/daily_maintenance.adoc[Maintenance]
