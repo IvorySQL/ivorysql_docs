@@ -135,7 +135,7 @@ SELECT profile.get_report(1, 2);
 IvorySQL 在 PG 模式下可直接安装使用 pg_profile 扩展，但在 Oracle 兼容模式下需要在编译时为 pg_profile 的 control.tpl 文件增加 `pg_dialect` 配置项，以启用 PG 语法解析器，避免安装失败。
 
 === 适配边界
-`pg_dialect` 适配机制保护的是*扩展自身的代码*；调用方会话中书写的 SQL 仍按会话方言解析。在 Oracle 模式会话中调用 pg_profile 时，语句里用户自己的表达式需符合 Oracle 模式语法，例如：
+`pg_dialect` 适配机制保护的是扩展自身的代码；调用方会话中书写的 SQL 仍按会话方言解析。在 Oracle 模式会话中调用 pg_profile 时，语句里用户自己的表达式需符合 Oracle 模式语法，例如：
 [literal]
 ----
 -- Oracle 会话中：PG 风格 interval 字面量会在会话解析期报错

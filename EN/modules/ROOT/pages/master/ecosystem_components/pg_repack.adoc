@@ -5,7 +5,7 @@
 = pg_repack
 
 == Overview
-pg_repack is an extension for PostgreSQL used to *rebuild tables and indexes online and eliminate storage bloat*. It can achieve effects similar to `VACUUM FULL` and `CLUSTER` (reclaiming space, reordering physical layout by index), while *barely blocking business read/write operations*. pg_repack rebuilds a table by creating a new table rather than modifying it in place. Throughout the process, it only holds a brief exclusive lock at the very start and end; the rest of the time the table remains available for normal SELECT, INSERT, UPDATE, and DELETE operations.
+pg_repack is an extension for PostgreSQL used to rebuild tables and indexes online and eliminate storage bloat. It can achieve effects similar to `VACUUM FULL` (reclaiming space), while barely blocking business read/write operations.
 
 Both the PG mode and Oracle compatibility mode of IvorySQL have been adapted for pg_repack. Note that in Oracle compatibility mode, before compiling pg_repack, you need to manually modify the lib/pg_repack.control.in file in the extension source code to add a configuration item `pg_dialect = true`, otherwise the installation will fail.
 
@@ -16,42 +16,36 @@ Documentation: <https://reorg.github.io/pg_repack/>
 License: BSD-3-Clause License
 
 == Principle
-`VACUUM FULL` / `CLUSTER` hold an `ACCESS EXCLUSIVE` lock on the entire table while rewriting it, during which reads and writes are not possible. pg_repack avoids long-duration table locking by means of "shadow table + triggers + file node swap".
+`VACUUM FULL` lacks a mechanism for capturing concurrent changes during the rewrite. It holds an `ACCESS EXCLUSIVE` lock on the entire table for the whole duration, during which the table cannot be read or written, and the lock duration grows with the table size. pg_repack compresses the strong lock into two brief moments at the beginning and end by means of "shadow table + triggers + file node swap", thereby enabling online rebuild.
 
-=== Shadow Table and Change Capture
-* Create a shadow table with the same structure as the original table (`repack.table_<oid>`), and bulk-copy the original table's data into it.
+=== Change Capture and Data Copy
+* First, install row-level triggers on the original table to record subsequent `INSERT` / `UPDATE` / `DELETE` operations into a log table (`repack.log_<oid>`) — this step requires a brief `ACCESS EXCLUSIVE` lock to atomically install the triggers, which is released immediately after installation;
 
-* Install row-level triggers on the original table to record the `INSERT` / `UPDATE` / `DELETE` operations that occur during the rebuild into a log table (`repack.log_<oid>`).
+* Create a shadow table with the same structure as the original table (`repack.table_<oid>`), and bulk-copy the original table's data under a consistent MVCC snapshot; this phase holds only `SHARE UPDATE EXCLUSIVE`, so the original table continues to allow normal reads and writes;
 
-* After the data copy is complete, replay the log so that the shadow table catches up with the latest state of the original table.
+* Rebuild indexes on the shadow table, then replay the log so that the shadow table catches up with the latest state of the original table.
 
 === Swap and Cleanup
-* At the system catalog level, *swap the physical file nodes of the original table and the shadow table*. This step is instantaneous and only requires a brief exclusive lock.
+* Acquire a brief `ACCESS EXCLUSIVE` lock, replay any remaining log entries, then swap the physical file nodes (`relfilenode`) of the original table and the shadow table at the system catalog level — the table's OID remains unchanged, and the swap is instantaneous;
 
-* Remove the triggers, log tables, and other temporary objects, and run `ANALYZE` on the new table.
+* Drop the triggers and log tables, then drop the shadow table (which now points to the old heap, so dropping it reclaims the old physical files); finally, run `ANALYZE` on the table.
 
 [NOTE]
 ====
-Prerequisites for use: the target table must have a *primary key or a non-null unique key*; the operation requires approximately *twice the table size* of temporary disk space during the process.
+Prerequisites for use: the target table must have a primary key or a non-null unique key; the operation requires approximately twice the table size of temporary disk space during the process.
 ====
 
 == Installation and Enabling
-IvorySQL 5.0 or above is already installed in the environment. pg_repack consists of two parts: the server-side extension (`pg_repack.so` and SQL scripts) and the client-side command-line tool `pg_repack`.
+IvorySQL 5 or above is already installed in the environment. pg_repack consists of two parts: the server-side extension (`pg_repack.so` and SQL scripts) and the client-side command-line tool `pg_repack`.
+
+It is assumed that IvorySQL 5 is currently installed and the `pg_config` tool is available.
 
 === Source Code Installation
-* Set the PG_CONFIG environment variable
-[literal]
-----
-export PG_CONFIG=/usr/local/ivorysql/bin/pg_config
-----
-
-* Pull the pg_repack source code
+Pull the pg_repack source code:
 [literal]
 ----
 git clone --branch ver_1.5.3 https://github.com/reorg/pg_repack.git
 ----
-
-* Compile and install pg_repack
 
 To install pg_repack in IvorySQL's Oracle compatibility mode, you need to first modify the lib/pg_repack.control.in file of pg_repack to add the `pg_dialect` configuration item:
 [literal]
@@ -64,11 +58,11 @@ Perform compilation and installation:
 [literal]
 ----
 cd pg_repack
-sudo --preserve-env=PG_CONFIG make
-sudo --preserve-env=PG_CONFIG make install
+make
+make install
 ----
 
-* Create the pg_repack extension
+=== Create the Extension
 [literal]
 ----
 [ivorysql@localhost ivorysql]$ psql
@@ -81,44 +75,34 @@ CREATE EXTENSION
 
 [NOTE]
 ====
-Note: `CREATE EXTENSION pg_repack` must be executed by a superuser; the client tool `pg_repack` also requires connecting and running as a superuser by default. After installation, the client tool is located at `/usr/local/ivorysql/bin/pg_repack`.
+`CREATE EXTENSION pg_repack` must be executed by a superuser; the client tool `pg_repack` also requires connecting and running as a superuser by default.
 ====
 
 == Usage
 pg_repack is driven through the command-line client. The connection parameters are the same as those of psql (`-h` host, `-p` port, `-U` user, `-d` database, or use the `PGHOST` / `PGPORT` / `PGUSER` environment variables).
 
-* Rebuild all eligible tables in the entire database
+=== Rebuild All Eligible Tables in the Entire Database
 [literal]
 ----
 pg_repack -d ivorysql
 ----
 
-* Rebuild a specified table (the schema.table form is recommended)
+=== Rebuild a Specified Table
+The schema.table form is recommended:
 [literal]
 ----
 pg_repack -d ivorysql -t public.big_table
 ----
 
-* Rebuild indexes only
+=== Rebuild Indexes Only
 [literal]
 ----
 pg_repack -d ivorysql -t big_table --only-indexes    # rebuild all indexes of this table
 pg_repack -d ivorysql -i public.big_table_idx        # rebuild a single index
 ----
 
-* Rebuild ordered by a specified column (online CLUSTER effect)
-[literal]
-----
-pg_repack -d ivorysql -t big_table -o "created_at DESC"
-----
-
-* Migrate a table and its indexes to another tablespace
-[literal]
-----
-pg_repack -d ivorysql -t big_table -s fast_ssd_ts --moveidx
-----
-
-* Dry-run mode (only shows the actions that would be performed, without actually rebuilding)
+=== Dry-Run Mode
+Only shows the actions that would be performed, without actually rebuilding:
 [literal]
 ----
 pg_repack -d ivorysql -t big_table --dry-run

@@ -135,7 +135,7 @@ The above functions are invoked and produce identical results in an Oracle mode 
 IvorySQL can directly install and use the pg_profile extension in PG mode. However, in Oracle compatibility mode, you need to add the `pg_dialect` configuration item to the control.tpl file of pg_profile at compile time to enable the PG syntax parser and avoid installation failure.
 
 === Adaptation Boundary
-The `pg_dialect` adaptation mechanism protects *the extension's own code*; the SQL written in the caller's session is still parsed according to the session dialect. When calling pg_profile in an Oracle mode session, the user's own expressions in the statements must conform to Oracle mode syntax, for example:
+The `pg_dialect` adaptation mechanism protects the extension's own code; the SQL written in the caller's session is still parsed according to the session dialect. When calling pg_profile in an Oracle mode session, the user's own expressions in the statements must conform to Oracle mode syntax, for example:
 [literal]
 ----
 -- In an Oracle session: PG-style interval literals will cause an error during session parsing
