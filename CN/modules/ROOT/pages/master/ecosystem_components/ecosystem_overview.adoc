@@ -36,6 +36,7 @@ IvorySQL 作为一款兼容 Oracle 且基于 PostgreSQL 的高级开源数据库
 | 23 | xref:master/ecosystem_components/pg_bigm.adoc[pg_bigm] | 1.2 | 为 IvorySQL 提供二元分词全文检索能力，适配中日韩文本，快速实现模糊检索与相似度查询 | 中日韩文内容、商品、地址类文字搜索场景
 | 24 | xref:master/ecosystem_components/pg_profile.adoc[pg_profile] | 4.11 | 收集数据库资源密集型活动的统计，基于两次采样点的差量分析生成历史负载报告，帮助定位性能瓶颈 | 数据库性能分析
 | 25 | xref:master/ecosystem_components/pg_repack.adoc[pg_repack] | 1.5.3 | 在几乎不阻塞业务读写的情况下在线重整表和索引、消除存储膨胀，效果类似 VACUUM FULL | 表与索引在线重建、存储空间回收
+| 26 | xref:master/ecosystem_components/pgdog.adoc[PgDog] | 0.1.45 | 专为 PostgreSQL 设计的高性能、开源集群中间件（代理工具），采用 Rust 语言编写 | 自动分片、连接池和负载均衡功能
 |====
 
 这些插件均经过 IvorySQL 团队的测试和适配，确保在 IvorySQL 环境下稳定运行。用户可以根据业务需求选择合适的插件，进一步提升数据库系统的能力和灵活性。
