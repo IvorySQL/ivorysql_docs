@@ -1,7 +1,7 @@
 :sectnums:
 :sectnumlevels: 5
 
-= Real-time Query Analytics (ivy_mooncake)
+= Real-time Query Analytics
 
 == Overview
 
