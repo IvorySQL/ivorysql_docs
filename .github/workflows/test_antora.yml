@@ -1,7 +1,12 @@
-name: Pr preview
+name: Test
 
 on:
-  pull_request:
+  workflow_dispatch:
+    inputs:
+      source_branch:
+        description: '要构建的文档分支，比如 v4.5'
+        required: false
+        default: ''
 
 jobs:
   build-and-deploy:
