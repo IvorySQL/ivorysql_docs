@@ -26,7 +26,7 @@
 ** xref:7.20.adoc[17、sys_guid Function]
 ** xref:7.21.adoc[18、Empty String to NULL]
 ** xref:7.22.adoc[19、CALL INTO]
-* xref:ivy_mooncake.adoc[Real-time Query Analytics]
+* xref:realtime_query.adoc[Real-time Query Analytics]
 * Containerization and Cloud Service
 ** Containerization
 *** xref:4.6.1.adoc[K8S deployment]
