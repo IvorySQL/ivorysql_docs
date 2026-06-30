@@ -1,0 +1,80 @@
+:sectnums:
+:sectnumlevels: 5
+
+= OLAP Analytics (ivy_mooncake)
+
+== Overview
+
+*ivy_mooncake* is the IvorySQL distribution of https://github.com/Mooncake-Labs/pg_mooncake[pg_mooncake], a Postgres extension that creates a columnstore mirror of your Postgres tables in https://iceberg.apache.org/[Apache Iceberg], enabling fast analytics (OLAP) queries with sub-second freshness. It gives IvorySQL real-time analytical processing capability directly on top of its transactional tables:
+
+* *Real-time ingestion* powered by https://github.com/IvorySQL/ivy_moonlink[moonlink] for streaming and batched INSERT/UPDATE/DELETE.
+* *Fast analytics* accelerated by https://github.com/IvorySQL/ivy_duckdb[DuckDB], ranking top 10 on https://www.mooncake.dev/blog/clickbench-v0.1[ClickBench].
+* *Postgres-native*, allowing you to query a columnstore table just like a regular Postgres table.
+* *Iceberg-native*, making your data readily accessible by other query engines.
+
+== Documents
+
+* xref:attachment$ivy_mooncake-technical-whitepaper-v1.0beta1.docx[ivy_mooncake Technical White Paper (V1.0 beta1)]
+* xref:attachment$ivy_mooncake-user-manual-v1.0beta1.docx[ivy_mooncake User Manual (V1.0 beta1)]
+
+== Installation
+
+=== Run with Docker (preview)
+
+A preview image bundling IvorySQL with `pg_duckdb` and `pg_mooncake` preloaded is available:
+
+[literal]
+----
+docker run --name ivy_mooncake \
+  -e IVORYSQL_PASSWORD=password \
+  -p 5432:5432 -p 1521:1521 \
+  -v ivy_mooncake_data:/var/lib/ivorysql/data \
+  -v ivy_mooncake_warehouse:/tmp/moonlink_iceberg \
+  registry.highgo.com/mooncake/ivy_mooncake:0.1
+----
+
+== Quick Start
+
+** Create the `pg_mooncake` extension
++
+[literal]
+----
+CREATE EXTENSION pg_mooncake CASCADE;
+----
+
+** Create a regular Postgres table `trades`
++
+[literal]
+----
+CREATE TABLE trades(
+  id bigint PRIMARY KEY,
+  symbol text,
+  time timestamp,
+  price real
+);
+----
+
+** Create a columnstore mirror `trades_iceberg` that stays in sync with `trades`
++
+[literal]
+----
+CALL mooncake.create_table('trades_iceberg', 'trades');
+----
+
+** Insert some data into `trades`
++
+[literal]
+----
+INSERT INTO trades VALUES
+  (1,  'AMD', '2024-06-05 10:00:00', 119),
+  (2, 'AMZN', '2024-06-05 10:05:00', 207),
+  (3, 'AAPL', '2024-06-05 10:10:00', 203),
+  (4, 'AMZN', '2024-06-05 10:15:00', 210);
+----
+
+** Query `trades_iceberg`; it reflects the up-to-date state of `trades`
++
+[literal]
+----
+SELECT avg(price) FROM trades_iceberg WHERE symbol = 'AMZN';
+----
