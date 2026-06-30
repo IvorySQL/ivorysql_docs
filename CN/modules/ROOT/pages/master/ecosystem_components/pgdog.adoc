@@ -7,7 +7,7 @@
 == 概述
 PgDog 是一个专为 PostgreSQL 设计的高性能、开源集群中间件（代理工具），采用 Rust 语言编写。它集成了自动分片、连接池和负载均衡功能，能让开发者在无需修改任何应用程序代码的前提下，实现 PostgreSQL 数据库的水平扩展与高可用管理。
 
-注意，PgDog 使用 PostgreSQL 原生的 pg_query 模块实现语句解析，所以它不支持在 Oracle 兼容模式下运行。
+注意，PgDog 使用 PostgreSQL 原生的 pg_query 模块实现语句解析，所以暂时不支持在 Oracle 兼容模式下运行。
 
 项目地址：<https://github.com/pgdogdev/pgdog>
 

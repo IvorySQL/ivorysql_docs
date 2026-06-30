@@ -6,7 +6,7 @@
 == Overview
 PgDog is a high-performance, open-source clustering middleware (proxy tool) designed specifically for PostgreSQL and written in Rust. It integrates automatic sharding, connection pooling, and load balancing, enabling developers to achieve horizontal scaling and high-availability management of PostgreSQL databases without modifying any application code.
 
-Note that PgDog uses PostgreSQL's native pg_query module to parse statements, so it does not support running in Oracle compatibility mode.
+Note that PgDog uses PostgreSQL's native pg_query module to parse statements, so it currently does not support Oracle compatibility mode.
 
 Project URL: <https://github.com/pgdogdev/pgdog>
 
