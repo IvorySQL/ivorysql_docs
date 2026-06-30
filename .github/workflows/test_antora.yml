@@ -132,22 +132,17 @@ jobs:
         with:
           publish-dir: './www_publish_target/docs'
           production-branch: test
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           deploy-message: "Deploy preview for PR #${{ github.event.number }}"
           enable-pull-request-comment: false 
           enable-commit-comment: false 
           enable-commit-status: true
           alias: pr-${{ github.event.number }}-doc
-        env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
         timeout-minutes: 5
         
       - name: Post Custom Preview Links Comment
         if: steps.netlify_deploy.outputs.deploy-url
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const baseUrl = '${{ steps.netlify_deploy.outputs.deploy-url }}';
             
