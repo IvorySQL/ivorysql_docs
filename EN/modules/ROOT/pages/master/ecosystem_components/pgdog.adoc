@@ -6,7 +6,7 @@
 == Overview
 PgDog is a high-performance, open-source clustering middleware (proxy tool) designed specifically for PostgreSQL and written in Rust. It integrates automatic sharding, connection pooling, and load balancing, enabling developers to achieve horizontal scaling and high-availability management of PostgreSQL databases without modifying any application code.
 
-Note that PgDog uses PostgreSQL's native pg_query module to parse statements, so it currently does not support Oracle compatibility mode.
+NOTE: PgDog uses PostgreSQL's native pg_query module to parse statements, so it currently does not support Oracle compatibility mode.
 
 Project URL: <https://github.com/pgdogdev/pgdog>
 
@@ -40,7 +40,7 @@ wget https://github.com/pgdogdev/pgdog/archive/refs/tags/v0.1.45.tar.gz
 tar -zxf v0.1.45.tar.gz
 cd pgdog-0.1.45
 
-# After compilation, the executable will be generated in the `target/release` directory
+# After compilation, the executable will be generated in the target/release directory
 cargo build --release
 ----
 
@@ -87,8 +87,8 @@ name = "ivory_shard"
 host = "ivory-shard0"
 port = 5432
 database_name = "testdb"
-user = "ivorysql"       # if not provide, using `name` in `users.toml`
-password = "ivorysql"   # if not provide, using `password` in `users.toml`
+user = "ivorysql"       # if not provide, using name in users.toml
+password = "ivorysql"   # if not provide, using password in users.toml
 shard = 0
 
 [[databases]]
@@ -170,7 +170,7 @@ services:
 
 === Administration Console
 
-PgDog provides a built-in administration database. The username and password are configured via the `[[admin]]` field in `users.toml`.
+PgDog provides a built-in administration database. The username and password are configured via the `+[[admin]]+` field in `users.toml`.
 
 [source,bash]
 ----
@@ -245,7 +245,7 @@ CREATE TABLE orders (
 );
 
 -- Insert data: these rows will be inserted into the two shard backends respectively
--- BUG: the `generate_series` function cannot be used here, because PgDog currently passes this function through transparently
+-- BUG: the generate_series function cannot be used here, because PgDog currently passes this function through transparently
 INSERT INTO orders values(1, 1, 1);
 INSERT INTO orders values(2, 2, 2);
 INSERT INTO orders values(3, 3, 3);
@@ -261,7 +261,7 @@ SELECT * FROM orders;
 === Connecting to Each Shard Backend to Verify the Data
 
 [TIP]
-Here you will see that the entries in the two shard backends are not evenly distributed. This is because PgDog extracts the value of the `customer_id` field configured in `[[sharded_tables]]` and applies HASH-based sharding to it.
+Here you will see that the entries in the two shard backends are not evenly distributed. This is because PgDog extracts the value of the `customer_id` field configured in `+[[sharded_tables]]+` and applies HASH-based sharding to it.
 
 [source,bash]
 ----

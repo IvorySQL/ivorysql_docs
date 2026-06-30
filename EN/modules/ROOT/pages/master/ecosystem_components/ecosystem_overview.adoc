@@ -35,6 +35,7 @@ IvorySQL, as an advanced open-source database compatible with Oracle and based o
 |*21*| xref:master/ecosystem_components/pg_show_plans.adoc[pg_show_plans] | 2.1 | Displays execution plans of all currently running SQL statements, supporting TEXT, JSON, and YAML output formats | Query performance diagnosis, real-time execution plan monitoring, slow query analysis
 |*22*| xref:master/ecosystem_components/pg_bulkload.adoc[pg_bulkload] | 3.1.23 | Provides high-speed data loading tool for IvorySQL, which directly imports data into tables bypassing PostgreSQL shared buffers | initial loading of massive data, historical data archiving and cross-database migration
 |*23*| xref:master/ecosystem_components/pg_bigm.adoc[pg_bigm] | 1.2 | Equips IvorySQL with bigram full-text search capability, supporting Chinese, Japanese and Korean texts to implement fuzzy retrieval and similarity query efficiently | text search for articles, commodities and addresses in CJK languages
+|*24*| xref:master/ecosystem_components/pgdog.adoc[PgDog] | 0.1.45 | High-performance, open-source clustering middleware (proxy tool) designed specifically for PostgreSQL and written in Rust | Connection pooler, load balancer, distributed database.
 |====
 
 These plugins have all been tested and adapted by the IvorySQL team to ensure stable operation in the IvorySQL environment. Users can select appropriate plugins based on business needs to further enhance the capabilities and flexibility of the database system.
