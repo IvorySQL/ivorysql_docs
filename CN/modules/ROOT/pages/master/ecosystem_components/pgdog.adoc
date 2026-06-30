@@ -277,4 +277,3 @@ psql "postgres://ivorysql:ivorysql@localhost:5444/testdb",
 ----
 SELECT * FROM orders;
 ----
-
