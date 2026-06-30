@@ -9,7 +9,7 @@ pg_profile is an extension tool for PostgreSQL database performance analysis. It
 
 pg_profile hard-depends on two extensions: dblink and plpgsql (it is written entirely in SQL and PL/pgSQL and requires no external libraries or software). Additionally, it is recommended to install the pg_stat_statements extension to obtain SQL statement-level statistics in the reports. The version of pg_profile is strongly tied to the version of PostgreSQL, currently supporting up to PG 18. For the specific version support, please refer to the README in the official pg_profile github repository.
 
-Both the PG mode and Oracle compatibility mode of IvorySQL have been adapted for pg_profile. Note that in Oracle compatibility mode, before compiling pg_profile, you need to manually modify the control.tpl file in the extension source code to add a configuration item `pg_dialect = true`, otherwise the installation will fail.
+Both the PG mode and Oracle compatibility mode of IvorySQL have been adapted for pg_profile. 
 
 Project address: <https://github.com/zubkov-andrei/pg_profile>
 
@@ -18,12 +18,6 @@ License: PostgreSQL License
 == Installation and Enabling
 
 === Source Code Compilation
-To install pg_profile in IvorySQL's Oracle compatibility mode, you need to first modify the control.tpl file of pg_profile to add the `pg_dialect` configuration item:
-[literal]
-----
-# pg_profile/control.tpl
-pg_dialect = true
-----
 
 Perform source code compilation and installation:
 [literal]
@@ -34,15 +28,7 @@ make -C contrib/pg_stat_statements install
 make -C contrib/pg_profile install
 ----
 
-The installation artifacts are `pg_profile.control` and `pg_profile--4.11.sql`. In IvorySQL's Oracle compatibility mode, you can verify that the generated `pg_profile.control` file carries the `pg_dialect` declaration:
-[literal]
-----
-default_version = '4.11'
-requires = 'dblink,plpgsql'
-superuser = false
-
-pg_dialect = true
-----
+The installation artifacts are `pg_profile.control` and `pg_profile--4.11.sql`. 
 
 === Modify Configuration
 The pg_stat_statements that pg_profile depends on must be loaded at server startup via `shared_preload_libraries`.
@@ -75,16 +61,6 @@ SELECT extname, extversion FROM pg_extension WHERE extname = 'pg_profile';
  extname    | extversion
 ------------+------------
  pg_profile | 4.11
-----
-
-In Oracle compatibility mode, you can run the following query to confirm that the extension functions of pg_profile have been pinned to the PG syntax parser:
-[literal]
-----
-SELECT proname, proconfig FROM pg_proc
-WHERE proname = 'take_sample' AND proconfig IS NOT NULL LIMIT 1;
-   proname   |                          proconfig
--------------+-------------------------------------------------------------
- take_sample | {ivorysql.compatible_mode=pg,search_path=profile}
 ----
 
 == Usage Workflow
@@ -128,18 +104,3 @@ SELECT profile.get_report(1, 2);
 ----
 
 The above functions are invoked and produce identical results in an Oracle mode session (Oracle port/1521).
-
-== Notes
-
-=== Adaptation Description
-IvorySQL can directly install and use the pg_profile extension in PG mode. However, in Oracle compatibility mode, you need to add the `pg_dialect` configuration item to the control.tpl file of pg_profile at compile time to enable the PG syntax parser and avoid installation failure.
-
-=== Adaptation Boundary
-The `pg_dialect` adaptation mechanism protects the extension's own code; the SQL written in the caller's session is still parsed according to the session dialect. When calling pg_profile in an Oracle mode session, the user's own expressions in the statements must conform to Oracle mode syntax, for example:
-[literal]
-----
--- In an Oracle session: PG-style interval literals will cause an error during session parsing
-SELECT profile.set_server_size_sampling('local', current_time - interval '10 minute', ...);  -- ERROR
-
--- Use a syntax acceptable to the session dialect, or perform management operations in a PG mode session
-----

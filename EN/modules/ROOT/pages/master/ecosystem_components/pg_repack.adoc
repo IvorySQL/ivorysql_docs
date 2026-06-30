@@ -7,7 +7,7 @@
 == Overview
 pg_repack is an extension for PostgreSQL used to rebuild tables and indexes online and eliminate storage bloat. It can achieve effects similar to `VACUUM FULL` (reclaiming space), while barely blocking business read/write operations.
 
-Both the PG mode and Oracle compatibility mode of IvorySQL have been adapted for pg_repack. Note that in Oracle compatibility mode, before compiling pg_repack, you need to manually modify the lib/pg_repack.control.in file in the extension source code to add a configuration item `pg_dialect = true`, otherwise the installation will fail.
+Both the PG mode and Oracle compatibility mode of IvorySQL have been adapted for pg_repack. 
 
 Github: <https://github.com/reorg/pg_repack>
 
@@ -45,13 +45,6 @@ Pull the pg_repack source code:
 [literal]
 ----
 git clone --branch ver_1.5.3 https://github.com/reorg/pg_repack.git
-----
-
-To install pg_repack in IvorySQL's Oracle compatibility mode, you need to first modify the lib/pg_repack.control.in file of pg_repack to add the `pg_dialect` configuration item:
-[literal]
-----
-# pg_repack/lib/pg_repack.control.in
-pg_dialect = true
 ----
 
 Perform compilation and installation:

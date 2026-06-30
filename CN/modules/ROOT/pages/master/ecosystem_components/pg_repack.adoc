@@ -7,7 +7,7 @@
 == 概述
 pg_repack 是 PostgreSQL 的一个扩展，用于在线重整表和索引、消除存储膨胀。它能达到与 `VACUUM FULL` 类似的效果，回收空间，但几乎不阻塞业务读写。
 
-IvorySQL 的 PG 模式和 Oracle 兼容模式都已经适配 pg_repack。需要注意的是，在 Oracle 兼容模式下，pg_repack 在编译前，需要手动修改扩展源码的 lib/pg_repack.control.in 文件，增加一个配置项 `pg_dialect = true` ，否则无法正常安装。
+IvorySQL 的 PG 模式和 Oracle 兼容模式都已经适配 pg_repack。
 
 项目地址：<https://github.com/reorg/pg_repack>
 
@@ -45,13 +45,6 @@ VACUUM FULL 因没有"重写期间的并发变更捕获机制"，重写整表时
 [literal]
 ----
 git clone --branch ver_1.5.3 https://github.com/reorg/pg_repack.git
-----
-
-IvorySQL 的 Oracle 兼容模式下安装 pg_repack，需要先修改 pg_repack 的 lib/pg_repack.control.in 文件，增加一个配置项 `pg_dialect = true`：
-[literal]
-----
-# pg_repack/lib/pg_repack.control.in
-pg_dialect = true
 ----
 
 执行编译和安装：
