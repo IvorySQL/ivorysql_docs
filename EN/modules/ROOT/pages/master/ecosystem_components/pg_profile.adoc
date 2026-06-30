@@ -1,0 +1,106 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_profile
+
+== Overview
+pg_profile is an extension tool for PostgreSQL database performance analysis. It is mainly used to collect resource-intensive activities in a target database, helping users gain in-depth insight into database runtime status, identify performance bottlenecks, and perform optimization. Its report is essentially a "delta analysis between two sample points", deriving the incremental load within the sampling interval, with sample point sequence numbers starting from 1.
+
+pg_profile hard-depends on two extensions: dblink and plpgsql (it is written entirely in SQL and PL/pgSQL and requires no external libraries or software). Additionally, it is recommended to install the pg_stat_statements extension to obtain SQL statement-level statistics in the reports. The version of pg_profile is strongly tied to the version of PostgreSQL. For the specific version support, please refer to the README in the official pg_profile github repository.
+
+Both the PG mode and Oracle compatibility mode of IvorySQL have been adapted for pg_profile. 
+
+Project address: <https://github.com/zubkov-andrei/pg_profile>
+
+License: PostgreSQL License
+
+== Installation and Enabling
+
+=== Source Code Compilation
+
+Perform source code compilation and installation:
+[literal]
+----
+# Build and install pg_profile and its dependent extensions
+make -C contrib/dblink install
+make -C contrib/pg_stat_statements install
+make -C contrib/pg_profile install
+----
+
+The installation artifacts are `pg_profile.control` and `pg_profile--4.11.sql`. 
+
+=== Modify Configuration
+The pg_stat_statements that pg_profile depends on must be loaded at server startup via `shared_preload_libraries`.
+
+Edit `ivorysql.conf` and append `pg_stat_statements` to the end of the `shared_preload_libraries` configuration item:
+[literal]
+----
+# ivorysql.conf
+shared_preload_libraries = 'liboracle_parser, ivorysql_ora, pg_stat_statements'
+----
+
+=== Restart the Service
+[literal]
+----
+pg_ctl -D $PGDATA restart
+----
+
+=== Install the Extension
+The commands are identical in both PG mode and Oracle mode sessions:
+[literal]
+----
+CREATE SCHEMA profile;
+CREATE SCHEMA dblink;
+CREATE SCHEMA statements;
+CREATE EXTENSION dblink SCHEMA dblink;
+CREATE EXTENSION pg_stat_statements SCHEMA statements;
+CREATE EXTENSION pg_profile SCHEMA profile;
+
+SELECT extname, extversion FROM pg_extension WHERE extname = 'pg_profile';
+ extname    | extversion
+------------+------------
+ pg_profile | 4.11
+----
+
+== Usage Workflow
+
+=== Create Samples
+[literal]
+----
+-- First sampling
+SELECT * FROM profile.take_sample();
+ server | result |   elapsed
+--------+--------+-------------
+ local  | OK     | 00:00:01.34
+
+-- ...after the business workload runs for a while, sample again
+SELECT * FROM profile.take_sample();
+----
+
+In production environments, periodic sampling via scheduled tasks is typically used (e.g., once every 30 minutes), which can be combined with pg_cron or an external crontab:
+[literal]
+----
+*/30 * * * *   psql -c 'SELECT profile.take_sample()' >/dev/null
+----
+
+=== View Samples
+[literal]
+----
+SELECT sample, sample_time, sizes_collected FROM profile.show_samples();
+ sample |      sample_time       | sizes_collected
+--------+------------------------+-----------------
+      1 | 2026-06-12 09:00:00+00 | t
+      2 | 2026-06-12 09:30:00+00 | t
+----
+
+=== Generate Reports
+[literal]
+----
+-- Generate the workload report between sample 1 and sample 2 (HTML text)
+\o report_1_2.html
+SELECT profile.get_report(1, 2);
+\o
+----
+
+The above functions are invoked and produce identical results in an Oracle mode session (Oracle port/1521).

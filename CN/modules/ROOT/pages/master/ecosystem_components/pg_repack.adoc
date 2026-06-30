@@ -1,0 +1,102 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_repack
+
+== 概述
+pg_repack 是 PostgreSQL 的一个扩展，用于在线重整表和索引、消除存储膨胀。它能达到与 `VACUUM FULL` 类似的效果，回收空间，但几乎不阻塞业务读写。
+
+IvorySQL 的 PG 模式和 Oracle 兼容模式都已经适配 pg_repack。
+
+项目地址：<https://github.com/reorg/pg_repack>
+
+官方文档：<https://reorg.github.io/pg_repack/>
+
+开源协议：BSD-3-Clause License
+
+== 原理
+VACUUM FULL 因没有"重写期间的并发变更捕获机制"，重写整表时全程持有 ACCESS EXCLUSIVE 锁，期间表不可读写，锁时长随表增大。pg_repack 通过"影子表 + 触发器 + 文件节点交换"把强锁压缩到首尾两个瞬间，从而支持在线重整。
+
+=== 变更捕获与数据拷贝
+* 先在原表上安装行级触发器，把此后发生的 INSERT/UPDATE/DELETE 记入日志表（repack.log_<oid>）——这一步需短暂的 ACCESS EXCLUSIVE 锁以原子地装上触发器，装好即释放;
+
+* 创建与原表结构相同的影子表（repack.table_<oid>），在一致性 MVCC 快照下把原表数据批量拷入;此阶段只持 SHARE UPDATE EXCLUSIVE，原表照常读写;
+
+* 在影子表上重建索引，并回放日志，使影子表追平原表最新状态。
+
+=== 交换与清理
+* 取得短暂的 ACCESS EXCLUSIVE 锁，回放剩余日志后，在系统目录层面交换原表与影子表的物理文件节点（relfilenode），表的 OID 保持不变——交换是瞬时的;
+
+* 删除触发器、日志表，并删除影子表（此时它已指向旧堆，删除即回收旧物理文件）;最后对表执行 ANALYZE。
+
+[NOTE]
+====
+使用前提：目标表必须有主键或非空唯一键；操作过程中约需要两倍表大小的临时磁盘空间。
+====
+
+== 安装启用
+环境中已经安装了 IvorySQL5 及以上版本。pg_repack 由两部分组成：服务端扩展（`pg_repack.so` 与 SQL 脚本）和客户端命令行工具 `pg_repack`。
+
+假设当前已安装 IvorySQL5，并且 pg_config 工具可用。
+
+=== 源码安装
+拉取 pg_repack 源码：
+[literal]
+----
+git clone --branch ver_1.5.3 https://github.com/reorg/pg_repack.git
+----
+
+执行编译和安装：
+[literal]
+----
+cd pg_repack
+make
+make install
+----
+
+=== 创建扩展
+[literal]
+----
+[ivorysql@localhost ivorysql]$ psql
+psql (18.0)
+Type "help" for help.
+
+ivorysql=# CREATE EXTENSION pg_repack;
+CREATE EXTENSION
+----
+
+[NOTE]
+====
+`CREATE EXTENSION pg_repack` 需要超级用户执行；客户端工具 `pg_repack` 默认也要求以超级用户身份连接运行。
+====
+
+== 使用流程
+pg_repack 通过命令行客户端驱动，连接参数与 psql 一致（`-h` 主机、`-p` 端口、`-U` 用户、`-d` 数据库，或使用 `PGHOST` / `PGPORT` / `PGUSER` 环境变量）。
+
+=== 重整整个数据库中所有符合条件的表
+[literal]
+----
+pg_repack -d ivorysql
+----
+
+=== 重整指定表
+推荐使用 schema.table 形式：
+[literal]
+----
+pg_repack -d ivorysql -t public.big_table
+----
+
+=== 仅重建索引
+[literal]
+----
+pg_repack -d ivorysql -t big_table --only-indexes    # 重建该表的全部索引
+pg_repack -d ivorysql -i public.big_table_idx        # 重建单个索引
+----
+
+=== 预演模式
+只显示将要执行的动作，不实际重整：
+[literal]
+----
+pg_repack -d ivorysql -t big_table --dry-run
+----

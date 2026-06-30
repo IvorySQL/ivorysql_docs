@@ -1,0 +1,105 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_profile
+
+== 概述
+pg_profile 是一个用于 PostgreSQL 数据库性能分析的扩展工具，主要用于统计目标数据库中的资源密集型活动，帮助用户深入了解数据库运行状态、找出性能瓶颈并进行优化。它的报告本质上是“两个采样点的差量分析”，得出采样间隔内的增量负载，采样点序号从 1 开始计数。
+
+pg_profile 硬依赖 dblink 与 plpgsql（其自身完全由 SQL 和 PL/pgSQL 编写，无需任何外部库或软件）；此外，建议安装 pg_stat_statements 扩展，以便在报告中获取 SQL 语句级别的统计信息。pg_profile 的版本与 PostgreSQL 的版本强相关，当前最高支持到 PG 18，具体的版本支持情况请查看 pg_profile 官方 github 仓库的 README.
+
+IvorySQL 的 PG 模式和 Oracle 兼容模式都已经适配 pg_profile。
+
+项目地址：<https://github.com/zubkov-andrei/pg_profile>
+
+开源协议：PostgreSQL License
+
+== 安装启用
+
+=== 源码编译
+执行源码编译和安装：
+[literal]
+----
+# 构建并安装 pg_profile 及其依赖扩展
+make -C contrib/dblink install
+make -C contrib/pg_stat_statements install
+make -C contrib/pg_profile install
+----
+
+安装产物为 `pg_profile.control` 与 `pg_profile--4.11.sql`。
+
+=== 修改配置
+pg_profile 依赖的 pg_stat_statements 必须通过 `shared_preload_libraries` 在服务启动时加载。
+
+编辑 `ivorysql.conf` ，在 `shared_preload_libraries` 配置项末尾追加 `pg_stat_statements`：
+[literal]
+----
+# ivorysql.conf
+shared_preload_libraries = 'liboracle_parser, ivorysql_ora, pg_stat_statements'
+----
+
+=== 重启服务
+[literal]
+----
+pg_ctl -D $PGDATA restart
+----
+
+=== 安装扩展
+PG 模式与 Oracle 模式会话下命令相同：
+[literal]
+----
+CREATE SCHEMA profile;
+CREATE SCHEMA dblink;
+CREATE SCHEMA statements;
+CREATE EXTENSION dblink SCHEMA dblink;
+CREATE EXTENSION pg_stat_statements SCHEMA statements;
+CREATE EXTENSION pg_profile SCHEMA profile;
+
+SELECT extname, extversion FROM pg_extension WHERE extname = 'pg_profile';
+ extname    | extversion
+------------+------------
+ pg_profile | 4.11
+----
+
+== 使用流程
+
+=== 创建样本
+[literal]
+----
+-- 第一次采样
+SELECT * FROM profile.take_sample();
+ server | result |   elapsed
+--------+--------+-------------
+ local  | OK     | 00:00:01.34
+
+-- ……业务负载运行一段时间后，再次采样
+SELECT * FROM profile.take_sample();
+----
+
+生产环境通常用定时任务周期采样（如 30 分钟一次），可配合 pg_cron 或外部 crontab：
+[literal]
+----
+*/30 * * * *   psql -c 'SELECT profile.take_sample()' >/dev/null
+----
+
+=== 查看样本
+[literal]
+----
+SELECT sample, sample_time, sizes_collected FROM profile.show_samples();
+ sample |      sample_time       | sizes_collected
+--------+------------------------+-----------------
+      1 | 2026-06-12 09:00:00+00 | t
+      2 | 2026-06-12 09:30:00+00 | t
+----
+
+=== 生成报告
+[literal]
+----
+-- 生成样本 1 到样本 2 之间的负载报告（HTML 文本）
+\o report_1_2.html
+SELECT profile.get_report(1, 2);
+\o
+----
+
+以上函数在 Oracle 模式会话（Oracle 端口/1521）中调用方式与结果完全一致。
