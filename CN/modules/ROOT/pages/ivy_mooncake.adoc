@@ -1,0 +1,80 @@
+:sectnums:
+:sectnumlevels: 5
+
+= OLAP 分析（ivy_mooncake）
+
+== 概述
+
+*ivy_mooncake* 是 https://github.com/Mooncake-Labs/pg_mooncake[pg_mooncake] 的 IvorySQL 发行版。它是一个 Postgres 扩展，可在 https://iceberg.apache.org/[Apache Iceberg] 中为 Postgres 表创建列存镜像，从而支持亚秒级新鲜度的快速分析（OLAP）查询。它让 IvorySQL 在事务表之上直接获得实时分析处理能力：
+
+* *实时摄取*：由 https://github.com/IvorySQL/ivy_moonlink[moonlink] 驱动，支持流式与批量的 INSERT/UPDATE/DELETE。
+* *快速分析*：由 https://github.com/IvorySQL/ivy_duckdb[DuckDB] 加速，在 https://www.mooncake.dev/blog/clickbench-v0.1[ClickBench] 上排名前 10。
+* *Postgres 原生*：可像查询普通 Postgres 表一样查询列存表。
+* *Iceberg 原生*：数据可被其他查询引擎直接访问。
+
+== 文档下载
+
+* xref:attachment$ivy_mooncake技术白皮书-v1.0beta1.docx[ivy_mooncake 技术白皮书（V1.0 beta1）]
+* xref:attachment$ivy_mooncake用户使用手册-v1.0beta1.docx[ivy_mooncake 用户使用手册（V1.0 beta1）]
+
+== 安装
+
+=== 使用 Docker 运行（预览版）
+
+提供了预装 `pg_duckdb` 与 `pg_mooncake` 的 IvorySQL 预览镜像：
+
+[literal]
+----
+docker run --name ivy_mooncake \
+  -e IVORYSQL_PASSWORD=password \
+  -p 5432:5432 -p 1521:1521 \
+  -v ivy_mooncake_data:/var/lib/ivorysql/data \
+  -v ivy_mooncake_warehouse:/tmp/moonlink_iceberg \
+  registry.highgo.com/mooncake/ivy_mooncake:0.1
+----
+
+== 快速开始
+
+** 创建 `pg_mooncake` 扩展
++
+[literal]
+----
+CREATE EXTENSION pg_mooncake CASCADE;
+----
+
+** 创建普通 Postgres 表 `trades`
++
+[literal]
+----
+CREATE TABLE trades(
+  id bigint PRIMARY KEY,
+  symbol text,
+  time timestamp,
+  price real
+);
+----
+
+** 创建与 `trades` 保持同步的列存镜像 `trades_iceberg`
++
+[literal]
+----
+CALL mooncake.create_table('trades_iceberg', 'trades');
+----
+
+** 向 `trades` 插入数据
++
+[literal]
+----
+INSERT INTO trades VALUES
+  (1,  'AMD', '2024-06-05 10:00:00', 119),
+  (2, 'AMZN', '2024-06-05 10:05:00', 207),
+  (3, 'AAPL', '2024-06-05 10:10:00', 203),
+  (4, 'AMZN', '2024-06-05 10:15:00', 210);
+----
+
+** 查询 `trades_iceberg`，它反映 `trades` 的最新状态
++
+[literal]
+----
+SELECT avg(price) FROM trades_iceberg WHERE symbol = 'AMZN';
+----
