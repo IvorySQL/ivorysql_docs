@@ -1,0 +1,279 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= PgDog
+
+== 概述
+PgDog 是一个专为 PostgreSQL 设计的高性能、开源集群中间件（代理工具），采用 Rust 语言编写。它集成了自动分片、连接池和负载均衡功能，能让开发者在无需修改任何应用程序代码的前提下，实现 PostgreSQL 数据库的水平扩展与高可用管理。
+
+注意，PgDog 使用 PostgreSQL 原生的 pg_query 模块实现语句解析，所以暂时不支持在 Oracle 兼容模式下运行。
+
+项目地址：<https://github.com/pgdogdev/pgdog>
+
+版本：v0.1.45
+
+开源协议：AGPL-3.0 License
+
+== 安装
+
+[TIP]
+源码测试安装环境为 Ubuntu 26.04。
+
+=== 依赖
+
+[source,bash]
+----
+sudo apt update && \
+sudo apt install -y cmake clang curl pkg-config \
+    libssl-dev git build-essential mold rustup \
+    docker
+----
+
+[TIP]
+本文使用说明需要两个IvorySQL数据库实例，可通过本文提供的docker-compose文件快速搭建。安装docker-compose请参考：<https://docs.docker.com/compose/install/linux/>
+
+=== 源码安装
+
+[source,bash]
+----
+wget https://github.com/pgdogdev/pgdog/archive/refs/tags/v0.1.45.tar.gz
+tar -zxf v0.1.45.tar.gz
+cd pgdog-0.1.45
+
+# 编译完后，会在`target/release`目录下生成可执行文件
+cargo build --release
+----
+
+=== 验证安装
+
+[source,bash]
+----
+# PgDog在本文档编写时处于快速迭代开发阶段，所以下面命令的输出不完整
+./target/release/pgdog --version
+# 输出：PgDog v
+----
+
+== 配置
+
+本文将配置两个分片，对PgDog的自动分片功能为例进行使用说明。
+
+PgDog通过两个文件进行配置：
+
+[cols="1,2"]
+|===
+| 文件名 | 说明
+
+| pgdog.toml
+| 包含PgDog的端口配置、后端PostgreSQL服务的配置等基础配置信息
+
+| users.toml
+| 访问PgDog的用户名和密码在这里配置
+|===
+
+
+创建`pgdog.toml`：
+
+[source,toml]
+----
+[general]
+host = "0.0.0.0"
+port = 6432
+default_pool_size = 10
+
+# ---- ivory_shard：分片到两个 IvorySQL 后端 ----
+# host、port以及database_name，如果不是使用本文提供的docker-compose搭建的环境，需要按照实际情况修改
+[[databases]]
+name = "ivory_shard"
+host = "ivory-shard0"
+port = 5432
+database_name = "testdb"
+user = "ivorysql"       # 如果不提供，默认使用`users.toml`中对应的`name`
+password = "ivorysql"   # 如果不提供，默认使用`users.toml`中对应的`password`
+shard = 0
+
+[[databases]]
+name = "ivory_shard"
+host = "ivory-shard1"
+port = 5432
+database_name = "testdb"
+shard = 1
+
+# ---- 分片键声明 ----
+# 配置必须与实际表结构统一
+[[sharded_tables]]
+database = "ivory_shard"
+name = "orders"
+column = "customer_id"
+data_type = "bigint"
+----
+
+创建`users.toml`：
+
+[source,toml]
+----
+[admin]
+name = "admin"
+user = "admin"
+password = "pgdog" 
+
+[[users]]
+name = "ivorysql"
+password = "ivorysql"
+database = "ivory_shard"
+pool_size = 10
+----
+
+创建`docker-compose.shard.yml`：
+
+[TIP]
+`volumes`字段请根据实际的配置文件位置进行修改
+
+[source,dockerfile]
+----
+# 分片测试拓扑（独立 compose）：2 个分片后端。
+#   ivory-shard0  IvorySQL 5.4 (pg) host:5443
+#   ivory-shard1  IvorySQL 5.4 (pg) host:5444
+
+x-ivory: &ivory
+  image: registry.highgo.com/ivorysql/ivorysql:5.4-bookworm
+  environment: &ivoryenv
+    MODE: pg
+    IVORYSQL_USER: ivorysql
+    IVORYSQL_PASSWORD: ivorysql
+    IVORYSQL_DB: testdb
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -U ivorysql -d testdb"]
+    interval: 5s
+    timeout: 3s
+    retries: 30
+
+services:
+  ivory-shard0:
+    <<: *ivory
+    container_name: ivory-shard0
+    ports: ["5443:5432"]
+  ivory-shard1:
+    <<: *ivory
+    container_name: ivory-shard1
+    ports: ["5444:5432"]
+----
+
+== 使用
+
+=== 启动PgDog
+
+[source,bash]
+----
+./target/release/pgdog --config ./pgdog.toml --users ./users.toml
+----
+
+
+=== 管理控制台
+
+PgDog 提供了内置的管理数据库，用户名密码通过`users.toml`中`[[admin]]`字段进行配置。
+
+[source,bash]
+----
+psql "postgres://admin:pgdog@localhost:6433/admin"
+----
+
+[source,sql]
+----
+-- 查看客户端连接及实时统计
+SHOW CLIENTS
+
+-- 查看从PgDog发起的PostgreSQL连接
+SHOW SERVERS
+
+-- 查看连接池信息
+SHOW POOLS
+
+-- 查看当前从pgdog.toml加载的配置
+SHOW CONFIG
+
+-- 查看连接池统计
+SHOW STATS
+
+-- 在同一网络中运行的 PgDog 进程列表。需要启用服务发现(service discovery)
+SHOW PEERS
+
+-- 从磁盘重新加载配置。关于哪些选项可以在运行时修改,请参阅 pgdog.toml 和 users.toml
+RELOAD	
+
+-- 使用现有配置重新创建所有服务器连接
+RECONNECT	
+
+-- 暂停所有连接池。客户端将一直等待连接,直到连接池恢复。可用于平滑重启 PostgreSQL 服务器
+PAUSE	
+
+-- 恢复所有连接池。客户端可以重新取用连接
+RESUME	
+
+-- 列出当前缓存中的prepared statements
+SHOW PREPARED	
+
+-- 列出当前位于 AST 缓存中、用于查询路由的语句
+SHOW QUERY_CACHE	
+
+-- 暂停所有查询,以便在多个 PgDog 实例之间同步配置变更
+MAINTENANCE	
+
+-- 显示每个数据库的 PostgreSQL 复制状态,包括副本延迟
+SHOW REPLICATION	
+----
+
+=== 连接PgDog
+
+[source,bash]
+----
+psql "postgres://ivorysql:ivorysql@localhost:6433/ivory_shard"
+----
+
+=== 执行操作
+
+[TIP]
+请确认分片后端没有`orders`表，PgDog会自动创建。
+
+[source,sql]
+----
+-- 创建表
+CREATE TABLE orders (
+    order_id    bigint, 
+    customer_id bigint, 
+    amount      numeric(10,2), 
+    PRIMARY KEY (order_id, customer_id)
+);
+
+-- 插入数据：这两条数据将分别插入到两个分片后端
+-- BUG：这里不能使用`generate_series`函数，因为PgDog暂时对这个函数进行透传
+INSERT INTO orders values(1, 1, 1);
+INSERT INTO orders values(2, 2, 2);
+INSERT INTO orders values(3, 3, 3);
+INSERT INTO orders values(4, 4, 4);
+INSERT INTO orders values(5, 5, 5);
+INSERT INTO orders values(6, 6, 6);
+INSERT INTO orders values(7, 7, 7);
+
+-- 查询数据
+SELECT * FROM orders;
+----
+
+=== 分别连接两个分片后端确认数据
+
+[TIP]
+这里将看到两个分片后端的条目并不是均分的，这是因为PgDog根据`[[sharded_tables]]`中配置的`customer_id`字段，提取了数值并对其进行HASH分片。
+
+[source,bash]
+----
+# 分片1
+psql "postgres://ivorysql:ivorysql@localhost:5443/testdb",
+# 分片2
+psql "postgres://ivorysql:ivorysql@localhost:5444/testdb",
+----
+
+在分片后端分别执行查询确认数据
+[source,sql]
+----
+SELECT * FROM orders;
+----
