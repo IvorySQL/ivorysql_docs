@@ -29,6 +29,7 @@
 ** xref:master/oracle_compatibility/compat_read_only_view.adoc[20、视图只读]
 ** xref:master/oracle_compatibility/with_function_procedure.adoc[21、WITH FUNCTION/PROCEDURE]
 ** xref:master/oracle_compatibility/compat_create_index_online.adoc[22、索引 ONLINE 参数]
+** xref:master/oracle_compatibility/compat_stragg.adoc[23、STRAGG 函数]
 * 容器化与云服务
 ** 容器化指南
 *** xref:master/containerization/k8s_deployment.adoc[K8S部署]
@@ -102,6 +103,7 @@
 **** xref:master/oracle_builtin_functions/sys_context.adoc[sys_context]
 **** xref:master/oracle_builtin_functions/userenv.adoc[userenv]
 **** xref:master/oracle_builtin_functions/rawtohex.adoc[rawtohex]
+**** xref:master/oracle_builtin_functions/stragg.adoc[stragg]
 *** xref:master/gb18030.adoc[国标GB18030]
 * 参考指南
 ** xref:master/tools_reference.adoc[工具参考]

@@ -29,6 +29,7 @@
 ** xref:master/oracle_compatibility/compat_read_only_view.adoc[20、Read Only View]
 ** xref:master/oracle_compatibility/with_function_procedure_en.adoc[21、WITH FUNCTION/PROCEDURE]
 ** xref:master/oracle_compatibility/compat_create_index_online.adoc[22、ONLINE Parameter for CREATE INDEX]
+** xref:master/oracle_compatibility/compat_stragg.adoc[23、STRAGG function]
 * Containerization and Cloud Service
 ** Containerization
 *** xref:master/containerization/k8s_deployment.adoc[K8S deployment]
@@ -102,6 +103,7 @@
 *** xref:master/oracle_builtin_functions/sys_context.adoc[sys_context]
 *** xref:master/oracle_builtin_functions/userenv.adoc[userenv]
 *** xref:master/oracle_builtin_functions/rawtohex.adoc[rawtohex]
+*** xref:master/oracle_builtin_functions/stragg.adoc[stragg]
 ** xref:master/gb18030.adoc[GB18030 Character Set]
 * Reference
 ** xref:master/tools_reference.adoc[Tool Reference]

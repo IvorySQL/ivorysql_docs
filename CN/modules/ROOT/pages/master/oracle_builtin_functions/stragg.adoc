@@ -1,0 +1,139 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= STRAGG 聚合函数的实现
+
+== 目的
+
+IvorySQL 在 `contrib/ivorysql_ora` 扩展中新增 `sys.stragg(text)` 聚合函数，
+实现与 Oracle 同名函数一致的字符串聚合行为：将组内所有非 NULL 值用逗号连接为一个字符串。
+
+== 实现说明
+
+=== 状态布局设计
+
+STRAGG 的聚合状态复用 PostgreSQL 内置 `string_agg` 所使用的 `StringInfo` 布局，
+从而可以直接引用 `string_agg_finalfn`、`string_agg_combine`、
+`string_agg_serialize`、`string_agg_deserialize` 四个内置函数，
+无需另行实现 finalize、并行合并及序列化逻辑。
+
+`StringInfo` 状态的约定如下：
+
+[source,c]
+----
+/*
+ * data   = "," + val1 + "," + val2 + ...
+ *          首元素前也预置一个逗号，便于 finalfn 统一处理
+ * cursor = 1
+ *          记录前导分隔符的字节长度（逗号占 1 字节）
+ *          string_agg_finalfn 返回 &data[cursor]，即自动去掉前导逗号
+ */
+----
+
+=== 转换函数（`stragg_transfn`）
+
+转换函数位于
+`contrib/ivorysql_ora/src/builtin_functions/misc_functions.c`。
+
+[source,c]
+----
+PG_FUNCTION_INFO_V1(stragg_transfn);
+
+Datum
+stragg_transfn(PG_FUNCTION_ARGS)
+{
+    StringInfo  state;
+    MemoryContext aggcontext;
+    MemoryContext oldcontext;
+
+    if (!AggCheckCallContext(fcinfo, &aggcontext))
+        elog(ERROR, "stragg_transfn called in non-aggregate context");
+
+    state = PG_ARGISNULL(0) ? NULL : (StringInfo) PG_GETARG_POINTER(0);
+
+    /* 跳过 NULL 输入，与 Oracle STRAGG 行为一致 */
+    if (!PG_ARGISNULL(1))
+    {
+        text *value = PG_GETARG_TEXT_PP(1);
+
+        if (state == NULL)
+        {
+            oldcontext = MemoryContextSwitchTo(aggcontext);
+            state = makeStringInfo();
+            MemoryContextSwitchTo(oldcontext);
+
+            /* 首个值：预置分隔符，cursor 记录其长度 */
+            appendStringInfoChar(state, ',');
+            state->cursor = 1;
+        }
+        else
+        {
+            appendStringInfoChar(state, ',');
+        }
+
+        appendBinaryStringInfo(state, VARDATA_ANY(value), VARSIZE_ANY_EXHDR(value));
+    }
+
+    if (state)
+        PG_RETURN_POINTER(state);
+    PG_RETURN_NULL();
+}
+----
+
+关键设计点：
+
+* 状态在聚合上下文（`aggcontext`）中分配，生命周期覆盖整个聚合过程。
+* `StringInfo` 内部缓冲区按需翻倍扩容，追加操作均摊 O(1)，总时间复杂度 O(N)，
+  优于纯 SQL 拼接方案的 O(N²)。
+* NULL 输入由 `PG_ARGISNULL(1)` 判断并跳过，状态不受污染。
+
+=== SQL 定义
+
+转换函数和聚合定义位于
+`contrib/ivorysql_ora/src/builtin_functions/builtin_functions--1.0.sql`。
+
+[source,sql]
+----
+CREATE FUNCTION sys.stragg_transfn(internal, text)
+RETURNS internal
+AS 'MODULE_PATHNAME', 'stragg_transfn'
+LANGUAGE C
+CALLED ON NULL INPUT
+PARALLEL SAFE;
+
+CREATE AGGREGATE sys.stragg(text) (
+    SFUNC        = sys.stragg_transfn,
+    STYPE        = internal,
+    FINALFUNC    = string_agg_finalfn,
+    COMBINEFUNC  = string_agg_combine,
+    SERIALFUNC   = string_agg_serialize,
+    DESERIALFUNC = string_agg_deserialize,
+    PARALLEL     = SAFE
+);
+----
+
+`FINALFUNC`、`COMBINEFUNC`、`SERIALFUNC`、`DESERIALFUNC` 均直接引用 PostgreSQL
+内置的 `string_agg` 系列函数，因为 STRAGG 与 `string_agg` 使用完全相同的
+`StringInfo` 状态格式。
+
+=== 并行聚合支持
+
+通过指定 `COMBINEFUNC = string_agg_combine` 和序列化/反序列化函数，
+STRAGG 支持 PostgreSQL 的并行聚合执行路径。各并行工作进程独立维护局部
+`StringInfo` 状态，最终由 leader 进程通过 `string_agg_combine` 合并。
+
+=== 回归测试
+
+测试文件：`contrib/ivorysql_ora/sql/ora_stragg.sql`，
+对应预期输出：`contrib/ivorysql_ora/expected/ora_stragg.out`。
+
+在 `Makefile` 的 `ORA_REGRESS` 列表中已加入 `ora_stragg`，
+可通过以下命令运行：
+
+[source,bash]
+----
+cd contrib/ivorysql_ora
+make installcheck
+----

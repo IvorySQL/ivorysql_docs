@@ -1,0 +1,172 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= STRAGG 聚合函数
+
+== 目的
+
+本文档说明 IvorySQL 中 `sys.stragg` 聚合函数的功能，该函数以兼容 Oracle 的方式
+将组内多行字符串值拼接为一个逗号分隔的字符串。
+
+== 功能说明
+
+* `sys.stragg(text)` 是一个聚合函数，将同一分组中所有非 NULL 的文本值用逗号（`,`）连接。
+* NULL 值被自动忽略，不出现在结果中，也不产生多余的逗号。
+* 分组内所有值均为 NULL 或分组为空集时，返回 `NULL`（而非空字符串）。
+* 不保证输出顺序；如需确定顺序，可在聚合调用中使用 `ORDER BY` 子句（PostgreSQL 扩展语法）。
+* 函数定义于 `sys` 模式，在 Oracle 兼容模式（不需要sys前缀）和 PG 模式下均可使用。
+
+== 语法
+
+[source,sql]
+----
+sys.stragg(expr [ORDER BY sort_expr [ASC | DESC] [, ...]])
+----
+
+[cols="1,3"]
+|===
+|参数 |说明
+
+|`expr`
+|任意可隐式转换为 `text` 的表达式；NULL 值将被跳过。
+
+|`ORDER BY`
+|可选，指定组内拼接顺序。省略时顺序不确定。
+|===
+
+返回类型：`text`
+
+== 测试用例
+
+=== 测试环境准备
+
+[source,sql]
+----
+CREATE TABLE stragg_test (dept TEXT, name TEXT);
+INSERT INTO stragg_test VALUES ('HR', 'Alice');
+INSERT INTO stragg_test VALUES ('HR', 'Bob');
+INSERT INTO stragg_test VALUES ('HR', 'Carol');
+INSERT INTO stragg_test VALUES ('IT', 'Dave');
+INSERT INTO stragg_test VALUES ('IT', 'Eve');
+----
+
+=== 基础聚合
+
+[source,sql]
+----
+-- 单组聚合，使用 ORDER BY 保证结果确定
+SELECT sys.stragg(name ORDER BY name) FROM stragg_test WHERE dept = 'HR';
+-- 期望：Alice,Bob,Carol
+
+-- 配合 GROUP BY 按部门分组
+SELECT dept, sys.stragg(name ORDER BY name)
+FROM stragg_test
+GROUP BY dept
+ORDER BY dept;
+-- 期望：
+--  HR | Alice,Bob,Carol
+--  IT | Dave,Eve
+----
+
+=== NULL 值处理
+
+[source,sql]
+----
+-- 插入一行 NULL 值
+INSERT INTO stragg_test VALUES ('HR', NULL);
+
+-- NULL 被忽略，结果与无 NULL 时相同
+SELECT sys.stragg(name ORDER BY name) FROM stragg_test WHERE dept = 'HR';
+-- 期望：Alice,Bob,Carol
+
+-- 所有值均为 NULL 时返回 NULL
+SELECT sys.stragg(name) IS NULL FROM stragg_test WHERE name IS NULL;
+-- 期望：t
+----
+
+=== 空集处理
+
+[source,sql]
+----
+-- 无匹配行时返回 NULL
+SELECT sys.stragg(name) IS NULL FROM stragg_test WHERE dept = 'NONE';
+-- 期望：t
+----
+
+=== 单值
+
+[source,sql]
+----
+-- 组内只有一个值时，结果中不含逗号
+SELECT sys.stragg(name) FROM stragg_test WHERE dept = 'IT' AND name = 'Dave';
+-- 期望：Dave
+----
+
+=== PG 兼容模式下使用
+
+[source,sql]
+----
+SET ivorysql.compatible_mode = pg;
+SELECT sys.stragg(name ORDER BY name) FROM stragg_test WHERE dept = 'HR';
+-- 期望：Alice,Bob,Carol
+RESET ivorysql.compatible_mode;
+----
+
+=== 测试环境清理
+
+[source,sql]
+----
+DROP TABLE stragg_test;
+----
+
+== 与 Oracle 的行为差异
+
+[cols="1,2,2"]
+|===
+|场景 |Oracle STRAGG |IvorySQL sys.stragg
+
+|空集
+|`NULL`
+|`NULL`（一致）
+
+|全 NULL 分组
+|`NULL`
+|`NULL`（一致）
+
+|NULL 值
+|忽略
+|忽略（一致）
+
+|拼接顺序
+|不确定
+|不确定；可用 `ORDER BY` 子句指定
+
+|`ORDER BY` 子句
+|不支持（官方无此语法）
+|支持（PostgreSQL 聚合扩展语法）
+|===
+
+== 与 LISTAGG 的比较
+
+[cols="1,2,2"]
+|===
+|特性 |`LISTAGG`（Oracle / IvorySQL）|`STRAGG`（Oracle / IvorySQL）
+
+|分隔符
+|可指定任意分隔符
+|固定为逗号
+
+|`ORDER BY`
+|通过 `WITHIN GROUP (ORDER BY ...)` 指定
+|不保证顺序（IvorySQL 支持 PostgreSQL 聚合 `ORDER BY`）
+
+|结果长度限制
+|Oracle 限制 4000 字节（IvorySQL 通过 `ora_listagg_check` 检查）
+|无限制
+
+|使用场景
+|需要精确控制分隔符和顺序的场合
+|快速拼接，历史遗留代码迁移
+|===
