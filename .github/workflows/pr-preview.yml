@@ -109,6 +109,7 @@ jobs:
       - name: Install Antora CLI
         run: |
           echo "Installing Antora packages local..."
+          npm uninstall -g antora @antora/pdf-extension @antora/site-generator @antora/assembler || true
           npm install --global antora@3.1.7 @antora/lunr-extension@1.0.0-alpha.13 @antora/pdf-extension@1.0.0-beta.20 @node-rs/jieba
 
       - name: Build English Documentation
