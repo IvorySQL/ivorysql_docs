@@ -111,6 +111,7 @@ jobs:
           echo "Installing Antora packages local..."
           npm uninstall -g antora @antora/pdf-extension @antora/site-generator @antora/assembler || true
           npm install --global antora@3.1.15 @antora/lunr-extension@1.0.0-alpha.11 @antora/pdf-extension@1.0.0-alpha.20 @node-rs/jieba@1.10.3
+          npm ls
 
       - name: Build English Documentation
         working-directory: ./ivory-doc-builder
