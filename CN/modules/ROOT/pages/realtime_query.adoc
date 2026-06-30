@@ -1,7 +1,7 @@
 :sectnums:
 :sectnumlevels: 5
 
-= OLAP 分析（ivy_mooncake）
+= 实时查询分析
 
 == 概述
 
