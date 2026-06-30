@@ -7,7 +7,7 @@
 == Overview
 pg_profile is an extension tool for PostgreSQL database performance analysis. It is mainly used to collect resource-intensive activities in a target database, helping users gain in-depth insight into database runtime status, identify performance bottlenecks, and perform optimization. Its report is essentially a "delta analysis between two sample points", deriving the incremental load within the sampling interval, with sample point sequence numbers starting from 1.
 
-pg_profile hard-depends on two extensions: dblink and plpgsql (it is written entirely in SQL and PL/pgSQL and requires no external libraries or software). Additionally, it is recommended to install the pg_stat_statements extension to obtain SQL statement-level statistics in the reports. The version of pg_profile is strongly tied to the version of PostgreSQL, currently supporting up to PG 18. For the specific version support, please refer to the README in the official pg_profile github repository.
+pg_profile hard-depends on two extensions: dblink and plpgsql (it is written entirely in SQL and PL/pgSQL and requires no external libraries or software). Additionally, it is recommended to install the pg_stat_statements extension to obtain SQL statement-level statistics in the reports. The version of pg_profile is strongly tied to the version of PostgreSQL. For the specific version support, please refer to the README in the official pg_profile github repository.
 
 Both the PG mode and Oracle compatibility mode of IvorySQL have been adapted for pg_profile. 
 
