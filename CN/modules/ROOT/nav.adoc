@@ -26,7 +26,7 @@
 ** xref:7.20.adoc[17、sys_guid 函数]
 ** xref:7.21.adoc[18、空字符串转null]
 ** xref:7.22.adoc[19、CALL INTO]
-* OLAP 分析
+* 实时查询分析
 ** xref:ivy_mooncake.adoc[ivy_mooncake]
 * 容器化与云服务
 ** 容器化指南
