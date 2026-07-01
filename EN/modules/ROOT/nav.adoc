@@ -70,6 +70,8 @@
 *** xref:master/ecosystem_components/pg_profile.adoc[pg_profile]
 *** xref:master/ecosystem_components/pg_repack.adoc[pg_repack]
 *** xref:master/ecosystem_components/pgdog.adoc[PgDog]
+*** xref:master/ecosystem_components/pg_readonly_en.adoc[pg_readonly]
+*** xref:master/ecosystem_components/zhparser_en.adoc[zhparser]
 * Monitor and O&M
 ** xref:master/getting-started/daily_monitoring.adoc[Monitoring]
 ** xref:master/getting-started/daily_maintenance.adoc[Maintenance]

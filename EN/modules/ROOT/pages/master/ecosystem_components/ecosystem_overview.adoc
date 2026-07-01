@@ -38,6 +38,8 @@ IvorySQL, as an advanced open-source database compatible with Oracle and based o
 |*24*| xref:master/ecosystem_components/pg_profile.adoc[pg_profile] | 4.11 | Collects statistics on resource-intensive database activities and generates historic workload reports based on delta analysis between two sample points, helping identify performance bottlenecks | Database performance analysis
 |*25*| xref:master/ecosystem_components/pg_repack.adoc[pg_repack] | 1.5.3 | Rebuilds tables and indexes online with minimal locking, eliminating storage bloat and achieving effects similar to VACUUM FULL | Online table and index rebuild, storage bloat reclamation
 |*26*| xref:master/ecosystem_components/pgdog.adoc[PgDog] | 0.1.45 | High-performance, open-source clustering middleware (proxy tool) designed specifically for PostgreSQL and written in Rust | Connection pooler, load balancer, distributed database.
+|*27*| xref:master/ecosystem_components/pg_readonly_en.adoc[pg_read_only] | 1.0.5 | Allows to set all PostgreSQL cluster databases read only. | System debugging、disaster recevory. 
+|*28*| xref:master/ecosystem_components/zhparser_en.adoc[zhparser] | master branch | PostgreSQL extension for full-text search of Chinese language (Mandarin Chinese). It implements a Chinese language parser base on the | Search engine、keyword extraction.
 |====
 
 These plugins have all been tested and adapted by the IvorySQL team to ensure stable operation in the IvorySQL environment. Users can select appropriate plugins based on business needs to further enhance the capabilities and flexibility of the database system.

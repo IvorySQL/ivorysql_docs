@@ -1,0 +1,94 @@
+:sectnums:
+:sectnumlevels: 5
+
+= pg_readonly
+
+== Overview
+pg_readonly is a plugin that can set all PostgreSQL databases to read-only mode.
+
+pg_readonly does not have specific GUC parameters. It relies on a global flag in memory to manage the read-only state and provides SQL functions to set or query this global flag.
+This global flag is cluster-level: either all databases in the cluster are read-only, or all are read-write.
+
+Read-only mode is implemented by filtering SQL statements.
+[literal]
+----
+SELECT statements without write-operation functions are allowed;
+DML (INSERT, UPDATE, DELETE) and DDL statements including TRUNCATE are completely disallowed;
+DCL statements GRANT and REVOKE are also prohibited;
+----
+
+== Installation
+
+[TIP]
+The source installation environment is Ubuntu 24.04 (x86_64), with IvorySQL already installed at /path-to/ivorysql
+
+=== Source Installation
+
+[literal]
+----
+# Download the 1.0.5 source package 1.0.5.tar.gz from https://github.com/pierreforstmann/pg_readonly/releases/tag/1.0.5
+tar xvf 1.0.5.tar.gz
+cd pg_readonly-1.0.5
+
+# Compile and install
+make PG_CONFIF=/path-to/ivorysql/bin/pg_config
+make PG_CONFIF=/path-to/ivorysql/bin/pg_config install
+----
+
+=== Configure Preloaded Libraries
+Modify the ivorysql.conf file in the data directory to append pg_readonly to shared_preload_libraries.
+shared_preload_libraries = 'pg_readonly'
+
+== Create Extension and Verify pg_readonly Version
+
+Connect to the database using psql and execute the following commands:
+[literal]
+----
+ivorysql=# CREATE EXTENSION pg_readonly;
+CREATE EXTENSION
+
+ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'pg_readonly';
+    name     | default_version | installed_version | location |          comment
+-------------+-----------------+-------------------+----------+----------------------------
+ pg_readonly | 1.0.4           | 1.0.4             | $system  | cluster database read only
+(1 row)
+----
+
+== Usage
+
+=== Check Individual Functions
+
+[literal]
+----
+-- Query the current cluster read-only status
+select get_cluster_readonly();
+ get_cluster_readonly
+----------------------
+ f
+(1 row)
+
+-- Set the current cluster to read-only mode
+select set_cluster_readonly();
+ set_cluster_readonly
+----------------------
+ t
+(1 row)
+
+-- Read-only cluster only allows SELECT statements
+select * from t;
+ x | y
+---+---
+(0 rows)
+
+update t set x=33 where y='abc';
+ERROR:  cannot execute UPDATE in a read-only transaction
+
+select 1 into tmp;
+ERROR:  cannot execute UPDATE in a read-only transaction
+
+create table tmp(c text);
+ERROR:  cannot execute UPDATE in a read-only transaction
+----
+
+For more detailed usage and advanced features, please refer to the https://github.com/pierreforstmann/pg_readonly [official pg_readonly documentation].
+
