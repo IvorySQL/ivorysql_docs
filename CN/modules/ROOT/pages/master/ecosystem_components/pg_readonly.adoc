@@ -1,0 +1,94 @@
+:sectnums:
+:sectnumlevels: 5
+
+= pg_readonly
+
+== 概述
+pg_readonly 是一个能够将所有 PostgreSQL 的数据库设为只读的插件。 
+
+pg_readonly 没有特定的GUC参数，它依靠内存中的全局标志来管理只读状态，并提供了SQL函数来设置或者查询全局标志。 
+这个全局标志是集群级别的，集群中的数据库要么全部是只读的，要么全部是可读可写的。
+
+只读模式通过过滤SQL语句实现。
+[literal]
+----
+允许不包含有写动作函数的SELECT语句；
+DML (INSERT, UPDATE, DELETE) 和 DDL 语句包括 TRUNCATE 完全不允许；
+DCL 语句 GRANT 与 REVOKE 也是禁止的；
+----
+
+== 安装
+
+[TIP]
+源码安装环境为 Ubuntu 24.04(x86_64)，环境中已经安装了IvorySQL，安装路径为/path-to/ivorysql
+
+=== 源码安装
+
+[literal]
+----
+# 从 https://github.com/pierreforstmann/pg_readonly/releases/tag/1.0.5 下载 1.0.5 的源码包 1.0.5.tar.gz
+tar xvf 1.0.5.tar.gz
+cd pg_readonly-1.0.5
+
+# 编译安装
+make PG_CONFIF=/path-to/ivorysql/bin/pg_config 
+make PG_CONFIF=/path-to/ivorysql/bin/pg_config install
+----
+
+=== 配置预加载库
+修改 data 目录中的 ivorysql.conf 文件，向 shared_preload_libraries 中追加 pg_readonly。
+shared_preload_libraries = 'pg_readonly'
+
+== 创建Extension并确认pg_readonly版本
+
+psql 连接到数据库，执行如下命令：
+[literal]
+----
+ivorysql=# CREATE EXTENSION pg_readonly;
+CREATE EXTENSION
+
+ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'pg_readonly';
+    name     | default_version | installed_version | location |          comment           
+-------------+-----------------+-------------------+----------+----------------------------
+ pg_readonly | 1.0.4           | 1.0.4             | $system  | cluster database read only
+(1 row)
+----
+
+== 使用
+
+=== 检查单个函数
+
+[literal]
+----
+-- 查询当前集群只读状态
+select get_cluster_readonly();
+ get_cluster_readonly 
+----------------------
+ f
+(1 row)
+
+-- 设置当前集群为只读
+select set_cluster_readonly();
+ set_cluster_readonly 
+----------------------
+ t
+(1 row)
+
+-- 只读的集群只允许 SELECT 语句
+select * from t;
+ x | y 
+---+---
+(0 rows)
+
+update t set x=33 where y='abc';
+ERROR:  cannot execute UPDATE in a read-only transaction
+
+select 1 into tmp;
+ERROR:  cannot execute UPDATE in a read-only transaction
+
+create table tmp(c text);
+ERROR:  cannot execute UPDATE in a read-only transaction
+----
+
+更多详细使用方法和高级特性，请参阅 https://github.com/pierreforstmann/pg_readonly [pg_readonly官方文档]。
+
