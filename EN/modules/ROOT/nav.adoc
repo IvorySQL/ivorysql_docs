@@ -51,6 +51,7 @@
 *** xref:5.8.adoc[pgaudit]
 *** xref:5.9.adoc[pgrouting]
 *** xref:5.10.adoc[system_stats]
+*** xref:5.11.adoc[pgtt]
 * Monitor and O&M
 ** xref:3.2.adoc[Monitoring]
 ** xref:3.3.adoc[Maintenance]
