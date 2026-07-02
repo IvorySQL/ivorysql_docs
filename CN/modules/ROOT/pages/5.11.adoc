@@ -82,7 +82,7 @@ LINE 1: CREATE GLOBAL TEMPORARY TABLE test_gtt_table (
                ^
 CREATE TABLE
 
-如果不希望产生这条井道信息，可以使用注释符号：
+如果不希望产生这条警告信息，可以使用注释符号：
 CREATE /*GLOBAL*/ TEMPORARY TABLE test_gtt_table (
 	id integer,
 	lbl text

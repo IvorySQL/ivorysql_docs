@@ -22,7 +22,7 @@ IvorySQL, as an advanced open-source database compatible with Oracle and based o
 |*8*| xref:5.8.adoc[pgaudit] | 18.0 | Provides fine-grained auditing, recording database operation logs to support security auditing and compliance checks | Database security auditing, compliance checks, audit report generation
 |*9*| xref:5.9.adoc[pgrouting] | 3.8.0 | Provides routing computation for geospatial data, supporting multiple algorithms and data formats | Geospatial analysis, route planning, logistics optimization
 |*10*| xref:5.10.adoc[system_stats] | 3.2 | Provide functions for accessing system-level statistics. | system monitor
-|*10*| xref:5.11.adoc[pgtt] | 4.5 | Create, manage and use Oracle-style Global Temporary Tables. | Business development
+|*11*| xref:5.11.adoc[pgtt] | 4.5 | Create, manage and use Oracle-style Global Temporary Tables. | Business development
 |====
 
 These plugins have all been tested and adapted by the IvorySQL team to ensure stable operation in the IvorySQL environment. Users can select appropriate plugins based on business needs to further enhance the capabilities and flexibility of the database system.
