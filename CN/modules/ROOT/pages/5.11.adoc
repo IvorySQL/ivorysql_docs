@@ -1,0 +1,121 @@
+:sectnums:
+:sectnumlevels: 5
+
+= pgtt
+
+== 概述
+pgtt 是一个创建、管理与使用Oracle风格临时表的PostgreSQL插件。这个插件的目标是在PG内核实现临时表之前提供类似特性。
+
+== 安装
+
+[TIP]
+源码安装环境为 Ubuntu 24.04(x86_64)，环境中已经安装了IvorySQL，安装路径为/path-to/ivorysql
+
+=== 源码安装
+
+[literal]
+----
+# 下载pgtt源代码
+wget https://github.com/darold/pgtt/archive/refs/tags/v4.5.tar.gz
+tar zxvf v4.5.tar.gz
+cd pgtt-4.5
+
+# 编译安装
+make PG_CONFIF=/path-to/ivorysql/bin/pg_config 
+make PG_CONFIF=/path-to/ivorysql/bin/pg_config install
+----
+
+== 创建Extension
+
+psql 连接到数据库，执行如下命令：
+[literal]
+----
+-- create the extension
+CREATE EXTENSION pgtt;
+----
+
+== 载入插件
+
+[literal]
+----
+创建插件后还需要载入才能使用
+可以使用以下三种方式之一进行载入：
+
+1. 在配置文件中修改 session_preload_libraries
+session_preload_libraries = 'pgtt'
+
+2. 在database级别上启用
+ALTER DATABASE mydb SET session_preload_libraries = 'pgtt';
+
+3. 在session中载入
+LOAD 'pgtt';
+
+成功载入插件后可以看到 pgtt.enabled 的值为 on
+ivorysql=# show pgtt.enabled;
+ pgtt.enabled 
+--------------
+ on
+(1 row)
+
+search_path 中增加了 pgtt_schema
+ivorysql=# SHOW search_path;
+         search_path          
+------------------------------
+ "$user", public, pgtt_schema
+(1 row)
+
+----
+
+== 使用
+
+[literal]
+----
+创建临时表：
+使用这条语句会产生一条警告信息，但是可以忽略。 
+
+ivorysql=# CREATE GLOBAL TEMPORARY TABLE test_gtt_table (
+	id integer,
+	lbl text
+) ON COMMIT PRESERVE ROWS;
+WARNING:  GLOBAL is deprecated in temporary table creation
+LINE 1: CREATE GLOBAL TEMPORARY TABLE test_gtt_table (
+               ^
+CREATE TABLE
+
+如果不希望产生这条井道信息，可以使用注释符号：
+CREATE /*GLOBAL*/ TEMPORARY TABLE test_gtt_table (
+	id integer,
+	lbl text
+) ON COMMIT PRESERVE ROWS;
+
+
+创建临时表也可以使用 LIKE 子句：
+ivorysql=# CREATE /*GLOBAL*/ TEMPORARY TABLE test_gtt_table AS SELECT * FROM source_table WITH DATA;
+CREATE TABLE AS
+
+在表列上创建索引：
+ivorysql=# CREATE INDEX ON test_gtt_table (id);
+CREATE INDEX
+
+删除临时表：
+ivorysql=# drop table test_gtt_table;
+DROP TABLE
+
+添加约束(除了外键)：
+ivorysql=# CREATE /*GLOBAL*/ TEMPORARY TABLE t2 (
+	c1 serial PRIMARY KEY,
+	c2 VARCHAR (50) UNIQUE NOT NULL,
+	c3 boolean DEFAULT false
+);
+CREATE TABLE
+
+创建带有外键的表是不允许的：
+ivorysql=# CREATE /*GLOBAL*/ TEMPORARY TABLE t1 (c1 integer, FOREIGN KEY (c1) REFERENCES source (id));
+ERROR:  attempt to create referential integrity constraint on global temporary table
+
+ivorysql=# ALTER TABLE t2 ADD FOREIGN KEY (c1) REFERENCES source (id);
+ERROR:  attempt to create referential integrity constraint on global temporary table
+----
+
+更多详细使用方法和高级特性，请参阅 https://github.com/amutu/pgtt 。
+
