@@ -118,7 +118,7 @@ make install
 1. Run the following command to download the IvorySQL installation package.
 
 ```
-wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_17/IvorySQL-1.22-5a0861c-20260416.x86_64.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_17/IvorySQL-1.23-3402884-20260709.x86_64.rpm
 ```
 
 > Note: The installation package in the example may not be the latest version. It is recommended that you download the latest installation package.
@@ -127,7 +127,7 @@ wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_17/Ivory
 
 ```
 yum install -y libicu libxslt python3                   --Install dependencies first
-rpm -ivh IvorySQL-1.22-5a0861c-20260416.x86_64.rpm
+rpm -ivh IvorySQL-1.23-3402884-20260709.x86_64.rpm
 ```
 
 
@@ -407,7 +407,7 @@ make install
 1. Run the following command to download the IvorySQL installation package.
 
 ```
-wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_1.22/IvorySQL-1.22-5a0861c-20260416.amd64.deb
+wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_1.23/IvorySQL-1.23-3402884-20260709.amd64.deb
 ```
 
 > Note: The installation package in the example may not be the latest version. It is recommended that you download the latest installation package.
@@ -415,7 +415,7 @@ wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_1.22/IvoryS
 2.Run the following command to install IvorySQL.
 
 ```
-sudo apt install ./IvorySQL-1.22-5a0861c-20260416.amd64.deb
+sudo apt install ./IvorySQL-1.23-3402884-20260709.amd64.deb
 ```
 
 

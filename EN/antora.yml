@@ -1,10 +1,10 @@
 name: ivorysql-doc
 title: IvorySQL
 version: v1.23
-start_page: v1.22/welcome.adoc
+start_page: v1.23/welcome.adoc
 asciidoc:
-  attributes:
-    source-language: asciidoc@
-    table-caption: false
+    attributes:
+        source-language: asciidoc@
+        table-caption: false
 nav:
-- modules/ROOT/nav.adoc
+    - modules/ROOT/nav.adoc

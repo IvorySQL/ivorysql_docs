@@ -1,0 +1,58 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+## Version Overview
+
+[**Release Date: July 27, 2026**]
+
+IvorySQL 1.23, based on PostgreSQL 14.23 and includes a variety of bug fixes.
+
+## Enhancements
+
+- PostgreSQL 14.23 Enhancements
+1. Prevent unbounded recursion while processing startup packets.
+2. Fix assorted integer overflows in memory-allocation calculations.
+3. Reject over-length options in `ts_headline()`.
+4. Guard against malicious time zone names in `timeofday()` and `pg_strftime()`.
+5. When creating a multirange type, ensure the user has CREATE privilege on the schema specified for the multirange type.
+6. Use timing-safe string comparisons in authentication code.
+7. Mark `PQfn()` as unsafe, and avoid using it within libpq.
+8. Prevent path traversal in pg_basebackup and pg_rewind.
+9. Guard against field overflow within contrib/intarray's query_int type and contrib/ltree's ltxtquery type.
+10. Prevent SQL injection and buffer overruns in contrib/spi.
+For further details, visit link:https://www.postgresql.org/docs/release/14.23/[PostgreSQL's release notes].
+
+## Key Features
+
+- Upgrade to PG 14.23 kernel: link:https://github.com/IvorySQL/IvorySQL/pull/1361[Feature #1361] +
+    PostgreSQL kernel upgraded to version 14.23.
+
+- Packaging for All Platforms +
+    Provides multi-platform media packages for X86, ARM, MIPS, LoongArch architecture.
+
+- PostgreSQL Extensions +
+    Support for 7 Additional PostgreSQL Extensions: PostGIS, pgRouting, PGroonga, ddlx, pgsql-http, pgvector, pgvectorscale.
+
+## Source Code
+
+IvorySQL's development is maintained across two main repositories:
+- IvorySQL database source code: https://github.com/IvorySQL/IvorySQL
+- IvorySQL official website: https://github.com/IvorySQL/Ivory-www
+
+## Contributors
+The following individuals (in alphabetical order) have contributed to this release as patch authors, committers, reviewers, testers, or reporters of issues.
+
+* Chao Li
+* David Zhang
+* Grant Zhou
+* Jianqiao Han
+* Shuntian Jiao
+* Steven Niu
+* Xiaohui Liu
+* Xinjie LYU
+* Xueyu Gao
+* Zheng Tao
+* Zhenhao Pan
+
+link:https://github.com/IvorySQL/IvorySQL/compare/IvorySQL_1.22...IvorySQL_1.23[Complete Changelog]

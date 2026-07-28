@@ -1,0 +1,58 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+## 版本介绍
+
+[**发行日期：2026年7月27日**]
+
+IvorySQL 1.23 基于 PostgreSQL 14.23，包含多种错误修复。
+
+## 增强功能
+
+- PostgreSQL 14.23 增强
+1. 防止处理启动数据包时的无限递归。
+2. 修复内存分配计算中的多处整数溢出问题。
+3. 拒绝 `ts_headline()` 中过长的选项。
+4. 防范 `timeofday()` 和 `pg_strftime()` 中的恶意时区名称。
+5. 创建多范围类型时，确保用户对指定模式具有 CREATE 权限。
+6. 在认证代码中使用时序安全的字符串比较。
+7. 将 `PQfn()` 标记为不安全，并避免在 libpq 内部使用。
+8. 防止 pg_basebackup 和 pg_rewind 中的路径遍历攻击。
+9. 防范 contrib/intarray 的 query_int 类型和 contrib/ltree 的 ltxtquery 类型中的字段溢出。
+10. 防止 contrib/spi 中的 SQL 注入和缓冲区溢出。
+更多详情，请访问 link:https://www.postgresql.org/docs/release/14.23/[PostgreSQL 发布说明]。
+
+## 主要特性
+
+- 升级至 PG 14.23 内核：link:https://github.com/IvorySQL/IvorySQL/pull/1361[Feature #1361] +
+    PostgreSQL 内核升级至 14.23 版本。
+
+- 全平台打包 +
+    提供 X86、ARM、MIPS、LoongArch 架构的多平台介质包。
+
+- PostgreSQL 扩展 +
+    新增支持 7 个 PostgreSQL 扩展：PostGIS、pgRouting、PGroonga、ddlx、pgsql-http、pgvector、pgvectorscale。
+
+## 源代码
+
+IvorySQL 的研发工作主要通过以下两个核心代码库进行维护：
+- IvorySQL 数据库源代码：https://github.com/IvorySQL/IvorySQL
+- IvorySQL 官方网站：https://github.com/IvorySQL/Ivory-www
+
+## 贡献人员
+以下个人（按字母顺序排列）作为补丁作者、提交者、审阅者、测试者或问题报告者为本版本做出了贡献。
+
+* Chao Li
+* David Zhang
+* Grant Zhou
+* Jianqiao Han
+* Shuntian Jiao
+* Steven Niu
+* Xiaohui Liu
+* Xinjie LYU
+* Xueyu Gao
+* Zheng Tao
+* Zhenhao Pan
+
+link:https://github.com/IvorySQL/IvorySQL/compare/IvorySQL_1.22...IvorySQL_1.23[完整变更日志]

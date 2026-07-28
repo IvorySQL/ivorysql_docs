@@ -156,13 +156,13 @@ Installation package：rpm
 
 Download RPM source: Use wget to download on Centos7
 
-wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_17/IvorySQL-1.22-5a0861c-20260416.x86_64.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_17/IvorySQL-1.23-3402884-20260709.x86_64.rpm
 
 
 
 installation library
 
-    yum install IvorySQL-1.22-5a0861c-20260416.x86_64.rpm
+    yum install IvorySQL-1.23-3402884-20260709.x86_64.rpm
 
 Initialize the database
 
@@ -176,11 +176,11 @@ Installation package：rpm
 
 Download RPM source: Use wget to download on Centos7
 
-wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_17/IvorySQL-1.22-5a0861c-20260416.x86_64.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_17/IvorySQL-1.23-3402884-20260709.x86_64.rpm
 
 installation library
 
-    yum install IvorySQL-1.22-5a0861c-20260416.x86_64.rpm
+    yum install IvorySQL-1.23-3402884-20260709.x86_64.rpm
 
 **master node**
 
@@ -234,13 +234,13 @@ Installation package：rpm
 
 Download RPM source: Use wget to download on Centos7
 
-wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_17/IvorySQL-1.22-5a0861c-20260416.x86_64.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_17/IvorySQL-1.23-3402884-20260709.x86_64.rpm
 
 
 
 install library
 ----
-yum install IvorySQL-1.22-5a0861c-20260416.x86_64.rpm
+yum install IvorySQL-1.23-3402884-20260709.x86_64.rpm
 ----
 
 Initialize the master node
@@ -280,13 +280,13 @@ Installation package：rpm
 
 Download RPM source: Use wget to download on Centos7
 
-wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_17/IvorySQL-1.22-5a0861c-20260416.x86_64.rpm
+wget https://github.com/IvorySQL/IvorySQL/releases/download/Ivory_REL_1_17/IvorySQL-1.23-3402884-20260709.x86_64.rpm
 
 
 
 install library
 
-    yum install IvorySQL-1.22-5a0861c-20260416.x86_64.rpm
+    yum install IvorySQL-1.23-3402884-20260709.x86_64.rpm
 
 1、basic backup
 ----
