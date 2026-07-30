@@ -89,5 +89,22 @@ postgres=# select version();
 (1 row)
 ```
 
+== Encoding Compatibility
+
+PGroonga relies on https://groonga.org/docs/reference/api/util_8h.html#c.grn_encoding[Groonga's supported encodings], which do not include GB18030. A PGroonga index created in a GB18030-encoded database may therefore contain no tokens and return no matches.
+
+Create a UTF-8 database for workloads that use PGroonga:
+
+[source,sql]
+----
+CREATE DATABASE search_db
+  WITH ENCODING 'UTF8'
+       LC_COLLATE 'C'
+       LC_CTYPE 'C'
+       TEMPLATE template0;
+----
+
+Changing Groonga's runtime encoding or rebuilding the index does not change the database encoding. Existing data must be migrated or reloaded into a UTF-8 database before creating the PGroonga index.
+
 == Usage
 For PGroonga usage, please refer to the https://pgroonga.github.io/tutorial[PGroonga Official Documentation]
