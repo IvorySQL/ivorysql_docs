@@ -1,0 +1,155 @@
+:sectnums:
+:sectnumlevels: 5
+
+= hstore
+
+== Overview
+
+`hstore` is an extension included with IvorySQL that stores sets of text key/value pairs in a single column. It is useful for sparse attributes, application settings, labels, and other semi-structured data that does not require nested JSON documents.
+
+This guide was verified with IvorySQL 5.4 (PostgreSQL 18.4) and hstore 1.8 on Ubuntu 22.04 x86_64.
+
+== Compatibility
+
+[cols="1,1,3"]
+|===
+|IvorySQL mode |Status |Verified operations
+
+|PostgreSQL
+|Supported
+|Extension installation, key lookup, containment, update, JSON conversion, and GIN indexing
+
+|Oracle compatible
+|Supported
+|The same hstore data type, functions, operators, and indexes are available after switching `ivorysql.compatible_mode`
+|===
+
+[NOTE]
+`hstore` is an IvorySQL/PostgreSQL extension data type, not an Oracle Database native data type. Applications that must also run on Oracle Database should isolate hstore-specific SQL.
+
+== Installation
+
+The official IvorySQL 5.4 binary package already contains hstore. Connect as a user allowed to create extensions and run:
+
+[source,sql]
+----
+CREATE EXTENSION hstore;
+
+SELECT extversion
+FROM pg_extension
+WHERE extname = 'hstore';
+----
+
+The expected extension version in IvorySQL 5.4 is `1.8`.
+
+For an IvorySQL installation built from source, install hstore from the same source tree before creating the extension:
+
+[source,shell]
+----
+cd /path/to/IvorySQL
+make -C contrib/hstore
+make -C contrib/hstore install
+----
+
+== Usage
+
+=== Store and query attributes
+
+[source,sql]
+----
+CREATE TABLE application_settings (
+    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    attributes hstore NOT NULL
+);
+
+INSERT INTO application_settings(attributes)
+VALUES ('theme=>dark, region=>cn, notifications=>enabled');
+
+-- Fetch one value.
+SELECT attributes -> 'theme' AS theme
+FROM application_settings;
+
+-- Test whether a key exists.
+SELECT id
+FROM application_settings
+WHERE attributes ? 'region';
+
+-- Test whether all supplied pairs are present.
+SELECT id
+FROM application_settings
+WHERE attributes @> 'theme=>dark'::hstore;
+----
+
+=== Update and remove keys
+
+The concatenation operator replaces an existing value when the right-hand hstore contains the same key.
+
+[source,sql]
+----
+UPDATE application_settings
+SET attributes = attributes || 'theme=>light, locale=>zh_CN'::hstore
+WHERE id = 1;
+
+UPDATE application_settings
+SET attributes = delete(attributes, 'notifications')
+WHERE id = 1;
+----
+
+=== Add a GIN index
+
+GIN indexes accelerate key-existence and containment predicates such as `?`, `?&`, `?|`, and `@>`.
+
+[source,sql]
+----
+CREATE INDEX application_settings_attributes_gin
+ON application_settings
+USING gin (attributes);
+
+ANALYZE application_settings;
+----
+
+=== Convert to JSON
+
+[source,sql]
+----
+SELECT hstore_to_json(attributes)
+FROM application_settings;
+----
+
+`hstore_to_json()` preserves SQL NULL values as JSON `null`, while all non-NULL hstore values are represented as JSON strings.
+
+== Oracle-compatible mode
+
+No separate extension installation is required. The extension is database-wide and remains available when the session changes mode:
+
+[source,sql]
+----
+SET ivorysql.compatible_mode = oracle;
+
+SELECT 'a=>1, b=>2'::hstore -> 'b' FROM dual;
+SELECT exist('a=>1, b=>2'::hstore, 'a') FROM dual;
+----
+
+Both statements return successfully (`2` and `true`, respectively) on IvorySQL 5.4.
+
+== Verification
+
+IvorySQL's bundled regression suites can be run from the source tree against an installed server:
+
+[source,shell]
+----
+cd /path/to/IvorySQL/contrib/hstore
+make installcheck
+make oracle-installcheck
+----
+
+The IvorySQL 5.4 verification completed both PostgreSQL tests (`hstore`, `hstore_utf8`) and both Oracle-compatible tests (`ivy_hstore`, `hstore_utf8`) successfully.
+
+== Limitations and guidance
+
+* Keys and non-NULL values are text; hstore does not provide nested objects or arrays.
+* Each key is unique within an hstore value. If input contains duplicate keys, only one value is retained and applications must not rely on which duplicate is kept.
+* Use `jsonb` instead when the data needs nesting, JSON numeric/Boolean types, or JSONPath queries.
+* Extension installation requires appropriate database privileges. Application roles only need privileges on the tables and functions they use.
+
+For the complete operator and function reference, see the https://www.postgresql.org/docs/18/hstore.html[PostgreSQL hstore documentation].

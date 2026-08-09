@@ -1,0 +1,155 @@
+:sectnums:
+:sectnumlevels: 5
+
+= hstore
+
+== 概述
+
+`hstore` 是 IvorySQL 内置提供的扩展，用于在单个字段中保存一组文本键值对。它适合存储稀疏属性、应用配置、标签等不需要嵌套 JSON 结构的半结构化数据。
+
+本文在 Ubuntu 22.04 x86_64 环境中使用 IvorySQL 5.4（PostgreSQL 18.4）和 hstore 1.8 完成验证。
+
+== 兼容性
+
+[cols="1,1,3"]
+|===
+|IvorySQL 模式 |状态 |已验证功能
+
+|PostgreSQL
+|支持
+|扩展安装、键查询、包含判断、更新、JSON 转换和 GIN 索引
+
+|Oracle 兼容模式
+|支持
+|切换 `ivorysql.compatible_mode` 后可继续使用相同的 hstore 数据类型、函数、操作符和索引
+|===
+
+[NOTE]
+`hstore` 是 IvorySQL/PostgreSQL 扩展数据类型，不是 Oracle Database 原生数据类型。需要同时运行在 Oracle Database 上的应用应隔离 hstore 专用 SQL。
+
+== 安装
+
+IvorySQL 5.4 官方二进制包已包含 hstore。使用具有创建扩展权限的用户连接数据库并执行：
+
+[source,sql]
+----
+CREATE EXTENSION hstore;
+
+SELECT extversion
+FROM pg_extension
+WHERE extname = 'hstore';
+----
+
+IvorySQL 5.4 中预期的扩展版本为 `1.8`。
+
+对于源码安装的 IvorySQL，在创建扩展前从同一源码树编译并安装 hstore：
+
+[source,shell]
+----
+cd /path/to/IvorySQL
+make -C contrib/hstore
+make -C contrib/hstore install
+----
+
+== 使用
+
+=== 保存和查询属性
+
+[source,sql]
+----
+CREATE TABLE application_settings (
+    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    attributes hstore NOT NULL
+);
+
+INSERT INTO application_settings(attributes)
+VALUES ('theme=>dark, region=>cn, notifications=>enabled');
+
+-- 获取单个键的值。
+SELECT attributes -> 'theme' AS theme
+FROM application_settings;
+
+-- 判断键是否存在。
+SELECT id
+FROM application_settings
+WHERE attributes ? 'region';
+
+-- 判断是否包含给定键值对。
+SELECT id
+FROM application_settings
+WHERE attributes @> 'theme=>dark'::hstore;
+----
+
+=== 更新和删除键
+
+当右侧 hstore 包含同名键时，连接操作符会替换已有值。
+
+[source,sql]
+----
+UPDATE application_settings
+SET attributes = attributes || 'theme=>light, locale=>zh_CN'::hstore
+WHERE id = 1;
+
+UPDATE application_settings
+SET attributes = delete(attributes, 'notifications')
+WHERE id = 1;
+----
+
+=== 创建 GIN 索引
+
+GIN 索引可以加速 `?`、`?&`、`?|` 和 `@>` 等键存在及包含条件。
+
+[source,sql]
+----
+CREATE INDEX application_settings_attributes_gin
+ON application_settings
+USING gin (attributes);
+
+ANALYZE application_settings;
+----
+
+=== 转换为 JSON
+
+[source,sql]
+----
+SELECT hstore_to_json(attributes)
+FROM application_settings;
+----
+
+`hstore_to_json()` 会将 SQL NULL 保留为 JSON `null`，其他 hstore 值均转换为 JSON 字符串。
+
+== Oracle 兼容模式
+
+无需重复安装扩展。扩展在数据库范围内生效，切换会话兼容模式后仍然可用：
+
+[source,sql]
+----
+SET ivorysql.compatible_mode = oracle;
+
+SELECT 'a=>1, b=>2'::hstore -> 'b' FROM dual;
+SELECT exist('a=>1, b=>2'::hstore, 'a') FROM dual;
+----
+
+在 IvorySQL 5.4 上，两条语句均成功执行，分别返回 `2` 和 `true`。
+
+== 验证
+
+可以在 IvorySQL 源码树中对已安装实例运行内置回归测试：
+
+[source,shell]
+----
+cd /path/to/IvorySQL/contrib/hstore
+make installcheck
+make oracle-installcheck
+----
+
+IvorySQL 5.4 验证中，两个 PostgreSQL 测试（`hstore`、`hstore_utf8`）以及两个 Oracle 兼容测试（`ivy_hstore`、`hstore_utf8`）均通过。
+
+== 限制与建议
+
+* 键和非 NULL 值均为文本；hstore 不支持嵌套对象或数组。
+* 一个 hstore 值中的键必须唯一；输入包含重复键时只会保留一个值，应用不应依赖具体保留哪一个。
+* 如果数据需要嵌套结构、JSON 数值/布尔类型或 JSONPath 查询，应使用 `jsonb`。
+* 安装扩展需要相应数据库权限；应用角色只需要其所用表和函数的权限。
+
+完整的操作符和函数说明请参阅 https://www.postgresql.org/docs/18/hstore.html[PostgreSQL hstore 文档]。
