@@ -5,7 +5,7 @@
 
 == 概述
 
-`hstore` 是 IvorySQL 内置提供的扩展，用于在单个字段中保存一组文本键值对。它适合存储稀疏属性、应用配置、标签等不需要嵌套 JSON 结构的半结构化数据。
+`hstore` 是 PostgreSQL 的 contrib 扩展，其源码随 IvorySQL 一同位于 `contrib/hstore` 目录中。它用于在单个字段中保存一组文本键值对，适合存储稀疏属性、应用配置、标签等不需要嵌套 JSON 结构的半结构化数据。
 
 本文在 Ubuntu 22.04 x86_64 环境中使用 IvorySQL 5.4（PostgreSQL 18.4）和 hstore 1.8 完成验证。
 
@@ -29,7 +29,7 @@
 
 == 安装
 
-IvorySQL 5.4 官方二进制包已包含 hstore。使用具有创建扩展权限的用户连接数据库并执行：
+IvorySQL 5.4 官方二进制包已包含 hstore，无需另外下载源码或编译第三方模块。使用具有创建扩展权限的用户连接数据库并执行：
 
 [source,sql]
 ----

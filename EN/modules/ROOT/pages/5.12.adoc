@@ -5,7 +5,7 @@
 
 == Overview
 
-`hstore` is an extension included with IvorySQL that stores sets of text key/value pairs in a single column. It is useful for sparse attributes, application settings, labels, and other semi-structured data that does not require nested JSON documents.
+`hstore` is a PostgreSQL contrib extension whose source is included in IvorySQL under `contrib/hstore`. It stores sets of text key/value pairs in a single column and is useful for sparse attributes, application settings, labels, and other semi-structured data that does not require nested JSON documents.
 
 This guide was verified with IvorySQL 5.4 (PostgreSQL 18.4) and hstore 1.8 on Ubuntu 22.04 x86_64.
 
@@ -29,7 +29,7 @@ This guide was verified with IvorySQL 5.4 (PostgreSQL 18.4) and hstore 1.8 on Ub
 
 == Installation
 
-The official IvorySQL 5.4 binary package already contains hstore. Connect as a user allowed to create extensions and run:
+The official IvorySQL 5.4 binary package already contains hstore, so no separate source download or third-party build is required. Connect as a user allowed to create extensions and run:
 
 [source,sql]
 ----
