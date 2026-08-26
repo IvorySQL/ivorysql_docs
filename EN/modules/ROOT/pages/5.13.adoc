@@ -1,0 +1,197 @@
+:sectnums:
+:sectnumlevels: 5
+
+= Pgpool-II
+
+== Overview
+
+Pgpool-II is middleware placed between database clients and IvorySQL servers. It provides persistent backend connection pools, health and streaming-replication checks, read-query load balancing, and building blocks for automated failover.
+
+This guide was verified with IvorySQL 5.4 (PostgreSQL 18.4) and Pgpool-II 4.7.2 on Ubuntu 22.04 x86_64. The validation used one IvorySQL primary and one streaming-replication standby.
+
+== Verified compatibility
+
+[cols="2,1,3"]
+|===
+|Capability |Status |Verification
+
+|Build against IvorySQL client libraries
+|Supported
+|Pgpool-II was configured with the IvorySQL installation prefix and built successfully
+
+|Backend connection pooling
+|Supported
+|Repeated client sessions reused Pgpool-II child-process backend pools
+
+|Streaming-replication discovery
+|Supported
+|`SHOW POOL_NODES` identified the primary and standby correctly
+
+|Read-query load balancing with PostgreSQL-compatible syntax
+|Verified for the tested queries
+|Both nodes received the tested SELECT queries with equal configured weights; this does not establish load balancing for Oracle-specific syntax
+
+|Oracle-compatible sessions
+|Connectivity verified
+|A session switched to `ivorysql.compatible_mode = oracle` and executed the SELECT example below; Oracle-specific syntax routing was not tested
+
+|Load balancing of Oracle-specific syntax
+|Not verified
+|In streaming-replication mode, statements rejected by Pgpool-II's parser are sent to the primary, not load balanced
+|===
+
+== Prerequisites
+
+* IvorySQL 5.4 is installed on every database node.
+* IvorySQL streaming replication is already working and the standby accepts read-only queries.
+* The build host has a C compiler, GNU make, Flex, Bison, and OpenSSL development files.
+* Pgpool-II can reach the PostgreSQL-compatible port of every IvorySQL node.
+
+[IMPORTANT]
+Pgpool-II does not create or repair IvorySQL streaming replication. Verify replication independently before enabling Pgpool-II.
+
+== Build and install Pgpool-II
+
+[source,shell]
+----
+curl -LO https://www.pgpool.net/source/pgpool-II-4.7.2.tar.gz
+tar -xzf pgpool-II-4.7.2.tar.gz
+cd pgpool-II-4.7.2
+
+./configure \
+  --prefix=/usr/local/pgpool-II-4.7.2 \
+  --with-pgsql=/usr/local/ivorysql/ivorysql-5 \
+  --with-openssl
+make -j"$(nproc)"
+sudo make install
+----
+
+Replace the IvorySQL prefix with the directory that contains `bin/pg_config`, `include/postgresql`, and `lib` in your installation.
+
+Confirm that Pgpool-II uses the expected version:
+
+[source,shell]
+----
+/usr/local/pgpool-II-4.7.2/bin/pgpool --version
+----
+
+== Prepare a monitoring role
+
+Create the same login on the primary and make sure its definition reaches the standby. Membership in `pg_monitor` lets Pgpool-II inspect streaming-replication state without using a superuser account.
+
+[source,sql]
+----
+CREATE ROLE pgpoolcheck LOGIN PASSWORD 'replace-with-a-strong-password';
+GRANT pg_monitor TO pgpoolcheck;
+----
+
+Use `pool_passwd` or an operating-system password file instead of putting a production password directly in `pgpool.conf`. Pgpool-II supports SCRAM authentication; configure matching rules in `pool_hba.conf` and the IvorySQL `pg_hba.conf` files.
+
+== Configure Pgpool-II
+
+Start from the installed `pgpool.conf.sample`. The following excerpt shows the settings essential to a two-node validation deployment:
+
+[source,ini]
+----
+backend_clustering_mode = 'streaming_replication'
+
+listen_addresses = 'localhost'
+port = 9999
+unix_socket_directories = '/tmp'
+
+backend_hostname0 = '10.0.0.11'
+backend_port0 = 5333
+backend_weight0 = 1
+backend_data_directory0 = '/data/ivorysql/primary'
+backend_flag0 = 'DISALLOW_TO_FAILOVER'
+backend_application_name0 = 'ivory_primary'
+
+backend_hostname1 = '10.0.0.12'
+backend_port1 = 5333
+backend_weight1 = 1
+backend_data_directory1 = '/data/ivorysql/standby'
+backend_flag1 = 'DISALLOW_TO_FAILOVER'
+backend_application_name1 = 'ivory_standby'
+
+load_balance_mode = on
+sr_check_period = 10
+sr_check_user = 'pgpoolcheck'
+sr_check_database = 'postgres'
+
+health_check_period = 10
+health_check_user = 'pgpoolcheck'
+health_check_database = 'postgres'
+----
+
+`DISALLOW_TO_FAILOVER` is intentional in this minimal configuration: it prevents an incomplete example from promoting or detaching nodes automatically. Before using `ALLOW_TO_FAILOVER`, configure and test `failover_command`, standby promotion, follow-primary handling, fencing, and optionally Watchdog.
+
+Start Pgpool-II in the foreground while validating the configuration:
+
+[source,shell]
+----
+/usr/local/pgpool-II-4.7.2/bin/pgpool \
+  -n -f /etc/pgpool-II/pgpool.conf
+----
+
+== Verify the integration
+
+Connect to the Pgpool-II port rather than directly to a backend:
+
+[source,shell]
+----
+psql -h pgpool-host -p 9999 -U application_user -d application_db
+----
+
+Check node discovery and query distribution:
+
+[source,sql]
+----
+SHOW POOL_NODES;
+SELECT count(*) FROM application_table;
+SHOW POOL_NODES;
+SHOW POOL_PROCESSES;
+----
+
+In the IvorySQL 5.4 validation, Pgpool-II reported both nodes as `up`, assigned roles `primary` and `standby`, and showed a replication delay of zero. With equal weights, 21 initial read queries were distributed 9 to the primary and 12 to the standby. These results apply to the tested PostgreSQL-compatible SELECT queries, not to Oracle-specific syntax.
+
+== Oracle-compatible mode
+
+Oracle compatibility can be enabled through the pooled PostgreSQL-compatible connection:
+
+[source,sql]
+----
+SET ivorysql.compatible_mode = oracle;
+SELECT 'connected through Pgpool-II' AS status FROM dual;
+----
+
+This example verifies connectivity and execution in an Oracle-compatible session, not load balancing of Oracle-specific syntax. Its `SELECT ... FROM dual` form is still a PostgreSQL-compatible SELECT referencing a relation. Changing `ivorysql.compatible_mode` changes the backend's behavior; it does not change Pgpool-II's SQL parser.
+
+[IMPORTANT]
+====
+Pgpool-II 4.7 uses the PostgreSQL 18 SQL parser, as documented in its https://www.pgpool.net/docs/4.7/en/html/release-4-7-0.html[release notes]. In this guide's streaming-replication mode, statements that Pgpool-II cannot parse are sent to the primary according to its https://www.pgpool.net/docs/4.7/en/html/runtime-config-load-balancing.html[load-balancing rules]. Oracle-specific syntax outside that parser's grammar therefore does not benefit from read-query load balancing, even with `load_balance_mode = on`.
+
+This does not mean every query in an Oracle-compatible session must go to the primary: a query that Pgpool-II can parse must still satisfy its other load-balancing conditions. Do not infer routing support from the session mode or successful execution alone.
+====
+
+=== Check routing for an application
+
+In a test environment, enable https://www.pgpool.net/docs/4.7/en/html/runtime-config-logging.html#GUC-LOG-PER-NODE-STATEMENT[`log_per_node_statement`] in `pgpool.conf` and reload the configuration:
+
+[source,ini]
+----
+log_per_node_statement = on
+----
+
+Run the application's representative PostgreSQL-compatible queries and Oracle-specific statements separately through Pgpool-II, then inspect the per-node statement logs to identify the actual destination. Test the application's transaction and write/read sequences as well; parsing alone does not determine load-balancing eligibility. `SHOW POOL_NODES` can help inspect node status, but successful execution and the selected load-balancing node are not proof that a particular statement ran on the standby.
+
+Until this application-level routing validation is complete, do not rely on standby read offloading for Oracle-specific SQL. Disable statement logging after testing if SQL text contains sensitive data.
+
+== Operational considerations
+
+* This guide validates Pgpool-II on IvorySQL's PostgreSQL-compatible endpoint. It does not validate proxying an Oracle client protocol through `ivorysql.port`.
+* Apply the Oracle-specific routing limitations above, and route statements that must see the newest data to the primary.
+* Asynchronous streaming replication can return stale data from a standby. Configure delay thresholds or synchronous replication according to the application's consistency requirements.
+* Do not expose Pgpool-II with `trust` authentication. Use TLS, SCRAM, restricted listen addresses, and least-privilege monitoring accounts in production.
+* Automatic failover is a separate high-availability design. Test promotion, fencing, client retry, and split-brain prevention before enabling it.
+
+For production options, see the https://www.pgpool.net/docs/4.7/en/html/[Pgpool-II 4.7 documentation].

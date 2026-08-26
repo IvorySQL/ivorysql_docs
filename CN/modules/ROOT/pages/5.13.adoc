@@ -1,0 +1,197 @@
+:sectnums:
+:sectnumlevels: 5
+
+= Pgpool-II
+
+== 概述
+
+Pgpool-II 是部署在数据库客户端与 IvorySQL 服务之间的中间件，提供后端长连接池、健康检查、流复制检查、只读查询负载均衡，以及实现自动故障转移所需的基础能力。
+
+本文在 Ubuntu 22.04 x86_64 环境中使用 IvorySQL 5.4（PostgreSQL 18.4）和 Pgpool-II 4.7.2 完成验证。测试拓扑包含一个 IvorySQL 主库和一个流复制备库。
+
+== 已验证的兼容能力
+
+[cols="2,1,3"]
+|===
+|能力 |状态 |验证结果
+
+|使用 IvorySQL 客户端库编译
+|支持
+|使用 IvorySQL 安装目录配置并成功编译 Pgpool-II
+
+|后端连接池
+|支持
+|多个客户端会话能够复用 Pgpool-II 子进程中的后端连接池
+
+|流复制节点识别
+|支持
+|`SHOW POOL_NODES` 正确识别主库和备库
+
+|PostgreSQL 兼容语法的只读查询负载均衡
+|已验证所测试的查询
+|配置相同权重后，两个节点均收到所测试的 SELECT 查询；这不能证明 Oracle 专用语法支持负载均衡
+
+|Oracle 兼容会话
+|已验证连通性
+|会话切换到 `ivorysql.compatible_mode = oracle` 后成功执行下文的 SELECT 示例；未测试 Oracle 专用语法的路由
+
+|Oracle 专用语法的负载均衡
+|未验证
+|在流复制模式下，Pgpool-II 解析器无法解析的语句会发送到主库，不参与负载均衡
+|===
+
+== 前提条件
+
+* 所有数据库节点均已安装 IvorySQL 5.4。
+* IvorySQL 流复制已经正常工作，备库能够执行只读查询。
+* 编译主机已安装 C 编译器、GNU make、Flex、Bison 和 OpenSSL 开发文件。
+* Pgpool-II 能够访问每个 IvorySQL 节点的 PostgreSQL 兼容端口。
+
+[IMPORTANT]
+Pgpool-II 不负责创建或修复 IvorySQL 流复制。启用 Pgpool-II 前应独立验证复制状态。
+
+== 编译安装 Pgpool-II
+
+[source,shell]
+----
+curl -LO https://www.pgpool.net/source/pgpool-II-4.7.2.tar.gz
+tar -xzf pgpool-II-4.7.2.tar.gz
+cd pgpool-II-4.7.2
+
+./configure \
+  --prefix=/usr/local/pgpool-II-4.7.2 \
+  --with-pgsql=/usr/local/ivorysql/ivorysql-5 \
+  --with-openssl
+make -j"$(nproc)"
+sudo make install
+----
+
+请将 IvorySQL 前缀替换为实际安装目录，该目录下应包含 `bin/pg_config`、`include/postgresql` 和 `lib`。
+
+确认 Pgpool-II 版本：
+
+[source,shell]
+----
+/usr/local/pgpool-II-4.7.2/bin/pgpool --version
+----
+
+== 创建监控角色
+
+在主库创建以下登录角色，并确保角色定义已同步到备库。授予 `pg_monitor` 后，Pgpool-II 无需使用超级用户即可检查流复制状态。
+
+[source,sql]
+----
+CREATE ROLE pgpoolcheck LOGIN PASSWORD 'replace-with-a-strong-password';
+GRANT pg_monitor TO pgpoolcheck;
+----
+
+生产环境应通过 `pool_passwd` 或操作系统密码文件保存密码，不要把明文密码直接写入 `pgpool.conf`。Pgpool-II 支持 SCRAM；请在 `pool_hba.conf` 和各 IvorySQL 节点的 `pg_hba.conf` 中配置相匹配的认证规则。
+
+== 配置 Pgpool-II
+
+复制安装目录中的 `pgpool.conf.sample` 作为起点。以下片段包含双节点验证环境的必要设置：
+
+[source,ini]
+----
+backend_clustering_mode = 'streaming_replication'
+
+listen_addresses = 'localhost'
+port = 9999
+unix_socket_directories = '/tmp'
+
+backend_hostname0 = '10.0.0.11'
+backend_port0 = 5333
+backend_weight0 = 1
+backend_data_directory0 = '/data/ivorysql/primary'
+backend_flag0 = 'DISALLOW_TO_FAILOVER'
+backend_application_name0 = 'ivory_primary'
+
+backend_hostname1 = '10.0.0.12'
+backend_port1 = 5333
+backend_weight1 = 1
+backend_data_directory1 = '/data/ivorysql/standby'
+backend_flag1 = 'DISALLOW_TO_FAILOVER'
+backend_application_name1 = 'ivory_standby'
+
+load_balance_mode = on
+sr_check_period = 10
+sr_check_user = 'pgpoolcheck'
+sr_check_database = 'postgres'
+
+health_check_period = 10
+health_check_user = 'pgpoolcheck'
+health_check_database = 'postgres'
+----
+
+最小配置中使用 `DISALLOW_TO_FAILOVER` 是有意为之，避免不完整示例自动提升或摘除节点。改用 `ALLOW_TO_FAILOVER` 前，必须配置并测试 `failover_command`、备库提升、主库切换后的跟随流程、节点隔离，以及可选的 Watchdog。
+
+验证配置时以前台模式启动 Pgpool-II：
+
+[source,shell]
+----
+/usr/local/pgpool-II-4.7.2/bin/pgpool \
+  -n -f /etc/pgpool-II/pgpool.conf
+----
+
+== 验证集成
+
+连接 Pgpool-II 端口，而不是直接连接后端节点：
+
+[source,shell]
+----
+psql -h pgpool-host -p 9999 -U application_user -d application_db
+----
+
+检查节点发现和查询分布：
+
+[source,sql]
+----
+SHOW POOL_NODES;
+SELECT count(*) FROM application_table;
+SHOW POOL_NODES;
+SHOW POOL_PROCESSES;
+----
+
+IvorySQL 5.4 验证中，Pgpool-II 将两个节点状态均报告为 `up`，角色正确识别为 `primary` 和 `standby`，复制延迟为 0。配置相同权重后，首轮 21 个读查询中，主库执行 9 个，备库执行 12 个。这些结果仅适用于所测试的 PostgreSQL 兼容 SELECT 查询，不适用于 Oracle 专用语法。
+
+== Oracle 兼容模式
+
+可以通过池化的 PostgreSQL 兼容连接启用 Oracle 兼容模式：
+
+[source,sql]
+----
+SET ivorysql.compatible_mode = oracle;
+SELECT 'connected through Pgpool-II' AS status FROM dual;
+----
+
+该示例验证的是 Oracle 兼容会话的连通性和执行能力，而不是 Oracle 专用语法的负载均衡。`SELECT ... FROM dual` 在语法形式上仍是引用关系的 PostgreSQL 兼容 SELECT。修改 `ivorysql.compatible_mode` 会改变后端行为，但不会改变 Pgpool-II 的 SQL 解析器。
+
+[IMPORTANT]
+====
+Pgpool-II 4.7 使用 PostgreSQL 18 的 SQL 解析器，详见其 https://www.pgpool.net/docs/4.7/en/html/release-4-7-0.html[发行说明]。根据 https://www.pgpool.net/docs/4.7/en/html/runtime-config-load-balancing.html[负载均衡规则]，在本文采用的流复制模式下，Pgpool-II 无法解析的语句会发送到主库。因此，超出该解析器语法范围的 Oracle 专用语句即使配置了 `load_balance_mode = on`，也不会获得只读查询负载均衡能力。
+
+这并不表示 Oracle 兼容会话中的每一条查询都必须走主库：Pgpool-II 能够解析的查询仍需满足其他负载均衡条件。不能仅凭会话模式或执行成功就判断路由能力。
+====
+
+=== 检查应用的实际路由
+
+在测试环境中，在 `pgpool.conf` 中启用 https://www.pgpool.net/docs/4.7/en/html/runtime-config-logging.html#GUC-LOG-PER-NODE-STATEMENT[`log_per_node_statement`] 并重新加载配置：
+
+[source,ini]
+----
+log_per_node_statement = on
+----
+
+通过 Pgpool-II 分别执行应用中有代表性的 PostgreSQL 兼容查询和 Oracle 专用语句，再检查逐节点语句日志，确认实际发送目标。同时测试应用的事务及先写后读序列，因为语法解析并不是决定负载均衡资格的唯一条件。`SHOW POOL_NODES` 可辅助检查节点状态，但执行成功或已选定负载均衡节点，都不能证明某条语句实际在备库执行。
+
+在完成应用级路由验证前，不要依赖备库分担 Oracle 专用 SQL 的读取负载。若 SQL 文本包含敏感数据，应在测试结束后关闭语句日志。
+
+== 运维注意事项
+
+* 本文验证的是 IvorySQL PostgreSQL 兼容端点，不包括通过 `ivorysql.port` 代理 Oracle 客户端协议。
+* 遵守上述 Oracle 专用语法的路由限制，并将必须读取最新数据的语句路由到主库。
+* 异步流复制可能从备库返回旧数据。应根据一致性要求配置延迟阈值或同步复制。
+* 不要在对外服务中使用 `trust` 认证。生产环境应启用 TLS、SCRAM、受限监听地址及最小权限监控账户。
+* 自动故障转移属于独立的高可用设计。启用前必须测试节点提升、隔离、客户端重试和脑裂防护。
+
+生产配置选项请参阅 https://www.pgpool.net/docs/4.7/en/html/[Pgpool-II 4.7 官方文档]。
