@@ -27,13 +27,17 @@ This guide was verified with IvorySQL 5.4 (PostgreSQL 18.4) and Pgpool-II 4.7.2 
 |Supported
 |`SHOW POOL_NODES` identified the primary and standby correctly
 
-|Read-query load balancing
-|Supported
-|Both nodes received SELECT queries with equal configured weights
+|Read-query load balancing with PostgreSQL-compatible syntax
+|Verified for the tested queries
+|Both nodes received the tested SELECT queries with equal configured weights; this does not establish load balancing for Oracle-specific syntax
 
 |Oracle-compatible sessions
-|Supported with notes
-|A session switched to `ivorysql.compatible_mode = oracle` and queried through Pgpool-II successfully
+|Connectivity verified
+|A session switched to `ivorysql.compatible_mode = oracle` and executed the SELECT example below; Oracle-specific syntax routing was not tested
+
+|Load balancing of Oracle-specific syntax
+|Not verified
+|In streaming-replication mode, statements rejected by Pgpool-II's parser are sent to the primary, not load balanced
 |===
 
 == Prerequisites
@@ -148,7 +152,7 @@ SHOW POOL_NODES;
 SHOW POOL_PROCESSES;
 ----
 
-In the IvorySQL 5.4 validation, Pgpool-II reported both nodes as `up`, assigned roles `primary` and `standby`, and showed a replication delay of zero. With equal weights, 21 initial read queries were distributed 9 to the primary and 12 to the standby.
+In the IvorySQL 5.4 validation, Pgpool-II reported both nodes as `up`, assigned roles `primary` and `standby`, and showed a replication delay of zero. With equal weights, 21 initial read queries were distributed 9 to the primary and 12 to the standby. These results apply to the tested PostgreSQL-compatible SELECT queries, not to Oracle-specific syntax.
 
 == Oracle-compatible mode
 
@@ -160,12 +164,32 @@ SET ivorysql.compatible_mode = oracle;
 SELECT 'connected through Pgpool-II' AS status FROM dual;
 ----
 
-The validation succeeded through Pgpool-II and continued to use the replicated backend pair.
+This example verifies connectivity and execution in an Oracle-compatible session, not load balancing of Oracle-specific syntax. Its `SELECT ... FROM dual` form is still a PostgreSQL-compatible SELECT referencing a relation. Changing `ivorysql.compatible_mode` changes the backend's behavior; it does not change Pgpool-II's SQL parser.
+
+[IMPORTANT]
+====
+Pgpool-II 4.7 uses the PostgreSQL 18 SQL parser, as documented in its https://www.pgpool.net/docs/4.7/en/html/release-4-7-0.html[release notes]. In this guide's streaming-replication mode, statements that Pgpool-II cannot parse are sent to the primary according to its https://www.pgpool.net/docs/4.7/en/html/runtime-config-load-balancing.html[load-balancing rules]. Oracle-specific syntax outside that parser's grammar therefore does not benefit from read-query load balancing, even with `load_balance_mode = on`.
+
+This does not mean every query in an Oracle-compatible session must go to the primary: a query that Pgpool-II can parse must still satisfy its other load-balancing conditions. Do not infer routing support from the session mode or successful execution alone.
+====
+
+=== Check routing for an application
+
+In a test environment, enable https://www.pgpool.net/docs/4.7/en/html/runtime-config-logging.html#GUC-LOG-PER-NODE-STATEMENT[`log_per_node_statement`] in `pgpool.conf` and reload the configuration:
+
+[source,ini]
+----
+log_per_node_statement = on
+----
+
+Run the application's representative PostgreSQL-compatible queries and Oracle-specific statements separately through Pgpool-II, then inspect the per-node statement logs to identify the actual destination. Test the application's transaction and write/read sequences as well; parsing alone does not determine load-balancing eligibility. `SHOW POOL_NODES` can help inspect node status, but successful execution and the selected load-balancing node are not proof that a particular statement ran on the standby.
+
+Until this application-level routing validation is complete, do not rely on standby read offloading for Oracle-specific SQL. Disable statement logging after testing if SQL text contains sensitive data.
 
 == Operational considerations
 
 * This guide validates Pgpool-II on IvorySQL's PostgreSQL-compatible endpoint. It does not validate proxying an Oracle client protocol through `ivorysql.port`.
-* Pgpool-II parses SQL to decide where to route it. Test application-specific Oracle syntax and route statements that must see the newest data to the primary.
+* Apply the Oracle-specific routing limitations above, and route statements that must see the newest data to the primary.
 * Asynchronous streaming replication can return stale data from a standby. Configure delay thresholds or synchronous replication according to the application's consistency requirements.
 * Do not expose Pgpool-II with `trust` authentication. Use TLS, SCRAM, restricted listen addresses, and least-privilege monitoring accounts in production.
 * Automatic failover is a separate high-availability design. Test promotion, fencing, client retry, and split-brain prevention before enabling it.
