@@ -1,0 +1,112 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+
+= **Feature Overview**
+
+IvorySQL provides the Oracle-compatible built-in function ```VSIZE('parameter')```, which returns the number of
+bytes occupied by the argument in its internal storage representation, i.e. the "storage size" of the argument.
+For character types, it returns the byte length (excluding the variable-length header); for fixed-width types
+(such as NUMBER, BOOLEAN, DATE, TIMESTAMP, etc.), it returns the storage width of that type; when the argument
+is NULL, it returns NULL.
+
+== Implementation
+
+VSIZE needs to accept an argument of any data type (character, numeric, boolean, date/time, etc.) and compute
+the byte count differently depending on its storage representation (variable-length varlena type or fixed-width
+type). This kind of logic, which depends on type-specific storage details, cannot be implemented with a simple
+SQL wrapper, so this feature is implemented as a C-language extension function `ora_vsize`, registered as:
+
+```
+sys.vsize(anycompatible) RETURNS int4
+```
+
+Using the `anycompatible` pseudo-type as the parameter type allows the function to accept an argument of any
+data type; an untyped string literal (such as `'abc'`) is resolved to the text type following PostgreSQL's
+default rules, matching the behavior of `VSIZE('abc')` in Oracle. The function is declared `STRICT`, so a NULL
+argument directly returns NULL without any extra handling in the function body.
+
+The function is implemented as `ora_vsize` in `contrib/ivorysql_ora/src/builtin_functions/misc_functions.c`:
+
+* On the first call, the actual type OID of the argument is obtained via `get_fn_expr_argtype()`, and
+  `get_typlen()` is called to get that type's `typlen` (storage length), which is cached in
+  `fcinfo->flinfo->fn_extra` to avoid repeated catalog lookups within the same query; subsequent calls read the
+  cached value directly from `fn_extra`.
+* `typlen == -1`: indicates a variable-length (varlena) type, such as text, varchar2, or numeric. In this case,
+  `toast_raw_datum_size()` is called to get the logical (decompressed) size of the value -- this function
+  uniformly handles 1-byte/4-byte headers, compressed storage, and TOASTed (out-of-line) storage, and its return
+  value is always normalized to the 4-byte header convention, so subtracting `VARHDRSZ` yields the payload byte
+  count excluding the header. This is the same approach used by `octet_length()` to compute byte length, which
+  is why `VSIZE('abc') = LENGTHB('abc')`.
+* `typlen == -2`: indicates the cstring type, and the string length plus 1 (including the terminating `\0`) is
+  returned.
+* Otherwise: the type is fixed-width, and its `typlen` is returned directly as the storage width (for example,
+  int4 is 4; int8/float8/date/timestamp/timestamptz are all 8; boolean is 1).
+
+The function registration is done in `builtin_functions--1.0.sql`:
+```sql
+/* VSIZE */
+/*
+ * VSIZE: Oracle-compatible function returning the number of bytes in the
+ * internal representation of the argument.  Returns NULL for NULL input.
+ * For varlena types the logical (decompressed) data size, excluding the
+ * varlena header, is returned; for fixed-width types the storage width is
+ * returned.
+ *
+ * The anycompatible pseudo-type accepts a value of any data type, and an
+ * untyped string literal is resolved to text, so VSIZE('abc') works just
+ * like in Oracle.
+ */
+CREATE FUNCTION sys.vsize(anycompatible)
+RETURNS int4
+AS 'MODULE_PATHNAME', 'ora_vsize'
+LANGUAGE C
+STRICT
+IMMUTABLE;
+/* End - VSIZE */
+```
+
+== Typical VSIZE examples
+[cols="8,2"]
+|====
+|*Example statement*|*Return value*
+|SELECT vsize('abc'); | 3
+|SELECT vsize(CAST('abc' AS VARCHAR2)); | 3
+|SELECT vsize('abc'::varchar); | 3
+|SELECT vsize('abc'::char(10)); | 10
+|SELECT vsize('你好'::text); | 6
+|SELECT vsize(0::number); | 2
+|SELECT vsize(1::number); | 4
+|SELECT vsize(123::number); | 4
+|SELECT vsize(1.23::number); | 6
+|SELECT vsize(123::int4); | 4
+|SELECT vsize(123::int8); | 8
+|SELECT vsize(1.23::float8); | 8
+|SELECT vsize('NaN'::float8); | 8
+|SELECT vsize(true); | 1
+|SELECT vsize('2024-01-01'::date); | 8
+|SELECT vsize('2024-01-01 10:00:00'::timestamp); | 8
+|SELECT vsize('2024-01-01 10:00:00+08'::timestamptz); | 8
+|SELECT vsize(NULL::text); | NULL
+|SELECT vsize(repeat('a', 100000)); | 100000
+|====
+
+For the same string, `VSIZE` and `LENGTHB` produce the same result:
+```
+SELECT vsize('abc') = lengthb('abc') AS same_as_lengthb;
+ same_as_lengthb
+-----------------
+ t
+```
+
+Even when the data is stored compressed or TOASTed out-of-line, `VSIZE` still returns its uncompressed logical
+byte count:
+```
+CREATE TABLE vsize_big(a text);
+INSERT INTO vsize_big SELECT repeat('b', 200000) FROM generate_series(1, 10);
+SELECT bool_and(vsize(a) = lengthb(a)) AS toasted_matches_lengthb, min(vsize(a)) AS min_size FROM vsize_big;
+ toasted_matches_lengthb | min_size
+-------------------------+----------
+ t                       |   200000
+```
