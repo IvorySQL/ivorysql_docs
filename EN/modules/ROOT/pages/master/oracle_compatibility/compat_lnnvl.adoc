@@ -1,0 +1,267 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= LNNVL Function
+
+== Purpose
+
+This document describes the `sys.lnnvl` function in IvorySQL, which negates a
+condition in an Oracle compatible way and still returns TRUE when the condition
+evaluates to UNKNOWN.
+
+== Functional Description
+
+* `sys.lnnvl(boolean)` takes a condition and returns TRUE when it evaluates to
+  FALSE or UNKNOWN, and FALSE when it evaluates to TRUE.
+* The function **never returns NULL**. The result is always TRUE or FALSE, so it
+  can be used directly as a WHERE condition without introducing a new UNKNOWN.
+* Its main use is to eliminate the row loss caused by three-valued logic: with a
+  plain `NOT`, rows whose condition is UNKNOWN are dropped both by the original
+  condition and by its negation, whereas a condition and its LNNVL partition the
+  table strictly, so the two row counts always add up to the total.
+
+Truth table:
+
+[cols="1,1"]
+|===
+|Condition evaluates to |Return value
+
+|TRUE
+|FALSE
+
+|FALSE
+|TRUE
+
+|UNKNOWN (condition involves NULL)
+|TRUE
+|===
+
+== Syntax
+
+[source,sql]
+----
+sys.lnnvl(condition)
+----
+
+[cols="1,3"]
+|===
+|Parameter |Description
+
+|`condition`
+|Any boolean expression. Non-boolean types are not accepted and there is no
+implicit cast from integer.
+|===
+
+Return type: `boolean`
+
+== Test Cases
+
+=== Test Environment Setup
+
+[source,sql]
+----
+CREATE TABLE lnnvl_test (a INT, b INT);
+INSERT INTO lnnvl_test VALUES (2, NULL);
+----
+
+=== Truth Table Verification
+
+[source,sql]
+----
+-- a = 2, b is NULL
+SELECT LNNVL(a = 1) FROM lnnvl_test;        -- expected: t (condition is FALSE)
+SELECT LNNVL(a = 2) FROM lnnvl_test;        -- expected: f (condition is TRUE)
+SELECT LNNVL(a IS NULL) FROM lnnvl_test;    -- expected: t (condition is FALSE)
+SELECT LNNVL(b = 1) FROM lnnvl_test;        -- expected: t (condition is UNKNOWN)
+SELECT LNNVL(b IS NULL) FROM lnnvl_test;    -- expected: f (condition is TRUE)
+SELECT LNNVL(a = b) FROM lnnvl_test;        -- expected: t (condition is UNKNOWN)
+----
+
+=== NULL Argument
+
+[source,sql]
+----
+-- A NULL argument must return t; this is the core behaviour of LNNVL
+SELECT LNNVL(NULL);                         -- expected: t
+SELECT LNNVL(NULL::boolean);                -- expected: t
+----
+
+=== Partition Property
+
+[source,sql]
+----
+DROP TABLE lnnvl_test;
+CREATE TABLE lnnvl_test (id INT, v NUMERIC);
+INSERT INTO lnnvl_test VALUES (1,0.30),(2,0.10),(3,NULL),(4,0.25),(5,NULL);
+
+SELECT count(*) FROM lnnvl_test WHERE v >= 0.2;          -- expected: 2
+SELECT count(*) FROM lnnvl_test WHERE LNNVL(v >= 0.2);   -- expected: 3
+SELECT count(*) FROM lnnvl_test;                         -- expected: 5
+
+-- 2 + 3 = 5: the condition and its LNNVL cover the whole table, no row is lost
+-- With NOT, the two counts add up to less than the total
+SELECT count(*) FROM lnnvl_test WHERE NOT (v >= 0.2);    -- expected: 2, total only 4
+----
+
+=== NOT IN over a Subquery Containing NULL
+
+[source,sql]
+----
+CREATE TABLE lnnvl_bl (d INT);
+INSERT INTO lnnvl_bl VALUES (1), (NULL);
+
+-- With a NULL in the list, NOT IN matches nothing
+SELECT count(*) FROM lnnvl_test WHERE id NOT IN (SELECT d FROM lnnvl_bl);
+-- expected: 0
+
+-- Rewritten with LNNVL(... IN ...) it gives the intuitive result
+SELECT count(*) FROM lnnvl_test WHERE LNNVL(id IN (SELECT d FROM lnnvl_bl));
+-- expected: 4
+----
+
+`id NOT IN (1, NULL)` expands to `id <> 1 AND id <> NULL`, where
+`id <> NULL` is always UNKNOWN, so the whole condition is never TRUE and every
+row is dropped. `LNNVL(id IN (...))` treats UNKNOWN as "not true" and keeps
+those rows.
+
+=== Argument Type Checking
+
+[source,sql]
+----
+-- The argument must be boolean; there is no implicit cast from integer
+SELECT LNNVL(1);
+-- expected error: function lnnvl(pg_catalog.int4) does not exist
+----
+
+=== Test Environment Cleanup
+
+[source,sql]
+----
+DROP TABLE lnnvl_bl;
+DROP TABLE lnnvl_test;
+----
+
+== Behavioral Differences from Oracle
+
+Oracle's grammar accepts only a single simple condition. IvorySQL implements
+LNNVL as an ordinary function, and by the time overload resolution runs its
+argument is already a boolean expression: the `AND`, `OR`, `NOT` or `BETWEEN`
+that produced it is no longer visible to the function. The restrictions
+therefore cannot be reproduced, and **the accepted forms are a superset of
+Oracle's**.
+
+The direction is safe: any LNNVL usage that runs on Oracle also runs on
+IvorySQL, but not the reverse -- a compound form written on IvorySQL will raise
+an error when moved back to Oracle.
+
+[cols="2,1,1"]
+|===
+|Argument form |Oracle |IvorySQL
+
+|`LNNVL(1 = 1 AND 2 = 2)`
+|rejected
+|accepted, returns f
+
+|`LNNVL(1 = 1 OR 2 = 2)`
+|rejected
+|accepted, returns f
+
+|`LNNVL(1 BETWEEN 0 AND 5)`
+|rejected
+|accepted, returns f
+
+|`LNNVL(1 NOT BETWEEN 0 AND 5)`
+|rejected
+|accepted, returns t
+
+|`LNNVL(NOT (1 = 1))`
+|rejected (ORA-00936)
+|accepted, returns t
+
+|`LNNVL(NOT EXISTS (SELECT ...))`
+|rejected (ORA-00936)
+|accepted, returns t
+
+|`LNNVL(1 IN (1,2))`
+|rejected (ORA-13207)
+|accepted, returns f
+
+|`LNNVL(1 NOT IN (1,2))`
+|rejected (ORA-13207)
+|accepted, returns t
+|===
+
+Other differences:
+
+[cols="1,2,2"]
+|===
+|Aspect |Oracle |IvorySQL
+
+|Error codes and text
+|`ORA-` numbers
+|PostgreSQL SQLSTATE values and wording
+
+|`LNNVL(1)`
+|Handled by its BOOLEAN type conversion rules
+|Reports that no such function exists; no implicit cast
+|===
+
+To express a compound condition, follow the Oracle practice of splitting it
+into several LNNVL calls combined with `AND` or `OR`:
+
+[source,sql]
+----
+SELECT LNNVL(1 = 1) OR LNNVL(2 = 3);    -- expected: f
+SELECT LNNVL(1 = 1) AND LNNVL(2 = 3);   -- expected: f
+SELECT NOT LNNVL(1 = 1);                -- expected: t
+----
+
+Note that De Morgan's laws apply when splitting: `LNNVL(A AND B)` corresponds to
+`LNNVL(A) OR LNNVL(B)`; using `AND` changes the result.
+
+== Comparison with NOT
+
+[cols="1,2,2"]
+|===
+|Condition evaluates to |`NOT cond` |`LNNVL(cond)`
+
+|TRUE
+|FALSE
+|FALSE
+
+|FALSE
+|TRUE
+|TRUE
+
+|UNKNOWN
+|UNKNOWN (row dropped)
+|TRUE (row kept)
+|===
+
+The two treat "unknown" in opposite directions: `NOT` discards it, LNNVL keeps
+it. Strictly speaking the behaviour of `NOT` is correct under three-valued
+logic; what LNNVL does is make the assumption "unknown means the original
+condition is not satisfied" explicit, which is usually the intended result in
+practice.
+
+== Equivalent Formulations
+
+`LNNVL(cond)` is equivalent to the SQL standard predicate
+`cond IS NOT TRUE`. Where Oracle compatible syntax is not required, the latter
+can be used directly; the execution plans are identical.
+
+For the NOT IN with NULL case, the idiomatic PostgreSQL solution is
+`NOT EXISTS`:
+
+[source,sql]
+----
+SELECT count(*) FROM lnnvl_test t
+ WHERE NOT EXISTS (SELECT 1 FROM lnnvl_bl b WHERE b.d = t.id);
+----
+
+That form gives the same result as `LNNVL(id IN (...))` and is more portable.
+The advantage of LNNVL is the cost of rewriting: it wraps an existing condition
+in place, whereas `NOT EXISTS` requires restructuring the subquery into a
+correlated one.

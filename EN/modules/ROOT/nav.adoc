@@ -31,7 +31,8 @@
 ** xref:master/oracle_compatibility/compat_create_index_online.adoc[22、ONLINE Parameter for CREATE INDEX]
 ** xref:master/oracle_compatibility/compat_stragg.adoc[23、STRAGG function]
 ** xref:master/oracle_compatibility/compat_alter_index_unusable_en.adoc[24、Alter Index Unusable]
-** xref:master/oracle_compatibility/compat_dbtimezone_en.adoc[24、dbtimezone]
+** xref:master/oracle_compatibility/compat_dbtimezone_en.adoc[25、dbtimezone]
+** xref:master/oracle_compatibility/compat_lnnvl.adoc[26、LNNVL Function]
 * Containerization and Cloud Service
 ** Containerization
 *** xref:master/containerization/k8s_deployment.adoc[K8S deployment]
@@ -116,6 +117,7 @@
 *** xref:master/oracle_builtin_functions/rawtohex.adoc[rawtohex]
 *** xref:master/oracle_builtin_functions/stragg.adoc[stragg]
 *** xref:master/oracle_builtin_functions/dbtimezone_impl_en.adoc[dbtimezone]
+*** xref:master/oracle_builtin_functions/lnnvl.adoc[lnnvl]
 ** xref:master/gb18030.adoc[GB18030 Character Set]
 * Reference
 ** xref:master/tools_reference.adoc[Tool Reference]

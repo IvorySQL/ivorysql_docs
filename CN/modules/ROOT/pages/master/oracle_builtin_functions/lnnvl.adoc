@@ -1,0 +1,131 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= LNNVL 函数的实现
+
+== 目的
+
+IvorySQL 在 `contrib/ivorysql_ora` 扩展中新增 `sys.lnnvl(boolean)` 函数，
+实现与 Oracle 同名函数一致的条件取反行为：条件求值为 FALSE 或 UNKNOWN 时返回 TRUE，
+求值为 TRUE 时返回 FALSE。
+
+== 实现说明
+
+=== 语义等价于 IS NOT TRUE
+
+LNNVL 的真值表与 SQL 标准的 `IS NOT TRUE` 谓词逐格相同：
+
+[cols="1,1,1"]
+|===
+|条件求值结果 |`LNNVL(cond)` |`cond IS NOT TRUE`
+
+|TRUE
+|FALSE
+|FALSE
+
+|FALSE
+|TRUE
+|TRUE
+
+|UNKNOWN
+|TRUE
+|TRUE
+|===
+
+因此实现无需新增任何求值逻辑，函数体只是这一个谓词。
+PostgreSQL 中 `IS NOT TRUE` 的求值位于
+`src/backend/executor/execExprInterp.c` 的 `EEOP_BOOLTEST_IS_NOT_TRUE` 分支，
+入参为 NULL 时直接返回 true 并清除结果的 null 标记，
+因此 LNNVL 自身永不返回 NULL。
+
+=== SQL 定义
+
+函数定义位于
+`contrib/ivorysql_ora/src/builtin_functions/builtin_functions--1.0.sql`。
+
+[source,sql]
+----
+CREATE FUNCTION sys.lnnvl(pg_catalog.bool)
+RETURNS pg_catalog.bool
+AS $$SELECT $1 IS NOT TRUE$$
+LANGUAGE sql
+CALLED ON NULL INPUT
+PARALLEL SAFE
+IMMUTABLE;
+----
+
+各项属性的选择理由：
+
+[cols="1,1,3"]
+|===
+|属性 |取值 |理由
+
+|所在模式
+|`sys`
+|与其它 Oracle 兼容函数一致。`sys` 仅在 Oracle 兼容模式下进入隐式 `search_path`。
+
+|参数类型
+|`pg_catalog.bool`
+|显式限定模式，避免 Oracle 模式下 `sys` 位于 `search_path` 首位时类型名解析受影响。
+
+|语言
+|`sql`
+|可被 `inline_function()` 内联，见下节。C 函数不会被内联。
+
+|NULL 处理
+|`CALLED ON NULL INPUT`
+|必须项，见下节。
+
+|易变性
+|`IMMUTABLE`
+|纯逻辑运算，同一输入恒定输出；也是用于表达式索引等场景的前提。
+
+|并行性
+|`PARALLEL SAFE`
+|无副作用。若不声明，默认为 `PARALLEL UNSAFE`，会禁用相关查询的并行计划。
+|===
+
+=== CALLED ON NULL INPUT 是必须项
+
+`CALLED ON NULL INPUT` 是 SQL 的默认值，此处显式写出是为了防止被误改。
+
+若声明为 `STRICT`，入参为 NULL 时函数体根本不会执行，直接返回 NULL，
+而正确行为是返回 TRUE —— 恰好毁掉 LNNVL 存在的唯一理由，且不产生任何错误。
+风险来自代码风格的一致性压力：`builtin_functions--1.0.sql` 中多数邻近函数均声明为
+`STRICT`，按邻居样式统一即会踩中。
+
+`STRICT` 还会连带废掉内联。声明为严格意味着承诺"NULL 进则 NULL 出"，
+而 `IS NOT TRUE` 本身并非严格谓词，优化器无法在保持语义的前提下将其展开，
+只能保留函数调用：
+
+[source,text]
+----
+-- CALLED ON NULL INPUT
+Filter: (t.v IS NOT TRUE)
+
+-- STRICT
+Filter: f_strict(t.v)
+----
+
+因此误写为 `STRICT` 是双重损失：语义错误且静默，同时性能退化为逐行函数调用。
+
+=== 函数内联
+
+函数体是可内联的简单 SQL 表达式，优化器的 `inline_function()` 会将其折叠到调用处：
+
+[source,sql]
+----
+EXPLAIN (VERBOSE, COSTS OFF) SELECT id FROM t WHERE LNNVL(v >= 0.2);
+----
+
+[source,text]
+----
+ Seq Scan on public.t
+   Output: id
+   Filter: ((t.v >= 0.2) IS NOT TRUE)
+----
+
+计划中已不存在函数调用，与用户直接书写 `IS NOT TRUE` 的计划逐字相同，
+因此不引入额外运行期开销。

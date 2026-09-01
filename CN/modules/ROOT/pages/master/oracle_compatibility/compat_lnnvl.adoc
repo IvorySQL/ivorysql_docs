@@ -1,0 +1,253 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= LNNVL 函数
+
+== 目的
+
+本文档说明 IvorySQL 中 `sys.lnnvl` 函数的功能，该函数以兼容 Oracle 的方式
+对条件取反，并且在条件求值结果为 UNKNOWN 时仍然返回 TRUE。
+
+== 功能说明
+
+* `sys.lnnvl(boolean)` 接受一个条件，条件求值为 FALSE 或 UNKNOWN 时返回 TRUE，
+  求值为 TRUE 时返回 FALSE。
+* 函数**永不返回 NULL**，返回值必为 TRUE 或 FALSE 之一，
+  因此可以直接用作 WHERE 条件而不会引入新的 UNKNOWN。
+* 主要用途是消除三值逻辑造成的"行丢失"：直接书写 `NOT` 时，
+  条件为 UNKNOWN 的行在原条件和取反条件下都会被丢弃；
+  而条件与其 LNNVL 构成对整表的严格划分，两者的结果行数之和恒等于总行数。
+
+真值表：
+
+[cols="1,1"]
+|===
+|条件求值结果 |返回值
+
+|TRUE
+|FALSE
+
+|FALSE
+|TRUE
+
+|UNKNOWN（条件中含 NULL）
+|TRUE
+|===
+
+== 语法
+
+[source,sql]
+----
+sys.lnnvl(condition)
+----
+
+[cols="1,3"]
+|===
+|参数 |说明
+
+|`condition`
+|任意布尔表达式。不接受非布尔类型，且不存在从整型的隐式转换。
+|===
+
+返回类型：`boolean`
+
+== 测试用例
+
+=== 测试环境准备
+
+[source,sql]
+----
+CREATE TABLE lnnvl_test (a INT, b INT);
+INSERT INTO lnnvl_test VALUES (2, NULL);
+----
+
+=== 真值表验证
+
+[source,sql]
+----
+-- a = 2，b 为 NULL
+SELECT LNNVL(a = 1) FROM lnnvl_test;        -- 期望：t（条件为 FALSE）
+SELECT LNNVL(a = 2) FROM lnnvl_test;        -- 期望：f（条件为 TRUE）
+SELECT LNNVL(a IS NULL) FROM lnnvl_test;    -- 期望：t（条件为 FALSE）
+SELECT LNNVL(b = 1) FROM lnnvl_test;        -- 期望：t（条件为 UNKNOWN）
+SELECT LNNVL(b IS NULL) FROM lnnvl_test;    -- 期望：f（条件为 TRUE）
+SELECT LNNVL(a = b) FROM lnnvl_test;        -- 期望：t（条件为 UNKNOWN）
+----
+
+=== NULL 入参
+
+[source,sql]
+----
+-- NULL 入参必须返回 t，这是 LNNVL 的核心行为
+SELECT LNNVL(NULL);                         -- 期望：t
+SELECT LNNVL(NULL::boolean);                -- 期望：t
+----
+
+=== 划分性质
+
+[source,sql]
+----
+DROP TABLE lnnvl_test;
+CREATE TABLE lnnvl_test (id INT, v NUMERIC);
+INSERT INTO lnnvl_test VALUES (1,0.30),(2,0.10),(3,NULL),(4,0.25),(5,NULL);
+
+SELECT count(*) FROM lnnvl_test WHERE v >= 0.2;          -- 期望：2
+SELECT count(*) FROM lnnvl_test WHERE LNNVL(v >= 0.2);   -- 期望：3
+SELECT count(*) FROM lnnvl_test;                         -- 期望：5
+
+-- 2 + 3 = 5，条件与其 LNNVL 覆盖全表，无行丢失
+-- 若改用 NOT，两者之和会小于总行数
+SELECT count(*) FROM lnnvl_test WHERE NOT (v >= 0.2);    -- 期望：2，合计仅 4
+----
+
+=== NOT IN 遇含 NULL 的子查询
+
+[source,sql]
+----
+CREATE TABLE lnnvl_bl (d INT);
+INSERT INTO lnnvl_bl VALUES (1), (NULL);
+
+-- 黑名单含 NULL 时，NOT IN 返回空集
+SELECT count(*) FROM lnnvl_test WHERE id NOT IN (SELECT d FROM lnnvl_bl);
+-- 期望：0
+
+-- 改写为 LNNVL(... IN ...) 后得到符合直觉的结果
+SELECT count(*) FROM lnnvl_test WHERE LNNVL(id IN (SELECT d FROM lnnvl_bl));
+-- 期望：4
+----
+
+`id NOT IN (1, NULL)` 展开为 `id <> 1 AND id <> NULL`，
+其中 `id <> NULL` 恒为 UNKNOWN，导致整个条件不为 TRUE，因此所有行都被丢弃。
+`LNNVL(id IN (...))` 把 UNKNOWN 判定为"非真"从而保留这些行。
+
+=== 参数类型检查
+
+[source,sql]
+----
+-- 参数必须是布尔类型，不存在从整型的隐式转换
+SELECT LNNVL(1);
+-- 期望报错：function lnnvl(pg_catalog.int4) does not exist
+----
+
+=== 测试环境清理
+
+[source,sql]
+----
+DROP TABLE lnnvl_bl;
+DROP TABLE lnnvl_test;
+----
+
+== 与 Oracle 的行为差异
+
+Oracle 的语法只接受单个简单条件。IvorySQL 以普通函数实现，
+参数在重载决议时已经是一个布尔表达式，产生它的 `AND`、`OR`、`NOT`、`BETWEEN`
+对函数不可见，因此无法复现 Oracle 的形态限制，**接受的形态是 Oracle 的超集**。
+
+方向性结论：能在 Oracle 上运行的 LNNVL 写法在 IvorySQL 上一定能运行；
+反之不保证 —— 在 IvorySQL 上写通的复合条件形式搬回 Oracle 会报错。
+
+[cols="2,1,1"]
+|===
+|参数形态 |Oracle |IvorySQL
+
+|`LNNVL(1 = 1 AND 2 = 2)`
+|拒绝
+|接受，返回 f
+
+|`LNNVL(1 = 1 OR 2 = 2)`
+|拒绝
+|接受，返回 f
+
+|`LNNVL(1 BETWEEN 0 AND 5)`
+|拒绝
+|接受，返回 f
+
+|`LNNVL(1 NOT BETWEEN 0 AND 5)`
+|拒绝
+|接受，返回 t
+
+|`LNNVL(NOT (1 = 1))`
+|拒绝（ORA-00936）
+|接受，返回 t
+
+|`LNNVL(NOT EXISTS (SELECT ...))`
+|拒绝（ORA-00936）
+|接受，返回 t
+
+|`LNNVL(1 IN (1,2))`
+|拒绝（ORA-13207）
+|接受，返回 f
+
+|`LNNVL(1 NOT IN (1,2))`
+|拒绝（ORA-13207）
+|接受，返回 t
+|===
+
+其它差异：
+
+[cols="1,2,2"]
+|===
+|场景 |Oracle |IvorySQL
+
+|错误码与错误文本
+|`ORA-` 编号
+|PostgreSQL 的 SQLSTATE 与英文描述
+
+|`LNNVL(1)`
+|依据其 BOOLEAN 类型转换规则处理
+|报函数不存在，不做隐式转换
+|===
+
+需要表达复合条件时，按 Oracle 的做法拆成多个 LNNVL 调用再用 `AND` 或 `OR` 连接：
+
+[source,sql]
+----
+SELECT LNNVL(1 = 1) OR LNNVL(2 = 3);    -- 期望：f
+SELECT LNNVL(1 = 1) AND LNNVL(2 = 3);   -- 期望：f
+SELECT NOT LNNVL(1 = 1);                -- 期望：t
+----
+
+注意拆分时需遵循德摩根律：`LNNVL(A AND B)` 语义上对应
+`LNNVL(A) OR LNNVL(B)`，写成 `AND` 会改变结果。
+
+== 与 NOT 的比较
+
+[cols="1,2,2"]
+|===
+|条件求值结果 |`NOT cond` |`LNNVL(cond)`
+
+|TRUE
+|FALSE
+|FALSE
+
+|FALSE
+|TRUE
+|TRUE
+
+|UNKNOWN
+|UNKNOWN（行被丢弃）
+|TRUE（行被保留）
+|===
+
+两者对"不确定"的处理方向相反：`NOT` 丢弃，LNNVL 保留。
+严格而言，`NOT` 在三值逻辑下的行为是正确的；LNNVL 做的是把
+"未知视为不满足原条件"这一假设显式化，业务上通常这才是所需的结果。
+
+== 相关等价写法
+
+`LNNVL(cond)` 等价于 SQL 标准谓词 `cond IS NOT TRUE`。在不要求 Oracle
+兼容写法的场合可直接使用后者，两者的执行计划完全相同。
+
+对于 `NOT IN` 遇 NULL 的场景，PostgreSQL 的惯用解法是 `NOT EXISTS`：
+
+[source,sql]
+----
+SELECT count(*) FROM lnnvl_test t
+ WHERE NOT EXISTS (SELECT 1 FROM lnnvl_bl b WHERE b.d = t.id);
+----
+
+该写法与 `LNNVL(id IN (...))` 结果相同且更可移植；
+LNNVL 的优势在于改写成本 —— 它是就地包一层，
+而 `NOT EXISTS` 需要把子查询重构成相关子查询。

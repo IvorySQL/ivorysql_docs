@@ -32,6 +32,7 @@
 ** xref:master/oracle_compatibility/compat_stragg.adoc[23、STRAGG 函数]
 ** xref:master/oracle_compatibility/compat_alter_index_unusable.adoc[24、禁用索引]
 ** xref:master/oracle_compatibility/compat_dbtimezone.adoc[25、dbtimezone]
+** xref:master/oracle_compatibility/compat_lnnvl.adoc[26、LNNVL 函数]
 * 容器化与云服务
 ** 容器化指南
 *** xref:master/containerization/k8s_deployment.adoc[K8S部署]
@@ -116,6 +117,7 @@
 **** xref:master/oracle_builtin_functions/rawtohex.adoc[rawtohex]
 **** xref:master/oracle_builtin_functions/stragg.adoc[stragg]
 **** xref:master/oracle_builtin_functions/dbtimezone_impl.adoc[dbtimezone]
+**** xref:master/oracle_builtin_functions/lnnvl.adoc[lnnvl]
 *** xref:master/gb18030.adoc[国标GB18030]
 * 参考指南
 ** xref:master/tools_reference.adoc[工具参考]

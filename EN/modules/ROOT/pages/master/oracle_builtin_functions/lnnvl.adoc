@@ -1,0 +1,145 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= Implementation of the LNNVL Function
+
+== Purpose
+
+IvorySQL adds the `sys.lnnvl(boolean)` function in the `contrib/ivorysql_ora`
+extension, reproducing the behaviour of the Oracle function of the same name:
+it returns TRUE when the condition evaluates to FALSE or UNKNOWN, and FALSE
+when the condition evaluates to TRUE.
+
+== Implementation Notes
+
+=== Semantically Equivalent to IS NOT TRUE
+
+The truth table of LNNVL is cell-for-cell that of the SQL standard
+`IS NOT TRUE` predicate:
+
+[cols="1,1,1"]
+|===
+|Condition evaluates to |`LNNVL(cond)` |`cond IS NOT TRUE`
+
+|TRUE
+|FALSE
+|FALSE
+
+|FALSE
+|TRUE
+|TRUE
+
+|UNKNOWN
+|TRUE
+|TRUE
+|===
+
+No new evaluation logic is therefore required; the function body is just that
+predicate. In PostgreSQL, `IS NOT TRUE` is evaluated by the
+`EEOP_BOOLTEST_IS_NOT_TRUE` case in
+`src/backend/executor/execExprInterp.c`, which returns true and clears the
+result null flag when the argument is NULL. LNNVL consequently never returns
+NULL.
+
+=== SQL Definition
+
+The function is defined in
+`contrib/ivorysql_ora/src/builtin_functions/builtin_functions--1.0.sql`.
+
+[source,sql]
+----
+CREATE FUNCTION sys.lnnvl(pg_catalog.bool)
+RETURNS pg_catalog.bool
+AS $$SELECT $1 IS NOT TRUE$$
+LANGUAGE sql
+CALLED ON NULL INPUT
+PARALLEL SAFE
+IMMUTABLE;
+----
+
+Rationale for each property:
+
+[cols="1,1,3"]
+|===
+|Property |Value |Rationale
+
+|Schema
+|`sys`
+|Consistent with the other Oracle compatibility functions. `sys` enters the
+implicit `search_path` only in Oracle compatibility mode.
+
+|Argument type
+|`pg_catalog.bool`
+|Schema-qualified so that type name resolution is unaffected when `sys` is
+first in the `search_path` in Oracle mode.
+
+|Language
+|`sql`
+|Can be folded by `inline_function()`, see below. A C function would not be
+inlined.
+
+|NULL handling
+|`CALLED ON NULL INPUT`
+|Mandatory, see below.
+
+|Volatility
+|`IMMUTABLE`
+|Pure logic, same input always yields the same output; also a prerequisite for
+use in expression indexes.
+
+|Parallelism
+|`PARALLEL SAFE`
+|No side effects. Without this clause the default is `PARALLEL UNSAFE`, which
+disables parallel plans for any query using the function.
+|===
+
+=== CALLED ON NULL INPUT Is Mandatory
+
+`CALLED ON NULL INPUT` is the SQL default; it is spelled out here to keep it
+from being changed by mistake.
+
+Declared `STRICT`, the body would not run at all for a NULL argument and the
+result would be NULL rather than true, which removes the only reason the
+function exists, and it would do so silently. The risk comes from the pull
+towards stylistic consistency: most neighbouring functions in
+`builtin_functions--1.0.sql` are declared `STRICT`, so tidying this one to
+match its neighbours introduces the bug.
+
+`STRICT` also defeats inlining. Declaring a function strict promises that NULL
+in yields NULL out, while `IS NOT TRUE` is not itself a strict predicate, so
+the planner cannot expand it while preserving semantics and has to keep the
+function call:
+
+[source,text]
+----
+-- CALLED ON NULL INPUT
+Filter: (t.v IS NOT TRUE)
+
+-- STRICT
+Filter: f_strict(t.v)
+----
+
+Writing `STRICT` here therefore costs twice: the semantics are wrong and
+silently so, and performance degrades to a per-row function call.
+
+=== Function Inlining
+
+The body is a simple, inlinable SQL expression, so `inline_function()` folds
+it into the caller:
+
+[source,sql]
+----
+EXPLAIN (VERBOSE, COSTS OFF) SELECT id FROM t WHERE LNNVL(v >= 0.2);
+----
+
+[source,text]
+----
+ Seq Scan on public.t
+   Output: id
+   Filter: ((t.v >= 0.2) IS NOT TRUE)
+----
+
+No function call remains in the plan, which is identical to the plan for
+writing `IS NOT TRUE` by hand, so there is no additional runtime cost.
