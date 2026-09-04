@@ -42,7 +42,7 @@ IvorySQL, as an advanced open-source database compatible with Oracle and based o
 |*28*| xref:master/ecosystem_components/zhparser_en.adoc[zhparser] | master branch | PostgreSQL extension for full-text search of Chinese language (Mandarin Chinese). It implements a Chinese language parser base on the | Search engine、keyword extraction
 |*29*| xref:master/ecosystem_components/pgbackrest.adoc[pgBackRest] | 2.58.0 | pgBackRest is a reliable backup and restore solution for PostgreSQL that seamlessly scales up to the largest databases and workloads | Disaster recovery backup, large database backup, off-site/multi-tier disaster recovery
 | *30* | xref:master/ecosystem_components/set_user.adoc[set_user] | REL4_2_0 | PostgreSQL security auditing extension with controlled role switching, supporting allowlists, enforced auditing, and blocking of high-risk operations | Controlled role switching, privilege management, audit logging
-| *31* | xref:master/ecosystem_components/pg_tokenizer.adoc[pg_tokenizer] | 0.1.1 | Configurable in-database text analyzers and tokenizers with multilingual processing and trigger-based token generation | Full-text search, RAG preprocessing, multilingual tokenization
+|*31*| xref:master/ecosystem_components/pg_tokenizer.adoc[pg_tokenizer] | 0.1.1 | Configurable in-database text analyzers and tokenizers with multilingual processing and trigger-based token generation | Full-text search, RAG preprocessing, multilingual tokenization
 |====
 
 These plugins have all been tested and adapted by the IvorySQL team to ensure stable operation in the IvorySQL environment. Users can select appropriate plugins based on business needs to further enhance the capabilities and flexibility of the database system.
