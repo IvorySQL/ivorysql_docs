@@ -39,7 +39,9 @@ git clone https://github.com/EnterpriseDB/mysql_fdw.git
 cd mysql_fdw
 git checkout REL-2_9_3
 
-export PG_CONFIG=/usr/local/ivorysql/bin/pg_config
+# 请按实际安装位置修改，下面是 RPM 安装的默认路径。
+export IVORYSQL_HOME=/usr/ivory-5
+export PG_CONFIG="$IVORYSQL_HOME/bin/pg_config"
 make USE_PGXS=1 PG_CONFIG="$PG_CONFIG"
 sudo make USE_PGXS=1 PG_CONFIG="$PG_CONFIG" install
 ----
