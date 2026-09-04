@@ -1,0 +1,154 @@
+:sectnums:
+:sectnumlevels: 5
+
+= pg_tokenizer
+
+== 概述
+
+pg_tokenizer 是基于 Rust 开发的 PostgreSQL 扩展，在数据库内提供可配置的分词器和文本分析器。处理流水线可以组合预分词器、字符过滤器、词元过滤器和模型，还可通过表触发器自动生成词元数组。
+
+项目地址：<https://github.com/tensorchord/pg_tokenizer>
+
+测试版本：0.1.1
+
+许可证：Apache-2.0
+
+== 兼容性
+
+pg_tokenizer 0.1.1 已在官方 IvorySQL 5.4 x86_64 Linux 镜像（PostgreSQL 18.4）中完成源码编译和验证。测试覆盖中文 Jieba 分词、英文词元处理、自定义模型触发器、扩展生命周期，以及 IvorySQL 两种兼容模式。
+
+== 编译和安装
+
+安装 Rust、Clang、CMake 和 IvorySQL 开发文件。pg_tokenizer 0.1.1 使用 pgrx 0.16.1。
+
+[source,bash]
+----
+git clone https://github.com/tensorchord/pg_tokenizer.git
+cd pg_tokenizer
+git checkout 0.1.1
+
+rustup default stable
+cargo install cargo-pgrx --version 0.16.1 --locked
+cargo pgrx init --pg18=/usr/ivory-5/bin/pg_config
+
+cargo build --lib --release --features pg18
+cargo pgrx schema --features pg18 --out target/schema.sql
+sed 's/@CARGO_VERSION@/0.1.1/g' pg_tokenizer.control \
+  > target/pg_tokenizer.control
+
+sudo install -m 755 target/release/libpg_tokenizer.so \
+  "$(/usr/ivory-5/bin/pg_config --pkglibdir)/pg_tokenizer.so"
+sudo install -m 644 target/pg_tokenizer.control \
+  "$(/usr/ivory-5/bin/pg_config --sharedir)/extension/pg_tokenizer.control"
+sudo install -m 644 target/schema.sql \
+  "$(/usr/ivory-5/bin/pg_config --sharedir)/extension/pg_tokenizer--0.1.1.sql"
+----
+
+[NOTE]
+0.1.1 标签的控制文件仍包含包版本占位符。请按上面的命令替换，使 `CREATE EXTENSION` 正确安装 0.1.1 版本。
+
+在已有预加载列表中加入 pg_tokenizer，然后重启 IvorySQL：
+
+[source,ini]
+----
+shared_preload_libraries = 'gb18030_2022,liboracle_parser,ivorysql_ora,pg_tokenizer'
+----
+
+[source,sql]
+----
+CREATE EXTENSION pg_tokenizer CASCADE;
+SELECT extversion FROM pg_extension WHERE extname = 'pg_tokenizer';
+----
+
+== 文本分析
+
+创建 Jieba 搜索模式分析器并处理中文文本：
+
+[source,sql]
+----
+SET search_path TO "$user", public, tokenizer_catalog;
+
+SELECT create_text_analyzer('jieba_search', $$
+[pre_tokenizer.jieba]
+mode = "search"
+$$);
+
+SELECT apply_text_analyzer('我们中出了一个叛徒', 'jieba_search');
+-- {我们,中出,了,一个,叛徒}
+----
+
+分词器可以组合模型和过滤器：
+
+[source,sql]
+----
+SELECT create_tokenizer('english_stem', $$
+model = "bert_base_uncased"
+pre_tokenizer.regex = '(?u)\b\w\w+\b'
+[[character_filters]]
+to_lowercase = {}
+[[token_filters]]
+stopwords = "nltk_english"
+[[token_filters]]
+stemmer = "english_porter2"
+$$);
+
+SELECT tokenize(
+  'PostgreSQL is a powerful open-source database system.',
+  'english_stem'
+);
+----
+
+== 使用触发器自动分词
+
+[source,sql]
+----
+CREATE TABLE tokenizer_documents (
+  id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  passage text NOT NULL,
+  embedding integer[]
+);
+
+SELECT create_custom_model_tokenizer_and_trigger(
+  tokenizer_name => 'document_tokenizer',
+  model_name => 'document_model',
+  text_analyzer_name => 'jieba_search',
+  table_name => 'tokenizer_documents',
+  source_column => 'passage',
+  target_column => 'embedding'
+);
+
+INSERT INTO tokenizer_documents (passage)
+VALUES ('IvorySQL 支持 PostgreSQL 和 Oracle 双模式。');
+
+SELECT id, cardinality(embedding) > 0 AS tokens_created
+FROM tokenizer_documents;
+----
+
+== Oracle 兼容模式
+
+文本分析器和分词器可以直接在 Oracle 模式中使用。自定义模型触发器生成的 SQL 会访问小写内部目录对象，因此需使用普通标识符折叠规则：
+
+[source,sql]
+----
+SET ivorysql.compatible_mode = oracle;
+SET ivorysql.identifier_case_switch = normal;
+
+SELECT 1 FROM dual;
+SELECT apply_text_analyzer('南京市长江大桥', 'jieba_search');
+
+INSERT INTO tokenizer_documents (passage)
+VALUES ('中文分词在 Oracle 兼容模式下正常工作。');
+
+SELECT id, cardinality(embedding) > 0 AS tokens_created
+FROM tokenizer_documents ORDER BY id;
+----
+
+[IMPORTANT]
+使用 Oracle 模式默认的 `ivorysql.identifier_case_switch = interchange` 时，自定义模型触发器可能报错：`relation "tokenizer_catalog.MODEL_DOCUMENT_MODEL" does not exist`。创建或调用这类触发器的会话应把该参数设为 `normal`。
+
+== 运维说明
+
+* 必须把 pg_tokenizer 加入 `shared_preload_libraries`，修改后需要重启数据库。
+* 多语言文本建议使用 UTF-8 数据库编码。
+* 源码构建会下载并编译 Rust 依赖，耗时和内存占用高于普通 PGXS 扩展。
+* 上线前应使用有代表性的业务文本验证具体的分析器和模型配置。
