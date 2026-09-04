@@ -51,7 +51,7 @@ Add pg_tokenizer to the existing preload list and restart IvorySQL:
 
 [source,ini]
 ----
-shared_preload_libraries = 'gb18030_2022,liboracle_parser,ivorysql_ora,pg_tokenizer'
+shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_tokenizer'
 ----
 
 [source,sql]

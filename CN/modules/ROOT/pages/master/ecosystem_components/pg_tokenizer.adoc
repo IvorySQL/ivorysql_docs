@@ -51,7 +51,7 @@ sudo install -m 644 target/schema.sql \
 
 [source,ini]
 ----
-shared_preload_libraries = 'gb18030_2022,liboracle_parser,ivorysql_ora,pg_tokenizer'
+shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_tokenizer'
 ----
 
 [source,sql]
