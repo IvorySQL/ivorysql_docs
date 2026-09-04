@@ -1,0 +1,103 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+
+= **功能概述**
+
+IvorySQL提供兼容Oracle内置函数 ```VSIZE('parameter')``` ，用于返回参数在内部存储表示中所占用的字节数，
+即返回参数的“存储大小”。对于字符类型数据，返回其字节长度（不含变长头）；对于定长类型（如 NUMBER、
+BOOLEAN、DATE、TIMESTAMP 等），返回该类型的存储宽度；参数为 NULL 时返回 NULL。
+
+== 实现原理
+
+VSIZE 需要接受任意数据类型的入参（字符、数值、布尔、日期时间等），并根据其存储方式（变长 varlena 类型
+或定长类型）分别计算字节数，这类与具体类型存储细节相关的逻辑无法用简单的 SQL 包装实现，因此本次开发
+使用 C 语言编写扩展函数 `ora_vsize`，注册为：
+
+```
+sys.vsize(anycompatible) RETURNS int4
+```
+
+使用 `anycompatible` 伪类型作为参数类型，使得该函数可以接受任意数据类型的入参，未显式指定类型的字符串
+字面量（如 `'abc'`）会按照 PostgreSQL 的默认规则解析为 text 类型，与 Oracle 中 `VSIZE('abc')` 的行为一致。
+函数声明为 `STRICT`，因此入参为 NULL 时直接返回 NULL，无需在函数体中额外处理。
+
+函数实现位于 `contrib/ivorysql_ora/src/builtin_functions/misc_functions.c` 中的 `ora_vsize`：
+
+* 首次调用时，通过 `get_fn_expr_argtype()` 取得实参的真实类型 OID，并调用 `get_typlen()` 获取该类型的
+  `typlen`（存储长度），缓存到 `fcinfo->flinfo->fn_extra`，避免同一查询中重复查目录；后续调用直接从
+  `fn_extra` 中读取缓存值。
+* `typlen == -1`：表示变长（varlena）类型，如 text、varchar2、numeric 等。此时调用
+  `toast_raw_datum_size()` 获取该值的逻辑（解压缩后）大小 —— 该函数会统一处理 1 字节/4 字节头、压缩存储
+  以及 TOAST 外部存储等各种情况，返回值统一按 4 字节头换算，因此再减去 `VARHDRSZ` 即可得到不含头部的
+  有效数据字节数。这与 `octet_length()` 计算字节长度所采用的方式一致，因此 `VSIZE('abc') = LENGTHB('abc')`。
+* `typlen == -2`：表示 cstring 类型，返回其字符串长度加 1（含结尾 `\0`）。
+* 其余情况：为定长类型，直接返回该类型的 `typlen` 作为存储宽度（例如 int4 为 4，int8/float8/date/
+  timestamp/timestamptz 均为 8，boolean 为 1）。
+
+具体函数注册在 `builtin_functions--1.0.sql` 中完成：
+```sql
+/* VSIZE */
+/*
+ * VSIZE: Oracle-compatible function returning the number of bytes in the
+ * internal representation of the argument.  Returns NULL for NULL input.
+ * For varlena types the logical (decompressed) data size, excluding the
+ * varlena header, is returned; for fixed-width types the storage width is
+ * returned.
+ *
+ * The anycompatible pseudo-type accepts a value of any data type, and an
+ * untyped string literal is resolved to text, so VSIZE('abc') works just
+ * like in Oracle.
+ */
+CREATE FUNCTION sys.vsize(anycompatible)
+RETURNS int4
+AS 'MODULE_PATHNAME', 'ora_vsize'
+LANGUAGE C
+STRICT
+IMMUTABLE;
+/* End - VSIZE */
+```
+
+== VSIZE 典型用例
+[cols="8,2"]
+|====
+|*用例语句*|*返回值*
+|SELECT vsize('abc'); | 3
+|SELECT vsize(CAST('abc' AS VARCHAR2)); | 3
+|SELECT vsize('abc'::varchar); | 3
+|SELECT vsize('abc'::char(10)); | 10
+|SELECT vsize('你好'::text); | 6
+|SELECT vsize(0::number); | 2
+|SELECT vsize(1::number); | 4
+|SELECT vsize(123::number); | 4
+|SELECT vsize(1.23::number); | 6
+|SELECT vsize(123::int4); | 4
+|SELECT vsize(123::int8); | 8
+|SELECT vsize(1.23::float8); | 8
+|SELECT vsize('NaN'::float8); | 8
+|SELECT vsize(true); | 1
+|SELECT vsize('2024-01-01'::date); | 8
+|SELECT vsize('2024-01-01 10:00:00'::timestamp); | 8
+|SELECT vsize('2024-01-01 10:00:00+08'::timestamptz); | 8
+|SELECT vsize(NULL::text); | NULL
+|SELECT vsize(repeat('a', 100000)); | 100000
+|====
+
+对于同一字符串，`VSIZE` 与 `LENGTHB` 的结果一致：
+```
+SELECT vsize('abc') = lengthb('abc') AS same_as_lengthb;
+ same_as_lengthb
+-----------------
+ t
+```
+
+即使数据经过压缩存储或 TOAST 到行外，`VSIZE` 仍然返回其未压缩的逻辑字节数：
+```
+CREATE TABLE vsize_big(a text);
+INSERT INTO vsize_big SELECT repeat('b', 200000) FROM generate_series(1, 10);
+SELECT bool_and(vsize(a) = lengthb(a)) AS toasted_matches_lengthb, min(vsize(a)) AS min_size FROM vsize_big;
+ toasted_matches_lengthb | min_size
+-------------------------+----------
+ t                       |   200000
+```
