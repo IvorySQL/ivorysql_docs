@@ -1,0 +1,130 @@
+:sectnums:
+:sectnumlevels: 5
+
+= mysql_fdw
+
+== 概述
+
+mysql_fdw 是用于 MySQL 的 PostgreSQL 外部数据包装器。它让 IvorySQL 可以通过 SQL 查询和修改 MySQL 表，支持 `IMPORT FOREIGN SCHEMA`，并可将过滤、投影、连接、聚合、排序和 LIMIT 下推到远端执行。
+
+项目地址：<https://github.com/EnterpriseDB/mysql_fdw>
+
+测试版本：2.9.3
+
+许可证：PostgreSQL License
+
+== 兼容性
+
+已在 x86_64 Linux 上验证以下组合：
+
+[cols="1,1"]
+|===
+| 组件 | 版本
+| IvorySQL | 当前 `IVORY_REL_5_STABLE`（IvorySQL 5.6 / PostgreSQL 18.6）
+| mysql_fdw | 2.9.3
+| MySQL Server | 8.4
+| MariaDB Connector/C | 3.1
+|===
+
+[IMPORTANT]
+mysql_fdw 2.9.3 依赖 IvorySQL PR #1448 恢复的 PostgreSQL 扩展 API。已发布的 IvorySQL 5.4 镜像早于该修复，编译该版本时会出现 `ExecTypeFromTL` 参数数量错误。请使用包含此修复的当前 `IVORY_REL_5_STABLE` 构建或更新版本的 IvorySQL。
+
+== 安装
+
+先安装 C 编译器、GNU make，以及 MySQL 或 MariaDB 客户端开发包，再显式指定目标 IvorySQL 进行编译：
+
+[source,bash]
+----
+git clone https://github.com/EnterpriseDB/mysql_fdw.git
+cd mysql_fdw
+git checkout REL-2_9_3
+
+export PG_CONFIG=/usr/local/ivorysql/bin/pg_config
+make USE_PGXS=1 PG_CONFIG="$PG_CONFIG"
+sudo make USE_PGXS=1 PG_CONFIG="$PG_CONFIG" install
+----
+
+编译前用 `pg_config --version` 确认它指向 IvorySQL。该扩展不需要预加载或重启数据库。
+
+== 准备 MySQL
+
+[source,sql]
+----
+CREATE DATABASE fdw_test CHARACTER SET utf8mb4;
+CREATE USER 'fdw_user'@'%' IDENTIFIED BY 'fdw_pass';
+GRANT ALL PRIVILEGES ON fdw_test.* TO 'fdw_user'@'%';
+
+CREATE TABLE fdw_test.products (
+    id integer PRIMARY KEY,
+    name varchar(100),
+    price decimal(10,2),
+    note varchar(100)
+);
+INSERT INTO fdw_test.products VALUES
+    (1, 'IvorySQL', 99.50, '中文'),
+    (2, 'MySQL', 49.00, NULL);
+----
+
+== 配置和使用
+
+[source,sql]
+----
+CREATE EXTENSION mysql_fdw;
+
+CREATE SERVER mysql_server
+  FOREIGN DATA WRAPPER mysql_fdw
+  OPTIONS (host '127.0.0.1', port '3306', character_set 'utf8mb4');
+
+CREATE USER MAPPING FOR CURRENT_USER
+  SERVER mysql_server
+  OPTIONS (username 'fdw_user', password 'fdw_pass');
+
+CREATE SCHEMA mysql_remote;
+IMPORT FOREIGN SCHEMA fdw_test
+  FROM SERVER mysql_server INTO mysql_remote;
+
+SELECT * FROM mysql_remote.products ORDER BY id;
+INSERT INTO mysql_remote.products VALUES (3, 'FDW', 10.00, 'insert');
+UPDATE mysql_remote.products SET price = 11.00 WHERE id = 3;
+DELETE FROM mysql_remote.products WHERE id = 3;
+----
+
+远端数据库保存 UTF-8 文本时应设置 `character_set 'utf8mb4'`，否则非 ASCII 数据可能被错误解码。
+
+可用 `EXPLAIN VERBOSE` 检查下推，`Remote query` 字段会显示 mysql_fdw 能在远端执行的操作：
+
+[source,sql]
+----
+EXPLAIN (VERBOSE, COSTS OFF)
+SELECT name, price
+FROM mysql_remote.products
+WHERE price > 40
+ORDER BY price DESC
+LIMIT 1;
+----
+
+== 双模式验证
+
+同一组外表可在 IvorySQL 两种模式中使用：
+
+[source,sql]
+----
+SET ivorysql.compatible_mode = pg;
+SELECT * FROM mysql_remote.products ORDER BY id;
+
+SET ivorysql.compatible_mode = oracle;
+SELECT 1 FROM dual;
+SELECT * FROM mysql_remote.products ORDER BY id;
+INSERT INTO mysql_remote.products VALUES (4, 'Oracle mode', 20.00, NULL);
+UPDATE mysql_remote.products SET price = 21.00 WHERE id = 4;
+DELETE FROM mysql_remote.products WHERE id = 4;
+----
+
+验证覆盖扩展创建、导入模式、UTF-8 和 NULL 值、增删改查，以及两种模式下的过滤、投影、排序和 LIMIT 下推。mysql_fdw 的九组上游回归测试也全部通过：`server_options`、`connection_validation`、`dml`、`select`、`pushdown`、`join_pushdown`、`aggregate_pushdown`、`limit_offset_pushdown` 和 `misc`。
+
+== 故障排查
+
+* `too few arguments to function 'ExecTypeFromTL'`：IvorySQL 安装版本早于上述扩展 API 兼容性修复。
+* `Can't connect to MySQL server`：检查主机、端口、防火墙，以及 MySQL 账户是否允许 IvorySQL 所在主机连接。
+* 文本乱码：设置服务端选项 `character_set 'utf8mb4'`，并检查远端数据库字符集。
+* 生产环境不要在共享脚本中保存密码，并限制用户映射的访问权限。
