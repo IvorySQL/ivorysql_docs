@@ -1,0 +1,107 @@
+:sectnums:
+:sectnumlevels: 5
+
+= timescaledb_toolkit
+
+== Overview
+
+TimescaleDB Toolkit provides PostgreSQL aggregate functions for statistical analysis, approximate percentiles, distinct counting, counters, and time-weighted calculations. Toolkit can run on plain PostgreSQL-compatible databases; TimescaleDB is optional for the examples in this guide.
+
+This guide was validated on x86_64 Linux with IvorySQL 5.4 (PostgreSQL 18.4), TimescaleDB Toolkit 1.26.0, Rust 1.98.1, and `cargo-pgrx` 0.18.1. The Toolkit Rust workspace tests passed, the release extension built without source changes, and representative hyperfunctions passed in PostgreSQL and Oracle-compatible sessions.
+
+== Prerequisites
+
+Install the C build toolchain, Rust, and the development files for the same IvorySQL installation that will load the extension. Toolkit 1.26.0 requires Rust 1.96 or later.
+
+[source,bash]
+----
+cargo install cargo-pgrx --version 0.18.1 --locked
+cargo pgrx init --pg18 /path-to/ivorysql/bin/pg_config
+----
+
+== Build and install
+
+[source,bash]
+----
+git clone --branch 1.26.0 --depth 1 \
+  https://github.com/timescale/timescaledb-toolkit.git
+cd timescaledb-toolkit
+
+./tools/build \
+  -pg18 \
+  -pgconfig /path-to/ivorysql/bin/pg_config \
+  -profile release \
+  install
+----
+
+Run the upstream tests before deployment:
+
+[source,bash]
+----
+cargo test --workspace --exclude timescaledb_toolkit
+----
+
+== Create the extension
+
+Connect through the IvorySQL PostgreSQL-compatible port and create the extension in each target database:
+
+[source,sql]
+----
+CREATE EXTENSION timescaledb_toolkit;
+SELECT extversion
+FROM pg_extension
+WHERE extname = 'timescaledb_toolkit';
+----
+
+== Functional validation
+
+[source,sql]
+----
+CREATE TABLE metrics (
+    ts timestamptz NOT NULL,
+    device text NOT NULL,
+    value double precision NOT NULL
+);
+
+INSERT INTO metrics VALUES
+  ('2026-01-01 00:00:00+00', 'sensor-a', 10),
+  ('2026-01-01 00:01:00+00', 'sensor-a', 20),
+  ('2026-01-01 00:02:00+00', 'sensor-b', 30),
+  ('2026-01-01 00:03:00+00', 'sensor-c', 40);
+
+SELECT round(average(stats_agg(value))::numeric, 2) AS average_value,
+       round(approx_percentile(0.5, percentile_agg(value))::numeric, 2)
+         AS approximate_median
+FROM metrics;
+
+SELECT distinct_count(hyperloglog(32, device)) AS approximate_devices
+FROM metrics;
+
+SELECT round(delta(counter_agg(ts, value))::numeric, 2) AS counter_delta,
+       round(average(time_weight('Linear', ts, value))::numeric, 2)
+         AS time_weighted_average
+FROM metrics;
+----
+
+The validated results are an average of `25.00`, an approximate median of `29.99`, three distinct devices, a counter delta of `30.00`, and a time-weighted average of `25.00`.
+
+== Oracle-compatible mode
+
+After creating the extension through the PostgreSQL-compatible port, the tested functions can be used in an Oracle-compatible session:
+
+[source,sql]
+----
+SET ivorysql.compatible_mode = oracle;
+SELECT 1 FROM dual;
+
+SELECT round(average(stats_agg(value))::numeric, 2) AS oracle_average,
+       distinct_count(hyperloglog(32, device)) AS oracle_devices
+FROM metrics;
+----
+
+[IMPORTANT]
+====
+With IvorySQL 5.4, running `CREATE EXTENSION timescaledb_toolkit` directly through an Oracle-compatible connection fails because the upstream installation script uses PostgreSQL syntax. Create the extension through the PostgreSQL-compatible port first. This limitation does not prevent the validated Toolkit functions from being called after switching a session to Oracle-compatible mode.
+====
+
+Toolkit does not provide hypertables or background jobs. Install TimescaleDB separately if those features are required. See https://github.com/timescale/timescaledb-toolkit[the upstream project] for the complete function reference.
