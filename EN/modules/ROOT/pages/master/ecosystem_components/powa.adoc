@@ -1,0 +1,100 @@
+:sectnums:
+:sectnumlevels: 5
+
+= PoWA
+
+== Overview
+
+PoWA (PostgreSQL Workload Analyzer) collects workload statistics and presents them through a web interface. A complete deployment can contain:
+
+* `powa-archivist`, the database extension that stores and aggregates metrics;
+* `powa-web`, the visualization interface;
+* `powa-collector`, the optional daemon used to collect multiple remote servers.
+
+`pg_stat_statements` is the mandatory primary data source. Other statistics extensions are optional.
+
+This guide was validated on x86_64 Linux with IvorySQL 5.4 (PostgreSQL 18.4) and PoWA Archivist 5.3.0. The extension built without source changes, and all eight upstream PostgreSQL regression tests passed.
+
+== Choose a deployment mode
+
+In *local mode*, PoWA's background worker collects and stores metrics in the monitored IvorySQL instance. This is simple for evaluation, but collection, storage, and visualization queries add load to that instance.
+
+In *remote mode*, `powa-collector` reads statistics from monitored instances and writes them to a dedicated repository. This is the recommended production architecture because it moves storage and visualization overhead away from monitored databases and can monitor read-only standbys.
+
+== Build PoWA Archivist
+
+Install the IvorySQL server development files, then build against the matching `pg_config`:
+
+[source,bash]
+----
+git clone --branch REL_5_3_0 --depth 1 \
+  https://github.com/powa-team/powa-archivist.git
+cd powa-archivist
+
+make PG_CONFIG=/path-to/ivorysql/bin/pg_config
+sudo make PG_CONFIG=/path-to/ivorysql/bin/pg_config install
+----
+
+Run the upstream regression suite against a test instance:
+
+[source,bash]
+----
+PGUSER=ivorysql PGPORT=5432 \
+  make PG_CONFIG=/path-to/ivorysql/bin/pg_config installcheck
+----
+
+== Configure local mode
+
+Append `pg_stat_statements` and `powa` to the existing `shared_preload_libraries` value in `ivorysql.conf`. Preserve the IvorySQL libraries already configured:
+
+[source,conf]
+----
+shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_stat_statements, powa'
+track_io_timing = on
+----
+
+Restart IvorySQL, create a dedicated database, and install the required extensions through the PostgreSQL-compatible port:
+
+[source,bash]
+----
+pg_ctl restart -D /path-to/data
+createdb -p 5432 powa
+psql -p 5432 -d powa
+----
+
+[source,sql]
+----
+CREATE EXTENSION pg_stat_statements;
+CREATE EXTENSION btree_gist;
+CREATE EXTENSION powa;
+----
+
+Generate a small workload and confirm that a snapshot captures statements:
+
+[source,sql]
+----
+SELECT sum(i) FROM generate_series(1, 100) AS g(i);
+SELECT powa_take_snapshot();
+
+SELECT count(*) > 0 AS captured_statements
+FROM powa_statements_history_current;
+----
+
+Install and configure `powa-web` with a PostgreSQL DSN pointing to the `powa` database to view dashboards. Place the web service behind an authenticated TLS reverse proxy in production.
+
+== Remote mode
+
+For production or multiple monitored instances, install PoWA Archivist in a dedicated repository and run `powa-collector`. Each monitored IvorySQL instance still needs `pg_stat_statements` loaded and created. Register monitored servers with PoWA's remote-server API, then configure the collector with the repository DSN.
+
+Avoid storing plaintext passwords in `powa_servers`. Prefer a supported libpq authentication method such as certificates or a protected password file. Use a monitoring role with `pg_read_all_stats` instead of a superuser where possible.
+
+== Oracle-compatible mode
+
+[IMPORTANT]
+====
+Install and operate PoWA's collection path through the PostgreSQL-compatible port. On IvorySQL 5.4, creating the prerequisites directly through the Oracle-compatible port fails because their upstream installation scripts use PostgreSQL syntax. Calling `powa_take_snapshot()` after switching an interactive session to Oracle mode can also encounter identifier-folding differences. These limitations do not affect PostgreSQL-mode background collection or a PoWA Web connection using the PostgreSQL port.
+====
+
+An Oracle-compatible session can still query workload tables with explicitly quoted schema and object names when required, but administrative setup and snapshot operations should remain in PostgreSQL mode.
+
+See the https://powa.readthedocs.io/en/latest/architecture.html[PoWA architecture documentation] for local and remote designs, and the https://powa.readthedocs.io/en/latest/security.html[PoWA security guidance] before production deployment.

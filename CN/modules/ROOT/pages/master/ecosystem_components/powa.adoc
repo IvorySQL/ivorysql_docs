@@ -1,0 +1,100 @@
+:sectnums:
+:sectnumlevels: 5
+
+= PoWA
+
+== 概述
+
+PoWA（PostgreSQL Workload Analyzer）用于采集数据库工作负载统计，并通过 Web 界面展示。完整部署可以包含：
+
+* `powa-archivist`：在数据库中存储和聚合指标的扩展；
+* `powa-web`：可视化界面；
+* `powa-collector`：从多个远程服务器采集指标的可选守护进程。
+
+`pg_stat_statements` 是必需的主要数据源，其他统计扩展均为可选项。
+
+本文在 x86_64 Linux 上使用 IvorySQL 5.4（PostgreSQL 18.4）和 PoWA Archivist 5.3.0 完成验证。扩展无需修改源码即可编译，8 项上游 PostgreSQL 回归测试全部通过。
+
+== 选择部署模式
+
+*本地模式*由 PoWA 后台工作进程在被监控的 IvorySQL 实例中采集并存储指标，适合快速评估，但采集、存储和可视化查询都会增加该实例的负载。
+
+*远程模式*由 `powa-collector` 从被监控实例读取统计信息并写入专用仓库。生产环境推荐该架构，因为它可把存储和可视化开销移出业务数据库，并支持监控只读备库。
+
+== 编译 PoWA Archivist
+
+安装 IvorySQL 服务端开发文件，然后使用相匹配的 `pg_config` 编译：
+
+[source,bash]
+----
+git clone --branch REL_5_3_0 --depth 1 \
+  https://github.com/powa-team/powa-archivist.git
+cd powa-archivist
+
+make PG_CONFIG=/path-to/ivorysql/bin/pg_config
+sudo make PG_CONFIG=/path-to/ivorysql/bin/pg_config install
+----
+
+在测试实例上运行上游回归测试：
+
+[source,bash]
+----
+PGUSER=ivorysql PGPORT=5432 \
+  make PG_CONFIG=/path-to/ivorysql/bin/pg_config installcheck
+----
+
+== 配置本地模式
+
+在 `ivorysql.conf` 中保留已有 IvorySQL 库，并把 `pg_stat_statements` 和 `powa` 追加到 `shared_preload_libraries`：
+
+[source,conf]
+----
+shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_stat_statements, powa'
+track_io_timing = on
+----
+
+重启 IvorySQL，创建专用数据库，并通过 PostgreSQL 兼容端口安装依赖扩展：
+
+[source,bash]
+----
+pg_ctl restart -D /path-to/data
+createdb -p 5432 powa
+psql -p 5432 -d powa
+----
+
+[source,sql]
+----
+CREATE EXTENSION pg_stat_statements;
+CREATE EXTENSION btree_gist;
+CREATE EXTENSION powa;
+----
+
+生成少量负载并确认快照捕获了语句：
+
+[source,sql]
+----
+SELECT sum(i) FROM generate_series(1, 100) AS g(i);
+SELECT powa_take_snapshot();
+
+SELECT count(*) > 0 AS captured_statements
+FROM powa_statements_history_current;
+----
+
+安装并配置 `powa-web`，使用指向 `powa` 数据库的 PostgreSQL DSN 查看仪表盘。生产环境应把 Web 服务放在启用身份认证和 TLS 的反向代理之后。
+
+== 远程模式
+
+生产环境或需要监控多个实例时，应在专用仓库中安装 PoWA Archivist 并运行 `powa-collector`。每个被监控的 IvorySQL 实例仍需加载并创建 `pg_stat_statements`。使用 PoWA 远程服务器 API 注册实例，再为 collector 配置仓库 DSN。
+
+不要在 `powa_servers` 中保存明文密码。优先使用证书或受保护的密码文件等 libpq 认证方式；条件允许时，使用具有 `pg_read_all_stats` 权限的监控角色而不是超级用户。
+
+== Oracle 兼容模式
+
+[IMPORTANT]
+====
+PoWA 的安装和采集链路应使用 PostgreSQL 兼容端口。在 IvorySQL 5.4 中，通过 Oracle 兼容端口直接创建依赖扩展会失败，因为上游安装脚本使用 PostgreSQL 语法；在交互会话切换到 Oracle 模式后调用 `powa_take_snapshot()` 也可能遇到标识符大小写折叠差异。这些限制不影响 PostgreSQL 模式后台采集，也不影响 PoWA Web 通过 PostgreSQL 端口连接。
+====
+
+Oracle 兼容会话仍可在需要时使用带引号的 schema 和对象名查询工作负载表，但管理配置和快照操作应保持在 PostgreSQL 模式。
+
+生产部署前请阅读 https://powa.readthedocs.io/en/latest/architecture.html[PoWA 架构文档]中的本地与远程方案，以及 https://powa.readthedocs.io/en/latest/security.html[PoWA 安全指南]。
