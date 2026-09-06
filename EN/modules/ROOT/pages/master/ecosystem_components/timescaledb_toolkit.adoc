@@ -91,7 +91,7 @@ After creating the extension through the PostgreSQL-compatible port, the tested 
 
 [source,sql]
 ----
-SET ivorysql.compatible_mode = oracle;
+SET ivorysql.compatible_mode=oracle;
 SELECT 1 FROM dual;
 
 SELECT round(average(stats_agg(value))::numeric, 2) AS oracle_average,
