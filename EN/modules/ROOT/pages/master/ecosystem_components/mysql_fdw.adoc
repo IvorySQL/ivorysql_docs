@@ -1,0 +1,132 @@
+:sectnums:
+:sectnumlevels: 5
+
+= mysql_fdw
+
+== Overview
+
+mysql_fdw is a PostgreSQL foreign data wrapper for MySQL. It allows IvorySQL to query and modify MySQL tables through SQL, supports `IMPORT FOREIGN SCHEMA`, and can push filters, projections, joins, aggregates, sorting, and limits to the remote server.
+
+Project page: <https://github.com/EnterpriseDB/mysql_fdw>
+
+Tested version: 2.9.3
+
+License: PostgreSQL License
+
+== Compatibility
+
+The following combination was validated on x86_64 Linux:
+
+[cols="1,1"]
+|===
+| Component | Version
+| IvorySQL | current `IVORY_REL_5_STABLE` (IvorySQL 5.6 / PostgreSQL 18.6)
+| mysql_fdw | 2.9.3
+| MySQL Server | 8.4
+| MariaDB Connector/C | 3.1
+|===
+
+[IMPORTANT]
+mysql_fdw 2.9.3 requires the PostgreSQL-compatible extension APIs restored by IvorySQL PR #1448. The released IvorySQL 5.4 image predates that fix and fails to compile this version with an `ExecTypeFromTL` argument-count error. Use a current `IVORY_REL_5_STABLE` build containing that change or a newer IvorySQL release.
+
+== Installation
+
+Install a C compiler, GNU make, and the MySQL or MariaDB client development package. Then build against the intended IvorySQL installation explicitly:
+
+[source,bash]
+----
+git clone https://github.com/EnterpriseDB/mysql_fdw.git
+cd mysql_fdw
+git checkout REL-2_9_3
+
+# Adjust this to your IvorySQL installation (RPM default shown).
+export IVORYSQL_HOME=/usr/ivory-5
+export PG_CONFIG="$IVORYSQL_HOME/bin/pg_config"
+make USE_PGXS=1 PG_CONFIG="$PG_CONFIG"
+sudo make USE_PGXS=1 PG_CONFIG="$PG_CONFIG" install
+----
+
+Confirm that `pg_config --version` points to IvorySQL before building. No server preload or restart is required.
+
+== MySQL Preparation
+
+[source,sql]
+----
+CREATE DATABASE fdw_test CHARACTER SET utf8mb4;
+CREATE USER 'fdw_user'@'%' IDENTIFIED BY 'fdw_pass';
+GRANT ALL PRIVILEGES ON fdw_test.* TO 'fdw_user'@'%';
+
+CREATE TABLE fdw_test.products (
+    id integer PRIMARY KEY,
+    name varchar(100),
+    price decimal(10,2),
+    note varchar(100)
+);
+INSERT INTO fdw_test.products VALUES
+    (1, 'IvorySQL', 99.50, '中文'),
+    (2, 'MySQL', 49.00, NULL);
+----
+
+== IvorySQL Configuration and Use
+
+[source,sql]
+----
+CREATE EXTENSION mysql_fdw;
+
+CREATE SERVER mysql_server
+  FOREIGN DATA WRAPPER mysql_fdw
+  OPTIONS (host '127.0.0.1', port '3306', character_set 'utf8mb4');
+
+CREATE USER MAPPING FOR CURRENT_USER
+  SERVER mysql_server
+  OPTIONS (username 'fdw_user', password 'fdw_pass');
+
+CREATE SCHEMA mysql_remote;
+IMPORT FOREIGN SCHEMA fdw_test
+  FROM SERVER mysql_server INTO mysql_remote;
+
+SELECT * FROM mysql_remote.products ORDER BY id;
+INSERT INTO mysql_remote.products VALUES (3, 'FDW', 10.00, 'insert');
+UPDATE mysql_remote.products SET price = 11.00 WHERE id = 3;
+DELETE FROM mysql_remote.products WHERE id = 3;
+----
+
+Set `character_set 'utf8mb4'` when the remote database stores UTF-8 text; otherwise non-ASCII data can be decoded incorrectly.
+
+Use `EXPLAIN VERBOSE` to inspect pushdown. The `Remote query` field should contain operations that mysql_fdw can execute remotely:
+
+[source,sql]
+----
+EXPLAIN (VERBOSE, COSTS OFF)
+SELECT name, price
+FROM mysql_remote.products
+WHERE price > 40
+ORDER BY price DESC
+LIMIT 1;
+----
+
+== Dual-mode Validation
+
+The same foreign tables can be used in both IvorySQL modes:
+
+[source,sql]
+----
+SET ivorysql.compatible_mode = pg;
+SELECT * FROM mysql_remote.products ORDER BY id;
+
+SET ivorysql.compatible_mode = oracle;
+SELECT 1 FROM dual;
+SELECT * FROM mysql_remote.products ORDER BY id;
+INSERT INTO mysql_remote.products VALUES (4, 'Oracle mode', 20.00, NULL);
+UPDATE mysql_remote.products SET price = 21.00 WHERE id = 4;
+DELETE FROM mysql_remote.products WHERE id = 4;
+----
+
+Validation covered extension creation, schema import, UTF-8 and NULL values, CRUD, and filter/projection/order/limit pushdown in both modes. All nine upstream mysql_fdw regression groups also passed against a MySQL 8.4 server: `server_options`, `connection_validation`, `dml`, `select`, `pushdown`, `join_pushdown`, `aggregate_pushdown`, `limit_offset_pushdown`, and `misc`.
+
+== Troubleshooting
+
+* `too few arguments to function 'ExecTypeFromTL'`: the IvorySQL installation is older than the extension-API compatibility fix described above.
+* `Can't connect to MySQL server`: verify the host, port, firewall, and that the MySQL account accepts connections from the IvorySQL host.
+* Garbled text: set the server option `character_set 'utf8mb4'` and verify the remote database character set.
+* Keep credentials out of shared scripts and restrict access to user mappings in production.
