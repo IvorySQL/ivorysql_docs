@@ -1,0 +1,111 @@
+:sectnums:
+:sectnumlevels: 5
+
+= dblink
+
+== Overview
+
+`dblink` executes SQL in another IvorySQL or PostgreSQL database from the current database. It supports one-shot queries, reusable named connections, remote transactions, non-query commands, and asynchronous queries.
+
+This guide was validated with IvorySQL 5.6 (PostgreSQL 18.6). The bundled PostgreSQL regression suite passed, and named connections, DML, transactions, asynchronous results, UTF-8 data, and Oracle-compatible sessions were tested end to end.
+
+== Build and install
+
+`dblink` is included in the IvorySQL source tree and binary distributions normally install it. If it is absent, build it from the matching IvorySQL 5 source tree:
+
+[source,bash]
+----
+git clone https://github.com/IvorySQL/IvorySQL.git
+cd IvorySQL
+git checkout IVORY_REL_5_STABLE
+cd contrib/dblink
+make USE_PGXS=1 PG_CONFIG=/path-to/ivorysql/bin/pg_config
+sudo make USE_PGXS=1 PG_CONFIG=/path-to/ivorysql/bin/pg_config install
+----
+
+Create the extension in each local database that will call `dblink`:
+
+[source,sql]
+----
+CREATE EXTENSION dblink;
+----
+
+== Query a remote database
+
+Create sample data in the remote database:
+
+[source,sql]
+----
+CREATE TABLE remote_measurement (
+    id integer PRIMARY KEY,
+    label text NOT NULL,
+    reading numeric NOT NULL
+);
+INSERT INTO remote_measurement VALUES (1, '北京', 21.5), (2, 'Shanghai', 24.0);
+----
+
+Connect and declare the returned column types explicitly:
+
+[source,sql]
+----
+SELECT dblink_connect(
+    'analytics',
+    'host=127.0.0.1 port=5432 dbname=remote_db user=ivorysql'
+);
+
+SELECT *
+FROM dblink('analytics',
+            'SELECT id, label, reading FROM remote_measurement ORDER BY id')
+     AS t(id integer, label text, reading numeric);
+----
+
+Use `dblink_exec` for commands that do not return rows:
+
+[source,sql]
+----
+SELECT dblink_exec('analytics',
+                   $$UPDATE remote_measurement SET reading = 22.0 WHERE id = 1$$);
+----
+
+== Remote transactions and asynchronous queries
+
+[source,sql]
+----
+SELECT dblink_exec('analytics', 'BEGIN');
+SELECT dblink_exec('analytics',
+                   $$INSERT INTO remote_measurement VALUES (3, 'temporary', 0)$$);
+SELECT dblink_exec('analytics', 'ROLLBACK');
+
+SELECT dblink_send_query('analytics',
+                         'SELECT id, label FROM remote_measurement ORDER BY id');
+SELECT * FROM dblink_get_result('analytics') AS t(id integer, label text);
+-- Drain the final empty result before reusing the connection.
+SELECT * FROM dblink_get_result('analytics') AS t(id integer, label text);
+
+SELECT dblink_disconnect('analytics');
+----
+
+== Oracle-compatible mode
+
+`dblink` uses PostgreSQL/libpq connections, including when the local session uses Oracle-compatible syntax. The following was validated through the IvorySQL Oracle-compatible port:
+
+[source,sql]
+----
+SET ivorysql.compatible_mode = oracle;
+SELECT 1 FROM dual;
+
+SELECT *
+FROM dblink('host=127.0.0.1 port=5432 dbname=remote_db user=ivorysql',
+            'SELECT id, label FROM remote_measurement ORDER BY id')
+     AS t(id integer, label text);
+----
+
+== Security and operational notes
+
+* Avoid embedding passwords in SQL. Prefer a service file, `.pgpass` with restrictive permissions, certificate authentication, or another server-side credential mechanism.
+* Grant `dblink` access only to trusted roles. Remote SQL runs with the privileges of the remote connection.
+* Always provide an explicit column definition for row-returning calls.
+* Fix the remote `search_path`, schema-qualify objects, and use TLS for untrusted networks.
+* A named connection is session-local. Close it with `dblink_disconnect`, and fully consume asynchronous results before sending another command.
+
+See https://www.postgresql.org/docs/current/dblink.html[the upstream dblink documentation] for the complete function reference.

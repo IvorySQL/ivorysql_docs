@@ -1,0 +1,111 @@
+:sectnums:
+:sectnumlevels: 5
+
+= dblink
+
+== 概述
+
+`dblink` 可从当前数据库向另一个 IvorySQL 或 PostgreSQL 数据库执行 SQL，支持一次性查询、可复用的命名连接、远程事务、非查询命令和异步查询。
+
+本文使用 IvorySQL 5.6（PostgreSQL 18.6）完成验证：自带 PostgreSQL 回归测试通过，并实际覆盖了命名连接、DML、事务、异步结果、UTF-8 数据和 Oracle 兼容模式会话。
+
+== 编译安装
+
+`dblink` 位于 IvorySQL 源码树中，二进制发行版通常已包含它。如当前安装中缺失，请从匹配的 IvorySQL 5 源码编译：
+
+[source,bash]
+----
+git clone https://github.com/IvorySQL/IvorySQL.git
+cd IvorySQL
+git checkout IVORY_REL_5_STABLE
+cd contrib/dblink
+make USE_PGXS=1 PG_CONFIG=/path-to/ivorysql/bin/pg_config
+sudo make USE_PGXS=1 PG_CONFIG=/path-to/ivorysql/bin/pg_config install
+----
+
+在每个需要调用 `dblink` 的本地数据库中创建扩展：
+
+[source,sql]
+----
+CREATE EXTENSION dblink;
+----
+
+== 查询远程数据库
+
+先在远程数据库创建测试数据：
+
+[source,sql]
+----
+CREATE TABLE remote_measurement (
+    id integer PRIMARY KEY,
+    label text NOT NULL,
+    reading numeric NOT NULL
+);
+INSERT INTO remote_measurement VALUES (1, '北京', 21.5), (2, 'Shanghai', 24.0);
+----
+
+建立命名连接，并显式声明返回列类型：
+
+[source,sql]
+----
+SELECT dblink_connect(
+    'analytics',
+    'host=127.0.0.1 port=5432 dbname=remote_db user=ivorysql'
+);
+
+SELECT *
+FROM dblink('analytics',
+            'SELECT id, label, reading FROM remote_measurement ORDER BY id')
+     AS t(id integer, label text, reading numeric);
+----
+
+使用 `dblink_exec` 执行不返回行的命令：
+
+[source,sql]
+----
+SELECT dblink_exec('analytics',
+                   $$UPDATE remote_measurement SET reading = 22.0 WHERE id = 1$$);
+----
+
+== 远程事务与异步查询
+
+[source,sql]
+----
+SELECT dblink_exec('analytics', 'BEGIN');
+SELECT dblink_exec('analytics',
+                   $$INSERT INTO remote_measurement VALUES (3, 'temporary', 0)$$);
+SELECT dblink_exec('analytics', 'ROLLBACK');
+
+SELECT dblink_send_query('analytics',
+                         'SELECT id, label FROM remote_measurement ORDER BY id');
+SELECT * FROM dblink_get_result('analytics') AS t(id integer, label text);
+-- 复用连接前，继续调用一次以取尽最后的空结果。
+SELECT * FROM dblink_get_result('analytics') AS t(id integer, label text);
+
+SELECT dblink_disconnect('analytics');
+----
+
+== Oracle 兼容模式
+
+即使本地会话使用 Oracle 兼容语法，`dblink` 仍通过 PostgreSQL/libpq 协议连接。以下语句已通过 IvorySQL Oracle 兼容端口验证：
+
+[source,sql]
+----
+SET ivorysql.compatible_mode = oracle;
+SELECT 1 FROM dual;
+
+SELECT *
+FROM dblink('host=127.0.0.1 port=5432 dbname=remote_db user=ivorysql',
+            'SELECT id, label FROM remote_measurement ORDER BY id')
+     AS t(id integer, label text);
+----
+
+== 安全与运维说明
+
+* 避免在 SQL 中直接写密码。优先使用 service 文件、权限受限的 `.pgpass`、证书认证或其他服务端凭据机制。
+* 只向可信角色授予 `dblink` 权限；远程 SQL 使用远程连接角色的权限执行。
+* 对返回行的调用始终显式声明列定义。
+* 固定远程 `search_path`、使用带 schema 的对象名，并在不可信网络上启用 TLS。
+* 命名连接只属于当前会话。用 `dblink_disconnect` 关闭连接，并在发送下一条命令前取尽异步结果。
+
+完整函数说明请参阅 https://www.postgresql.org/docs/current/dblink.html[PostgreSQL dblink 文档]。
