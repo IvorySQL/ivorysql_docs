@@ -76,6 +76,7 @@
 *** xref:master/ecosystem_components/zhparser_en.adoc[zhparser]
 *** xref:master/ecosystem_components/pgbackrest.adoc[pgBackRest]
 *** xref:master/ecosystem_components/set_user.adoc[set_user]
+*** xref:master/ecosystem_components/pg_tokenizer.adoc[pg_tokenizer]
 * Monitor and O&M
 ** xref:master/getting-started/daily_monitoring.adoc[Monitoring]
 ** xref:master/getting-started/daily_maintenance.adoc[Maintenance]
