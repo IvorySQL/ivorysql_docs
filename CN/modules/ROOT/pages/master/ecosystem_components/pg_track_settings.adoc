@@ -64,8 +64,8 @@ make -C contrib/pg_track_settings install
 PG 模式与 Oracle 模式会话下命令相同：
 [literal, sql]
 ----
-CREATE EXTENSION pg_track_settings;
-
+postgres=# CREATE EXTENSION pg_track_settings;
+postgres=# SELECT extname, extversion FROM pg_extension WHERE extname = 'pg_track_settings';
       extname      | extversion 
 -------------------+------------
  pg_track_settings | 2.1.2
@@ -126,7 +126,7 @@ postgres=# SELECT * FROM pg_track_settings_diff(now() - interval '10 minutes', n
 (1 row)
 ----
 
-from_exists / to_exists 这两列用来表达参数在两个时间点是否存在。参数被新增时 from_exists 为 false，被移除时 to_exists 为 false —— 这正是前面提到的墓碑记录发挥作用的地方。
+from_exists / to_exists 这两列用来表达参数在两个时间点是否存在。参数被新增时 from_exists 为 false，被移除时 to_exists 为 false。
 
 查看单个参数的完整历史:
 
@@ -179,17 +179,17 @@ postgres=# SELECT * FROM pg_reboot;
 
 **关于备份：** 所有历史数据都存在普通表里，因此会被 pg_dump / pg_dumpall 完整备份。这通常是好事，但如果积累了很长的历史又不想带进备份，需要使用 pg_track_settings_reset() 清理。
 
-**关于时间戳：** 历史表的 ts 列是 timestamptz 类型，存的是绝对时间点，显示时按会话时区换算。跨时区团队查历史时，注意各自会话的 TimeZone 设置可能导致看到的字符串不同，但指向的是同一时刻。
+* **关于时间戳：** 历史表的 ts 列是 timestamptz 类型，存的是绝对时间点，显示时按会话时区换算。跨时区团队查历史时，注意各自会话的 TimeZone 设置可能导致看到的字符串不同，但指向的是同一时刻。
 
-**关于采集间隔：** 扩展记录的是「发现变更的时刻」，不是「变更实际发生的时刻」。如果两次快照之间某个参数改了又改回来，中间状态会被完全丢失。对配置审计要求严格的场景，应该配合 log_statement = 'ddl' 或专门的审计扩展一起用。
+* **关于采集间隔：** 扩展记录的是「发现变更的时刻」，不是「变更实际发生的时刻」。如果两次快照之间某个参数改了又改回来，中间状态会被完全丢失。对配置审计要求严格的场景，应该配合 log_statement = 'ddl' 或专门的审计扩展一起用。
 
-**关于权限：** control 文件中 superuser = false，即非超级用户也可以创建该扩展(前提是拥有目标 schema 的权限)。但采集函数需要能读取 pg_settings 和 pg_db_role_setting，实际执行时仍建议用有足够权限的角色。
+* **关于权限：** control 文件中 superuser = false，即非超级用户也可以创建该扩展(前提是拥有目标 schema 的权限)。但采集函数需要能读取 pg_settings 和 pg_db_role_setting，实际执行时仍建议用有足够权限的角色。
 
-**它不是什么：** 这个扩展只做记录，不做告警，也不会阻止任何配置修改。它是事后排查的工具，不是准入控制。
+* **它不是什么：** 这个扩展只做记录，不做告警，也不会阻止任何配置修改。它是事后排查的工具，不是准入控制。
 
 == 适合场景
 
-- 多人共同运维、配置变更缺乏统一流程的团队
-- 需要做性能回归分析，想确认「变慢是不是因为改了参数」的 DBA
-- 管理大量实例、需要集中掌握配置漂移情况的场景(配合 PoWA)
-- 有合规审计要求，需要证明某个时间点配置状态的环境
+* 多人共同运维、配置变更缺乏统一流程的团队
+* 需要做性能回归分析，想确认「变慢是不是因为改了参数」的 DBA
+* 管理大量实例、需要集中掌握配置漂移情况的场景(配合 PoWA)
+* 有合规审计要求，需要证明某个时间点配置状态的环境
