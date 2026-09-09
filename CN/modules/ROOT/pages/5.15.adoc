@@ -1,0 +1,48 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_partman
+
+== 概述
+pg_partman 是一个用于管理分区表和索引的 PostgreSQL 扩展。它自动化地创建和维护基于时间或基于序号的分区。它与 IvorySQL 完全兼容。
+
+== 安装
+
+=== 前置条件
+自动后台维护需要 `pg_partman_bgw` 后台工作进程。在 postgresql.conf 中添加：
+
+[literal]
+----
+shared_preload_libraries = 'pg_partman_bgw'
+----
+
+=== 源码安装
+
+[NOTE]
+请确保环境中已安装 **IvorySQL {ivorysql-version} 或以上版本**，且 `pg_config` 在 PATH 中。
+
+[literal]
+----
+$ git clone https://github.com/pgpartman/pg_partman.git
+$ cd pg_partman
+$ make
+$ sudo make install
+----
+
+== 创建扩展并验证
+
+使用 psql 连接数据库，执行以下命令：
+
+[literal]
+----
+ivorysql=# CREATE EXTENSION pg_partman;
+CREATE EXTENSION
+
+ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'pg_partman';
+    name    | default_version | installed_version |        comment
+------------+-----------------+-------------------+-----------------------
+ pg_partman | 5.2.4           | 5.2.4             | Extension to manage partitioned tables by time or ID
+----
+
+使用与配置请参见 https://github.com/pgpartman/pg_partman/blob/master/doc/pg_partman.md[pg_partman 文档]。

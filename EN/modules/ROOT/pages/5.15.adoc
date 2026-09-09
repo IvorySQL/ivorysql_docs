@@ -1,0 +1,48 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_partman
+
+== Overview
+pg_partman is a PostgreSQL extension for managing partitioned tables and indexes. It automates the creation and maintenance of time-based and serial-based partitions. It is fully compatible with IvorySQL.
+
+== Installation
+
+=== Prerequisites
+Automatic background maintenance requires the `pg_partman_bgw` background worker. Add it to `shared_preload_libraries` in `postgresql.conf`:
+
+[literal]
+----
+shared_preload_libraries = 'pg_partman_bgw'
+----
+
+=== Source Code Installation
+
+[NOTE]
+Please ensure that **IvorySQL {ivorysql-version} or above** is installed and `pg_config` is available in `PATH`.
+
+[literal]
+----
+$ git clone https://github.com/pgpartman/pg_partman.git
+$ cd pg_partman
+$ make
+$ sudo make install
+----
+
+== Create Extension and Verify
+
+Connect to the database with psql and execute the following commands:
+
+[literal]
+----
+ivorysql=# CREATE EXTENSION pg_partman;
+CREATE EXTENSION
+
+ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'pg_partman';
+    name    | default_version | installed_version |        comment
+------------+-----------------+-------------------+-----------------------
+ pg_partman | 5.2.4           | 5.2.4             | Extension to manage partitioned tables by time or ID
+----
+
+See the https://github.com/pgpartman/pg_partman/blob/master/doc/pg_partman.md[pg_partman documentation] for usage and configuration.

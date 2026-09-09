@@ -53,6 +53,7 @@
 *** xref:5.10.adoc[system_stats]
 *** xref:5.11.adoc[pgtt]
 *** xref:5.14.adoc[pgnodemx]
+*** xref:5.15.adoc[pg_partman]
 * Monitor and O&M
 ** xref:3.2.adoc[Monitoring]
 ** xref:3.3.adoc[Maintenance]
