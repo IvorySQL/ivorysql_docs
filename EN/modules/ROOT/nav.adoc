@@ -52,6 +52,7 @@
 *** xref:5.9.adoc[pgrouting]
 *** xref:5.10.adoc[system_stats]
 *** xref:5.11.adoc[pgtt]
+*** xref:5.12.adoc[pg_hint_plan]
 *** xref:5.14.adoc[pgnodemx]
 * Monitor and O&M
 ** xref:3.2.adoc[Monitoring]

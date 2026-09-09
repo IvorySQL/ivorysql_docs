@@ -1,0 +1,57 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_hint_plan
+
+== Overview
+pg_hint_plan is a PostgreSQL extension that lets you control the execution plan chosen by the optimizer using special comments called "hints" embedded in SQL statements. It is fully compatible with IvorySQL.
+
+== Installation
+
+=== Prerequisites
+pg_hint_plan must be loaded at server start. Add it to `shared_preload_libraries` in `postgresql.conf`:
+
+[literal]
+----
+shared_preload_libraries = 'pg_hint_plan'
+----
+
+=== Source Code Installation
+
+[NOTE]
+Please ensure that **IvorySQL {ivorysql-version} or above** is installed and `pg_config` is available in `PATH`.
+
+[literal]
+----
+$ git clone https://github.com/ossc-db/pg_hint_plan.git
+$ cd pg_hint_plan
+$ make
+$ sudo make install
+----
+
+== Create Extension and Verify
+
+Connect to the database with psql and execute the following commands:
+
+[literal]
+----
+ivorysql=# CREATE EXTENSION pg_hint_plan;
+CREATE EXTENSION
+
+ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'pg_hint_plan';
+  name        | default_version | installed_version | comment
+--------------+-----------------+-------------------+---------------------------------
+ pg_hint_plan | 1.7.0           | 1.7.0             | Give optimizer hints
+----
+
+== Usage Example
+
+Hints are written as special comments at the start of a query. For example, to force a sequential scan on table `t`:
+
+[literal]
+----
+ivorysql=# EXPLAIN SELECT /*+ SeqScan(t) */ * FROM t;
+----
+
+See the https://github.com/ossc-db/pg_hint_plan/blob/master/doc/pg_hint_plan.md[pg_hint_plan documentation] for the full list of supported hints.

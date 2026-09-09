@@ -1,0 +1,57 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_hint_plan
+
+== 概述
+pg_hint_plan 是一个 PostgreSQL 扩展，允许通过 SQL 语句中特殊的注释（称为"提示"）来控制优化器选择的执行计划。它与 IvorySQL 完全兼容。
+
+== 安装
+
+=== 前置条件
+pg_hint_plan 需要在服务启动时加载，在 postgresql.conf 中添加：
+
+[literal]
+----
+shared_preload_libraries = 'pg_hint_plan'
+----
+
+=== 源码安装
+
+[NOTE]
+请确保环境中已安装 **IvorySQL {ivorysql-version} 或以上版本**，且 `pg_config` 在 PATH 中。
+
+[literal]
+----
+$ git clone https://github.com/ossc-db/pg_hint_plan.git
+$ cd pg_hint_plan
+$ make
+$ sudo make install
+----
+
+== 创建扩展并验证
+
+使用 psql 连接数据库，执行以下命令：
+
+[literal]
+----
+ivorysql=# CREATE EXTENSION pg_hint_plan;
+CREATE EXTENSION
+
+ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'pg_hint_plan';
+  name        | default_version | installed_version | comment
+--------------+-----------------+-------------------+---------------------------------
+ pg_hint_plan | 1.7.0           | 1.7.0             | Give optimizer hints
+----
+
+== 使用示例
+
+提示以特殊注释的形式写在查询的开头。例如，强制对表 `t` 使用顺序扫描：
+
+[literal]
+----
+ivorysql=# EXPLAIN SELECT /*+ SeqScan(t) */ * FROM t;
+----
+
+完整支持的提示列表请参见 https://github.com/ossc-db/pg_hint_plan/blob/master/doc/pg_hint_plan.md[pg_hint_plan 文档]。
