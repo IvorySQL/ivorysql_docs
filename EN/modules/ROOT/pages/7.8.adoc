@@ -75,6 +75,7 @@
 |compose
 |decompose
 |sys_context
+|lnnvl
 |====
 
 == Built-in function descriptions
@@ -1148,4 +1149,12 @@ ivorysql=# select sys_context('USERENV','DB_NAME');
  ivorysql
 (1 row)
 
+```
+=== `lnnvl` function
+function: return TRUE if the condition is FALSE or UNKNOWN (NULL), and FALSE if the condition is TRUE. It is commonly used in a WHERE clause to also include rows whose condition evaluates to NULL. The test cases are as follows:
+
+Query the rows where the value is not equal to 10 or is NULL:
+
+```
+select * from t where lnnvl(a = 10);
 ```

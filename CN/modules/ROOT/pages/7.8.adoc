@@ -75,6 +75,7 @@
 |compose
 |decompose
 |sys_context
+|lnnvl
 |====
 
 == 内置函数说明
@@ -1150,4 +1151,12 @@ ivorysql=# select sys_context('USERENV','DB_NAME');
  ivorysql
 (1 row)
 
+```
+=== `lnnvl` 函数
+功能：当条件为 FALSE 或 UNKNOWN（NULL）时返回 TRUE，条件为 TRUE 时返回 FALSE。通常用于 WHERE 子句中，以包含条件为假或为 NULL 的行。测试用例如下：
+
+查询值不等于 10 或值为 NULL 的行：
+
+```
+select * from t where lnnvl(a = 10);
 ```
