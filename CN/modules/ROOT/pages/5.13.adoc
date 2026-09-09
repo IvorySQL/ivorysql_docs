@@ -1,0 +1,58 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_stat_monitor
+
+== 概述
+pg_stat_monitor 是 Percona 开发的 PostgreSQL 查询性能监控扩展。它在一个视图里集中收集查询文本、耗时和等待事件等统计信息。它与 IvorySQL 完全兼容。
+
+== 安装
+
+=== 前置条件
+pg_stat_monitor 需要在服务启动时加载，在 postgresql.conf 中添加：
+
+[literal]
+----
+shared_preload_libraries = 'pg_stat_monitor'
+----
+
+=== 源码安装
+
+[NOTE]
+请确保环境中已安装 **IvorySQL {ivorysql-version} 或以上版本**，且 `pg_config` 在 PATH 中。
+
+[literal]
+----
+$ git clone https://github.com/percona/pg_stat_monitor.git
+$ cd pg_stat_monitor
+$ make USE_PGXS=1
+$ sudo make USE_PGXS=1 install
+----
+
+== 创建扩展并验证
+
+使用 psql 连接数据库，执行以下命令：
+
+[literal]
+----
+ivorysql=# CREATE EXTENSION pg_stat_monitor;
+CREATE EXTENSION
+
+ivorysql=# SELECT * FROM pg_available_extensions WHERE name = 'pg_stat_monitor';
+      name       | default_version | installed_version |       comment
+-----------------+-----------------+-------------------+--------------------
+ pg_stat_monitor | 2.1             | 2.1               | pg_stat_monitor
+----
+
+== 查询统计信息
+
+启用扩展后，查询统计信息收集在 `pg_stat_monitor` 视图中：
+
+[literal]
+----
+ivorysql=# SELECT bucket_start_time, query, calls, total_exec_time
+           FROM pg_stat_monitor
+           ORDER BY total_exec_time DESC
+           LIMIT 5;
+----
