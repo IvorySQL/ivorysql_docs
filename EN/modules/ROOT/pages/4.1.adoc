@@ -44,7 +44,7 @@ $ sudo dnf install -y ivorysql5-{ivorysql-version}
 
 [source,bash,subs="attributes"]
 ```
-$ docker pull ivorysql/IvorySQL {ivorysql-version}-ubi8
+$ docker pull ivorysql/ivorysql:{ivorysql-version}-ubi8
 ```
 
 TIP: Users in China can also pull from the IvorySQL community Harbor registry for faster downloads — replace the image reference above with `registry.highgo.com/ivorysql/ivorysql:{ivorysql-version}-ubi8`.
@@ -53,7 +53,7 @@ TIP: Users in China can also pull from the IvorySQL community Harbor registry fo
 
 [source,bash,subs="attributes"]
 ```
-$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/IvorySQL {ivorysql-version}-ubi8
+$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:{ivorysql-version}-ubi8
 ```
 -e Parameter Explanation
 |====
@@ -268,7 +268,7 @@ Stop IvorySQL container and remove IvorySQL image:
 ```
 $ docker stop ivorysql
 $ docker rm ivorysql
-$ docker rmi ivorysql/IvorySQL {ivorysql-version}-ubi8
+$ docker rmi ivorysql/ivorysql:{ivorysql-version}-ubi8
 ```
 
 === Uninstallation for rpm installation
