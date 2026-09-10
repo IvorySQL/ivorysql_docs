@@ -1,0 +1,67 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_jieba
+
+== Overview
+
+pg_jieba is a Chinese word segmentation extension for PostgreSQL, developed based on the well-known Jieba (结巴分词) segmentation library. It can split continuous Chinese text into meaningful sequences of words, providing foundational support for Chinese full-text search.
+
+== Features
+
+* *Supports three segmentation modes*: precise mode, full mode, and search engine mode.
+* *Seamless integration with PostgreSQL/IvorySQL*
+* *Supports custom dictionaries*
+* *Supports part-of-speech tagging*
+
+== Installation and Deployment
+
+=== Building and Installing pg_jieba
+
+Assume IvorySQL has already been installed in the `~/ivy_5/inst` directory.
+
+[source,shell]
+----
+git clone https://github.com/jaiminpan/pg_jieba.git
+cd pg_jieba
+git submodule update --init --recursive
+mkdir build;cd build
+cmake -DCMAKE_PREFIX_PATH=~/ivy_5/inst ..
+make; make install
+----
+
+After a successful installation, files such as `pg_jieba.so` will be placed into IvorySQL's installation directory.
+
+=== Creating and Verifying the Extension
+
+[source,sql]
+----
+CREATE EXTENSION IF NOT EXISTS pg_jieba;
+SELECT name,
+       default_version,
+       installed_version,
+       comment
+  FROM pg_available_extensions
+ WHERE name = 'pg_jieba';
+----
+
+== Usage
+
+Run the following SQL example:
+
+[source,sql]
+----
+select * from to_tsquery('jiebacfg', '是拖拉机学院手扶拖拉机专业的。不用多久，我就会升职加薪，当上CEO，走上人生巅峰。');
+                                        to_tsquery
+-----------------------------------------------------------------------------------------------
+'拖拉机' & '学院' & '手扶拖拉机' & '专业' & '不用' & '多久' & '会' & '升职' & '加薪' & '当上' & 'ceo' & '走上' & '人生' & '巅峰'
+(1 row)
+
+select * from to_tsvector('jiebacfg', '是拖拉机学院手扶拖拉机专业的。不用多久，我就会升职加薪，当上CEO，走上人生巅峰。');
+                                          to_tsvector
+-----------------------------------------------------------------------------------------------------
+'ceo':18 '不用':8 '专业':5 '人生':21 '会':13 '加薪':15 '升职':14 '多久':9 '学院':3 '巅峰':22 '当上':17 '手扶拖拉机':4 '拖拉机':2 '走上':20
+(1 row)
+----
+

@@ -1,0 +1,68 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_jieba
+
+== 概述
+
+pg_jieba 是PostgreSQL的一个中文分词扩展，基于著名的结巴分词(Jieba)开发。它能够将连续的中文文本切分成有意义的词语序列，为中文全文搜索提供基础支持。
+
+== 功能特点
+
+* *支持三种分词模式*：精确模式、全模式和搜索引擎模式。
+* *与PostgreSQL/IvorySQL无缝集成*
+* *支持自定义词典*
+* *支持词性标注*
+
+== 安装部署
+
+=== 编译安装 pg_jieba
+
+假设IvorySQL已经安装在 ~/ivy_5/inst 目录中。
+
+[source,shell]
+----
+git clone https://github.com/jaiminpan/pg_jieba.git
+cd pg_jieba
+git submodule update --init --recursive
+mkdir build;cd build
+cmake -DCMAKE_PREFIX_PATH=~/ivy_5/inst ..
+make; make install
+----
+
+安装成功后，`pg_jieba.so` 等文件会被放置到 IvorySQL 的安装目录中。
+
+=== 创建扩展并验证
+
+[source,sql]
+----
+CREATE EXTENSION IF NOT EXISTS pg_jieba;
+SELECT name,
+       default_version,
+       installed_version,
+       comment
+  FROM pg_available_extensions
+ WHERE name = 'pg_jieba';
+----
+
+== 使用
+
+执行如下sql示例：
+
+[source,sql]
+----
+select * from to_tsquery('jiebacfg', '是拖拉机学院手扶拖拉机专业的。不用多久，我就会升职加薪，当上CEO，走上人生巅峰。');
+                                        to_tsquery
+-----------------------------------------------------------------------------------------------
+'拖拉机' & '学院' & '手扶拖拉机' & '专业' & '不用' & '多久' & '会' & '升职' & '加薪' & '当上' & 'ceo' & '走上' & '人生' & '巅峰'
+(1 row)
+
+select * from to_tsvector('jiebacfg', '是拖拉机学院手扶拖拉机专业的。不用多久，我就会升职加薪，当上CEO，走上人生巅峰。');
+                                          to_tsvector
+-----------------------------------------------------------------------------------------------------
+'ceo':18 '不用':8 '专业':5 '人生':21 '会':13 '加薪':15 '升职':14 '多久':9 '学院':3 '巅峰':22 '当上':17 '手扶拖拉机':4 '拖拉机':2 '走上':20
+(1 row)
+----
+
+
