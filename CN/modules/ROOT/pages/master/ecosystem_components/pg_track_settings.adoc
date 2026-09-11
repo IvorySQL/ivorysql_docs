@@ -1,0 +1,195 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= pg_track_settings
+
+== 概述
+pg_track_settings 是一个仅由约500行 PL/pgSQL 编写的 PG 扩展，可以实现对 PostgreSQL 配置变更的跟踪。
+
+它提供了一个函数 (pg_track_settings_snapshot())，必须定期调用。每次调用时，它都会存储自上次调用以来更改的设置。如果 PostgreSQL 的启动时间与上次不同，它还会跟踪本次启动时间。pg_track_settings 通常需要和 Cron 或 PoWA 等工具配合使用，以便在生产环境中定期采样。
+
+IvorySQL 的 PG 模式和 Oracle 兼容模式都已经适配 pg_track_settings。
+
+项目地址：<https://github.com/rjuju/pg_track_settings>
+
+开源协议：PostgreSQL License
+
+== 函数一览
+
+=== 全局参数
+
+[options="header"]
+|===
+| 函数 | 作用
+| pg_track_settings_snapshot() | 采集当前配置，记录差异
+| pg_track_settings(timestamptz) | 返回指定时刻的全量配置;省略参数则为当前时刻
+| pg_track_settings_diff(timestamptz, timestamptz) | 返回两个时刻之间发生变化的所有参数
+| pg_track_settings_log(text) | 返回某个指定参数的完整变更历史
+|===
+
+=== 库级/角色级覆盖参数
+
+[options="header"]
+|===
+| 函数 | 作用
+| pg_track_db_role_settings(timestamptz) | 指定时刻的全部覆盖配置
+| pg_track_db_role_settings_diff(timestamptz, timestamptz) | 两个时刻之间变化的覆盖配置
+| pg_track_db_role_settings_log(text) | 某个覆盖参数的变更历史
+|===
+
+=== 维护
+
+[options="header"]
+|===
+| 函数 | 作用
+| pg_track_settings_reset() | 清空全部历史记录
+|===
+
+== 安装启用
+
+=== 源码编译
+
+执行源码编译和安装：
+[literal, bash]
+----
+# 构建并安装 pg_track_settings
+cd ivorysql
+git clone https://github.com/rjuju/pg_track_settings.git contrib/pg_track_settings
+make -C contrib/pg_track_settings install
+----
+
+=== 安装扩展
+
+PG 模式与 Oracle 模式会话下命令相同：
+[literal, sql]
+----
+postgres=# CREATE EXTENSION pg_track_settings;
+postgres=# SELECT extname, extversion FROM pg_extension WHERE extname = 'pg_track_settings';
+      extname      | extversion 
+-------------------+------------
+ pg_track_settings | 2.1.2
+----
+
+== 使用流程
+
+[TIP]
+====
+以下输出为示意，用于说明各函数的返回形式。
+====
+
+先做一次快照，建立基线:
+
+[literal, sql]
+----
+postgres=# SELECT pg_track_settings_snapshot();
+ pg_track_settings_snapshot
+----------------------------
+ t
+(1 row)
+----
+
+此时历史表里已经有了第一批记录:
+
+[literal, sql]
+----
+postgres=# SELECT DISTINCT ts FROM pg_track_settings_history;
+              ts
+-------------------------------
+ 2026-09-08 10:00:37.449846+08
+(1 row)
+----
+
+假设现在有人改了配置并重载:
+
+[literal, sql]
+----
+postgres=# ALTER SYSTEM SET work_mem = '32MB';
+postgres=# SELECT pg_reload_conf();
+----
+
+再采集一次，然后查看这段时间内的变更:
+
+[TIP]
+====
+在Oracle兼容模式下需要使用 make_interval(mins => 10) 来代替 interval '10 minutes'，否则会报错。
+====
+
+[literal, sql]
+----
+postgres=# SELECT pg_track_settings_snapshot();
+
+postgres=# SELECT * FROM pg_track_settings_diff(now() - interval '10 minutes', now());
+   name   | from_setting | from_exists | to_setting | to_exists
+----------+--------------+-------------+------------+-----------
+ work_mem | 4096         | t           | 32768      | t
+(1 row)
+----
+
+from_exists / to_exists 这两列用来表达参数在两个时间点是否存在。参数被新增时 from_exists 为 false，被移除时 to_exists 为 false。
+
+查看单个参数的完整历史:
+
+[literal, sql]
+----
+postgres=# SELECT * FROM pg_track_settings_log('work_mem');
+              ts               |   name   | setting_exists | setting
+-------------------------------+----------+----------------+---------
+ 2026-09-08 10:06:42.581682+08 | work_mem | t              | 32768
+ 2026-09-08 10:00:37.449846+08 | work_mem | t              | 4096
+(2 rows)
+----
+
+回溯任意时刻的完整配置:
+
+[literal, sql]
+----
+postgres=# SELECT * FROM pg_track_settings('2026-09-08 10:03:00');
+             name             | setting
+------------------------------+---------
+ [...]
+ checkpoint_completion_target | 0.9
+ checkpoint_timeout           | 300
+ work_mem                     | 4096
+ [...]
+----
+
+查看覆盖参数的历史:
+
+[literal, sql]
+----
+postgres=# SELECT * FROM pg_track_db_role_settings_log('statement_timeout');
+              ts               |  dbname  | rolname  |      name         | setting_exists | setting
+-------------------------------+----------+----------+-------------------+----------------+---------
+ 2026-09-08 11:15:03.112094+08 | appdb    |          | statement_timeout | t              | 30s
+----
+
+查看实例重启历史:
+
+[literal, sql]
+----
+postgres=# SELECT * FROM pg_reboot;
+              ts
+-------------------------------
+ 2026-09-08 09:39:43.609195+08
+(1 row)
+----
+
+== 注意事项
+
+**关于备份：** 所有历史数据都存在普通表里，因此会被 pg_dump / pg_dumpall 完整备份。这通常是好事，但如果积累了很长的历史又不想带进备份，需要使用 pg_track_settings_reset() 清理。
+
+* **关于时间戳：** 历史表的 ts 列是 timestamptz 类型，存的是绝对时间点，显示时按会话时区换算。跨时区团队查历史时，注意各自会话的 TimeZone 设置可能导致看到的字符串不同，但指向的是同一时刻。
+
+* **关于采集间隔：** 扩展记录的是「发现变更的时刻」，不是「变更实际发生的时刻」。如果两次快照之间某个参数改了又改回来，中间状态会被完全丢失。对配置审计要求严格的场景，应该配合 log_statement = 'ddl' 或专门的审计扩展一起用。
+
+* **关于权限：** control 文件中 superuser = false，即非超级用户也可以创建该扩展(前提是拥有目标 schema 的权限)。但采集函数需要能读取 pg_settings 和 pg_db_role_setting，实际执行时仍建议用有足够权限的角色。
+
+* **它不是什么：** 这个扩展只做记录，不做告警，也不会阻止任何配置修改。它是事后排查的工具，不是准入控制。
+
+== 适合场景
+
+* 多人共同运维、配置变更缺乏统一流程的团队
+* 需要做性能回归分析，想确认「变慢是不是因为改了参数」的 DBA
+* 管理大量实例、需要集中掌握配置漂移情况的场景(配合 PoWA)
+* 有合规审计要求，需要证明某个时间点配置状态的环境

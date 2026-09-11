@@ -42,6 +42,7 @@ IvorySQL 作为一款兼容 Oracle 且基于 PostgreSQL 的高级开源数据库
 | 29 | xref:master/ecosystem_components/pgbackrest.adoc[pgBackRest] | 2.58.0 | 可靠的 PostgreSQL 备份和恢复解决方案 | 容灾备份、大库备份、异地/多层容灾
 | 30 | xref:master/ecosystem_components/set_user.adoc[set_user] | REL4_2_0 | PostgreSQL 安全审计扩展，可控角色切换，支持白名单、强制审计、拦截高危操作 | 可控角色切换、权限管理、审计日志
 | 31 | xref:master/ecosystem_components/pg_jieba.adoc[pg_jieba] | master branch | 中文分词扩展，能够将连续的中文文本切分成有意义的词语序列，为中文全文搜索提供基础支持 | 全文搜索、自然语言处理
+| 32 | xref:master/ecosystem_components/pg_track_settings.adoc[pg_track_settings] | 2.1.2 | PostgreSQL 配置跟踪扩展，记录配置变更历史 | 配置审计、变更追踪
 |====
 
 这些插件均经过 IvorySQL 团队的测试和适配，确保在 IvorySQL 环境下稳定运行。用户可以根据业务需求选择合适的插件，进一步提升数据库系统的能力和灵活性。

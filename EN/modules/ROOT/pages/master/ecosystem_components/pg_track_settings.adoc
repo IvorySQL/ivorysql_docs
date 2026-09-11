@@ -1,0 +1,194 @@
+:sectnums:
+:sectnumlevels: 5
+
+= pg_track_settings
+
+== Overview
+pg_track_settings is a PostgreSQL extension written in only about 500 lines of PL/pgSQL that tracks changes to the PostgreSQL configuration.
+
+It provides a function (pg_track_settings_snapshot()) that must be called periodically. On each call, it stores the settings that have changed since the previous call. If PostgreSQL's start time differs from the one recorded previously, it also records the new start time. pg_track_settings is normally used together with a tool such as Cron or PoWA so that sampling happens regularly in production.
+
+Both IvorySQL's PG mode and its Oracle compatibility mode support pg_track_settings.
+
+Project page: <https://github.com/rjuju/pg_track_settings>
+
+License: PostgreSQL License
+
+== Function overview
+
+=== Global parameters
+
+[options="header"]
+|===
+| Function | Purpose
+| pg_track_settings_snapshot() | Collect the current configuration and record the differences
+| pg_track_settings(timestamptz) | Return the full configuration as of the given point in time; if the argument is omitted, the current time is used
+| pg_track_settings_diff(timestamptz, timestamptz) | Return every parameter that changed between the two points in time
+| pg_track_settings_log(text) | Return the complete change history of a single given parameter
+|===
+
+=== Database-level / role-level override parameters
+
+[options="header"]
+|===
+| Function | Purpose
+| pg_track_db_role_settings(timestamptz) | All override settings as of the given point in time
+| pg_track_db_role_settings_diff(timestamptz, timestamptz) | Override settings that changed between the two points in time
+| pg_track_db_role_settings_log(text) | Change history of a single override parameter
+|===
+
+=== Maintenance
+
+[options="header"]
+|===
+| Function | Purpose
+| pg_track_settings_reset() | Clear all history records
+|===
+
+== Installation and enablement
+
+=== Building from source
+
+Build and install from source:
+[literal, bash]
+----
+# Build and install pg_track_settings
+cd ivorysql
+git clone https://github.com/rjuju/pg_track_settings.git contrib/pg_track_settings
+make -C contrib/pg_track_settings install
+----
+
+=== Installing the extension
+
+The commands are the same in PG mode and Oracle mode sessions:
+[literal, sql]
+----
+postgres=# CREATE EXTENSION pg_track_settings;
+postgres=# SELECT extname, extversion FROM pg_extension WHERE extname = 'pg_track_settings';
+      extname      | extversion 
+-------------------+------------
+ pg_track_settings | 2.1.2
+----
+
+== Usage walkthrough
+
+[TIP]
+====
+The output below is illustrative; it is meant to show the form in which each function returns its results.
+====
+
+First take a snapshot to establish a baseline:
+
+[literal, sql]
+----
+postgres=# SELECT pg_track_settings_snapshot();
+ pg_track_settings_snapshot
+----------------------------
+ t
+(1 row)
+----
+
+At this point the history table already holds a first batch of records:
+
+[literal, sql]
+----
+postgres=# SELECT DISTINCT ts FROM pg_track_settings_history;
+              ts
+-------------------------------
+ 2026-09-08 10:00:37.449846+08
+(1 row)
+----
+
+Now suppose someone changes a setting and reloads:
+
+[literal, sql]
+----
+postgres=# ALTER SYSTEM SET work_mem = '32MB';
+postgres=# SELECT pg_reload_conf();
+----
+
+Take another snapshot, then look at the changes over that period:
+
+[TIP]
+====
+In Oracle compatibility mode you must use make_interval(mins => 10) instead of interval '10 minutes', otherwise an error is raised.
+====
+
+[literal, sql]
+----
+postgres=# SELECT pg_track_settings_snapshot();
+
+postgres=# SELECT * FROM pg_track_settings_diff(now() - interval '10 minutes', now());
+   name   | from_setting | from_exists | to_setting | to_exists
+----------+--------------+-------------+------------+-----------
+ work_mem | 4096         | t           | 32768      | t
+(1 row)
+----
+
+The from_exists / to_exists columns express whether the parameter existed at each of the two points in time. When a parameter is added, from_exists is false; when it is removed, to_exists is false.
+
+View the complete history of a single parameter:
+
+[literal, sql]
+----
+postgres=# SELECT * FROM pg_track_settings_log('work_mem');
+              ts               |   name   | setting_exists | setting
+-------------------------------+----------+----------------+---------
+ 2026-09-08 10:06:42.581682+08 | work_mem | t              | 32768
+ 2026-09-08 10:00:37.449846+08 | work_mem | t              | 4096
+(2 rows)
+----
+
+Reconstruct the full configuration as of any point in time:
+
+[literal, sql]
+----
+postgres=# SELECT * FROM pg_track_settings('2026-09-08 10:03:00');
+             name             | setting
+------------------------------+---------
+ [...]
+ checkpoint_completion_target | 0.9
+ checkpoint_timeout           | 300
+ work_mem                     | 4096
+ [...]
+----
+
+View the history of override parameters:
+
+[literal, sql]
+----
+postgres=# SELECT * FROM pg_track_db_role_settings_log('statement_timeout');
+              ts               |  dbname  | rolname  |      name         | setting_exists | setting
+-------------------------------+----------+----------+-------------------+----------------+---------
+ 2026-09-08 11:15:03.112094+08 | appdb    |          | statement_timeout | t              | 30s
+----
+
+View the instance restart history:
+
+[literal, sql]
+----
+postgres=# SELECT * FROM pg_reboot;
+              ts
+-------------------------------
+ 2026-09-08 09:39:43.609195+08
+(1 row)
+----
+
+== Things to be aware of
+
+**About backups:** All historical data is stored in ordinary tables, so it is backed up in full by pg_dump / pg_dumpall. This is usually a good thing, but if a long history has accumulated and you do not want it included in the backup, use pg_track_settings_reset() to clean it up.
+
+* **About timestamps:** The ts column of the history tables is of type timestamptz, so it stores an absolute point in time and is converted to the session time zone for display. When a team spanning multiple time zones queries the history, note that different session TimeZone settings may produce different displayed strings, even though they refer to the same instant.
+
+* **About the sampling interval:** The extension records the moment a change was *discovered*, not the moment the change actually *occurred*. If a parameter is changed and then changed back between two snapshots, the intermediate state is lost entirely. In scenarios with strict configuration-audit requirements, it should be used together with log_statement = 'ddl' or a dedicated audit extension.
+
+* **About privileges:** The control file sets superuser = false, meaning non-superusers can also create the extension (provided they have privileges on the target schema). However, the collection function needs to be able to read pg_settings and pg_db_role_setting, so in practice it is still advisable to run it as a role with sufficient privileges.
+
+* **What it is not:** This extension only records; it does not alert, and it does not prevent any configuration change. It is a tool for after-the-fact investigation, not admission control.
+
+== Suitable scenarios
+
+* Teams where several people share operational duties and configuration changes lack a unified process
+* DBAs performing performance regression analysis who want to confirm whether "it got slower" was caused by a parameter change
+* Environments managing a large number of instances where configuration drift needs to be tracked centrally (together with PoWA)
+* Environments with compliance audit requirements that need to prove the configuration state at a given point in time
