@@ -119,6 +119,7 @@
 **** xref:master/oracle_builtin_functions/stragg.adoc[stragg]
 **** xref:master/oracle_builtin_functions/dbtimezone_impl.adoc[dbtimezone]
 **** xref:master/oracle_builtin_functions/vsize.adoc[vsize]
+**** xref:master/oracle_builtin_functions/lnnvl.adoc[lnnvl]
 *** xref:master/gb18030.adoc[国标GB18030]
 * 参考指南
 ** xref:master/tools_reference.adoc[工具参考]

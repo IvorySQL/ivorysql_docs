@@ -119,6 +119,7 @@
 *** xref:master/oracle_builtin_functions/stragg.adoc[stragg]
 *** xref:master/oracle_builtin_functions/dbtimezone_impl_en.adoc[dbtimezone]
 *** xref:master/oracle_builtin_functions/vsize_en.adoc[vsize]
+*** xref:master/oracle_builtin_functions/lnnvl.adoc[lnnvl]
 ** xref:master/gb18030.adoc[GB18030 Character Set]
 * Reference
 ** xref:master/tools_reference.adoc[Tool Reference]
