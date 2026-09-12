@@ -33,7 +33,7 @@ PostmasterMain()-->SetCaseGucOption()-->GetCaseSwitchModeFromControl()
 
 读取到参数值后调用 `SetConfigOption()` 函数进行赋值。
 
-在每个新的后端进程开始的时候，由于是从 `postmaster` 进程 `fork` 而来，会自动拥有相同的 `ivorysql.identifier_case_switch` 参数值。首先处理 `startup` 包，其中如果包含 `database` 或者 `user` 这两个参数，则根据 `identifier_case_switch` 对参数值做相应的处理。
+在每个新的后端进程开始的时候，由于是从 `postmaster` 进程 `fork` 而来，会自动拥有相同的 `ivorysql.identifier_case_switch` 参数值。首先处理 `startup` 包，其中如果包含 `database` 或者 `user` 这两个参数，则根据 `ivorysql.identifier_case_switch` 对参数值做相应的处理。
 
 源代码为：
 

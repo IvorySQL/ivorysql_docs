@@ -62,7 +62,7 @@
 
 ** 使用方法(以date为例)
 
-查看nls date 的格式及datetime_ignore_nls_mask值
+查看nls date 的格式及ivorysql.datetime_ignore_nls_mask值
 ```
 ivorysql=# set ivorysql.compatible_mode to oracle;
 SET

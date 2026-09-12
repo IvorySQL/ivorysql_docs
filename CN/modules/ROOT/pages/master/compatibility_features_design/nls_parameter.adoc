@@ -109,7 +109,7 @@ oravarcharchar(PG_FUNCTION_ARGS)
 }
 ```
 
-=== GUC参数 `datetime_ignore_nls_mask`
+=== GUC参数 `ivorysql.datetime_ignore_nls_mask`
 
 这个参数被定义为一个int值，低四位分别表示是否在相应的日期时间格式上忽略NLS参数的影响，掩码定义如下：
 ```c
