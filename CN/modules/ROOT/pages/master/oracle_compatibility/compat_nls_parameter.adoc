@@ -112,5 +112,5 @@ ivorysql=# show nls_currency;
 ```
 [NOTE]
 ====
-nls_currency和nls_iso_currency的行为，受兼容oracle大小写特性 `identifier_case_switch` 影响
+nls_currency和nls_iso_currency的行为，受兼容oracle大小写特性 `ivorysql.identifier_case_switch` 影响
 ====

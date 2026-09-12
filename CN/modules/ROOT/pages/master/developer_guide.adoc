@@ -2174,7 +2174,7 @@ Id  |    flg
 ==== 示例
 
 ```undefined
-set compatible_mode to oracle;
+set ivorysql.compatible_mode to oracle;
 
 create table students(student_id varchar(20) primary key ,
 student_name varchar(40),

@@ -103,7 +103,7 @@ oravarcharchar(PG_FUNCTION_ARGS)
 }
 ```
 
-=== GUC Parameter `datetime_ignore_nls_mask`
+=== GUC Parameter `ivorysql.datetime_ignore_nls_mask`
 
 This parameter is defined as an int value, where the lower four bits indicate whether to ignore NLS parameter influence on the corresponding date-time formats. The mask definitions are:
 ```c
