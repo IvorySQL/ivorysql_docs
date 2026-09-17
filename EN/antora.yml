@@ -9,13 +9,13 @@ asciidoc:
         ivorysql-version: 5.6
         pg-version: 18.6
         package-link: "https://github.com/ivorysql/ivorysql"
-        package-link-x86_64-deb: "IvorySQL-5.6-a45b045-20260917.amd64.deb"
-        package-link-x86_64-rpm: "IvorySQL-5.6-a45b045-20260917.x86_64.rpm"
-        package-link-aarch64-deb: "IvorySQL-5.6-a45b045-20260917.arm64.deb"
-        package-link-aarch64-rpm: "IvorySQL-5.6-a45b045-20260917.aarch64.rpm"
-        package-link-mips64el-deb: "IvorySQL-5.6-a45b045-20260917.mips64el.deb"
-        package-link-mips64el-rpm: "IvorySQL-5.6-a45b045-20260917.mips64el.rpm"
-        package-link-loongarch64-deb: "IvorySQL-5.6-a45b045-20260917.loongarch64.deb"
-        package-link-loongarch64-rpm: "IvorySQL-5.6-a45b045-20260917.loongarch64.rpm"
+        package-link-x86_64-deb: "IvorySQL-5.6-74c405c-20260917.amd64.deb"
+        package-link-x86_64-rpm: "IvorySQL-5.6-74c405c-20260917.x86_64.rpm"
+        package-link-aarch64-deb: "IvorySQL-5.6-74c405c-20260917.arm64.deb"
+        package-link-aarch64-rpm: "IvorySQL-5.6-74c405c-20260917.aarch64.rpm"
+        package-link-mips64el-deb: "IvorySQL-5.6-74c405c-20260917.mips64el.deb"
+        package-link-mips64el-rpm: "IvorySQL-5.6-74c405c-20260917.mips64el.rpm"
+        package-link-loongarch64-deb: "IvorySQL-5.6-74c405c-20260917.loongarch64.deb"
+        package-link-loongarch64-rpm: "IvorySQL-5.6-74c405c-20260917.loongarch64.rpm"
 nav:
     - modules/ROOT/nav.adoc
