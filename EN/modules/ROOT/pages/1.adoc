@@ -6,7 +6,7 @@
 
 [*Release Date: September 17, 2026*]
 
-IvorySQL 5.6 updates the PostgreSQL core to version 18.6 and delivers fixes for Oracle compatibility, memory safety, client interfaces, and extension builds. For a comprehensive list of updates, please visit our [documentation site](https://docs.ivorysql.org/).
+IvorySQL 5.6 updates the PostgreSQL core to version 18.6 and delivers fixes for Oracle compatibility, memory safety, client interfaces, and extension builds. For a comprehensive list of updates, please visit our https://docs.ivorysql.org/[documentation site].
 
 == Upstream Updates
 
@@ -21,45 +21,45 @@ PostgreSQL 18.5 was not released because a regression was discovered during rele
 5. Invalidate role-dependent cached plans after role changes.
 6. Ensure that parallel GIN index builds update the table's `pg_class.reltuples` value correctly.
 
-For further details, visit [PostgreSQL 18.6 release notes](https://www.postgresql.org/docs/release/18.6/).
+For further details, visit https://www.postgresql.org/docs/release/18.6/[PostgreSQL 18.6 release notes].
 
 == Enhancements
 
-- Upgrade to PG 18.6 kernel: Feature [#1719](https://github.com/IvorySQL/IvorySQL/pull/1719) +
+- Upgrade to PG 18.6 kernel: Feature https://github.com/IvorySQL/IvorySQL/pull/1719[#1719] +
   PostgreSQL kernel upgraded to version 18.6.
 
-- AI-assisted contribution guidelines: Feature [#1473](https://github.com/IvorySQL/IvorySQL/pull/1473) +
+- AI-assisted contribution guidelines: Feature https://github.com/IvorySQL/IvorySQL/pull/1473[#1473] +
   Establish guidelines covering licensing compliance, human review and sign-off responsibilities, AI tool attribution, disclosure of AI-generated code percentages, and responsible participation in code reviews.
 
-- IvorySQL 5.6 [Online Experience](http://trial.ivorysql.org/): Feature [#10](https://github.com/IvorySQL/ivorysql-wasm/pull/10) +
+- IvorySQL 5.6 http://trial.ivorysql.org/[Online Experience]: Feature https://github.com/IvorySQL/ivorysql-wasm/pull/12[#12] +
   An interactive, browser-based environment is now available, allowing users to explore and evaluate IvorySQL 5.6 in real time — no installation required.
 
 - Packaging for All Platforms +
   Provides multi-platform media packages for X86, ARM, MIPS, and LoongArch architectures.
 
 - Containerized Deployment Support +
-  Supports one-click deployment of standalone or highly available IvorySQL 5.6 clusters via Docker Compose, Podman, Swarm, Helm, and the IvorySQL 5.6 Operator.
+  Supports quick deployment of standalone or highly available IvorySQL 5.6 clusters via Docker Compose, Podman, Swarm, Helm, and the IvorySQL 5.6 Operator.
 
 - IvorySQL Cloud 5.6 released (Visual Database Lifecycle Management Platform) +
   Offers a fully managed, graphical control plane that handles IvorySQL 5.6 database subscriptions, orchestrates end-to-end lifecycle operations, and integrates surrounding ecosystem services.
 
-- PostgreSQL Extensions +
-  Support for Additional PostgreSQL Extensions and Tools: pg_cron, pgaudit, PostGIS, pgRouting, PGroonga, ddlx, pgsql-http, plpgsql_check, pgvector, system_stats, zhparser, pg_partman, pg_jieba, pg_textsearch, AGE, redis_fdw, pg_hint_plan, pg_show_plans, pgagent, pgBouncer, pg_ai_query, pg_bigm, pg_curl, pg_stat_monitor, wal2json, pg_bulkload, pg_profile, pg_repack, pg_readonly, set_user, pgtt, pgnodemx.
+- Extensions +
+  Support for 32 Additional Extensions and Tools: AGE, ddlx, pg\_ai\_query, pg\_bigm, pg\_bulkload, pg\_cron, pg\_curl, pg\_hint\_plan, pg\_jieba, pg\_partman, pg\_profile, pg\_readonly, pg\_repack, pg\_show\_plans, pg\_stat\_monitor, pg\_textsearch, pgagent, pgBouncer, pgaudit, pgnodemx, PGroonga, pgRouting, pgsql-http, pgtt, pgvector, plpgsql\_check, PostGIS, redis\_fdw, set\_user, system\_stats, wal2json, zhparser.
 
 == Fixed Issues
 
-- Fix potential overflow and NaN mishandling in Oracle-compatible interval multiplication and division: PR [#1211](https://github.com/IvorySQL/IvorySQL/pull/1211)
-- Disallow persisting `ivorysql.compatible_mode` through `ALTER USER/ROLE/DATABASE SET`, and close the `SET ... TO DEFAULT` and parameter-specific `RESET` bypasses: PR [#1372](https://github.com/IvorySQL/IvorySQL/pull/1372)
-- Fix package-qualified variable references resolving to unrelated local variables during expression evaluation: PR [#1381](https://github.com/IvorySQL/IvorySQL/pull/1381)
-- Fix build failures with GCC 14 and later: PR [#1385](https://github.com/IvorySQL/IvorySQL/pull/1385)
-- Fix validation of conflicting or repeated `SHARD` options on sequences: PR [#1401](https://github.com/IvorySQL/IvorySQL/pull/1401)
-- Fix build failures of third-party PostgreSQL extensions against IvorySQL: PR [#1448](https://github.com/IvorySQL/IvorySQL/pull/1448)
-- Make `ivorysql.enable_case_switch` visible in `SHOW ALL` and configurable in configuration files: PR [#1450](https://github.com/IvorySQL/IvorySQL/pull/1450)
-- Fix missing package names and wrong schema qualification in `DBMS_UTILITY` backtrace and call-stack output: PR [#1471](https://github.com/IvorySQL/IvorySQL/pull/1471)
-- Fix incorrect newline handling and `m`/`n` option behavior in `REGEXP_COUNT`, `REGEXP_SUBSTR`, `REGEXP_INSTR`, and `REGEXP_REPLACE`: PR [#1489](https://github.com/IvorySQL/IvorySQL/pull/1489)
-- Fix Ivyresult memory leaks on early-return paths: PR [#1556](https://github.com/IvorySQL/IvorySQL/pull/1556)
-- Fix heap buffer overruns in psql named-bind query escaping and `\bind` handling: PR [#1569](https://github.com/IvorySQL/IvorySQL/pull/1569)
-- Fix heap buffer overflows when long namespace prefixes or URLs are used in XML functions: PR [#1827](https://github.com/IvorySQL/IvorySQL/pull/1827)
+- Fix potential overflow and NaN mishandling in Oracle-compatible interval multiplication and division: PR https://github.com/IvorySQL/IvorySQL/pull/1211[#1211]
+- Disallow persisting ivorysql.compatible\_mode through ALTER USER/ROLE/DATABASE SET, and close the SET ... TO DEFAULT and parameter-specific RESET bypasses: PR https://github.com/IvorySQL/IvorySQL/pull/1372[#1372]
+- Fix package-qualified variable references resolving to unrelated local variables during expression evaluation: PR https://github.com/IvorySQL/IvorySQL/pull/1381[#1381]
+- Fix build failures with GCC 14 and later: PR https://github.com/IvorySQL/IvorySQL/pull/1385[#1385]
+- Fix validation of conflicting or repeated SHARD options on sequences: PR https://github.com/IvorySQL/IvorySQL/pull/1401[#1401]
+- Fix build failures of third-party PostgreSQL extensions against IvorySQL: PR https://github.com/IvorySQL/IvorySQL/pull/1448[#1448]
+- Make ivorysql.enable\_case\_switch visible in SHOW ALL and configurable in configuration files: PR https://github.com/IvorySQL/IvorySQL/pull/1450[#1450]
+- Fix missing package names and wrong schema qualification in DBMS\_UTILITY backtrace and call-stack output: PR https://github.com/IvorySQL/IvorySQL/pull/1471[#1471]
+- Fix incorrect newline handling and m/n option behavior in REGEXP\_COUNT, REGEXP\_SUBSTR, REGEXP\_INSTR, and REGEXP\_REPLACE: PR https://github.com/IvorySQL/IvorySQL/pull/1489[#1489]
+- Fix Ivyresult memory leaks on early-return paths: PR https://github.com/IvorySQL/IvorySQL/pull/1556[#1556]
+- Fix heap buffer overruns in psql named-bind query escaping and \\bind handling: PR https://github.com/IvorySQL/IvorySQL/pull/1569[#1569]
+- Fix heap buffer overflows when long namespace prefixes or URLs are used in XML functions: PR https://github.com/IvorySQL/IvorySQL/pull/1827[#1827]
 
 == Source Code
 
@@ -107,4 +107,4 @@ The following individuals (in alphabetical order) have contributed to this relea
 * Zhenhao Pan
 * Zhuoyan Shi
 
-[Complete Changelog](https://github.com/IvorySQL/IvorySQL/compare/IvorySQL_5.4...IvorySQL_5.6)
+https://github.com/IvorySQL/IvorySQL/compare/IvorySQL_5.4\...IvorySQL_5.6[Complete Changelog]
