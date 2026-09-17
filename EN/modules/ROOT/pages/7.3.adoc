@@ -113,7 +113,7 @@ ERROR:  relation "Normal_3" does not exist
 LINE 1: select * from "Normal_3";
 
 ivorysql=# drop table "NORMAL_1";
-DROP TABLE
+ERROR:  relation "NORMAL_1" does not exist
 ivorysql=# drop table "Normal_2";
 DROP TABLE
 ivorysql=# drop table "normal_3";
