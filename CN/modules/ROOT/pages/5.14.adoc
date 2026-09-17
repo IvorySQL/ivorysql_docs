@@ -69,7 +69,7 @@ sudo make USE_PGXS=1 \
 
 == 配置预加载
 
-在 `postgresql.conf` 中将 pgnodemx 追加到已有的 `shared_preload_libraries`，不要删除 IvorySQL 原有预加载库。
+在 `ivorysql.conf` 中将 pgnodemx 追加到已有的 `shared_preload_libraries`，不要删除 IvorySQL 原有预加载库。
 
 [source,ini]
 ----

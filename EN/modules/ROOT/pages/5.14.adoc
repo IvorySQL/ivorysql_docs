@@ -69,7 +69,7 @@ Confirm that the selected `pg_config` belongs to IvorySQL 5.4 before compiling:
 
 == Configure preloading
 
-Append pgnodemx to the existing `shared_preload_libraries` value in `postgresql.conf`. Do not remove IvorySQL's existing preload libraries.
+Append pgnodemx to the existing `shared_preload_libraries` value in `ivorysql.conf`. Do not remove IvorySQL's existing preload libraries.
 
 [source,ini]
 ----
