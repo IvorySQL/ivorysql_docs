@@ -4,7 +4,7 @@
 
 == 版本概览
 
-[*发布日期：2026 年 9 月 17 日*]
+[*发布日期：2026 年 9 月 18 日*]
 
 IvorySQL 5.6 将 PostgreSQL 内核升级至 18.6，并针对 Oracle 兼容性、内存安全、客户端接口和扩展构建提供多项修复。有关更新的完整列表，请访问我们的 https://docs.ivorysql.org/[文档站点]。
 
@@ -27,6 +27,11 @@ IvorySQL 5.6 将 PostgreSQL 内核升级至 18.6，并针对 Oracle 兼容性、
 
 - 升级至 PG 18.6 内核：Feature https://github.com/IvorySQL/IvorySQL/pull/1719[#1719] +
   PostgreSQL 内核已升级至 18.6 版本。
+
+- PGNexus 全新适配 IvorySQL 5.6，开启零门槛云端 AI 辅助实验新体验！ +
+  PGNexus 作为面向全场景的一站式知识与实验平台，现已同步支持最新 IvorySQL 5.6。无需本地安装，通过在线沙盒即可一键构建环境。支持补丁应用与测试验证，覆盖单机、流复制、逻辑复制及高可用集群等多种拓扑架构，开箱即用，助力高校、企业及开发者高效协作，极速探索新版本特性。 +
+  https://pgnexus.ai[了解 PGNexus] +
+  https://pgnexus.ai/sandboxes[立即体验 IvorySQL 5.6 沙盒]
 
 - AI 辅助贡献指南：Feature https://github.com/IvorySQL/IvorySQL/pull/1473[#1473] +
   制定相关指南，涵盖许可证合规、人工审查与签署责任、AI 工具归属标注、AI 生成代码占比披露，以及负责任地参与代码审查。

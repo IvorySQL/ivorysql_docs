@@ -4,7 +4,7 @@
 
 == Version Overview
 
-[*Release Date: September 17, 2026*]
+[*Release Date: September 18, 2026*]
 
 IvorySQL 5.6 updates the PostgreSQL core to version 18.6 and delivers fixes for Oracle compatibility, memory safety, client interfaces, and extension builds. For a comprehensive list of updates, please visit our https://docs.ivorysql.org/[documentation site].
 
@@ -27,6 +27,11 @@ For further details, visit https://www.postgresql.org/docs/release/18.6/[Postgre
 
 - Upgrade to PG 18.6 kernel: Feature https://github.com/IvorySQL/IvorySQL/pull/1719[#1719] +
   PostgreSQL kernel upgraded to version 18.6.
+
+- PGNexus Now Supports IvorySQL 5.6 +
+  PGNexus is now fully compatible with IvorySQL 5.6, bringing a zero-barrier, cloud-based AI-assisted experimentation experience. As a one-stop knowledge and experimentation platform for a wide range of scenarios, PGNexus lets users build environments with one click through an online sandbox, with no local installation required. It supports patch application, testing, and validation across multiple topologies, including standalone, streaming replication, logical replication, and high-availability clusters. Ready to use out of the box, PGNexus helps universities, enterprises, and developers collaborate efficiently and rapidly explore new version features. +
+  https://pgnexus.ai[Learn more about PGNexus] +
+  https://pgnexus.ai/sandboxes[Try the IvorySQL 5.6 sandbox]
 
 - AI-assisted contribution guidelines: Feature https://github.com/IvorySQL/IvorySQL/pull/1473[#1473] +
   Establish guidelines covering licensing compliance, human review and sign-off responsibilities, AI tool attribution, disclosure of AI-generated code percentages, and responsible participation in code reviews.
