@@ -110,8 +110,8 @@ IvorySQL source code is hosted on GitHub: <https://github.com/IvorySQL>.
 
 Before submitting code or documentation contributions, to ensure code legality and compliance, individual or corporate contributors need to sign the Contributor License Agreement (CLA). Signing the CLA is a necessary condition for the IvorySQL community to accept contributions, ensuring your contributions are legally distributed. Please download the CLA according to the following links, sign it, and send the signed CLA to cla@ivorysql.org.
 
-* https://www.ivorysql.org/assets/files/individual_cla-7703700da5e1ca8f26cb8a68f610d4f2.pdf[Individual Contributor]
-* https://www.ivorysql.org/assets/files/corporate_cla-88aa01a7e770ecf89dc401f925c3438e.pdf[Corporate Contributor]
+* https://ivorysql.org/pdf/individual_cla.pdf[Individual Contributor]
+* https://ivorysql.org/pdf/corporate_cla.pdf[Corporate Contributor]
 
 [TIP]
 If you contribute via the AtomGit platform, the system will automatically assist you in completing the CLA signing process, without the need to manually download and send files.

@@ -110,8 +110,8 @@ IvorySQL 源码托管在 GitHub：<https://github.com/IvorySQL>。
 
 在提交代码或文档贡献之前，为了确保代码合法合规，个人或企业贡献者需要签署贡献者许可协议（CLA）。签署 CLA 是 IvorySQL 社区接受贡献的必要条件，以确保您的贡献被合法分发。请根据下列链接下载 CLA 进行签署并将签署后的 CLA 发送至 cla@ivorysql.org。
 
-* https://www.ivorysql.org/zh-cn/assets/files/individual_cla-7703700da5e1ca8f26cb8a68f610d4f2.pdf[个人贡献者]
-* https://www.ivorysql.org/zh-cn/assets/files/corporate_cla-88aa01a7e770ecf89dc401f925c3438e.pdf[企业贡献者]
+* https://ivorysql.org/pdf/individual_cla.pdf[个人贡献者]
+* https://ivorysql.org/pdf/corporate_cla.pdf[企业贡献者]
 
 [TIP]
 如果您通过 AtomGit 平台进行贡献，系统会自动协助您完成 CLA 签署流程，无需手动下载和发送文件。
