@@ -54,16 +54,16 @@ IvorySQL 5.6 将 PostgreSQL 内核升级至 18.6，并针对 Oracle 兼容性、
 == 缺陷修复
 
 - 修复 Oracle 兼容的 interval 乘除法中可能发生的溢出和 NaN 处理不当问题：PR https://github.com/IvorySQL/IvorySQL/pull/1211[#1211]
-- 禁止通过 ALTER USER/ROLE/DATABASE SET 持久化 ivorysql.compatible\_mode，并封堵 SET ... TO DEFAULT 和针对该参数执行 RESET 的绕过方式：PR https://github.com/IvorySQL/IvorySQL/pull/1372[#1372]
+- 禁止通过 ALTER USER/ROLE/DATABASE SET 持久化 ivorysql.compatible_mode，并封堵 SET ... TO DEFAULT 和针对该参数执行 RESET 的绕过方式：PR https://github.com/IvorySQL/IvorySQL/pull/1372[#1372]
 - 修复表达式求值期间，带包限定符的变量引用被解析为无关局部变量的问题：PR https://github.com/IvorySQL/IvorySQL/pull/1381[#1381]
 - 修复使用 GCC 14 及更高版本时的构建失败问题：PR https://github.com/IvorySQL/IvorySQL/pull/1385[#1385]
 - 修复序列中相互冲突或重复的 SHARD 选项校验问题：PR https://github.com/IvorySQL/IvorySQL/pull/1401[#1401]
 - 修复第三方 PostgreSQL 扩展针对 IvorySQL 构建时的失败问题：PR https://github.com/IvorySQL/IvorySQL/pull/1448[#1448]
-- 使 ivorysql.enable\_case\_switch 在 SHOW ALL 中可见，并可通过配置文件进行配置：PR https://github.com/IvorySQL/IvorySQL/pull/1450[#1450]
-- 修复 DBMS\_UTILITY 回溯和调用栈输出中缺少包名及模式限定错误的问题：PR https://github.com/IvorySQL/IvorySQL/pull/1471[#1471]
-- 修复 REGEXP\_COUNT、REGEXP\_SUBSTR、REGEXP\_INSTR 和 REGEXP\_REPLACE 中换行符处理错误以及 m/n 选项行为异常的问题：PR https://github.com/IvorySQL/IvorySQL/pull/1489[#1489]
+- 使 ivorysql.enable_case_switch 在 SHOW ALL 中可见，并可通过配置文件进行配置：PR https://github.com/IvorySQL/IvorySQL/pull/1450[#1450]
+- 修复 DBMS_UTILITY 回溯和调用栈输出中缺少包名及模式限定错误的问题：PR https://github.com/IvorySQL/IvorySQL/pull/1471[#1471]
+- 修复 REGEXP_COUNT、REGEXP_SUBSTR、REGEXP_INSTR 和 REGEXP_REPLACE 中换行符处理错误以及 m/n 选项行为异常的问题：PR https://github.com/IvorySQL/IvorySQL/pull/1489[#1489]
 - 修复 Ivyresult 提前返回路径上的内存泄漏问题：PR https://github.com/IvorySQL/IvorySQL/pull/1556[#1556]
-- 修复 psql 命名绑定查询转义和 \\bind 处理中发生的堆缓冲区越界问题：PR https://github.com/IvorySQL/IvorySQL/pull/1569[#1569]
+- 修复 psql 命名绑定查询转义和 \bind 处理中发生的堆缓冲区越界问题：PR https://github.com/IvorySQL/IvorySQL/pull/1569[#1569]
 - 修复 XML 函数使用过长的命名空间前缀或 URL 时发生的堆缓冲区溢出问题：PR https://github.com/IvorySQL/IvorySQL/pull/1827[#1827]
 
 == 源码仓库
