@@ -278,7 +278,7 @@ ivorysql=# select * from LOWER_CASE_3;
 (0 行记录)
 
 ivorysql=# drop table "NORMAL_1";
-DROP TABLE
+ERROR:  relation "NORMAL_1" does not exist
 ivorysql=# drop table "Normal_2";
 DROP TABLE
 ivorysql=# drop table "normal_3";
