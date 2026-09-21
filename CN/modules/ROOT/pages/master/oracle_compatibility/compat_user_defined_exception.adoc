@@ -1,0 +1,209 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= 用户自定义EXCEPTION
+
+== 目的
+
+IvorySQL提供了兼容Oracle的用户自定义EXCEPTION功能，支持在PL/iSQL存储过程与包中声明用户自定义EXCEPTION。
+
+本文档旨在为使用人员介绍此新增功能。
+
+== 功能说明
+
+IvorySQL提供的兼容Oracle的用户自定义EXCEPTION功能，包括如下内容。
+
+=== 在包中声明自定义exception
+
+可以在包声明部分或包体声明部分使用 `异常名 EXCEPTION;` 声明用户自定义异常。声明在包声明部分的异常可以在对应包体中使用；只在包体中声明的异常用于包体内部的过程和函数。
+
+语法如下：
+
+```sql
+exception_name EXCEPTION;
+```
+
+自定义异常是PL/iSQL的异常对象，不是普通SQL数据类型，不能被赋值、作为表达式求值或作为过程返回值。异常名称遵循PL/iSQL的作用域规则，同一声明作用域内不能与其他变量或异常重名。
+
+使用 `RAISE` 按名称抛出异常，并在 `EXCEPTION` 区域通过同一名称捕获：
+
+```sql
+RAISE exception_name;
+
+EXCEPTION
+  WHEN exception_name THEN
+    handler_statement;
+```
+
+包级异常可以由包内的一个子程序抛出，再由包内调用它的另一个子程序捕获。异常向外传播时，当前语句块中的修改会按照PL/iSQL原有的异常子事务机制进行回滚，然后执行匹配的异常处理器。
+
+
+=== 在存储过程中声明exception
+
+可以在独立存储过程的声明区定义局部异常。局部异常只在声明它的过程及其嵌套作用域内可见，过程外不能直接引用该异常名称。
+
+```sql
+CREATE OR REPLACE PROCEDURE example_proc IS
+  local_exception EXCEPTION;
+BEGIN
+  RAISE local_exception;
+EXCEPTION
+  WHEN local_exception THEN
+    NULL;
+END;
+/
+```
+
+执行 `RAISE local_exception` 时，IvorySQL创建错误并进入异常匹配流程。`WHEN local_exception` 命中后，可以在处理器中访问 `SQLERRM`。未通过 `PRAGMA EXCEPTION_INIT` 绑定错误码的用户异常使用内部SQLSTATE `P0001`；如果没有另外指定消息，`SQLERRM` 的默认内容是 `User-Defined Exception`。
+
+异常处理器中使用不带参数的 `RAISE;`，可以继续向外层重新抛出当前异常。
+
+
+=== 把一个用户自定义异常名称与特定数据库错误码绑定
+
+`PRAGMA EXCEPTION_INIT` 是编译期指令，用于把已经声明的用户自定义异常与指定错误码关联。它本身不是运行期语句，必须写在声明区，并且位于对应的 `EXCEPTION` 声明之后。
+
+语法如下：
+
+```sql
+exception_name EXCEPTION;
+PRAGMA EXCEPTION_INIT(exception_name, error_code);
+```
+
+绑定后，执行 `RAISE exception_name` 时使用关联的错误码；`WHEN exception_name` 也根据该错误码进行匹配。这样可以用具有业务含义的名称代替数字错误码。
+
+IvorySQL接受的错误码范围如下：
+
+* 正数只允许 `100`，用于ANSI `NO_DATA_FOUND`；
+* 允许 `-1000000` 到 `-1` 之间的负整数，但不允许 `-1403`；
+* 不允许 `0`、除 `100` 外的正整数以及小于 `-1000000` 的整数。
+
+非法错误码会在编译存储过程或包时报告 `illegal ORACLE error number ... for PRAGMA EXCEPTION_INIT`。异常名称不存在，或者名称对应的对象不是异常时，也会在编译期报错。
+
+错误码和错误消息相互独立。例如，`PRAGMA EXCEPTION_INIT(my_exception, -20001)` 只把 `-20001` 绑定到异常，并不会把 `SQLERRM` 自动转换成 `ORA-20001`。使用普通 `RAISE my_exception` 且未指定消息时，`SQLERRM` 仍为 `User-Defined Exception`。如需自定义消息，可以使用：
+
+```sql
+RAISE my_exception USING MESSAGE = 'application error';
+```
+
+=== 使用注意事项
+
+IvorySQL当前通过错误码匹配 `WHEN` 处理器，而不是通过异常对象的声明身份匹配。所有未使用 `PRAGMA EXCEPTION_INIT` 的用户异常默认使用同一个内部SQLSTATE `P0001`。如果同一异常处理区域需要区分多个用户异常，应使用 `PRAGMA EXCEPTION_INIT` 为它们绑定不同的合法错误码；绑定相同错误码的异常也无法在运行期相互区分。
+
+
+== 测试用例
+
+=== 在包中声明自定义exception
+
+下面的用例实际抛出并捕获包级异常。只有匹配的异常处理器得到执行，才会向结果表写入记录。
+
+```
+CREATE TABLE plisql_exception_results
+(
+  test_no   NUMBER,
+  test_name VARCHAR2(40),
+  caught_by VARCHAR2(40),
+  detail    VARCHAR2(100)
+);
+
+CREATE OR REPLACE PACKAGE test_exc_pkg1 IS
+  PROCEDURE test_proc;
+END test_exc_pkg1;
+/
+
+CREATE OR REPLACE PACKAGE BODY test_exc_pkg1 IS
+  bad_interval EXCEPTION;
+
+  PROCEDURE test_proc IS
+  BEGIN
+    RAISE bad_interval;
+  EXCEPTION
+    WHEN bad_interval THEN
+      INSERT INTO plisql_exception_results
+        VALUES (1, 'package_basic', 'bad_interval', SQLERRM);
+  END test_proc;
+END test_exc_pkg1;
+/
+
+BEGIN
+  test_exc_pkg1.test_proc();
+END;
+/
+```
+=== 在存储过程中声明exception
+
+```
+CREATE OR REPLACE PROCEDURE test_standalone_exc IS
+  my_exception EXCEPTION;
+BEGIN
+  RAISE my_exception;
+EXCEPTION
+  WHEN my_exception THEN
+    INSERT INTO plisql_exception_results
+      VALUES (3, 'standalone', 'my_exception', SQLERRM);
+END;
+/
+
+BEGIN
+  test_standalone_exc();
+END;
+/
+```
+
+=== 把一个用户自定义异常名称与特定数据库错误码绑定
+
+```
+CREATE OR REPLACE PACKAGE test_pragma_init IS
+  PROCEDURE test_basic_pragma;
+END test_pragma_init;
+/
+
+CREATE OR REPLACE PACKAGE BODY test_pragma_init IS
+  my_exception EXCEPTION;
+  PRAGMA EXCEPTION_INIT(my_exception, -20001);
+
+  PROCEDURE test_basic_pragma IS
+  BEGIN
+    RAISE my_exception;
+  EXCEPTION
+    WHEN my_exception THEN
+      INSERT INTO plisql_exception_results
+        VALUES (6, 'pragma_basic', 'my_exception', SQLERRM);
+  END test_basic_pragma;
+END test_pragma_init;
+/
+
+BEGIN
+  test_pragma_init.test_basic_pragma();
+END;
+/
+```
+
+执行以上三个用例后，可以查询实际进入的异常处理器及 `SQLERRM`：
+
+```sql
+SELECT test_name, caught_by, detail
+FROM plisql_exception_results
+ORDER BY test_no;
+```
+
+预期结果为：
+
+```
+    test_name    |   caught_by   |         detail
+-----------------+---------------+------------------------
+ package_basic   | bad_interval  | User-Defined Exception
+ standalone      | my_exception  | User-Defined Exception
+ pragma_basic    | my_exception  | User-Defined Exception
+```
+
+测试结束后清理对象：
+
+```sql
+DROP PACKAGE test_exc_pkg1;
+DROP PROCEDURE test_standalone_exc;
+DROP PACKAGE test_pragma_init;
+DROP TABLE plisql_exception_results;
+```

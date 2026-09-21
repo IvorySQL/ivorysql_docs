@@ -1,0 +1,210 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= User-Defined EXCEPTION
+
+== Purpose
+
+IvorySQL provides an Oracle-compatible user-defined EXCEPTION feature that supports declaring custom exceptions in PL/iSQL stored procedures and packages.
+
+This document introduces the feature to users.
+
+== Feature Description
+
+The Oracle-compatible user-defined EXCEPTION feature provided by IvorySQL includes the following capabilities.
+
+=== Declaring a Custom Exception in a Package
+
+A user-defined exception can be declared in a package specification or package body with `exception_name EXCEPTION;`. An exception declared in the package specification can be used in the corresponding package body. An exception declared only in the package body is available to procedures and functions within that package body.
+
+Syntax:
+
+```sql
+exception_name EXCEPTION;
+```
+
+A user-defined exception is a PL/iSQL exception object, not an ordinary SQL data type. It cannot be assigned a value, evaluated as an expression, or used as a procedure return value. Exception names follow PL/iSQL scope rules and cannot have the same name as another variable or exception in the same declaration scope.
+
+Use `RAISE` to raise an exception by name and use the same name in the `EXCEPTION` section to catch it:
+
+```sql
+RAISE exception_name;
+
+EXCEPTION
+  WHEN exception_name THEN
+    handler_statement;
+```
+
+A package-level exception can be raised by one subprogram in a package and caught by another package subprogram that calls it. When an exception propagates, changes made in the current block are rolled back through the existing PL/iSQL exception subtransaction mechanism before the matching exception handler is executed.
+
+
+=== Declaring an Exception in a Stored Procedure
+
+A local exception can be defined in the declaration section of a standalone stored procedure. It is visible only within the procedure that declares it and its nested scopes; its name cannot be referenced directly outside the procedure.
+
+```sql
+CREATE OR REPLACE PROCEDURE example_proc IS
+  local_exception EXCEPTION;
+BEGIN
+  RAISE local_exception;
+EXCEPTION
+  WHEN local_exception THEN
+    NULL;
+END;
+/
+```
+
+When `RAISE local_exception` is executed, IvorySQL creates an error and enters the exception-matching process. After `WHEN local_exception` matches, the handler can access `SQLERRM`. A user-defined exception that is not associated with an error code by `PRAGMA EXCEPTION_INIT` uses the internal SQLSTATE `P0001`. If no other message is specified, the default value of `SQLERRM` is `User-Defined Exception`.
+
+An unqualified `RAISE;` in an exception handler rethrows the current exception to an outer scope.
+
+
+=== Associating a User-Defined Exception Name with an Error Code
+
+`PRAGMA EXCEPTION_INIT` is a compile-time directive that associates an already declared user-defined exception with a specified error code. It is not a runtime statement. It must appear in the declaration section after the corresponding `EXCEPTION` declaration.
+
+Syntax:
+
+```sql
+exception_name EXCEPTION;
+PRAGMA EXCEPTION_INIT(exception_name, error_code);
+```
+
+After the association is established, `RAISE exception_name` uses the associated error code, and `WHEN exception_name` matches that error code. This allows a meaningful name to be used instead of a numeric error code.
+
+IvorySQL accepts error codes according to the following rules:
+
+* `100` is the only accepted positive value and represents ANSI `NO_DATA_FOUND`.
+* Negative integers from `-1000000` through `-1` are accepted, except for `-1403`.
+* Zero, positive integers other than `100`, and integers less than `-1000000` are rejected.
+
+An invalid error code causes `illegal ORACLE error number ... for PRAGMA EXCEPTION_INIT` to be reported while the stored procedure or package is compiled. A compile-time error is also reported if the exception name does not exist or names an object that is not an exception.
+
+The error code and error message are independent. For example, `PRAGMA EXCEPTION_INIT(my_exception, -20001)` only associates `-20001` with the exception; it does not automatically convert `SQLERRM` into `ORA-20001`. When a plain `RAISE my_exception` is used without an explicit message, `SQLERRM` remains `User-Defined Exception`. To provide a custom message, use:
+
+```sql
+RAISE my_exception USING MESSAGE = 'application error';
+```
+
+=== Usage Notes
+
+IvorySQL currently matches a `WHEN` handler by error code rather than by the declaration identity of the exception object. All user-defined exceptions without `PRAGMA EXCEPTION_INIT` use the same internal SQLSTATE, `P0001`. If multiple user-defined exceptions must be distinguished in the same exception-handling section, associate each one with a different valid error code through `PRAGMA EXCEPTION_INIT`. Exceptions associated with the same error code also cannot be distinguished at runtime.
+
+
+== Test Cases
+
+=== Declaring a Custom Exception in a Package
+
+The following test actually raises and catches a package-level exception. A row is inserted into the results table only if the matching exception handler is executed.
+
+```
+CREATE TABLE plisql_exception_results
+(
+  test_no   NUMBER,
+  test_name VARCHAR2(40),
+  caught_by VARCHAR2(40),
+  detail    VARCHAR2(100)
+);
+
+CREATE OR REPLACE PACKAGE test_exc_pkg1 IS
+  PROCEDURE test_proc;
+END test_exc_pkg1;
+/
+
+CREATE OR REPLACE PACKAGE BODY test_exc_pkg1 IS
+  bad_interval EXCEPTION;
+
+  PROCEDURE test_proc IS
+  BEGIN
+    RAISE bad_interval;
+  EXCEPTION
+    WHEN bad_interval THEN
+      INSERT INTO plisql_exception_results
+        VALUES (1, 'package_basic', 'bad_interval', SQLERRM);
+  END test_proc;
+END test_exc_pkg1;
+/
+
+BEGIN
+  test_exc_pkg1.test_proc();
+END;
+/
+```
+
+=== Declaring an Exception in a Stored Procedure
+
+```
+CREATE OR REPLACE PROCEDURE test_standalone_exc IS
+  my_exception EXCEPTION;
+BEGIN
+  RAISE my_exception;
+EXCEPTION
+  WHEN my_exception THEN
+    INSERT INTO plisql_exception_results
+      VALUES (3, 'standalone', 'my_exception', SQLERRM);
+END;
+/
+
+BEGIN
+  test_standalone_exc();
+END;
+/
+```
+
+=== Associating a User-Defined Exception Name with an Error Code
+
+```
+CREATE OR REPLACE PACKAGE test_pragma_init IS
+  PROCEDURE test_basic_pragma;
+END test_pragma_init;
+/
+
+CREATE OR REPLACE PACKAGE BODY test_pragma_init IS
+  my_exception EXCEPTION;
+  PRAGMA EXCEPTION_INIT(my_exception, -20001);
+
+  PROCEDURE test_basic_pragma IS
+  BEGIN
+    RAISE my_exception;
+  EXCEPTION
+    WHEN my_exception THEN
+      INSERT INTO plisql_exception_results
+        VALUES (6, 'pragma_basic', 'my_exception', SQLERRM);
+  END test_basic_pragma;
+END test_pragma_init;
+/
+
+BEGIN
+  test_pragma_init.test_basic_pragma();
+END;
+/
+```
+
+After running the three tests above, query the handlers that were actually entered and their `SQLERRM` values:
+
+```sql
+SELECT test_name, caught_by, detail
+FROM plisql_exception_results
+ORDER BY test_no;
+```
+
+Expected result:
+
+```
+    test_name    |   caught_by   |         detail
+-----------------+---------------+------------------------
+ package_basic   | bad_interval  | User-Defined Exception
+ standalone      | my_exception  | User-Defined Exception
+ pragma_basic    | my_exception  | User-Defined Exception
+```
+
+Clean up the objects after the tests:
+
+```sql
+DROP PACKAGE test_exc_pkg1;
+DROP PROCEDURE test_standalone_exc;
+DROP PACKAGE test_pragma_init;
+DROP TABLE plisql_exception_results;
+```
