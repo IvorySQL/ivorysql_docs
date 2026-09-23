@@ -1,0 +1,130 @@
+:sectnums:
+:sectnumlevels: 5
+
+= Package RECORD Type Design
+
+== Background
+
+=== Oracle semantics
+
+Oracle PL/SQL allows `TYPE ... IS RECORD` to define a record composed of multiple fields. A record type can be declared in a package specification, package body, or PL/SQL block, then used as a variable, parameter, or function return type. A type declared in a package specification can be referenced by other program units through a package-qualified name.
+
+=== Purpose
+
+Shared type packages and package interfaces that accept or return records are common in Oracle applications. Package record types preserve these interfaces and field access patterns when applications are migrated to IvorySQL, without splitting records into scalar parameters or creating separate catalog composite types.
+
+== Architecture
+
+=== Design choice
+
+When the parser reads `TYPE ... IS RECORD`, PL/iSQL builds a `TupleDesc` from the field list, finalizes it, and calls `BlessTupleDesc()`. This gives the anonymous `RECORD` a resolvable typmod. The resulting type retains its complete field structure during compilation and can be used for variables, subprogram parameters, and return types.
+
+Type declarations and record variables use different namespace item types:
+
+[cols="2,2,4",options="header"]
+|===
+|Object |Namespace type |Purpose
+|Record type declaration |`PLISQL_NSTYPE_ROWTYPE` |Stores the type's field list and tuple descriptor.
+|Record variable |`PLISQL_NSTYPE_REC` |Stores the runtime record value and field access state.
+|===
+
+The parser can therefore distinguish a type name from a variable name. Invalid expressions such as `type_name.field` and `type_name%TYPE` return compilation errors instead of accessing an incompatible data structure.
+
+=== Visibility and type resolution
+
+* A record type declared in a package specification is a public package member and is resolved through `package_name.type_name`.
+* A type declared in a package body is added only to the package body's private namespace.
+* Code inside the declaring package can use either an unqualified type name or the package-qualified name.
+* Cross-package references look up the type in the target package's compiled type information and preserve its typmod and memory-context lifetime.
+* Type names participate in duplicate-declaration checks and cannot conflict with another type or variable in the same scope.
+
+=== Code organization
+
+[source,text]
+----
+src/pl/plisql/src/
+├── pl_gram.y                         -- TYPE ... IS RECORD grammar and field checks
+├── pl_comp.c                         -- type lookup, column references, nested fields
+├── pl_package.c                      -- package type registration and qualified lookup
+├── pl_subproc_function.c             -- subprogram parameter and return types
+├── pl_exec.c                         -- record instantiation and TupleDesc lifetime
+├── plisql.h                          -- namespace item definitions
+├── pl_unreserved_kwlist.h            -- related unreserved keywords
+├── sql/
+│   └── plisql_package_type_record.sql -- regression test SQL
+└── expected/
+    └── plisql_package_type_record.out -- expected output
+----
+
+== Implementation Details
+
+=== Declaration phase
+
+The grammar reads the field names and data types, then creates a `PLiSQL_row` for the declaration. Field parsing uses a private temporary namespace, so field names do not leak into the surrounding package or block and do not create false conflicts with local variables.
+
+After the field list is complete, the system builds and finalizes the `TupleDesc`, then registers it as an anonymous `RECORDOID` with a typmod. A record variable can therefore be instantiated and assigned field by field even before a complete-row assignment has occurred.
+
+=== Parameters and return values
+
+Package record types use `RECORDOID`; the positive typmod identifies the concrete structure. Type resolution passes both the OID and typmod through the following contexts:
+
+* local and package variables;
+* `IN` and `OUT` parameters;
+* function return types;
+* same-package and cross-package qualified references.
+
+When a function returns a package record type, the planner can recover the composite structure from the typmod. `SELECT * FROM package_name.function_name(...)` therefore needs no additional column definition list.
+
+=== Nested composite fields
+
+Field type resolution carries the real type OID and typmod instead of degrading every nested field to an unstructured `RECORDOID/-1`. When `resolve_column_ref()` handles a multi-level field reference, it builds a `FieldSelect`, which supports expressions such as `record.field.subfield`.
+
+For a named composite type created with `CREATE TYPE ... AS`, `pg_type.typrelid` lets the executor recover the structure, so nested reads and field-by-field writes work.
+
+For a field whose type is another package record, whole-field assignment and nested reads work, but field-by-field writes are limited by PostgreSQL's core `FieldStore` node. `FieldStore` does not carry a result typmod and looks up the type with typmod `-1` at execution time. It cannot recover an anonymous package record registered under a positive typmod. The current implementation reports a clear error for this case.
+
+=== Tuple descriptor lifetime
+
+The `TupleDesc` ownership rules differ for package record types and named composite types:
+
+* A package record type obtains a reference-counted descriptor through row-type lookup and must release it after use.
+* A named composite type may return a descriptor owned by the type cache; callers must not release it.
+
+The implementation handles ownership according to the descriptor's source, avoiding accidental release of a type-cache descriptor. Data needed by cross-package and self-qualified references is copied into a memory context with a sufficient lifetime, so it remains valid while the package cache is active.
+
+== Error Handling
+
+=== Unsupported field clauses
+
+Record fields do not support `NOT NULL` or `DEFAULT`:
+
+* `PLiSQL_row` has no storage for per-field default expressions.
+* Without a field default, a record instance cannot satisfy a field-level `NOT NULL` constraint.
+
+The grammar rejects both clauses at compile time. This prevents defaults from being silently ignored and avoids assertion failures when a record variable is instantiated.
+
+=== TABLE OF declarations
+
+The grammar recognizes `TYPE name IS TABLE OF ...`, but collection types are not implemented. IvorySQL returns a not-supported error that includes the type name instead of a generic syntax error.
+
+=== Type and variable confusion
+
+Because type declarations and record variables use separate namespace item types, the following cases are rejected explicitly:
+
+* treating a type name as a record value and accessing a field;
+* applying `%TYPE` to the type declaration itself;
+* appending a nonexistent field or name to a package-qualified type name;
+* declaring a duplicate type, or using the same name for a type and a variable in one scope.
+
+== Test Coverage
+
+The `plisql_package_type_record.sql` regression test covers:
+
+* record declarations in package specifications, package bodies, and anonymous blocks;
+* unqualified, self-qualified, and cross-package type references;
+* local variables, package variables, return values, and `IN` or `OUT` parameters;
+* composite result queries without a column definition list;
+* scalar fields, named composite fields, and nested package record fields;
+* errors for `NOT NULL`, `DEFAULT`, and `TABLE OF`;
+* type/record-variable confusion, field namespace isolation, and duplicate declarations;
+* session and package-cache usability after compilation errors.

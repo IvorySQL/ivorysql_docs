@@ -32,6 +32,7 @@
 ** xref:master/oracle_compatibility/compat_stragg.adoc[23、STRAGG function]
 ** xref:master/oracle_compatibility/compat_alter_index_unusable_en.adoc[24、Alter Index Unusable]
 ** xref:master/oracle_compatibility/compat_dbtimezone_en.adoc[24、dbtimezone]
+** xref:master/oracle_compatibility/package_record_type.adoc[27、RECORD type declarations in packages]
 * Containerization and Cloud Service
 ** Containerization
 *** xref:master/containerization/k8s_deployment.adoc[K8S deployment]
@@ -112,6 +113,7 @@
 *** xref:master/compatibility_features_design/with_function_procedure_impl_en.adoc[WITH FUNCTION/PROCEDURE]
 *** xref:master/compatibility_features_design/create_index_online.adoc[ONLINE Parameter for CREATE INDEX]
 *** xref:master/compatibility_features_design/alter_index_unusable_impl_en.adoc[Alter Index Unusable]
+*** xref:master/compatibility_features_design/package_record_type.adoc[Package RECORD type]
 ** Built-in Functions
 *** xref:master/oracle_builtin_functions/sys_context.adoc[sys_context]
 *** xref:master/oracle_builtin_functions/userenv.adoc[userenv]

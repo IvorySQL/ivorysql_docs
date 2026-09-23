@@ -1,0 +1,287 @@
+:sectnums:
+:sectnumlevels: 5
+
+= 包中的 RECORD 类型声明
+
+== 概述
+
+IvorySQL 的 PL/iSQL 支持使用 `TYPE ... IS RECORD` 声明复合记录类型。记录类型可以声明在包规范、包体或匿名块中，并可用于变量、函数返回值以及 `IN`、`OUT` 参数。
+
+在包规范中声明的记录类型是包的公共成员，可通过 `包名.类型名` 从其他包或匿名块中引用；在包体中声明的记录类型仅供该包体内部使用。
+
+== 语法
+
+[source,sql]
+----
+TYPE type_name IS RECORD (
+    field_name datatype
+    [, field_name datatype ...]
+);
+----
+
+=== 参数
+
+[cols="1,4",options="header"]
+|===
+|参数 |说明
+|`type_name` |记录类型的名称。
+|`field_name` |记录字段的名称。字段名称仅在当前记录类型中有效。
+|`datatype` |字段的数据类型，可以是标量类型、命名复合类型或另一个包记录类型。
+|===
+
+== 使用示例
+
+=== 在包规范中声明记录类型
+
+以下示例声明公共记录类型 `employee_t`，并将其用作函数返回类型：
+
+[source,sql]
+----
+CREATE OR REPLACE PACKAGE employee_pkg AS
+    TYPE employee_t IS RECORD (
+        id     NUMBER,
+        name   VARCHAR2(50),
+        salary FLOAT
+    );
+
+    FUNCTION make_employee(
+        p_id NUMBER,
+        p_name VARCHAR2,
+        p_salary FLOAT
+    ) RETURN employee_t;
+END employee_pkg;
+/
+
+CREATE OR REPLACE PACKAGE BODY employee_pkg AS
+    FUNCTION make_employee(
+        p_id NUMBER,
+        p_name VARCHAR2,
+        p_salary FLOAT
+    ) RETURN employee_t IS
+        result employee_t;
+    BEGIN
+        result.id := p_id;
+        result.name := p_name;
+        result.salary := p_salary;
+        RETURN result;
+    END;
+END employee_pkg;
+/
+
+SELECT * FROM employee_pkg.make_employee(1, 'Alice', 50000);
+----
+
+查询复合返回值时不需要提供列定义列表，返回结果的字段名称和类型来自 `employee_t`。
+
+=== 使用包限定类型名
+
+在声明类型的包内，可以使用非限定类型名 `employee_t`，也可以使用完整名称 `employee_pkg.employee_t`。在包外引用时必须使用包限定名称：
+
+[source,sql]
+----
+DECLARE
+    employee employee_pkg.employee_t;
+BEGIN
+    employee.id := 2;
+    employee.name := 'Bob';
+    employee.salary := 60000;
+
+    RAISE NOTICE 'id=%, name=%, salary=%',
+        employee.id, employee.name, employee.salary;
+END;
+/
+----
+
+=== 跨包引用记录类型
+
+可以建立专门保存公共类型的包，其他包通过限定名称引用其中的记录类型：
+
+[source,sql]
+----
+CREATE OR REPLACE PACKAGE common_types AS
+    TYPE address_t IS RECORD (
+        city VARCHAR2(50),
+        street VARCHAR2(100)
+    );
+END common_types;
+/
+
+CREATE OR REPLACE PACKAGE customer_pkg AS
+    FUNCTION make_address(
+        p_city VARCHAR2,
+        p_street VARCHAR2
+    ) RETURN common_types.address_t;
+END customer_pkg;
+/
+
+CREATE OR REPLACE PACKAGE BODY customer_pkg AS
+    FUNCTION make_address(
+        p_city VARCHAR2,
+        p_street VARCHAR2
+    ) RETURN common_types.address_t IS
+        result common_types.address_t;
+    BEGIN
+        result.city := p_city;
+        result.street := p_street;
+        RETURN result;
+    END;
+END customer_pkg;
+/
+
+SELECT * FROM customer_pkg.make_address('Beijing', 'Chang''an Avenue');
+----
+
+=== 用作 IN 和 OUT 参数
+
+包记录类型可直接用于子程序参数：
+
+[source,sql]
+----
+CREATE OR REPLACE PACKAGE record_parameter_pkg AS
+    TYPE person_t IS RECORD (
+        id NUMBER,
+        name VARCHAR2(50)
+    );
+
+    FUNCTION describe(p_person IN person_t) RETURN VARCHAR2;
+    PROCEDURE fill_person(
+        p_id NUMBER,
+        p_name VARCHAR2,
+        p_person OUT person_t
+    );
+END record_parameter_pkg;
+/
+
+CREATE OR REPLACE PACKAGE BODY record_parameter_pkg AS
+    FUNCTION describe(p_person IN person_t) RETURN VARCHAR2 IS
+    BEGIN
+        RETURN 'id=' || p_person.id || ', name=' || p_person.name;
+    END;
+
+    PROCEDURE fill_person(
+        p_id NUMBER,
+        p_name VARCHAR2,
+        p_person OUT person_t
+    ) IS
+    BEGIN
+        p_person.id := p_id;
+        p_person.name := p_name;
+    END;
+END record_parameter_pkg;
+/
+
+DECLARE
+    person record_parameter_pkg.person_t;
+BEGIN
+    record_parameter_pkg.fill_person(10, 'Carol', person);
+    RAISE NOTICE '%', record_parameter_pkg.describe(person);
+END;
+/
+----
+
+=== 在包体中声明私有记录类型
+
+记录类型也可以只在包体中声明。此类类型不能被包外代码引用，适合保存实现细节：
+
+[source,sql]
+----
+CREATE OR REPLACE PACKAGE private_record_pkg AS
+    FUNCTION format_value(p_id NUMBER, p_text VARCHAR2) RETURN VARCHAR2;
+END private_record_pkg;
+/
+
+CREATE OR REPLACE PACKAGE BODY private_record_pkg AS
+    TYPE value_t IS RECORD (
+        id NUMBER,
+        text_value VARCHAR2(50)
+    );
+
+    FUNCTION format_value(p_id NUMBER, p_text VARCHAR2) RETURN VARCHAR2 IS
+        value value_t;
+    BEGIN
+        value.id := p_id;
+        value.text_value := p_text;
+        RETURN value.id || ': ' || value.text_value;
+    END;
+END private_record_pkg;
+/
+----
+
+=== 在匿名块中声明记录类型
+
+[source,sql]
+----
+DECLARE
+    TYPE point_t IS RECORD (
+        x NUMBER,
+        y NUMBER
+    );
+    point point_t;
+BEGIN
+    point.x := 10;
+    point.y := 20;
+    RAISE NOTICE 'x=%, y=%', point.x, point.y;
+END;
+/
+----
+
+== 嵌套复合字段
+
+记录字段可以使用命名复合类型或其他包记录类型。
+
+对于通过 `CREATE TYPE ... AS` 创建的命名复合类型，支持逐字段写入和嵌套读取：
+
+[source,sql]
+----
+CREATE TYPE address_t AS (
+    city VARCHAR2(50),
+    street VARCHAR2(100)
+);
+
+CREATE OR REPLACE PACKAGE nested_record_pkg AS
+    TYPE person_t IS RECORD (
+        name VARCHAR2(50),
+        address address_t
+    );
+
+    FUNCTION make_person RETURN VARCHAR2;
+END nested_record_pkg;
+/
+
+CREATE OR REPLACE PACKAGE BODY nested_record_pkg AS
+    FUNCTION make_person RETURN VARCHAR2 IS
+        person person_t;
+    BEGIN
+        person.name := 'Alice';
+        person.address.city := 'Beijing';
+        person.address.street := 'Chang''an Avenue';
+        RETURN person.name || ', ' || person.address.city;
+    END;
+END nested_record_pkg;
+/
+----
+
+== 限制
+
+[cols="2,4",options="header"]
+|===
+|限制 |说明
+|字段约束和默认值 |记录字段暂不支持 `NOT NULL` 和 `DEFAULT`，使用时会在编译阶段报错。
+|集合类型 |`TYPE ... IS TABLE OF` 暂未实现，使用时会返回不支持错误。
+|嵌套包记录的逐字段写入 |当外层记录的字段本身是另一个包记录类型时，可以读取嵌套字段，也可以对整个字段赋值，但暂不支持 `outer.inner.field := value` 形式的逐字段写入。
+|类型名称的使用 |记录类型名不是记录变量，不能通过 `type_name.field` 读取字段，也不能对类型名本身使用 `%TYPE`。
+|===
+
+嵌套包记录类型可以先写入内层变量，再对整个字段赋值：
+
+[source,sql]
+----
+-- outer_value.inner_value 是另一个包记录类型
+inner_value.x := 10;
+inner_value.y := 'nested';
+outer_value.inner_value := inner_value;  -- 支持
+
+RAISE NOTICE '%', outer_value.inner_value.x;  -- 支持嵌套读取
+
+-- outer_value.inner_value.x := 10;      -- 暂不支持
+----
