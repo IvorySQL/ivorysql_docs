@@ -1,0 +1,136 @@
+:sectnums:
+:sectnumlevels: 5
+
+= LNNVL
+
+== Overview
+
+IvorySQL provides the Oracle-compatible built-in function `LNNVL(condition)`.
+It returns `FALSE` when the condition evaluates to `TRUE`, and returns `TRUE`
+when the condition evaluates to `FALSE` or `UNKNOWN` (NULL).
+
+This behavior is equivalent to the SQL predicate `condition IS NOT TRUE`.
+Unlike `NOT condition`, which evaluates to `UNKNOWN` when the condition is
+NULL, `LNNVL` treats an unknown condition as a matching condition. This makes
+it useful in `WHERE` clauses when rows that do not satisfy a condition must be
+returned without losing the rows whose condition is NULL.
+
+== Syntax
+
+```
+LNNVL(condition)
+```
+
+[cols="2,6"]
+|====
+|*Parameter* |*Description*
+|condition |A boolean expression to negate with Oracle-compatible NULL semantics.
+|====
+
+Return type: `boolean`.
+
+== Truth table
+
+[cols="2,2,3"]
+|====
+|*Condition result* |*LNNVL result* |*Returned by a WHERE clause*
+|TRUE |FALSE |No
+|FALSE |TRUE |Yes
+|UNKNOWN |TRUE |Yes
+|====
+
+`LNNVL(NULL)` also returns `TRUE`, because `NULL IS NOT TRUE` evaluates to
+`TRUE`.
+
+== Examples
+
+The following query shows the three possible condition results:
+
+```
+SELECT LNNVL(1 = 1) AS true_condition,
+       LNNVL(1 = 2) AS false_condition,
+       LNNVL(NULL::boolean) AS unknown_condition;
+```
+
+```
+ true_condition | false_condition | unknown_condition
+----------------+-----------------+-------------------
+ f              | t               | t
+(1 row)
+```
+
+Suppose a query must return all rows that do not satisfy `amount >= 60`.
+A plain `NOT` drops rows where `amount` is NULL, while `LNNVL` keeps them:
+
+```
+CREATE TEMP TABLE lnnvl_orders (id int, amount numeric);
+INSERT INTO lnnvl_orders VALUES (1, 100), (2, NULL), (3, 50);
+
+SELECT id FROM lnnvl_orders
+WHERE NOT (amount >= 60)
+ORDER BY id;
+
+ id
+----
+  3
+(1 row)
+
+SELECT id FROM lnnvl_orders
+WHERE LNNVL(amount >= 60)
+ORDER BY id;
+
+ id
+----
+  2
+  3
+(2 rows)
+
+DROP TABLE lnnvl_orders;
+```
+
+`LNNVL` can be used with conditions such as `LIKE`, `BETWEEN`, `IN`, and
+`EXISTS`:
+
+```
+SELECT LNNVL('ab' LIKE 'a%') AS like_result,
+       LNNVL(1 BETWEEN 0 AND 5) AS between_result,
+       LNNVL(EXISTS (SELECT 1 FROM dual)) AS exists_result;
+```
+
+```
+ like_result | between_result | exists_result
+-------------+----------------+---------------
+ f           | f              | f
+(1 row)
+```
+
+== Compatibility notes
+
+* The condition must be a boolean expression. `LNNVL(1)` raises an error
+  because there is no integer overload or implicit cast from an integer.
+* In Oracle-compatible mode, call the function as `LNNVL(condition)`.
+  In PostgreSQL mode, use the schema-qualified form `sys.lnnvl(condition)`.
+* IvorySQL accepts any boolean expression as the argument. Oracle accepts a
+  single simple condition. For SQL that must also run on Oracle, write a
+  compound condition as separate `LNNVL` calls combined with `AND` or `OR`:
+
+```
+SELECT LNNVL(a > 1) OR LNNVL(b < 2);
+```
+
+== Implementation
+
+The function is registered in `contrib/ivorysql_ora/src/builtin_functions/builtin_functions--1.0.sql`:
+
+```sql
+CREATE FUNCTION sys.lnnvl(pg_catalog.bool)
+RETURNS pg_catalog.bool
+AS $$SELECT $1 IS NOT TRUE$$
+LANGUAGE sql
+CALLED ON NULL INPUT
+PARALLEL SAFE
+IMMUTABLE;
+```
+
+Using `IS NOT TRUE` directly gives the Oracle-compatible truth table, including
+the NULL case.
