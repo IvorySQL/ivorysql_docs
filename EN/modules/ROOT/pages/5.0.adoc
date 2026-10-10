@@ -24,6 +24,7 @@ IvorySQL, as an advanced open-source database compatible with Oracle and based o
 |*10*| xref:5.10.adoc[system_stats] | 3.2 | Provide functions for accessing system-level statistics. | system monitor
 |*11*| xref:5.11.adoc[pgtt] | 4.5 | Create, manage and use Oracle-style Global Temporary Tables. | Business development
 |*12*| xref:5.14.adoc[pgnodemx] | 1.7 | Exposes Linux node, process, filesystem, cgroup, and Kubernetes metrics through SQL | Database host monitoring, container observability, and capacity analysis
+|*13*| xref:5.12.adoc[hstore] | 1.8 | Stores text key/value pairs with indexing, containment queries, updates, and JSON conversion | Sparse attributes, application settings, labels, and metadata
 |====
 
 These plugins have all been tested and adapted by the IvorySQL team to ensure stable operation in the IvorySQL environment. Users can select appropriate plugins based on business needs to further enhance the capabilities and flexibility of the database system.
