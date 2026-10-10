@@ -23,6 +23,7 @@ IvorySQL 作为一款兼容 Oracle 且基于 PostgreSQL 的高级开源数据库
 | 10 | xref:5.10.adoc[system_stats] | 3.2 | 提供用于访问系统级统计信息的函数 | 系统监控 
 | 11 | xref:5.11.adoc[pgtt] | 4.5 | 创建、管理与使用Oracle风格临时表 | 业务开发
 | 12 | xref:5.14.adoc[pgnodemx] | 1.7 | 通过 SQL 提供 Linux 节点、进程、文件系统、cgroup 和 Kubernetes 指标 | 数据库主机监控、容器可观测性和容量分析
+| 13 | xref:5.13.adoc[Pgpool-II] | 4.7.2 | 提供后端连接池、健康检查、流复制状态识别和只读查询负载均衡 | 连接管理、读扩展和高可用架构
 |====
 
 这些插件均经过 IvorySQL 团队的测试和适配，确保在 IvorySQL 环境下稳定运行。用户可以根据业务需求选择合适的插件，进一步提升数据库系统的能力和灵活性。
