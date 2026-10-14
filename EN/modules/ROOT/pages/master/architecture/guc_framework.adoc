@@ -61,7 +61,7 @@ The optional values ​​of this GUC variable are from 0 to 15.
 
 ** Usage Example(date)
 
-check value of **nls_date_format** and **datetime_ignore_nls_mask** 
+check value of **nls_date_format** and **ivorysql.datetime_ignore_nls_mask**
 ```
 ivorysql=# set ivorysql.compatible_mode to oracle;
 SET

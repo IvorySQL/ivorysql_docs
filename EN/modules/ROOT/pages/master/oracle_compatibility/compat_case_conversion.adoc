@@ -6,17 +6,17 @@
 
 == Objective
 
-- In order to meet the case compatibility of PG and Oracle's reference identifiers, ivorysql has designed three case conversion modes for reference identifiers. Select the conversion mode via the GUC parameter "identifier_case_switch";
+- In order to meet the case compatibility of PG and Oracle's reference identifiers, ivorysql has designed three case conversion modes for reference identifiers. Select the conversion mode via the GUC parameter "ivorysql.identifier_case_switch";
 
 == Function
 
 === Three modes of case conversion (interchange by default)
 
-- If the value of the guc parameter "identifier_case_switch" is "normal":
+- If the value of the guc parameter "ivorysql.identifier_case_switch" is "normal":
 
    	1). The letters in the identifier referenced by the double quotation mark are left unchanged.
 
-- If the value of the guc parameter "identifier_case_switch" is "interchange":
+- If the value of the guc parameter "ivorysql.identifier_case_switch" is "interchange":
 
    	1). If the letters in the identifier referenced by the double quotation mark are all uppercase, uppercase is converted to lowercase.
 
@@ -24,7 +24,7 @@
 
     3). If the letters in the identifier enclosed in double quotation marks are mixed-case, the identifier is left unchanged.
 
-- If the value of the guc parameter "identifier_case_switch" is "lowercase":
+- If the value of the guc parameter "ivorysql.identifier_case_switch" is "lowercase":
 
    	1). If the letters in the identifier referenced by the double quotation mark are all uppercase, uppercase is converted to lowercase.
 
