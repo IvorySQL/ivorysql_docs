@@ -1,0 +1,78 @@
+:sectnums:
+:sectnumlevels: 5
+
+= TO_NUMBER 支持科学计数法
+
+== 概述
+
+在不指定格式模型时，Oracle 兼容函数 `TO_NUMBER` 可以将科学计数法字符串转换为 `NUMBER`，例如将 `'1e3'` 转换为 `1000`，将 `'-1.5e-2'` 转换为 `-0.015`。转换也接受字符串首尾的普通空格。
+
+本文介绍单参数字符串转换。带格式模型的调用见 xref:master/oracle_compatibility/builtin_types_functions.adoc[内置数据类型与内置函数]；本特性不扩展格式模型的支持范围。
+
+== 调用方式
+
+[source,sql]
+----
+TO_NUMBER(str)
+----
+
+`str` 是表示数值的字符串，返回类型为 `NUMBER`。在 Oracle 兼容模式下可直接使用 `TO_NUMBER`；也可显式调用 `sys.to_number(str)`。
+
+科学计数法由尾数和指数构成，其数值等于“尾数 × 10 的指数次方”：
+
+* 尾数可以带一个前置 `+` 或 `-`，并包含至多一个小数点，且必须至少有一位数字。
+* 指数以 `e` 或 `E` 开始，可以带一个 `+` 或 `-`，后面必须有整数数字。
+* 指数允许前导零；`e0`、`e+0` 和 `e-0` 均表示零指数。
+* 字符串首尾可以包含普通空格（ASCII 空格）；内部空格、制表符和换行不属于允许的格式。
+
+== 转换示例
+
+[cols="3,2",options="header"]
+|===
+|调用 |结果
+|`TO_NUMBER('1e3')` |`1000`
+|`TO_NUMBER('1E3')` |`1000`
+|`TO_NUMBER('-1.5e-2')` |`-0.015`
+|`TO_NUMBER('1.5e+3')` |`1500`
+|`TO_NUMBER('1E-3')` |`0.001`
+|`TO_NUMBER(' 1e3 ')` |`1000`
+|`TO_NUMBER('12 ')` |`12`
+|`TO_NUMBER('1e0000000010')` |`10000000000`
+|`TO_NUMBER('1e-0000000010')` |`0.0000000001`
+|`TO_NUMBER('123.')` |`123`
+|`TO_NUMBER('.5')` |`0.5`
+|===
+
+[source,sql]
+----
+SELECT TO_NUMBER('1e3') AS integer_value,
+       TO_NUMBER('-1.5e-2') AS decimal_value;
+----
+
+结果分别为 `1000` 和 `-0.015`。无需先将字符串转换为浮点类型。
+
+== 无效输入与边界
+
+缺少指数数字、重复符号或小数点、内部空格以及多余字符会导致 `invalid number format model` 错误。例如：
+
+[source,sql]
+----
+SELECT TO_NUMBER('1e');       -- 指数缺少数字
+SELECT TO_NUMBER('1e+');      -- 指数符号后缺少数字
+SELECT TO_NUMBER('1 e3');     -- 尾数与指数之间有空格
+SELECT TO_NUMBER('1e 3');     -- 指数中有空格
+SELECT TO_NUMBER('1.2e3.4');  -- 指数不是整数
+----
+
+仅包含空格、单独的符号或小数点，以及 `NaN`、`Infinity`、`-Infinity` 同样不是此转换路径支持的输入。`NULL` 参数返回 `NULL`；Oracle 空字符串语义下的 `TO_NUMBER(''::varchar2)` 也返回 `NULL`，但全空格字符串会报错。
+
+超大指数的结果受 IvorySQL 数值范围约束，不能据此假定与 Oracle 的全部数值边界相同：
+
+[cols="3,2",options="header"]
+|===
+|调用 |行为
+|`TO_NUMBER('1e2000')` |报 `numeric field overflow` 错误
+|`TO_NUMBER('1e2147483648')` |报 `value overflows numeric format` 错误
+|`TO_NUMBER('1e-2147483648')` |下溢为 `0`
+|`TO_NUMBER('0e2147483648')` |返回 `0`
+|===

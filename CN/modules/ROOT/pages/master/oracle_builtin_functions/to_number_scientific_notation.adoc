@@ -1,0 +1,84 @@
+:sectnums:
+:sectnumlevels: 5
+
+= TO_NUMBER 科学计数法支持设计
+
+== 目标与范围
+
+本特性扩展 `sys.to_number(text)` 的字符串解析，使其接受科学计数法及首尾普通空格。结果仍通过数值类型输入函数生成，不经过浮点转换。用户示例见 xref:master/oracle_compatibility/to_number_scientific_notation.adoc[TO_NUMBER 支持科学计数法]。
+
+改动位于不指定格式模型的路径。双参数调用继续使用原有格式模型处理逻辑，不增加 `EEEE` 等格式元素的输入支持，也不增加新的 SQL 函数签名。
+
+== 代码组织与调用关系
+
+[cols="3,3",options="header"]
+|===
+|源码路径 |职责
+|`contrib/ivorysql_ora/src/builtin_functions/builtin_functions--1.0.sql` |将 `sys.to_number(text)` 和 `sys.to_number(text,text)` 注册到 C 入口 `ora_to_number`
+|`contrib/ivorysql_ora/src/builtin_functions/numeric_datatype_functions.c` |根据参数个数取得字符串和可选格式模型，调用 `ora_to_number_internal`
+|`src/backend/utils/adt/formatting.c` |解析字符串，计算精度及标度，调用 `numeric_in`
+|`contrib/ivorysql_ora/sql/ora_number.sql` |科学计数法、空格及异常输入的回归用例
+|`contrib/ivorysql_ora/expected/ora_number.out` |对应的结果和错误信息
+|===
+
+[source,text]
+----
+sys.to_number(text)
+    → ora_to_number(value, fmt = NULL)
+    → ora_to_number_internal(value, fmt)
+    → numeric_in(numstr, InvalidOid, typmod)
+    → NUMBER
+----
+
+两个字符串入口均声明为 `STRICT`、`IMMUTABLE` 和 `PARALLEL SAFE`。`NULL` 参数由 `STRICT` 在进入 C 函数前处理；Oracle 空字符串转 `NULL` 的语义也在解析器之外生效。
+
+== 无格式模型解析
+
+`ora_to_number_internal()` 在 `fmt == NULL` 时，将输入转为 C 字符串，并使用指针逐段扫描：
+
+. 跳过首部 ASCII 空格，读取可选的尾数符号。
+. 扫描尾数数字和至多一个小数点，分别记录整数位数 `int_digits` 与小数位数 `frac_digits`，并记录是否存在数字和非零数字。
+. 若遇到 `e` 或 `E`，读取可选指数符号和全部指数数字；指数必须至少有一位数字。
+. 跳过尾部 ASCII 空格，检查剩余字符及尾数数字是否有效。
+. 根据指数计算数值类型修饰符，并调用 `numeric_in()` 完成数值构造及范围检查。
+
+扫描不使用通用空白字符判断，因此制表符和换行不会被当作首尾空格忽略。指数数字全部被扫描，避免将 `'1e0000000010'` 的指数错误截断。
+
+== 精度与标度
+
+设尾数整数位数为 `I`、小数位数为 `F`、带符号指数为 `E`，初步计算：
+
+[source,text]
+----
+scale = max(0, F - E)
+precision = max(I + F + max(0, E - F), scale)
+----
+
+随后将 `precision` 限制到 `NUMERIC_MAX_PRECISION`（当前为 1000），再保证 `scale` 不超过 `precision`。符号和小数点不计入数字位数。
+
+[cols="2,2,2",options="header"]
+|===
+|输入 |推导的类型修饰符 |结果
+|`1e3` |`numeric(4,0)` |`1000`
+|`-1.5e-2` |`numeric(3,3)` |`-0.015`
+|`1.5e+3` |`numeric(4,0)` |`1500`
+|`1e0000000010` |`numeric(11,0)` |`10000000000`
+|===
+
+原字符串与推导的类型修饰符传给 `numeric_in()`，由十进制数值路径处理精度、标度和溢出；这里没有将尾数先转换为 `float8`。
+
+== 指数边界与错误处理
+
+指数绝对值以 `int64` 累积，以 `PG_INT32_MAX / 2` 为解析上界。超过上界后停止累积，但仍扫描指数数字：
+
+* 正指数且尾数存在非零数字时，报 `value overflows numeric format`，SQLSTATE 为 `22003`。
+* 超大负指数或全零尾数设置归零标志；通过后续格式检查后，将输入替换为字符串 `"0"` 再调用 `numeric_in()`。
+* 上界内的数值继续走普通数值转换。限制精度后仍放不下的数值由 `numeric_in()` 报错，例如 `'1e2000'`。
+
+缺少尾数或指数数字、重复小数点、内部空格以及多余字符等通常报 `invalid number format model`，SQLSTATE 为 `0A000`。解析错误与数值范围错误分别处理，保留各自的诊断信息。
+
+== 回归验证
+
+`ora_number` 回归用例覆盖大小写指数、正负指数、尾数符号、小数位、指数前导零、首尾空格、零指数、单侧小数点、全零尾数、指数边界、精度限制、下溢归零及无效输入。空字符串和特殊值也有独立用例。
+
+在已配置并编译的 IvorySQL 源码目录中，可运行 `make -C contrib/ivorysql_ora oracle-installcheck ORA_REGRESS=ora_number` 验证该测试组；目标实例需已安装相应版本的 `ivorysql_ora` 扩展。

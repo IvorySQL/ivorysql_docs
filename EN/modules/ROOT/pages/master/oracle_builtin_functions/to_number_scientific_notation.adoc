@@ -1,0 +1,84 @@
+:sectnums:
+:sectnumlevels: 5
+
+= Design of TO_NUMBER scientific-notation support
+
+== Goals and scope
+
+This feature extends string parsing for `sys.to_number(text)` to accept scientific notation and surrounding ordinary spaces. Results still come from the numeric input function without an intermediate floating-point conversion. For user examples, see xref:master/oracle_compatibility/to_number_scientific_notation.adoc[TO_NUMBER Support for Scientific Notation].
+
+The change applies to calls without a format model. Two-argument calls retain the existing format-model processing. It adds neither input support for format elements such as `EEEE` nor new SQL function signatures.
+
+== Code organization and call path
+
+[cols="3,3",options="header"]
+|===
+|Source path |Responsibility
+|`contrib/ivorysql_ora/src/builtin_functions/builtin_functions--1.0.sql` |Registers `sys.to_number(text)` and `sys.to_number(text,text)` with the C entry point `ora_to_number`
+|`contrib/ivorysql_ora/src/builtin_functions/numeric_datatype_functions.c` |Retrieves the string and optional format model according to the argument count, then calls `ora_to_number_internal`
+|`src/backend/utils/adt/formatting.c` |Parses the string, derives precision and scale, and calls `numeric_in`
+|`contrib/ivorysql_ora/sql/ora_number.sql` |Regression cases for scientific notation, spaces, and invalid input
+|`contrib/ivorysql_ora/expected/ora_number.out` |Expected values and error messages
+|===
+
+[source,text]
+----
+sys.to_number(text)
+    → ora_to_number(value, fmt = NULL)
+    → ora_to_number_internal(value, fmt)
+    → numeric_in(numstr, InvalidOid, typmod)
+    → NUMBER
+----
+
+Both string entry points are declared `STRICT`, `IMMUTABLE`, and `PARALLEL SAFE`. `STRICT` handles NULL arguments before the C function runs. Oracle empty-string-to-NULL semantics also take effect outside this parser.
+
+== Parsing without a format model
+
+When `fmt == NULL`, `ora_to_number_internal()` converts the input to a C string and scans it with a pointer:
+
+. Skip leading ASCII spaces and read an optional mantissa sign.
+. Scan mantissa digits and at most one decimal point. Count `int_digits` and `frac_digits` separately, and track whether any digit or nonzero digit occurs.
+. If `e` or `E` follows, read an optional exponent sign and every exponent digit. At least one exponent digit is required.
+. Skip trailing ASCII spaces, then validate remaining characters and the presence of mantissa digits.
+. Derive the numeric type modifier from the exponent, then call `numeric_in()` to construct the value and check its range.
+
+The scan does not use a general whitespace predicate, so tabs and newlines are not ignored at either end. Scanning all exponent digits prevents an input such as `'1e0000000010'` from having its exponent truncated incorrectly.
+
+== Precision and scale
+
+Let `I` be the mantissa's integer digit count, `F` its fractional digit count, and `E` the signed exponent. The initial calculation is:
+
+[source,text]
+----
+scale = max(0, F - E)
+precision = max(I + F + max(0, E - F), scale)
+----
+
+The implementation then caps `precision` at `NUMERIC_MAX_PRECISION` (currently 1000) and ensures that `scale` does not exceed `precision`. Signs and decimal points do not count as digits.
+
+[cols="2,2,2",options="header"]
+|===
+|Input |Derived type modifier |Result
+|`1e3` |`numeric(4,0)` |`1000`
+|`-1.5e-2` |`numeric(3,3)` |`-0.015`
+|`1.5e+3` |`numeric(4,0)` |`1500`
+|`1e0000000010` |`numeric(11,0)` |`10000000000`
+|===
+
+The original string and derived type modifier go to `numeric_in()`. This decimal numeric path handles precision, scale, and overflow without first converting the mantissa to `float8`.
+
+== Exponent boundaries and errors
+
+The exponent magnitude accumulates in `int64`, with `PG_INT32_MAX / 2` as the parser limit. Once the limit is exceeded, accumulation stops but exponent digits are still scanned:
+
+* A positive exponent with a nonzero mantissa raises `value overflows numeric format`, with SQLSTATE `22003`.
+* An oversized negative exponent or an all-zero mantissa sets a zero-result flag. After subsequent format validation, the input is replaced by the string `"0"` before calling `numeric_in()`.
+* Values within the parser limit follow normal numeric conversion. Values that still exceed the capped precision are rejected by `numeric_in()`, as with `'1e2000'`.
+
+Missing mantissa or exponent digits, repeated decimal points, internal spaces, and extra characters generally raise `invalid number format model`, with SQLSTATE `0A000`. Parsing errors and numeric range errors retain separate diagnostics.
+
+== Regression verification
+
+The `ora_number` regression cases cover lowercase and uppercase exponents, positive and negative exponents, mantissa signs, fractional digits, leading exponent zeros, surrounding spaces, zero exponents, one-sided decimal points, all-zero mantissas, exponent boundaries, precision limits, underflow to zero, and invalid input. Empty strings and special values have separate cases.
+
+From a configured and built IvorySQL source tree, run `make -C contrib/ivorysql_ora oracle-installcheck ORA_REGRESS=ora_number` to verify this test group. The target instance must have the matching version of the `ivorysql_ora` extension installed.
