@@ -1,0 +1,101 @@
+:sectnums:
+:sectnumlevels: 5
+
+= DBMS_TRANSACTION Package
+
+== Purpose
+
+`DBMS_TRANSACTION` provides interfaces for commit, rollback, savepoints, and transaction access modes to help migrate applications that use Oracle's transaction control package. IvorySQL currently implements six procedures, subject to the constraints of PL/iSQL and the underlying transaction system.
+
+The package runs with the caller's privileges and grants execution to `PUBLIC`. The caller still needs the appropriate privileges to access application tables.
+
+== Functionality
+
+=== Supported interfaces
+
+[cols="3,4",options="header"]
+|===
+|Interface |Functionality
+|`COMMIT` |Commits the current transaction
+|`ROLLBACK` |Rolls back the current transaction
+|`SAVEPOINT(savept IN VARCHAR2)` |Establishes a named savepoint in the current transaction
+|`ROLLBACK_SAVEPOINT(savept IN VARCHAR2)` |Rolls back to a named savepoint without ending the current transaction
+|`READ_ONLY` |Sets the current transaction to read-only
+|`READ_WRITE` |Sets the current transaction to read-write
+|===
+
+In SQL, use `CALL dbms_transaction.procedure_name(...)`. Within a PL/iSQL block, package procedures can be called directly. The savepoint procedures accept named arguments, such as `savept => 'sp1'`.
+
+=== Call restrictions
+
+* `COMMIT` and `ROLLBACK` require a non-atomic execution context that permits transaction termination. Calls within an explicit SQL transaction block, or after disabling autocommit in psql, raise `invalid transaction termination`. A top-level non-atomic PL/iSQL anonymous block can call them, as shown in the commit and rollback example below.
+* `SAVEPOINT` and `ROLLBACK_SAVEPOINT` require an explicit transaction block and separate top-level `CALL` statements. They cannot be called from inside another PL/iSQL procedure, function, or anonymous block.
+* Savepoint names can contain up to 255 bytes. They are treated as strings and can include spaces. NULL names are rejected, as are empty strings converted to NULL under Oracle semantics.
+* Redefining a savepoint name makes rollback target its most recent definition. The target savepoint remains usable after rollback, but savepoints established after it are removed. A nonexistent savepoint raises an error.
+* Set the access mode after starting the transaction and before accessing application tables. Calling `READ_ONLY` followed by `READ_WRITE` in the same transaction raises `transaction read-write mode must be set before any query`. Switching in the opposite direction is allowed.
+
+`READ_ONLY` sets the access mode without automatically changing the isolation level. Snapshots and read consistency still follow IvorySQL's transaction isolation level.
+
+== Examples
+
+Run these examples in psql using Oracle compatibility mode. Keep autocommit enabled, and do not enclose the commit and rollback example's PL/iSQL anonymous block in an outer SQL `BEGIN;` transaction block.
+
+=== Commit and rollback
+
+[source,sql]
+----
+\set AUTOCOMMIT on
+CREATE TABLE dbms_tx_demo (id int, val varchar2(100));
+
+BEGIN
+    INSERT INTO dbms_tx_demo VALUES (1, 'committed');
+    dbms_transaction.commit();
+    INSERT INTO dbms_tx_demo VALUES (2, 'rolled back');
+    dbms_transaction.rollback();
+END;
+/
+
+SELECT * FROM dbms_tx_demo ORDER BY id;
+----
+
+The query returns only `(1, 'committed')`. The first insert is committed and the second is rolled back. If an `INSERT` and `CALL dbms_transaction.rollback()` run as separate top-level statements with autocommit enabled, the insert is already committed and the later rollback cannot undo it.
+
+=== Rollback to a savepoint
+
+[source,sql]
+----
+BEGIN;
+INSERT INTO dbms_tx_demo VALUES (3, 'before savepoint');
+CALL dbms_transaction.savepoint(savept => 'sp1');
+INSERT INTO dbms_tx_demo VALUES (4, 'after savepoint');
+CALL dbms_transaction.rollback_savepoint(savept => 'sp1');
+COMMIT;
+
+SELECT * FROM dbms_tx_demo WHERE id IN (3, 4) ORDER BY id;
+----
+
+The query returns only `(3, 'before savepoint')`. Here, `BEGIN;` and `COMMIT;` are SQL transaction statements, and each savepoint operation runs in a separate `CALL`. End this explicit transaction block with SQL `COMMIT;` or `ROLLBACK;`.
+
+=== Access modes
+
+[source,sql]
+----
+BEGIN;
+CALL dbms_transaction.read_write();
+INSERT INTO dbms_tx_demo VALUES (5, 'read write');
+COMMIT;
+
+BEGIN;
+CALL dbms_transaction.read_only();
+INSERT INTO dbms_tx_demo VALUES (6, 'read only');
+-- ERROR: cannot execute INSERT in a read-only transaction
+ROLLBACK;
+
+DROP TABLE dbms_tx_demo;
+----
+
+The read-write transaction inserts row 5 successfully. The read-only transaction rejects an insert into this ordinary table, so row 6 is not stored.
+
+== Compatibility notes
+
+`PRAGMA AUTONOMOUS_TRANSACTION` does not bypass the transaction-context restrictions above. In the current autonomous transaction regression scenarios, savepoint calls fail because there is no explicit transaction block, and package commit and rollback calls raise `invalid transaction termination`. `READ_ONLY` and `READ_WRITE` can set the autonomous transaction's own access mode.

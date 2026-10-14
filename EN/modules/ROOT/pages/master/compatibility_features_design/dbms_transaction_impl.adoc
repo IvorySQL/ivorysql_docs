@@ -1,0 +1,101 @@
+:sectnums:
+:sectnumlevels: 5
+
+= DBMS_TRANSACTION Package Design
+
+== Purpose
+
+Provide Oracle-style transaction control through the `ivorysql_ora` extension by reusing existing PL/iSQL statements and transaction management functions. The implementation supports `COMMIT`, `ROLLBACK`, `SAVEPOINT`, `ROLLBACK_SAVEPOINT`, `READ_ONLY`, and `READ_WRITE`. Changes stay within the extension and add no core transaction interfaces.
+
+See xref:master/oracle_compatibility/compat_dbms_transaction.adoc[DBMS_TRANSACTION Package] for usage and call restrictions.
+
+== Implementation
+
+=== Code organization
+
+[cols="3,4",options="header"]
+|===
+|File |Responsibility
+|`src/builtin_packages/dbms_transaction/dbms_transaction--1.0.sql` |Registers C functions, defines the package specification and body, and grants package execution
+|`src/builtin_packages/dbms_transaction/dbms_transaction.c` |Validates savepoint names and call contexts, and bridges to transaction functions
+|`sql/dbms_transaction.sql` |Regression cases for transaction operations, invalid input, autonomous transactions, and cross-user execution
+|`expected/dbms_transaction.out`, `expected/dbms_transaction_1.out` |Expected results without and with a usable dblink environment, respectively
+|`Makefile`, `meson.build`, `ivorysql_ora_merge_sqls` |Build, regression, and extension SQL merge registration
+|===
+
+These paths are relative to `contrib/ivorysql_ora/`.
+
+=== Package interface and privileges
+
+The package declares `AUTHID CURRENT_USER` and executes `GRANT EXECUTE ON PACKAGE dbms_transaction TO PUBLIC`, allowing ordinary users to call it with their own privileges. Package execution privileges do not change access rights on application objects.
+
+The two savepoint C functions are registered in the `sys` schema as `VOLATILE`. Neither is declared `STRICT`, so the implementation can report an explicit error for a NULL name.
+
+[source,text]
+----
+Top-level CALL dbms_transaction.savepoint('sp1')
+    → PL/iSQL package body
+    → sys.ora_dbms_transaction_savepoint(text)
+    → DefineSavepoint(name)
+    → Subtransaction state transition completes at command end
+----
+
+=== Subprogram mappings
+
+[cols="2,4",options="header"]
+|===
+|Subprogram |Implementation
+|`COMMIT` |Executes the native PL/iSQL `COMMIT` statement in the package body
+|`ROLLBACK` |Executes the native PL/iSQL `ROLLBACK` statement in the package body
+|`SAVEPOINT` |Uses `PERFORM` to call the C function, which calls `DefineSavepoint()`
+|`ROLLBACK_SAVEPOINT` |Uses `PERFORM` to call the C function, which calls `RollbackToSavepoint()`
+|`READ_ONLY` |Dynamically executes `SET TRANSACTION READ ONLY`
+|`READ_WRITE` |Dynamically executes `SET TRANSACTION READ WRITE`
+|===
+
+`COMMIT` and `ROLLBACK` reuse PL/iSQL's transaction termination path and inherit its atomic-context restrictions. The package does not open an additional transaction or enable commit and rollback in contexts that prohibit transaction termination.
+
+The access-mode procedures set the mode without changing the isolation level or adding an Oracle snapshot mechanism. Timing and write restrictions follow the underlying `SET TRANSACTION` rules.
+
+=== Savepoint bridge
+
+PL/iSQL has no native savepoint statement, so two C functions bridge the package procedures to transaction management functions declared in `access/xact.h`. They execute these steps in order:
+
+. `get_savepoint_name()` rejects NULL names and names of 256 bytes or more. The limit is 255 bytes, and names are passed as strings.
+. `RequireTransactionBlock(true, ...)` verifies that an explicit transaction block exists, preventing savepoint operations in an invalid state.
+. `check_not_nested_in_pl_call()` checks `SPI_get_connected() > 0` to detect nesting inside another PL/iSQL invocation and raises an error if nested.
+. `DefineSavepoint()` or `RollbackToSavepoint()` is called, leaving subsequent transaction state transitions to the core.
+
+The savepoint functions mark pending transaction states. Subtransaction startup or rollback completes after the top-level command ends. A nested routine continuing before that transition could access a transaction state that is not ready. Savepoint operations therefore require separate top-level `CALL` statements; forcibly committing the command inside the C bridge cannot safely bypass this restriction.
+
+The bridge calls transaction management functions directly and adds no SPI interfaces such as `SPI_savepoint`. `SPI_get_connected()` only checks invocation depth; it does not execute the savepoint operation.
+
+=== Boundaries and errors
+
+[cols="3,2,4",options="header"]
+|===
+|Condition |SQLSTATE |Diagnostic
+|NULL savepoint name |`22004` |`DBMS_TRANSACTION savepoint name must not be NULL`
+|Savepoint name exceeds 255 bytes |`22023` |`DBMS_TRANSACTION savepoint name too long (max 255 bytes)`
+|Savepoint operation outside an explicit transaction block |`25P01` |Error requiring a transaction block
+|Savepoint operation nested inside another PL/iSQL call |`25000` |Error and hint requiring a separate top-level `CALL`
+|Rollback to a nonexistent savepoint |`3B001` |Core error: `savepoint ... does not exist`
+|Package commit or rollback in an atomic context |`2D000` |`invalid transaction termination`
+|Switch from read-only to read-write after a snapshot |`25001` |`transaction read-write mode must be set before any query`
+|===
+
+Redefining savepoints, repeated rollback, and removing later savepoints on rollback use core semantics directly. Oracle empty-string-to-NULL handling takes effect before entering the C bridge.
+
+=== Autonomous transactions
+
+The nested savepoint check does not exempt autonomous transactions and does not bypass the guard based on the user-settable `plisql.inside_autonomous_transaction` parameter. Genuine autonomous transactions execute in a separate dblink session. The current regression scenarios have no explicit transaction block, so `RequireTransactionBlock()` rejects them first.
+
+Package commit and rollback calls remain subject to transaction termination constraints; the current autonomous cases return `invalid transaction termination`. The access-mode procedures can set the independent session's transaction mode without changing the parent transaction's mode.
+
+== Verification
+
+The `dbms_transaction` regression group covers commit and rollback, autocommit settings, anonymous block calls, savepoint rollback and redefinition, named arguments, name boundaries, access-mode switching, atomic contexts, nested savepoint guards, and invoker privileges.
+
+Autonomous transaction tests first probe a dblink loopback connection. If available, they verify transaction control and access modes in autonomous transactions. Otherwise, those cases are skipped and the alternative expected output applies.
+
+From a configured, built, and installed IvorySQL source tree, run `make -C contrib/ivorysql_ora oracle-installcheck ORA_REGRESS=dbms_transaction`. The target instance needs the matching version of `ivorysql_ora`; autonomous transaction tests also require a usable dblink environment.
