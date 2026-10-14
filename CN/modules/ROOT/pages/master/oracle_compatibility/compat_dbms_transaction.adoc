@@ -1,0 +1,101 @@
+:sectnums:
+:sectnumlevels: 5
+
+= DBMS_TRANSACTION 包
+
+== 目的
+
+`DBMS_TRANSACTION` 提供提交、回滚、保存点及事务读写模式控制接口，便于迁移使用 Oracle 事务控制包的应用。IvorySQL 当前实现六个过程，执行行为受 PL/iSQL 和底层事务机制的约束。
+
+包以调用者权限运行，并向 `PUBLIC` 授予执行权限。访问业务表仍需调用者具备相应权限。
+
+== 功能说明
+
+=== 支持的接口
+
+[cols="3,4",options="header"]
+|===
+|接口 |功能
+|`COMMIT` |提交当前事务
+|`ROLLBACK` |回滚当前事务
+|`SAVEPOINT(savept IN VARCHAR2)` |在当前事务中建立命名保存点
+|`ROLLBACK_SAVEPOINT(savept IN VARCHAR2)` |回滚到指定保存点，不结束当前事务
+|`READ_ONLY` |将当前事务设置为只读
+|`READ_WRITE` |将当前事务设置为读写
+|===
+
+SQL 中使用 `CALL dbms_transaction.过程名(...)`；PL/iSQL 块内可直接调用包过程。保存点过程支持具名参数，例如 `savept => 'sp1'`。
+
+=== 调用限制
+
+* `COMMIT` 和 `ROLLBACK` 必须在允许事务终止的非原子执行上下文中调用。显式 SQL 事务块内或 psql 关闭自动提交后调用，会报 `invalid transaction termination`。顶层的非原子 PL/iSQL 匿名块可以调用，见下面的提交与回滚示例。
+* `SAVEPOINT` 和 `ROLLBACK_SAVEPOINT` 必须在显式事务块内，通过独立的顶层 `CALL` 语句执行。不能放到另一个 PL/iSQL 过程、函数或匿名块内部。
+* 保存点名称最多 255 字节，按字符串处理，可以包含空格。`NULL` 名称被拒绝；按 Oracle 语义转换为 `NULL` 的空字符串也被拒绝。
+* 同名保存点重复定义时，回滚定位到最近一次定义。回滚后目标保存点仍可使用，但其后建立的保存点被撤销。不存在的保存点会报错。
+* 建议在事务开始后、访问业务表之前设置读写模式。同一事务中先调用 `READ_ONLY` 再调用 `READ_WRITE` 会报 `transaction read-write mode must be set before any query`；反向切换允许。
+
+`READ_ONLY` 设置访问模式，不自动改变隔离级别。事务中的快照和读一致性仍由 IvorySQL 的隔离级别决定。
+
+== 使用示例
+
+以下示例在 Oracle 兼容模式的 psql 中执行。保持自动提交开启，提交与回滚示例中的 PL/iSQL 匿名块不要再放入外层 SQL `BEGIN;` 事务块。
+
+=== 提交与回滚
+
+[source,sql]
+----
+\set AUTOCOMMIT on
+CREATE TABLE dbms_tx_demo (id int, val varchar2(100));
+
+BEGIN
+    INSERT INTO dbms_tx_demo VALUES (1, 'committed');
+    dbms_transaction.commit();
+    INSERT INTO dbms_tx_demo VALUES (2, 'rolled back');
+    dbms_transaction.rollback();
+END;
+/
+
+SELECT * FROM dbms_tx_demo ORDER BY id;
+----
+
+查询只返回 `(1, 'committed')`。第一个插入已提交，第二个插入被回滚。若在自动提交模式下把 `INSERT` 和 `CALL dbms_transaction.rollback()` 分成两条顶层语句，前一条插入已经提交，后续回滚不会撤销它。
+
+=== 保存点回滚
+
+[source,sql]
+----
+BEGIN;
+INSERT INTO dbms_tx_demo VALUES (3, 'before savepoint');
+CALL dbms_transaction.savepoint(savept => 'sp1');
+INSERT INTO dbms_tx_demo VALUES (4, 'after savepoint');
+CALL dbms_transaction.rollback_savepoint(savept => 'sp1');
+COMMIT;
+
+SELECT * FROM dbms_tx_demo WHERE id IN (3, 4) ORDER BY id;
+----
+
+查询只返回 `(3, 'before savepoint')`。这里的 `BEGIN;` 和 `COMMIT;` 是 SQL 事务语句，保存点操作各自通过独立的 `CALL` 执行。结束这个显式事务块应使用 SQL `COMMIT;` 或 `ROLLBACK;`。
+
+=== 读写模式
+
+[source,sql]
+----
+BEGIN;
+CALL dbms_transaction.read_write();
+INSERT INTO dbms_tx_demo VALUES (5, 'read write');
+COMMIT;
+
+BEGIN;
+CALL dbms_transaction.read_only();
+INSERT INTO dbms_tx_demo VALUES (6, 'read only');
+-- ERROR: cannot execute INSERT in a read-only transaction
+ROLLBACK;
+
+DROP TABLE dbms_tx_demo;
+----
+
+读写事务中的第 5 行插入成功；只读事务禁止对该普通表执行插入，第 6 行不会保存。
+
+== 兼容性说明
+
+`PRAGMA AUTONOMOUS_TRANSACTION` 不豁免上述事务上下文限制。当前自治事务回归场景中，保存点调用因没有显式事务块而报错，包内提交与回滚调用报 `invalid transaction termination`；`READ_ONLY` 和 `READ_WRITE` 可以设置自治事务自身的访问模式。
