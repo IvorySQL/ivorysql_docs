@@ -1,0 +1,245 @@
+:sectnums:
+:sectnumlevels: 5
+
+= UTL_ENCODE package implementation
+
+== Overview
+
+`UTL_ENCODE` is a built-in package in the IvorySQL Oracle compatibility extension (`ivorysql_ora`). It provides Base64 encoding and decoding compatible with Oracle Database. This document describes the design goals, implementation, and key technical details of `BASE64_ENCODE` and `BASE64_DECODE`.
+
+== File structure
+
+[source,text]
+----
+contrib/ivorysql_ora/
+├── src/builtin_packages/utl_encode/
+│   ├── utl_encode.c          # C function implementation
+│   └── utl_encode--1.0.sql   # SQL registration and PL/iSQL package declarations
+├── sql/utl_encode.sql        # Regression tests
+└── expected/utl_encode.out   # Expected regression test output
+----
+
+== Oracle compatibility goals
+
+The Oracle `UTL_ENCODE` package defines the following interfaces:
+
+[source,sql]
+----
+-- Encode binary RAW data as Base64 ASCII bytes
+UTL_ENCODE.BASE64_ENCODE(r IN RAW) RETURN RAW
+
+-- Decode Base64 ASCII bytes to binary RAW data
+UTL_ENCODE.BASE64_DECODE(r IN RAW) RETURN RAW
+----
+
+IvorySQL maps Oracle's `RAW` type to PostgreSQL's `bytea` type. Both C functions therefore have a `bytea -> bytea` signature.
+
+== BASE64_ENCODE implementation
+
+=== Design goals
+
+Oracle `BASE64_ENCODE` uses the RFC 1521 MIME format. It inserts a newline (`\n`, or LF) after every 64 Base64 characters, including the final line.
+
+PostgreSQL's built-in `encode(bytea, 'base64')` follows RFC 2045, wraps lines after 76 characters, and does not guarantee a final newline. The Oracle-compatible format therefore requires separate line-wrapping logic.
+
+=== Encoding flow
+
+[source,text]
+----
+Input bytea (src_len bytes)
+        │
+        ▼
+pg_b64_encode()          ← PostgreSQL internal function; produces Base64 without newlines
+        │
+        ▼
+raw_b64 (b64_len bytes)  ← length = ceil(src_len / 3) × 4
+        │
+        ▼
+Split into 64-character chunks and append '\n' to each chunk
+        │
+        ▼
+Output bytea (b64_len + num_lines bytes)
+----
+
+=== Output length calculation
+
+[cols="2,3",options="header"]
+|===
+|Value |Formula
+|Base64 length |`b64_len = pg_b64_enc_len(src_len) = ceil(src_len / 3) × 4`
+|Number of lines |`num_lines = ceil(b64_len / 64)`
+|Final output length |`result_len = b64_len + num_lines`
+|===
+
+For example, encoding `Hello` (5 bytes) produces:
+
+* `b64_len` = 8 (`SGVsbG8=`)
+* `num_lines` = 1 (8 ≤ 64)
+* `result_len` = 8 + 1 = 9 bytes (`SGVsbG8=\n`)
+
+The following table shows the boundary cases:
+
+[cols="1,1,1,1",options="header"]
+|===
+|Input bytes |`b64_len` |Lines |Output bytes
+|48 |64 |1 |65
+|49 |68 |2 |70
+|96 |128 |2 |130
+|===
+
+=== Key code
+
+[source,c]
+----
+/* Calculate the Base64 length and number of lines. */
+b64_len = pg_b64_enc_len(src_len);
+num_lines = (b64_len + 63) / 64;
+result_len = b64_len + num_lines;
+
+/* Call PostgreSQL's internal encoder, which does not add newlines. */
+encoded_len = pg_b64_encode(src_data, src_len, raw_b64, b64_len);
+
+/* Write 64-character chunks and append LF to each chunk. */
+while (remaining > 0)
+{
+    chunk = (remaining >= 64) ? 64 : remaining;
+    memcpy(dst, p, chunk);
+    dst += chunk;
+    p += chunk;
+    remaining -= chunk;
+    *dst++ = '\n';
+}
+----
+
+=== Boundary behavior
+
+[cols="2,3",options="header"]
+|===
+|Input |Output
+|`NULL` |`NULL`, handled by the SQL-level `STRICT` modifier
+|Empty `bytea` (0 bytes) |Empty `bytea` (0 bytes)
+|Any nonempty binary value |Base64 text wrapped after every 64 characters, with `\n` after the final line
+|===
+
+== BASE64_DECODE implementation
+
+=== Design goals
+
+`BASE64_DECODE` accepts the newline-containing Base64 byte sequence produced by `BASE64_ENCODE` and restores the original binary data. PostgreSQL's internal `pg_b64_decode()` rejects all whitespace, while Oracle-compatible encoded output contains `\n`. The implementation must therefore remove whitespace before decoding.
+
+=== Decoding flow
+
+[source,text]
+----
+Input bytea (Base64 bytes containing \n)
+        │
+        ▼
+Strip whitespace
+Remove '\n', '\r', '\t', and spaces
+        │
+        ▼
+clean_buf (Base64 characters without whitespace)
+        │
+        ▼
+clean_len == 0?  ── yes ──▶ Return an empty bytea
+        │ no
+        ▼
+pg_b64_decode()          ← PostgreSQL internal function
+        │
+        ▼
+decoded_len < 0?  ── yes ──▶ ERROR: invalid base64 input
+        │ no
+        ▼
+Output bytea (decoded_len bytes)
+----
+
+=== Whitespace removal
+
+The accepted whitespace characters are `\n` (LF), `\r` (CR), `\t` (TAB), and space. This supports:
+
+* `\n` line endings produced by Oracle `BASE64_ENCODE`
+* Windows-style `\r\n` line endings
+* TAB and space characters introduced by manual formatting
+
+[source,c]
+----
+for (i = 0; i < src_len; i++)
+{
+    unsigned char c = (unsigned char) src_data[i];
+
+    if (c != '\n' && c != '\r' && c != '\t' && c != ' ')
+        clean_buf[clean_len++] = src_data[i];
+}
+----
+
+=== Error handling
+
+[cols="2,3",options="header"]
+|===
+|Condition |Behavior
+|`NULL` input |Returns `NULL`, handled by the `STRICT` modifier
+|Empty `bytea` input |Returns an empty `bytea`
+|Whitespace-only input, such as `\x0a0d200a` |Returns an empty `bytea`
+|Invalid Base64 characters |Raises `ERROR: UTL_ENCODE.BASE64_DECODE: invalid base64 input` with `ERRCODE_INVALID_PARAMETER_VALUE`
+|===
+
+== PL/iSQL package wrapper
+
+The C functions are registered in the `sys` schema and wrapped in a PL/iSQL package that exposes an Oracle-style interface:
+
+[source,sql]
+----
+-- Register C functions in the sys schema
+CREATE FUNCTION sys.utl_encode_base64_encode(bytea) RETURNS bytea
+  AS 'MODULE_PATHNAME', 'ivorysql_utl_encode_base64_encode'
+  LANGUAGE C IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE FUNCTION sys.utl_encode_base64_decode(bytea) RETURNS bytea
+  AS 'MODULE_PATHNAME', 'ivorysql_utl_encode_base64_decode'
+  LANGUAGE C IMMUTABLE PARALLEL SAFE STRICT;
+
+-- PL/iSQL package that exposes the public interface
+CREATE PACKAGE utl_encode AS
+    FUNCTION base64_encode(r IN RAW) RETURN RAW;
+    FUNCTION base64_decode(r IN RAW) RETURN RAW;
+END utl_encode;
+
+CREATE PACKAGE BODY utl_encode AS
+    FUNCTION base64_encode(r IN RAW) RETURN RAW IS
+    BEGIN RETURN utl_encode_base64_encode(r); END;
+
+    FUNCTION base64_decode(r IN RAW) RETURN RAW IS
+    BEGIN RETURN utl_encode_base64_decode(r); END;
+END utl_encode;
+----
+
+The call path is `utl_encode.base64_encode(r)` → PL/iSQL package body → `sys.utl_encode_base64_encode(bytea)` → C function.
+
+== Differences from PostgreSQL built-in functions
+
+[cols="2,2,2",options="header"]
+|===
+|Feature |PostgreSQL `encode(x, 'base64')` |Oracle `UTL_ENCODE.BASE64_ENCODE`
+|Line-wrapping standard |RFC 2045 (76 characters per line) |RFC 1521 (64 characters per line)
+|Final newline |No |Yes (`\n`)
+|Input and output types |`bytea` → `text` |`RAW` → `RAW` (both map to `bytea`)
+|Whitespace during decoding |`decode()` accepts newlines |`pg_b64_decode()` rejects whitespace, so preprocessing is required
+|===
+
+== Regression test coverage
+
+The tests are defined in `contrib/ivorysql_ora/sql/utl_encode.sql`.
+
+[cols="2,3",options="header"]
+|===
+|Test category |Coverage
+|NULL boundary |NULL input returns NULL
+|Empty input boundary |A 0-byte `bytea` returns a 0-byte `bytea`
+|Known value |`Hello` encodes as `SGVsbG8=\n` (9 bytes)
+|Line boundary |48 bytes produce one 65-byte line; 49 bytes produce two lines and 70 bytes
+|Large input |Multiline encoding and decoding of 200 bytes
+|Round trip |`decode(encode(x)) = x`
+|CRLF compatibility |`\r\n` line endings are removed correctly
+|Whitespace-only input |Decoding `\x0a0d200a` returns an empty `bytea`
+|PL/iSQL interface |Package calls verify the end-to-end path
+|===
