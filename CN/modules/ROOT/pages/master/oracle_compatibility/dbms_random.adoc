@@ -1,0 +1,98 @@
+:sectnums:
+:sectnumlevels: 5
+
+= DBMS_RANDOM 包
+
+== 概述
+
+`DBMS_RANDOM` 提供随机数和随机字符串生成接口。包在会话中自动初始化；调用 `INITIALIZE` 或 `SEED` 可使相同种子在 IvorySQL 中重放相同的随机序列。IvorySQL 的序列不保证与 Oracle 的序列逐位一致。
+
+随机数适用于测试数据和抽样，不适合作为密码、密钥或安全令牌。
+
+== 接口
+
+[cols="2,3",options="header"]
+|===
+|接口 |行为
+|`INITIALIZE(val IN NUMBER)` |使用数值种子初始化随机数生成器；在 IvorySQL 中等同于数值版 `SEED`
+|`SEED(val IN NUMBER)` |使用数值种子重新初始化生成器
+|`SEED(val IN VARCHAR2)` |使用字符串种子重新初始化生成器
+|`TERMINATE` |保留的兼容接口；在 IvorySQL 中不执行操作
+|`NORMAL` |返回均值为 0、标准差为 1 的正态分布 `NUMBER`
+|`RANDOM` |返回范围为 -2147483648 至 2147483647 的整数值
+|`STRING(opt IN CHAR, len IN NUMBER)` |按字符类别生成指定长度的 `VARCHAR2`
+|`VALUE` |返回 `[0, 1)` 范围内的 `NUMBER`
+|`VALUE(low IN NUMBER, high IN NUMBER)` |按给定边界返回 `NUMBER`
+|===
+
+Oracle 已将 `INITIALIZE`、`RANDOM` 和 `TERMINATE` 标记为弃用接口。新代码可优先使用 `SEED` 和 `VALUE`；这些接口仍可用于迁移现有应用。
+
+== 设置种子
+
+`INITIALIZE` 和数值版 `SEED` 接受 `NUMBER`。IvorySQL 将数值种子转换为 64 位整数；字符串版 `SEED` 将字符串字节散列为种子。再次使用相同种子并以相同顺序调用函数，可重放相同序列。
+
+[source,sql]
+----
+CALL dbms_random.seed(CAST(42 AS NUMBER));
+SELECT dbms_random.random() AS first_value;
+
+CALL dbms_random.seed(CAST(42 AS NUMBER));
+SELECT dbms_random.random() AS first_value_again;
+
+CALL dbms_random.seed('test-data');
+SELECT dbms_random.value() AS sample_value;
+----
+
+未显式设置种子时，首次使用会基于当前时间和后端进程 ID 自动设置种子。同一会话中的调用共享生成器状态。`DISCARD ALL` 或 `DISCARD PACKAGES` 会清除该状态，之后的首次调用重新自动设置种子。`TERMINATE` 不清除状态。
+
+== 生成数字
+
+`VALUE` 返回大于等于 0 且小于 1 的值。`VALUE(low, high)` 在 `low < high` 时返回 `[low, high)` 范围内的值。
+
+[source,sql]
+----
+SELECT dbms_random.value() AS unit_value;
+SELECT dbms_random.value(10, 20) AS bounded_value;
+SELECT dbms_random.normal() AS standard_normal_value;
+SELECT dbms_random.random() AS integer_value;
+----
+
+IvorySQL 还支持以下边界行为：
+
+* `low = high` 时直接返回共同的边界值。
+* `low > high` 时返回 `(high, low]` 范围内的值。
+* 任一边界为 `NULL` 时返回 `NULL`。
+
+[source,sql]
+----
+SELECT dbms_random.value(10, 10) AS equal_bound;   -- 10
+SELECT dbms_random.value(11, 0) AS reverse_range;  -- 大于 0 且不大于 11
+----
+
+Oracle 官方文档定义的双参数范围为 `[low, high)`；相等与反向边界是本实现支持的行为。
+
+== 生成字符串
+
+`STRING(opt, len)` 的 `opt` 不区分大小写：
+
+[cols="1,3",options="header"]
+|===
+|`opt` |字符类别
+|`U` |大写字母
+|`L` |小写字母
+|`A` |大小写字母
+|`X` |大写字母和数字
+|`P` |可打印 ASCII 字符
+|===
+
+[source,sql]
+----
+SELECT dbms_random.string('U', 8) AS upper_text;
+SELECT dbms_random.string('X', 12) AS code_text;
+----
+
+当 `opt` 为 `NULL`、空字符串或未识别的单字符时，使用大写字母。多字符选项会报错。`len` 截去小数部分后，若不大于 0 则返回 `NULL`，若大于 4000 则生成 4000 个字符；`len` 为 `NULL` 时会报错。
+
+== 与 Oracle 的差异
+
+相同种子在 IvorySQL 内可重放序列，但不保证得到与 Oracle 相同的值。IvorySQL 使用 PostgreSQL 的 `pg_prng` 生成器，且 `VALUE` 不承诺 Oracle 文档所述的 38 位小数精度。需依赖精确 Oracle 序列或精度的应用应重新验证结果。

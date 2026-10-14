@@ -1,0 +1,64 @@
+:sectnums:
+:sectnumlevels: 5
+
+= DBMS_RANDOM 包设计
+
+== 目标与范围
+
+`DBMS_RANDOM` 在 `ivorysql_ora` 扩展中提供 Oracle 风格的随机数和字符串接口：`INITIALIZE`、`SEED`、`TERMINATE`、`NORMAL`、`RANDOM`、`STRING` 和 `VALUE`。设计目标是保持接口及常用行为兼容，并支持在 IvorySQL 内通过种子重放序列。底层生成器与 Oracle 不同，因此不保证跨数据库得到相同序列。
+
+== 代码组织
+
+[cols="2,3",options="header"]
+|===
+|文件 |职责
+|`src/builtin_packages/dbms_random/dbms_random.c` |种子处理、随机值生成及状态重置
+|`src/builtin_packages/dbms_random/dbms_random--1.0.sql` |注册 `sys` 模式 C 函数，声明和实现 PL/iSQL 包
+|`sql/dbms_random.sql`、`expected/dbms_random.out` |回归测试及期望输出
+|`Makefile`、`meson.build`、`ivorysql_ora_merge_sqls` |编译和安装注册
+|`src/ivorysql_ora.c`、`src/include/ivorysql_ora.h` |将包状态重置接入扩展钩子
+|===
+
+上述路径均相对于 `contrib/ivorysql_ora/`。
+
+== 调用层次
+
+SQL 注册文件创建 `sys.ora_dbms_random_*` C 函数，并以 `CREATE OR REPLACE PACKAGE dbms_random AUTHID CURRENT_USER` 声明 Oracle 风格的包接口。包体调用相应的 `sys` 函数；`GRANT EXECUTE ON PACKAGE dbms_random TO PUBLIC` 允许普通用户调用。
+
+[source,text]
+----
+dbms_random.value(10, 20)
+    → PL/iSQL 包体
+    → sys.ora_dbms_random_value_range(NUMBER, NUMBER)
+    → C 实现与会话生成器状态
+----
+
+所有注册的 C 函数都标记为 `VOLATILE`。数值和字符串种子入口标记为 `STRICT`，因此 `NULL` 种子不会进入 C 转换函数。`STRING` 和双参数 `VALUE` 未标记为 `STRICT`，由 C 代码处理其参数的 `NULL` 行为。
+
+== 生成器状态与种子
+
+C 模块保存静态 `pg_prng_state` 和 `state_seeded` 标志，因此随机序列按后端会话隔离。首次使用时，`ensure_seeded()` 以当前时间戳与后端进程 ID 组合成种子。显式调用 `INITIALIZE` 或 `SEED` 会覆盖当前状态。
+
+数值种子通过 `numeric_int8` 转为 64 位整数，再传给 `pg_prng_seed()`；`INITIALIZE` 与数值版 `SEED` 共用这段逻辑。字符串种子由 `hash_any_extended()` 散列为 64 位值，再传给 `pg_prng_seed()`。相同种子和相同调用顺序在 IvorySQL 内产生可重放的序列。这里的实现不承诺与 Oracle 的专有生成器逐位一致。
+
+`TERMINATE` 是兼容旧接口的空操作。扩展的 `DISCARD ALL` 和 `DISCARD PACKAGES` 钩子调用 `ora_dbms_random_reset()`，清除已设置种子的标志；下一次随机调用重新自动设置种子。
+
+== 各接口实现
+
+[cols="2,3",options="header"]
+|===
+|接口 |实现要点
+|`RANDOM` |从 `pg_prng_uint32()` 取值，转成有符号 32 位整数，再转换为 `NUMBER`
+|`NORMAL` |使用 `pg_prng_double_normal()` 生成标准正态分布值，并转为 `NUMBER`
+|`VALUE` |使用 `pg_prng_double()` 生成 `[0, 1)` 值，并转为 `NUMBER`
+|`VALUE(low, high)` |保留 `NUMBER` 边界，以 `low + (high - low) × fraction` 计算结果，避免先把边界转成 `float8`
+|`STRING(opt, len)` |根据选项选择字符集，为每个字符生成位置并拼接字符串
+|===
+
+当 `VALUE` 的两个边界相等时直接返回边界，不消耗随机值；反向边界得到 `(high, low]` 范围内的结果。任一边界为 `NULL` 时返回 `NULL`。这些边界行为由回归测试覆盖。
+
+`STRING` 支持 `U`（大写字母）、`L`（小写字母）、`A`（大小写字母）、`X`（大写字母和数字）和 `P`（可打印字符），选项不区分大小写。`NULL`、空字符串和未知单字符选项回退为 `U`；多字符选项报错。长度先截去小数部分，小于等于 0 时返回 `NULL`，大于 4000 时限制为 4000，`NULL` 长度报错。
+
+== 回归验证
+
+`sql/dbms_random.sql` 覆盖数值和字符串种子、重放序列、`RANDOM` 范围、`NORMAL`、`STRING` 字符类别及长度、`VALUE` 的正向/反向/相等边界、大数值边界、`TERMINATE` 和 `DISCARD ALL` 后的状态。种子序列的测试使用确定的结果；自动设置种子的结果只验证范围或可用性。
