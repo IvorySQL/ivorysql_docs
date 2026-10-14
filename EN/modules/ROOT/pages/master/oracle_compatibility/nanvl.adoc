@@ -1,0 +1,177 @@
+:sectnums:
+:sectnumlevels: 5
+
+= NANVL function
+
+== Overview
+
+`NANVL` is an Oracle-compatible function that replaces a NaN (Not a Number) floating-point value. It returns the specified substitute when the input is NaN and returns the input value otherwise.
+
+== Syntax
+
+[source,sql]
+----
+NANVL(n, m)
+----
+
+=== Parameters
+
+[cols="1,4",options="header"]
+|===
+|Parameter |Description
+|`n` |Numeric expression to inspect (`binary_float` or `binary_double`)
+|`m` |Substitute value whose type must be compatible with `n`
+|===
+
+=== Return value
+
+* If `n` is NaN, the function returns `m`.
+* If `n` is not NaN, the function returns `n`.
+
+== Examples
+
+=== Basic usage
+
+[source,sql]
+----
+-- A regular value is returned unchanged
+SELECT NANVL(CAST(1.5 AS BINARY_FLOAT), CAST(99.0 AS BINARY_FLOAT));
+-- Result: 1.5
+
+-- A NaN value is replaced
+SELECT NANVL(CAST('NaN' AS BINARY_FLOAT), CAST(99.0 AS BINARY_FLOAT));
+-- Result: 99
+
+-- A regular negative value is returned unchanged
+SELECT NANVL(CAST(-3.14 AS BINARY_DOUBLE), CAST(0.0 AS BINARY_DOUBLE));
+-- Result: -3.14
+----
+
+=== Data cleansing
+
+Replace NaN values in a table with zero:
+
+[source,sql]
+----
+CREATE TABLE measurements (
+    id int,
+    temperature binary_double,
+    pressure binary_double
+);
+
+INSERT INTO measurements VALUES
+    (1, 25.5, 1013.25),
+    (2, 'NaN', 1015.0),      -- Temperature sensor failure
+    (3, 26.1, 'NaN'),        -- Pressure sensor failure
+    (4, 'NaN', 'NaN');       -- Both sensors failed
+
+-- Replace NaN with zero
+SELECT id,
+       NANVL(temperature, 0.0) AS temp_clean,
+       NANVL(pressure, 0.0) AS press_clean
+FROM measurements
+ORDER BY id;
+
+-- Result:
+--  id | temp_clean | press_clean
+-- ----+------------+-------------
+--   1 |       25.5 |     1013.25
+--   2 |          0 |      1015.0
+--   3 |       26.1 |           0
+--   4 |          0 |           0
+----
+
+=== Using an expression as the substitute
+
+The substitute can be any expression:
+
+[source,sql]
+----
+-- Replace NaN with the column average
+SELECT NANVL(temperature,
+             (SELECT AVG(temperature) FROM measurements))
+FROM measurements;
+
+-- Replace NaN with a calculated value
+SELECT NANVL('NaN'::binary_float, 1.0 + 2.0::binary_float);
+-- Result: 3
+----
+
+=== Using NANVL with an aggregate
+
+[source,sql]
+----
+-- Replace NaN with zero before calculating the average temperature
+SELECT AVG(NANVL(temperature, 0.0)) AS avg_temp
+FROM measurements;
+----
+
+=== Using NANVL in a WHERE clause
+
+[source,sql]
+----
+-- Select rows whose original value is NaN or below the threshold
+SELECT *
+FROM measurements
+WHERE NANVL(temperature, -999.0) < 0;
+----
+
+== Boundary behavior
+
+=== NULL handling
+
+`NANVL` determines its return value from `n`. If `n` is not NaN, the function returns `n`, and the value of `m` does not affect the result. The function uses `m` only when `n` is NaN; if `m` is NULL in that case, the function returns NULL.
+
+[source,sql]
+----
+SELECT NANVL(CAST(NULL AS BINARY_FLOAT), CAST(99.0 AS BINARY_FLOAT));
+-- n is NULL, so the function returns NULL immediately
+
+SELECT NANVL(CAST(1.5 AS BINARY_FLOAT), CAST(NULL AS BINARY_FLOAT));
+-- Returns 1.5; because n is not NaN, a NULL m does not affect the result
+
+SELECT NANVL(CAST(NULL AS BINARY_FLOAT), CAST(NULL AS BINARY_FLOAT));
+-- n is NULL, so the function returns NULL
+
+SELECT NANVL(CAST('NaN' AS BINARY_FLOAT), CAST(NULL AS BINARY_FLOAT));
+-- n is NaN, so the function returns m; m is NULL, so the result is NULL
+----
+
+=== Infinity is not replaced
+
+Infinity is not NaN and is therefore not replaced:
+
+[source,sql]
+----
+SELECT NANVL(CAST('Infinity' AS BINARY_FLOAT), CAST(99.0 AS BINARY_FLOAT));
+-- Result: Inf
+
+SELECT NANVL(CAST('-Infinity' AS BINARY_DOUBLE), CAST(0.0 AS BINARY_DOUBLE));
+-- Result: -Inf
+----
+
+=== Negative zero is not replaced
+
+Negative zero (`-0.0`) is a valid floating-point value, not NaN:
+
+[source,sql]
+----
+SELECT NANVL(CAST(-0.0 AS BINARY_FLOAT), CAST(99.0 AS BINARY_FLOAT));
+-- Result: 0
+
+SELECT NANVL(CAST(-0.0 AS NUMBER), CAST(99.0 AS NUMBER));
+-- Result: 0.0
+----
+
+=== Using NaN as the substitute
+
+The substitute value can itself be NaN:
+
+[source,sql]
+----
+SELECT NANVL(
+    CAST('NaN' AS BINARY_FLOAT),
+    CAST('NaN' AS BINARY_FLOAT)
+);
+-- Result: NaN
+----
