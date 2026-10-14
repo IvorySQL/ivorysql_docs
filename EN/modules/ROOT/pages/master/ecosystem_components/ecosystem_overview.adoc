@@ -44,6 +44,7 @@ IvorySQL, as an advanced open-source database compatible with Oracle and based o
 |*30*| xref:master/ecosystem_components/set_user.adoc[set_user] | REL4_2_0 | PostgreSQL security auditing extension with controlled role switching, supporting allowlists, enforced auditing, and blocking of high-risk operations | Controlled role switching, privilege management, audit logging
 |*31*| xref:master/ecosystem_components/pg_jieba.adoc[pg_jieba] | master branch | Chinese word segmentation extension, which segments continuous Chinese text into meaningful word sequences, providing fundamental support for full-text search | Full-text search and natural language processing (NLP)
 |*32*| xref:master/ecosystem_components/pg_track_settings.adoc[pg_track_settings] | 2.1.2 | PostgreSQL configuration tracking extension that records configuration change history | Configuration auditing, change tracking
+|*33*| xref:master/ecosystem_components/oracle_fdw.adoc[oracle_fdw] | 2.9.0 | Maps remote Oracle tables to IvorySQL foreign tables for queries, writes, and transactions | Oracle data integration, cross-database queries, and migration
 |====
 
 These plugins have all been tested and adapted by the IvorySQL team to ensure stable operation in the IvorySQL environment. Users can select appropriate plugins based on business needs to further enhance the capabilities and flexibility of the database system.
