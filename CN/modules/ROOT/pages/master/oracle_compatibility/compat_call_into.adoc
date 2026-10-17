@@ -189,6 +189,16 @@ ERROR:  invalid input syntax for type numeric: "Test processed"
 === 输出绑定变量不允许重复绑定
 [source,sql]
 ----
+-- 创建带 OUT 参数和返回值的函数（供 INTO 子句使用）
+CREATE OR REPLACE FUNCTION out_param_func(
+  p_in IN VARCHAR2,
+  p_out OUT VARCHAR2
+) RETURN NUMBER IS
+BEGIN
+  p_out := p_in || ' processed';
+  RETURN LENGTH(p_in);
+END;
+/
 -- 准备绑定变量
 ivorysql=# VARIABLE dup_var VARCHAR2(100);
 -- 尝试重复绑定（会报错）
