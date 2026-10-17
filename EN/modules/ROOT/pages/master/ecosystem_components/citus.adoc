@@ -1,0 +1,173 @@
+:sectnums:
+:sectnumlevels: 5
+
+= Citus
+
+== Overview
+
+Citus is an open-source distributed extension for PostgreSQL (open-sourced and maintained by Microsoft) that turns PostgreSQL into a distributed database. Through table sharding, distributed query planning and parallel execution, it delivers horizontal scalability across a multi-node cluster while keeping the standard SQL interface.
+
+Core capabilities of Citus:
+
+* *Distributed tables*: large tables are hash-sharded across nodes by a distribution column, transparently supporting INSERT/UPDATE/DELETE/SELECT
+* *Reference tables*: small dimension tables are replicated to every node, enabling zero-network-cost joins with distributed tables
+* *Distributed queries*: parallel execution based on the Citus Adaptive executor, with shard pruning
+* *Online scale-out*: rebalance_table_shards redistributes shards across the cluster
+
+Citus 14.x supports PostgreSQL 16, 17 and 18. IvorySQL 5.x is based on PostgreSQL 18 and is compatible with Citus 14.2.
+
+[TIP]
+The installation in this document was verified on a Debian 12 (bookworm) container with the IvorySQL 5.6 image and Citus 14.2.0 built from source.
+
+== Installation
+
+=== Prerequisites
+
+Citus is built as a PostgreSQL extension and requires the IvorySQL development headers (pg_config) and a build toolchain.
+
+[literal]
+----
+# Debian / Ubuntu
+sudo apt install gcc make bison flex pkg-config \
+    libcurl4-openssl-dev liblz4-dev libzstd-dev \
+    zlib1g-dev libssl-dev autoconf automake libtool
+----
+
+=== Building from source
+
+[literal]
+----
+git clone --depth 1 --branch v14.2.0 https://github.com/citusdata/citus.git
+cd citus
+
+# Make sure pg_config is on PATH (example: default IvorySQL install prefix)
+export PATH=/usr/ivory-5/bin:$PATH
+
+./configure
+make -j$(nproc)
+sudo make install
+----
+
+=== Verify the installation
+
+[literal]
+----
+ls /usr/ivory-5/lib/postgresql/citus.so
+ls /usr/ivory-5/share/postgresql/extension/citus.control
+----
+
+== Configuration
+
+Citus must be preloaded via `shared_preload_libraries`.
+
+IvorySQL preloads its own components by default (`gb18030_2022`, `liboracle_parser`, `ivorysql_ora`). Keep the existing libraries and append citus:
+
+[literal]
+----
+# postgresql.conf
+shared_preload_libraries = 'citus, gb18030_2022, liboracle_parser, ivorysql_ora'
+----
+
+Restart the instance afterwards:
+
+[literal]
+----
+pg_ctl restart -D $PGDATA
+----
+
+[TIP]
+Avoid configuring the library list via `ALTER SYSTEM SET shared_preload_libraries`: in testing, this can write the whole list as a single library name and cause startup failure (`could not access file`). Edit postgresql.conf directly instead.
+
+== Usage
+
+=== Create the extension
+
+[literal]
+----
+-- psql -U ivorysql -p 5432 -d postgres
+CREATE EXTENSION citus;
+SELECT citus_version();
+
+--  citus_version
+-- ----------------------------------------
+--  Citus 14.2.0 on x86_64-pc-linux-gnu ...
+----
+
+=== Create distributed tables
+
+[literal]
+----
+CREATE TABLE orders (
+    order_id  bigint,
+    user_id   bigint,
+    amount    numeric(10,2),
+    created   date DEFAULT current_date
+);
+
+-- Hash-shard by user_id
+SELECT create_distributed_table('orders', 'user_id');
+
+-- Inspect shards (32 shards by default)
+SELECT table_name, shard_count FROM citus_tables;
+
+--  table_name | shard_count
+-- ------------+-------------
+--  orders     |          32
+----
+
+== Data operations and shard pruning
+
+DML on distributed tables uses exactly the same syntax as regular tables; Citus routes statements automatically based on the distribution column:
+
+[literal]
+----
+INSERT INTO orders VALUES (1, 100, 99.90, current_date);
+INSERT INTO orders VALUES (2, 200, 59.50, current_date);
+INSERT INTO orders VALUES (3, 100, 129.00, current_date);
+
+-- Queries filtered on the distribution column are pruned to a single shard
+EXPLAIN SELECT * FROM orders WHERE user_id = 100;
+
+--  QUERY PLAN
+-- --------------------------------------------------------
+--  Custom Scan (Citus Adaptive)
+--    Task Count: 1
+--    ->  Task
+--          Node: host=localhost port=5432 dbname=postgres
+--          ->  Seq Scan on orders_102009 orders
+--                Filter: (user_id = 100)
+
+-- Cross-shard aggregation is gathered in parallel automatically
+SELECT count(*), sum(amount) FROM orders;
+----
+
+=== Shard rebalancing
+
+After adding worker nodes, rebalance shards across the cluster:
+
+[literal]
+----
+-- Add a node (install and preload citus on every worker first)
+SELECT citus_add_node('worker1', 5432);
+
+-- Rebalance shards online
+SELECT rebalance_table_shards();
+
+-- List cluster nodes
+SELECT nodename, nodeport FROM pg_dist_node;
+----
+
+== Oracle compatibility mode notes
+
+Verified with Citus 14.2.0 + IvorySQL 5.6 (dual-mode listening on 5432/1521), Citus has the following limitations in Oracle compatibility mode:
+
+. *Extension installation fails*: running `CREATE EXTENSION citus` on an Oracle-mode connection (port 1521) fails because the Oracle parser rejects PostgreSQL-specific syntax in the extension script (such as `CREATE SEQUENCE ... NO CYCLE`)
+. *Oracle-typed tables cannot be distributed*: when running `create_distributed_table` on a table with Oracle types such as `NUMBER` or `VARCHAR2`, the DDL is replayed on the worker side, while Citus on the worker can only be installed in a PostgreSQL-mode instance and cannot recognize Oracle types, causing failure
+
+Therefore, in the current version we recommend using Citus distributed capabilities in **PostgreSQL compatibility mode (port 5432)**. Tables in Oracle mode can keep using IvorySQL's Oracle syntax features, but should not be added to a Citus distributed cluster.
+
+== Limitations
+
+* Citus only supports the PostgreSQL compatibility mode; the extension cannot be installed in Oracle compatibility mode
+* The Citus version must match the backend PostgreSQL major version (Citus 14.x corresponds to PostgreSQL 16/17/18)
+* Every worker node must run the same version of Citus and IvorySQL with `shared_preload_libraries` properly configured
