@@ -1,0 +1,229 @@
+:sectnums:
+:sectnumlevels: 5
+
+= PostgreSQL 至 IvorySQL 升级指南
+
+== 概述
+
+IvorySQL 基于 PostgreSQL 最新内核构建，并在此基础上提供 Oracle 兼容能力。对于已经在使用 PostgreSQL 的业务，可以按照本指南将数据平滑升级到 IvorySQL，并按需启用 Oracle 兼容模式。
+
+本文介绍三种升级路径，并给出升级前后的检查清单：
+
+[cols="2,2,3,2"]
+|===
+|路径 |适用场景 |优点 |限制
+
+|pg_dump / pg_restore 逻辑迁移
+|跨版本、跨平台迁移，数据量中小
+|最安全，兼容性最好，支持版本跨度大
+|停机窗口取决于导出导入耗时
+
+|pg_dumpall 全库迁移
+|整实例（含全局对象）一次性搬迁
+|保留角色、表空间等全局对象
+|同样需要停机窗口
+
+|逻辑复制
+|追求最小停机时间的在线迁移
+|源库持续可用，可随时切换
+|需 PostgreSQL 10+，配置相对复杂
+|===
+
+[IMPORTANT]
+不推荐使用 `pg_upgrade` 直接从原生 PostgreSQL 升级到 IvorySQL。IvorySQL 在内核中加入了 Oracle 兼容相关的对象与配置，直接使用 `pg_upgrade` 无法保证系统目录中的兼容组件被正确初始化。请使用本指南中的逻辑迁移或逻辑复制路径。
+
+== 升级前准备
+
+=== 确认 IvorySQL 与 PostgreSQL 版本
+
+IvorySQL 5.x 基于 PostgreSQL 18。可通过以下命令确认两端版本：
+
+[source,shell]
+----
+# 源端 PostgreSQL
+psql -U postgres -c "SELECT version();"
+
+# 目标端 IvorySQL
+psql -U postgres -p 5432 -c "SELECT version();"
+----
+
+=== 安装 IvorySQL
+
+参考 xref:master/installation_guide.adoc[安装指南] 完成安装。初始化实例时，可按业务需要选择兼容模式与大小写不敏感（CI）选项：
+
+[source,shell]
+----
+/usr/local/ivorysql/ivorysql-5/bin/initdb -D /data/ivorysql -U postgres
+----
+
+初始化完成后检查 `ivorysql.conf` 中的关键参数：
+
+[source,ini]
+----
+ivorysql.compatible_mode = oracle
+ivorysql.port = 1521
+port = 5432
+----
+
+IvorySQL 默认同时监听 PostgreSQL 模式端口（5432）与 Oracle 兼容模式端口（1521），升级期间可先通过 5432 端口验证 PostgreSQL 行为，再逐步切换到 1521 端口使用 Oracle 兼容特性。
+
+=== 源端检查清单
+
+* 记录源库版本、`encoding`、`lc_collate`/`lc_ctype`，目标端 initdb 时保持一致。
+* 使用 `pg_dump --schema-only` 提前演练建表过程，标记依赖 Oracle 兼容特性才可创建的对象。
+* 检查是否存在使用 `EMPTY_STRING` 与 `NULL` 语义差异的数据：PostgreSQL 中空字符串 `''` 与 `NULL` 不同，而 IvorySQL 的 Oracle 兼容模式遵循 Oracle 语义，将空字符串视为 `NULL`。涉及此语义的查询结果会发生变化，需要业务侧评估。
+* 统计大表行数，作为迁移后的数据校验基准。
+
+== 路径一：pg_dump / pg_restore 逻辑迁移
+
+=== 导出源库
+
+在源端 PostgreSQL 上导出指定数据库（建议使用与源库同大版本的 `pg_dump`）：
+
+[source,shell]
+----
+pg_dump -U postgres -Fc -d appdb -f appdb.dump
+----
+
+如需排除某些对象，可使用 `-N`/`-n` 与 `-T`/`-t` 选项精细控制。
+
+=== 恢复到 IvorySQL
+
+将转储文件恢复到 IvorySQL 实例（通过 5432 端口，保持 PostgreSQL 行为）：
+
+[source,shell]
+----
+# 先创建目标数据库
+psql -U postgres -p 5432 -c "CREATE DATABASE appdb;"
+
+# 恢复数据
+pg_restore -U postgres -p 5432 -d appdb --no-owner --no-privileges appdb.dump
+----
+
+`--no-owner` 与 `--no-privileges` 用于跳过源端的角色与授权信息；如目标端已重建同名角色，可去掉这两个选项。
+
+=== 迁移全局对象
+
+`pg_dump` 不包含角色与表空间。如目标端为全新实例，需要单独导出导入全局对象：
+
+[source,shell]
+----
+# 源端导出全局对象
+pg_dumpall -U postgres --globals-only -f globals.sql
+
+# 目标端导入（先编辑去除超级用户与已存在对象）
+psql -U postgres -p 5432 -f globals.sql
+----
+
+== 路径二：pg_dumpall 全库迁移
+
+如果源实例规模不大，或需要连同全局对象一起搬迁，可直接使用 `pg_dumpall`：
+
+[source,shell]
+----
+# 源端全库导出（纯 SQL 文本）
+pg_dumpall -U postgres -f full_cluster.sql
+
+# 目标端导入
+psql -U postgres -p 5432 -f full_cluster.sql
+----
+
+[NOTE]
+`pg_dumpall` 生成的纯文本 SQL 不支持并行恢复，大实例建议优先使用路径一。
+
+== 路径三：逻辑复制在线迁移
+
+对于不允许长时间停机的业务，可以使用逻辑复制保持源库与 IvorySQL 的数据同步，最后短暂切换。
+
+=== 源端配置
+
+在源端 PostgreSQL 的 `postgresql.conf` 中调整参数并重启：
+
+[source,ini]
+----
+wal_level = logical
+max_replication_slots = 10
+max_wal_senders = 10
+----
+
+确认 `pg_hba.conf` 允许 IvorySQL 所在主机以复制方式连接。
+
+=== 目标端预建结构
+
+在 IvorySQL 上预先创建与源端一致的表结构（可由 `pg_dump --schema-only` 生成），并确保目标端表已启用复制标识：
+
+[source,sql]
+----
+-- 有主键的表无需额外操作
+-- 无主键的表需要设置复制标识
+ALTER TABLE app_table REPLICA IDENTITY FULL;
+----
+
+=== 创建发布与订阅
+
+[source,sql]
+----
+-- 源端创建发布
+CREATE PUBLICATION app_pub FOR ALL TABLES;
+
+-- IvorySQL 端创建订阅
+CREATE SUBSCRIPTION app_sub
+  CONNECTION 'host=src_host port=5432 dbname=appdb user=replica password=***'
+  PUBLICATION app_pub;
+----
+
+订阅创建后，IvorySQL 会先完成全量同步，随后持续应用增量变更。
+
+=== 割接切换
+
+1. 停止源端业务写入，等待订阅延迟归零（`pg_stat_subscription` 中 `latest_end_lsn` 追平）。
+2. 在 IvorySQL 端停止订阅：`ALTER SUBSCRIPTION app_sub DISABLE;`
+3. 将业务连接串切换到 IvorySQL，按需使用 1521 端口启用 Oracle 兼容行为。
+4. 观察一段时间稳定后，删除订阅并下线源库。
+
+== 升级后验证
+
+=== 基础校验
+
+[source,sql]
+----
+-- 对比关键表行数（源端与目标端各执行一次）
+SELECT count(*) FROM app_table;
+
+-- 检查序列当前值，避免割接后主键冲突
+SELECT last_value FROM app_id_seq;
+----
+
+逻辑复制不复制序列值，割接前必须手动同步序列：
+
+[source,shell]
+----
+# 源端导出序列状态
+psql -U postgres -d appdb -Atc \
+  "SELECT 'SELECT setval(' || quote_literal(quote_ident(sequencename)) || ',' || last_value || ');' \
+   FROM pg_sequences WHERE schemaname = 'public'" > sync_sequences.sql
+
+# IvorySQL 端执行
+psql -U postgres -p 5432 -d appdb -f sync_sequences.sql
+----
+
+=== 启用 Oracle 兼容模式
+
+数据校验通过后，通过 1521 端口连接验证 Oracle 兼容行为：
+
+[source,sql]
+----
+-- 确认兼容模式
+SHOW ivorysql.compatible_mode;
+
+-- 验证 Oracle 风格对象
+SELECT SYSDATE FROM DUAL;
+SELECT NVL(NULL, 'N/A') FROM DUAL;
+----
+
+== 常见问题
+
+* **空字符串语义差异**：Oracle 兼容模式下 `'' = NULL`。若业务依赖 PostgreSQL 中空字符串与 NULL 的区别，需改造相关查询或数据。
+* **标识符大小写**：Oracle 兼容模式遵循 Oracle 的大小写折叠规则，未加双引号的标识符视为大写。从 PostgreSQL 迁移的小写对象名在 Oracle 模式下仍可通过双引号精确访问，建议在切换前统一评估命名规范。
+* **扩展兼容性**：源端使用的 PostgreSQL 扩展需确认 IvorySQL 是否已适配，适配列表见 xref:master/ecosystem_components/ecosystem_overview.adoc[生态组件适配]。
+* **只读对象**：`--no-owner` 恢复后对象属主为执行恢复的用户，如需保持原有权限模型，请在目标端提前创建角色。
