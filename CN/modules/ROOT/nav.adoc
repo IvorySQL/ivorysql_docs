@@ -118,6 +118,7 @@
 ** xref:master/operation_guide.adoc[运维管理指南]
 * 数据迁移
 ** xref:master/migration_guide.adoc[迁移指南]
+** xref:master/pg_upgrade_guide.adoc[PostgreSQL 升级指南]
 * IvorySQL开发者
 ** xref:master/contribution/contribution_guide.adoc[贡献指南]
 ** xref:master/developer_guide.adoc[开发者指南]
