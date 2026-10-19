@@ -23,14 +23,22 @@ git remote -v
 
 如果尚未配置 `upstream`，请先执行一次 `git remote add upstream https://github.com/IvorySQL/ivorysql_docs.git`。
 
-切换分支前，请先提交本地修改，或使用 `git stash` 临时保存。以下示例同步本地的 `v5.6` 分支；如果要向其他分支贡献，请将所有 `v5.6` 替换为相应的分支名：
+切换分支前，请先提交本地修改，或使用 `git stash` 临时保存。请选择 PR 要提交到的目标分支，例如 `master` 或 `v5.6`。将下文所有 `<target-branch>` 替换为实际分支名：
 
 ```sh
 git fetch upstream
-git switch v5.6
-git merge --ff-only upstream/v5.6
-git push origin v5.6
+git switch <target-branch>
+git merge --ff-only upstream/<target-branch>
+git push origin <target-branch>
 ```
+
+如果本地尚无目标分支，请将上述 `git switch <target-branch>` 步骤替换为以下命令。它会明确创建本地分支并跟踪自己 fork 的对应分支，避免两个远程仓库都有同名分支时产生歧义：
+
+```sh
+git switch -c <target-branch> --track origin/<target-branch>
+```
+
+然后继续执行上述合并和推送步骤。
 
 如果分支历史已分叉，导致无法快进合并，请先处理分叉，再推送。
 

@@ -24,14 +24,22 @@ git remote -v
 
 If `upstream` is missing, add it once with `git remote add upstream https://github.com/IvorySQL/ivorysql_docs.git`.
 
-Commit or stash any local changes before switching branches. The following example syncs the local `v5.6` branch; replace `v5.6` throughout with the branch you intend to contribute to:
+Commit or stash any local changes before switching branches. Choose the branch your PR will target, such as `master` or `v5.6`. Replace every `<target-branch>` below with the actual branch name:
 
 ```sh
 git fetch upstream
-git switch v5.6
-git merge --ff-only upstream/v5.6
-git push origin v5.6
+git switch <target-branch>
+git merge --ff-only upstream/<target-branch>
+git push origin <target-branch>
 ```
+
+If the target branch does not exist locally, replace the `git switch <target-branch>` step above with the following command. This explicitly creates a local branch tracking your fork's branch, avoiding ambiguity when both remotes have a matching branch:
+
+```sh
+git switch -c <target-branch> --track origin/<target-branch>
+```
+
+Then continue with the merge and push steps above.
 
 If the fast-forward merge fails because the branches have diverged, resolve the divergence before pushing.
 
