@@ -56,16 +56,15 @@ psql -U postgres -p 5432 -c "SELECT version();"
 /usr/local/ivorysql/ivorysql-5/bin/initdb -D /data/ivorysql -U postgres
 ----
 
-初始化完成后检查 `ivorysql.conf` 中的关键参数：
+初始化完成后，确认双端口监听与各自的兼容模式：
 
-[source,ini]
+[source,shell]
 ----
-ivorysql.compatible_mode = oracle
-ivorysql.port = 1521
-port = 5432
+psql -U postgres -p 5432 -c "SHOW ivorysql.compatible_mode;"
+psql -U postgres -p 1521 -c "SHOW ivorysql.compatible_mode;"
 ----
 
-IvorySQL 默认同时监听 PostgreSQL 模式端口（5432）与 Oracle 兼容模式端口（1521），升级期间可先通过 5432 端口验证 PostgreSQL 行为，再逐步切换到 1521 端口使用 Oracle 兼容特性。
+IvorySQL 同一实例同时监听 PostgreSQL 模式端口（5432）与 Oracle 兼容模式端口（1521）。兼容行为由**连接端口**决定：`ivorysql.compatible_mode` 由系统根据端口自动设置，不允许在 `ivorysql.conf` 中手工配置。升级与校验阶段先通过 5432 端口验证 PostgreSQL 行为，割接后再切换到 1521 端口使用 Oracle 兼容特性。
 
 === 源端检查清单
 
@@ -76,7 +75,27 @@ IvorySQL 默认同时监听 PostgreSQL 模式端口（5432）与 Oracle 兼容�
 
 == 路径一：pg_dump / pg_restore 逻辑迁移
 
+=== 迁移全局对象与表空间（先于数据恢复）
+
+`pg_dump` 不包含角色与表空间，目标端必须先就绪这些全局对象，再恢复数据：使用自定义表空间的表在恢复时要求对应表空间已存在，否则 `pg_restore` 直接失败。
+
+[source,shell]
+----
+# 源端导出全局对象
+pg_dumpall -U postgres --globals-only -f globals.sql
+
+# 目标端导入前先编辑 globals.sql：
+# 1) 去除超级用户相关语句
+# 2) 核对 CREATE TABLESPACE 语句中的目录路径，并提前在 IvorySQL 主机上创建这些目录
+psql -U postgres -p 5432 -f globals.sql
+----
+
+若计划将所有表恢复到默认表空间（不保留源端表空间布局），可跳过表空间相关检查，并在下一步恢复时使用 `--no-tablespaces`。
+
 === 导出源库
+
+[IMPORTANT]
+逻辑导出基于某一时刻的一致性快照。执行最终导出前必须**停止源端业务写入**，并保持停止直到数据校验完成、业务切换到 IvorySQL；否则导出快照之后的写入不会包含在迁移数据中。
 
 在源端 PostgreSQL 上导出指定数据库（建议使用与源库同大版本的 `pg_dump`）：
 
@@ -96,24 +115,11 @@ pg_dump -U postgres -Fc -d appdb -f appdb.dump
 # 先创建目标数据库
 psql -U postgres -p 5432 -c "CREATE DATABASE appdb;"
 
-# 恢复数据
-pg_restore -U postgres -p 5432 -d appdb --no-owner --no-privileges appdb.dump
+# 恢复数据（默认将所有对象放入默认表空间）
+pg_restore -U postgres -p 5432 -d appdb --no-owner --no-privileges --no-tablespaces appdb.dump
 ----
 
-`--no-owner` 与 `--no-privileges` 用于跳过源端的角色与授权信息；如目标端已重建同名角色，可去掉这两个选项。
-
-=== 迁移全局对象
-
-`pg_dump` 不包含角色与表空间。如目标端为全新实例，需要单独导出导入全局对象：
-
-[source,shell]
-----
-# 源端导出全局对象
-pg_dumpall -U postgres --globals-only -f globals.sql
-
-# 目标端导入（先编辑去除超级用户与已存在对象）
-psql -U postgres -p 5432 -f globals.sql
-----
+`--no-owner` 与 `--no-privileges` 用于跳过源端的角色与授权信息；如目标端已重建同名角色，可去掉这两个选项。`--no-tablespaces` 忽略转储中的表空间设置，将所有对象放入默认表空间；如需保留源端表空间布局，请确认前置步骤中的表空间已在目标端创建，再省略该选项。
 
 == 路径二：pg_dumpall 全库迁移
 
@@ -128,8 +134,11 @@ pg_dumpall -U postgres -f full_cluster.sql
 psql -U postgres -p 5432 -f full_cluster.sql
 ----
 
+[IMPORTANT]
+最终导出前必须停止源端业务写入，并保持停止直到割接完成；导出快照之后的写入不会包含在转储文件中。
+
 [NOTE]
-`pg_dumpall` 生成的纯文本 SQL 不支持并行恢复，大实例建议优先使用路径一。
+`pg_dumpall` 生成的纯文本 SQL 不支持并行恢复，大实例建议优先使用路径一。转储文件开头的全局对象（角色、表空间）会先于各数据库执行；若源端使用了自定义表空间，请先在 IvorySQL 主机创建对应目录，否则 `CREATE TABLESPACE` 失败将中断整个恢复。
 
 == 路径三：逻辑复制在线迁移
 
@@ -150,13 +159,29 @@ max_wal_senders = 10
 
 === 目标端预建结构
 
-在 IvorySQL 上预先创建与源端一致的表结构（可由 `pg_dump --schema-only` 生成），并确保目标端表已启用复制标识：
+在 IvorySQL 上预先创建与源端一致的表结构（可由 `pg_dump --schema-only` 生成）。建议目标端表与源端保持相同的复制标识设置，以提升增量应用的执行效率。
+
+=== 源端设置复制标识
+
+逻辑复制由 publisher 端按表的复制标识查找待复制的行：无主键的表默认没有复制标识，其 UPDATE/DELETE 无法发布。请在源端为所有无主键的待复制表设置复制标识：
 
 [source,sql]
 ----
--- 有主键的表无需额外操作
--- 无主键的表需要设置复制标识
+-- 有主键的表无需额外操作（主键即复制标识）
+-- 无主键的表在源端设置 REPLICA IDENTITY FULL
 ALTER TABLE app_table REPLICA IDENTITY FULL;
+
+-- 检查源端缺少复制标识的用户表（relreplident = 'd' 且无主键）
+SELECT n.nspname AS schema_name, c.relname AS table_name
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind = 'r'
+  AND c.relreplident = 'd'
+  AND NOT EXISTS (
+    SELECT 1 FROM pg_index i
+    WHERE i.indrelid = c.oid AND i.indisprimary
+  )
+  AND n.nspname NOT IN ('pg_catalog', 'information_schema');
 ----
 
 === 创建发布与订阅
@@ -176,10 +201,42 @@ CREATE SUBSCRIPTION app_sub
 
 === 割接切换
 
-1. 停止源端业务写入，等待订阅延迟归零（`pg_stat_subscription` 中 `latest_end_lsn` 追平）。
-2. 在 IvorySQL 端停止订阅：`ALTER SUBSCRIPTION app_sub DISABLE;`
-3. 将业务连接串切换到 IvorySQL，按需使用 1521 端口启用 Oracle 兼容行为。
-4. 观察一段时间稳定后，删除订阅并下线源库。
+1. 停止源端业务写入，此后源库不再产生新的变更。
+
+2. 确认初始同步完成。在 IvorySQL 端检查所有订阅表的状态均为 `r`（进入正常复制）：
+
+[source,sql]
+----
+-- IvorySQL 端执行
+SELECT srsubid::regsubscription AS subscription,
+       srrelid::regclass AS table_name,
+       srsubstate
+FROM pg_subscription_rel
+ORDER BY 1, 2;
+
+-- srsubstate：'d' 初始拷贝进行中；'s' 已同步数据；
+-- 'r' 拷贝完成并进入正常复制（割接前所有表必须为 'r'）
+----
+
+3. 确认停写后的最终增量已全部应用：在源端记录停写时的 WAL 位置，等待 IvorySQL 端的 `latest_end_lsn` 追平该位置。
+
+[source,sql]
+----
+-- 源端（停写后执行）：记录当前 WAL 写入位置
+SELECT pg_current_wal_lsn();
+
+-- IvorySQL 端：latest_end_lsn 应等于上面记录的位置
+SELECT subname, received_lsn, latest_end_lsn, latest_end_time
+FROM pg_stat_subscription;
+----
+
+4. 对关键表执行行数与抽样校验（见"升级后验证"）。
+
+5. 校验通过后，在 IvorySQL 端停止订阅：`ALTER SUBSCRIPTION app_sub DISABLE;`
+
+6. 将业务连接串切换到 IvorySQL，按需使用 1521 端口启用 Oracle 兼容行为。
+
+7. 观察一段时间稳定后，删除订阅并下线源库。
 
 == 升级后验证
 
@@ -198,14 +255,18 @@ SELECT last_value FROM app_id_seq;
 
 [source,shell]
 ----
-# 源端导出序列状态
+# 源端导出序列状态（覆盖除系统 schema 外的所有 schema，生成 schema 限定的序列名）
 psql -U postgres -d appdb -Atc \
-  "SELECT 'SELECT setval(' || quote_literal(quote_ident(sequencename)) || ',' || last_value || ');' \
-   FROM pg_sequences WHERE schemaname = 'public'" > sync_sequences.sql
+  "SELECT 'SELECT setval(' || quote_literal(format('%I.%I', schemaname, sequencename)) || ',' || last_value || ');' \
+   FROM pg_sequences \
+   WHERE last_value IS NOT NULL \
+     AND schemaname NOT IN ('pg_catalog', 'information_schema')" > sync_sequences.sql
 
 # IvorySQL 端执行
 psql -U postgres -p 5432 -d appdb -f sync_sequences.sql
 ----
+
+脚本说明：`format('%I.%I', ...)` 生成带引号限定的完整序列名，多 schema 场景同样适用；`last_value IS NOT NULL` 过滤掉尚未使用的序列（其当前值即起始值，无需同步）。
 
 === 启用 Oracle 兼容模式
 
