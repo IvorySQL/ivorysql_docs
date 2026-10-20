@@ -87,8 +87,13 @@ pg_dumpall -U postgres --globals-only -f globals.sql
 # 目标端导入前先编辑 globals.sql：
 # 1) 去除超级用户相关语句
 # 2) 核对 CREATE TABLESPACE 语句中的目录路径，并提前在 IvorySQL 主机上创建这些目录
-psql -U postgres -p 5432 -f globals.sql
+# 3) 如需跳过已存在的角色等冲突，可删除对应 CREATE ROLE 语句
+#    （-v ON_ERROR_STOP=1 遇错即停，确保表空间等关键对象创建成功）
+psql -U postgres -p 5432 -v ON_ERROR_STOP=1 -f globals.sql
 ----
+
+[NOTE]
+`psql -f` 默认在遇到 SQL 错误时不会中止执行，而是继续处理后续语句并可能返回退出码 0。若表空间目录缺失，`CREATE TABLESPACE` 会报错但脚本继续执行，最终表可能被创建到默认表空间而非预期位置。使用 `-v ON_ERROR_STOP=1` 可在遇到首个错误时立即停止，便于发现并修复问题。
 
 若计划将所有表恢复到默认表空间（不保留源端表空间布局），可跳过表空间相关检查，并在下一步恢复时使用 `--no-tablespaces`。
 
@@ -130,15 +135,15 @@ pg_restore -U postgres -p 5432 -d appdb --no-owner --no-privileges --no-tablespa
 # 源端全库导出（纯 SQL 文本）
 pg_dumpall -U postgres -f full_cluster.sql
 
-# 目标端导入
-psql -U postgres -p 5432 -f full_cluster.sql
+# 目标端导入（-v ON_ERROR_STOP=1 遇错即停，避免表空间等错误被静默跳过）
+psql -U postgres -p 5432 -v ON_ERROR_STOP=1 -f full_cluster.sql
 ----
 
 [IMPORTANT]
 最终导出前必须停止源端业务写入，并保持停止直到割接完成；导出快照之后的写入不会包含在转储文件中。
 
 [NOTE]
-`pg_dumpall` 生成的纯文本 SQL 不支持并行恢复，大实例建议优先使用路径一。转储文件开头的全局对象（角色、表空间）会先于各数据库执行；若源端使用了自定义表空间，请先在 IvorySQL 主机创建对应目录，否则 `CREATE TABLESPACE` 失败将中断整个恢复。
+`pg_dumpall` 生成的纯文本 SQL 不支持并行恢复，大实例建议优先使用路径一。转储文件开头的全局对象（角色、表空间）会先于各数据库执行；若源端使用了自定义表空间，请先在 IvorySQL 主机创建对应目录。注意 `psql -f` 默认遇错不中止：`CREATE TABLESPACE` 失败后脚本会继续，相关表最终可能落在默认表空间而非预期位置，因此建议配合 `-v ON_ERROR_STOP=1` 使用。
 
 == 路径三：逻辑复制在线迁移
 
@@ -208,24 +213,29 @@ CREATE SUBSCRIPTION app_sub
 [source,sql]
 ----
 -- IvorySQL 端执行
-SELECT srsubid::regsubscription AS subscription,
-       srrelid::regclass AS table_name,
-       srsubstate
-FROM pg_subscription_rel
+SELECT s.subname AS subscription,
+       r.srrelid::regclass AS table_name,
+       r.srsubstate
+FROM pg_subscription_rel r
+JOIN pg_subscription s ON s.oid = r.srsubid
 ORDER BY 1, 2;
 
 -- srsubstate：'d' 初始拷贝进行中；'s' 已同步数据；
 -- 'r' 拷贝完成并进入正常复制（割接前所有表必须为 'r'）
 ----
 
-3. 确认停写后的最终增量已全部应用：在源端记录停写时的 WAL 位置，等待 IvorySQL 端的 `latest_end_lsn` 追平该位置。
+3. 确认停写后的最终增量已全部应用：停写后源端不再产生新事务，但 CHECKPOINT 等内部操作会使 WAL 位置继续前进，因此不应要求 LSN 精确相等，而应确认订阅端已追平停写时的位置且不再前进。
 
 [source,sql]
 ----
--- 源端（停写后执行）：记录当前 WAL 写入位置
-SELECT pg_current_wal_lsn();
+-- 源端：停写后执行 CHECKPOINT，将已提交事务全部刷入 WAL
+CHECKPOINT;
 
--- IvorySQL 端：latest_end_lsn 应等于上面记录的位置
+-- 源端：记录当前 WAL 位置 L1
+SELECT pg_current_wal_lsn() AS source_lsn;
+
+-- IvorySQL 端：等待 latest_end_lsn >= L1（追平或超过即可）
+-- 并观察一段时间 latest_end_lsn 不再前进，说明增量已全部应用
 SELECT subname, received_lsn, latest_end_lsn, latest_end_time
 FROM pg_stat_subscription;
 ----

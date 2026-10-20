@@ -88,8 +88,14 @@ pg_dumpall -U postgres --globals-only -f globals.sql
 # 1) Remove superuser-related statements
 # 2) Verify the directory paths in CREATE TABLESPACE statements
 #    and create these directories on the IvorySQL host in advance
-psql -U postgres -p 5432 -f globals.sql
+# 3) To skip conflicts such as pre-existing roles, remove the corresponding
+#    CREATE ROLE statements (-v ON_ERROR_STOP=1 stops at the first error,
+#    ensuring critical objects like tablespaces are created successfully)
+psql -U postgres -p 5432 -v ON_ERROR_STOP=1 -f globals.sql
 ----
+
+[NOTE]
+By default, `psql -f` does not stop on SQL errors: it continues with subsequent statements and may return exit code 0. If a tablespace directory is missing, `CREATE TABLESPACE` fails but the script keeps running, and affected tables may end up in the default tablespace instead of the intended one. Adding `-v ON_ERROR_STOP=1` stops at the first error so problems are surfaced immediately.
 
 If you plan to restore all tables into the default tablespace (without preserving the source tablespace layout), you can skip the tablespace checks and use `--no-tablespaces` in the restore step below.
 
@@ -131,15 +137,16 @@ If the source instance is small, or you want to move global objects together wit
 # Full-cluster export as plain SQL
 pg_dumpall -U postgres -f full_cluster.sql
 
-# Import on the target
-psql -U postgres -p 5432 -f full_cluster.sql
+# Import on the target (-v ON_ERROR_STOP=1 stops at the first error so
+# tablespace and other failures are not silently skipped)
+psql -U postgres -p 5432 -v ON_ERROR_STOP=1 -f full_cluster.sql
 ----
 
 [IMPORTANT]
 Stop writes on the source before the final export and keep them stopped until cutover completes; writes made after the snapshot are not included in the dump.
 
 [NOTE]
-`pg_dumpall` produces plain-text SQL and does not support parallel restore. Prefer Path 1 for large instances. Global objects (roles, tablespaces) at the beginning of the dump are executed before the databases; if the source uses custom tablespaces, create the corresponding directories on the IvorySQL host first, otherwise a failed `CREATE TABLESPACE` aborts the entire restore.
+`pg_dumpall` produces plain-text SQL and does not support parallel restore. Prefer Path 1 for large instances. Global objects (roles, tablespaces) at the beginning of the dump are executed before the databases; if the source uses custom tablespaces, create the corresponding directories on the IvorySQL host first. Note that `psql -f` does not stop on errors by default: a failed `CREATE TABLESPACE` is followed by remaining statements, and affected tables may end up in the default tablespace, so `-v ON_ERROR_STOP=1` is recommended.
 
 == Path 3: logical replication online migration
 
@@ -210,24 +217,30 @@ After the subscription is created, IvorySQL performs the initial sync and then c
 [source,sql]
 ----
 -- Run on IvorySQL
-SELECT srsubid::regsubscription AS subscription,
-       srrelid::regclass AS table_name,
-       srsubstate
-FROM pg_subscription_rel
+SELECT s.subname AS subscription,
+       r.srrelid::regclass AS table_name,
+       r.srsubstate
+FROM pg_subscription_rel r
+JOIN pg_subscription s ON s.oid = r.srsubid
 ORDER BY 1, 2;
 
 -- srsubstate: 'd' data copy in progress; 's' data synchronized;
 -- 'r' copy finished and in normal replication (all tables must be 'r' before cutover)
 ----
 
-3. Confirm all final changes after the write stop have been applied: record the WAL position at write stop on the source, then wait until `latest_end_lsn` on IvorySQL catches up.
+3. Confirm all final changes after the write stop have been applied: after writes stop, the source produces no new transactions, but internal operations such as CHECKPOINT still advance the WAL position. Therefore exact equality of LSNs should not be required; instead, confirm the subscriber has caught up to the write-stop position and no longer advances.
 
 [source,sql]
 ----
--- Source (run after stopping writes): record the current WAL flush position
-SELECT pg_current_wal_lsn();
+-- Source: run CHECKPOINT after stopping writes to flush all committed transactions to WAL
+CHECKPOINT;
 
--- IvorySQL: latest_end_lsn should equal the recorded position
+-- Source: record the current WAL position L1
+SELECT pg_current_wal_lsn() AS source_lsn;
+
+-- IvorySQL: wait until latest_end_lsn >= L1 (caught up or beyond)
+-- and observe that latest_end_lsn no longer advances for a while,
+-- which confirms all incremental changes have been applied
 SELECT subname, received_lsn, latest_end_lsn, latest_end_time
 FROM pg_stat_subscription;
 ----
