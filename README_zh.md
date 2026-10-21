@@ -15,17 +15,32 @@
 
 （1）下载Asciidoc或者Typora文档编辑器。
 
-（2）检查源仓库是否有更新，如果有更新请先更新并同步到自己的仓库。如有更新请参阅以下步骤，更新至最新版本：
+（2）贡献前，请先将自己的 fork 与上游仓库同步。在自己 fork 的本地克隆目录中，检查已配置的远程仓库：
 
+```sh
+git remote -v
 ```
-git remote
 
+如果尚未配置 `upstream`，请先执行一次 `git remote add upstream https://github.com/IvorySQL/ivorysql_docs.git`。
+
+切换分支前，请先提交本地修改，或使用 `git stash` 临时保存。请选择 PR 要提交到的目标分支，例如 `master` 或 `v5.6`。将下文所有 `<target-branch>` 替换为实际分支名：
+
+```sh
 git fetch upstream
-
-git merge upstream/main
-
-git push
+git switch <target-branch>
+git merge --ff-only upstream/<target-branch>
+git push origin <target-branch>
 ```
+
+如果本地尚无目标分支，请将上述 `git switch <target-branch>` 步骤替换为以下命令。它会明确创建本地分支并跟踪自己 fork 的对应分支，避免两个远程仓库都有同名分支时产生歧义：
+
+```sh
+git switch -c <target-branch> --track origin/<target-branch>
+```
+
+然后继续执行上述合并和推送步骤。
+
+如果分支历史已分叉，导致无法快进合并，请先处理分叉，再推送。
 
 （3）熟悉[文档写作规范](#规范说明)
 

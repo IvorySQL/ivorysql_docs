@@ -16,17 +16,32 @@ If you have any comments or suggestions about the documentation, please submit t
 
 (1) Download the Asciidoc or Typora document editor.
 
-(2) Check if the upstream repository has updates. If so, please sync to your own fork first:
+(2) Before contributing, sync your fork with the upstream repository. In your local clone of your fork, check the configured remotes:
 
+```sh
+git remote -v
 ```
-git remote
 
+If `upstream` is missing, add it once with `git remote add upstream https://github.com/IvorySQL/ivorysql_docs.git`.
+
+Commit or stash any local changes before switching branches. Choose the branch your PR will target, such as `master` or `v5.6`. Replace every `<target-branch>` below with the actual branch name:
+
+```sh
 git fetch upstream
-
-git merge upstream/main
-
-git push
+git switch <target-branch>
+git merge --ff-only upstream/<target-branch>
+git push origin <target-branch>
 ```
+
+If the target branch does not exist locally, replace the `git switch <target-branch>` step above with the following command. This explicitly creates a local branch tracking your fork's branch, avoiding ambiguity when both remotes have a matching branch:
+
+```sh
+git switch -c <target-branch> --track origin/<target-branch>
+```
+
+Then continue with the merge and push steps above.
+
+If the fast-forward merge fails because the branches have diverged, resolve the divergence before pushing.
 
 (3) Familiarize yourself with the [Writing Guidelines](#writing-guidelines).
 
