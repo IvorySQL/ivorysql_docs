@@ -136,17 +136,49 @@ If the source instance is small, or you want to move global objects together wit
 ----
 # Full-cluster export as plain SQL
 pg_dumpall -U postgres -f full_cluster.sql
-
-# Import on the target (-v ON_ERROR_STOP=1 stops at the first error so
-# tablespace and other failures are not silently skipped)
-psql -U postgres -p 5432 -v ON_ERROR_STOP=1 -f full_cluster.sql
 ----
 
 [IMPORTANT]
 Stop writes on the source before the final export and keep them stopped until cutover completes; writes made after the snapshot are not included in the dump.
 
+=== Resolve role conflicts before import
+
+The beginning of a `pg_dumpall` dump contains global object definitions, and every role produces a `CREATE ROLE` statement, including the source `postgres` role. The IvorySQL target already has a `postgres` role created by `initdb`, so importing directly fails at this statement:
+
+[literal]
+----
+ERROR:  role "postgres" already exists
+----
+
+With `-v ON_ERROR_STOP=1`, `psql` exits immediately at this error (exit code 3), and neither the application database nor the data is restored. Inspect the dump and remove or comment out `CREATE ROLE` statements for roles that already exist on the target before importing:
+
+[source,shell]
+----
+# 1. List all role creation statements in the dump
+#    (they are in the global objects section at the top of the file)
+grep -n '^CREATE ROLE' full_cluster.sql
+
+# 2. List roles that already exist on the target
+psql -U postgres -p 5432 -c '\du'
+
+# 3. Compare the two lists and delete or comment out the CREATE ROLE lines
+#    for roles that already exist; the postgres role always exists:
+sed -i 's/^CREATE ROLE postgres;/-- CREATE ROLE postgres;/' full_cluster.sql
+----
+
+Only the conflicting `CREATE ROLE` statements need to be removed: the following `ALTER ROLE` statement still runs and aligns role attributes, so keep it. Repeat the same approach for any other source roles that already exist on the target.
+
+=== Import
+
+[source,shell]
+----
+# Import on the target (-v ON_ERROR_STOP=1 stops at the first error so
+# failures are not silently skipped)
+psql -U postgres -p 5432 -v ON_ERROR_STOP=1 -f full_cluster.sql
+----
+
 [NOTE]
-`pg_dumpall` produces plain-text SQL and does not support parallel restore. Prefer Path 1 for large instances. Global objects (roles, tablespaces) at the beginning of the dump are executed before the databases; if the source uses custom tablespaces, create the corresponding directories on the IvorySQL host first. Note that `psql -f` does not stop on errors by default: a failed `CREATE TABLESPACE` is followed by remaining statements, and affected tables may end up in the default tablespace, so `-v ON_ERROR_STOP=1` is recommended.
+`pg_dumpall` produces plain-text SQL and does not support parallel restore. Prefer Path 1 for large instances. If the source uses custom tablespaces, create the corresponding directories on the IvorySQL host first. Note that `psql -f` does not stop on errors by default: a failed `CREATE TABLESPACE` is followed by remaining statements, and affected tables may end up in the default tablespace. `-v ON_ERROR_STOP=1` surfaces such errors immediately, so keep this option after resolving the role conflicts described above.
 
 == Path 3: logical replication online migration
 

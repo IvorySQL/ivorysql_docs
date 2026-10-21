@@ -134,16 +134,47 @@ pg_restore -U postgres -p 5432 -d appdb --no-owner --no-privileges --no-tablespa
 ----
 # 源端全库导出（纯 SQL 文本）
 pg_dumpall -U postgres -f full_cluster.sql
-
-# 目标端导入（-v ON_ERROR_STOP=1 遇错即停，避免表空间等错误被静默跳过）
-psql -U postgres -p 5432 -v ON_ERROR_STOP=1 -f full_cluster.sql
 ----
 
 [IMPORTANT]
 最终导出前必须停止源端业务写入，并保持停止直到割接完成；导出快照之后的写入不会包含在转储文件中。
 
+=== 导入前处理角色冲突
+
+`pg_dumpall` 的转储文件开头是全局对象定义，其中每个角色都会生成一条 `CREATE ROLE` 语句，包括源端的 `postgres` 角色。IvorySQL 目标实例在 `initdb` 时已经创建了 `postgres` 角色，因此直接导入会在这条语句处失败：
+
+[literal]
+----
+ERROR:  role "postgres" already exists
+----
+
+配合 `-v ON_ERROR_STOP=1` 时，`psql` 会在该错误处立即退出（退出码 3），后续的建库与数据恢复均不会执行。导入前请先检查转储文件，并删除或注释掉目标端已存在角色的 `CREATE ROLE` 语句：
+
+[source,shell]
+----
+# 1. 列出转储中的全部角色创建语句（位于文件开头的全局对象部分）
+grep -n '^CREATE ROLE' full_cluster.sql
+
+# 2. 列出目标端已存在的角色
+psql -U postgres -p 5432 -c '\du'
+
+# 3. 对比上述结果，删除或注释目标端已有角色对应的 CREATE ROLE 行
+#    例如目标端必然存在 postgres 角色：
+sed -i 's/^CREATE ROLE postgres;/-- CREATE ROLE postgres;/' full_cluster.sql
+----
+
+只需处理冲突的 `CREATE ROLE` 语句：紧随其后的 `ALTER ROLE` 仍会执行，用于对齐角色属性，请保留。若目标端已存在多个源端角色，按同样方式逐一注释。
+
+=== 导入
+
+[source,shell]
+----
+# 目标端导入（-v ON_ERROR_STOP=1 遇错即停，避免错误被静默跳过）
+psql -U postgres -p 5432 -v ON_ERROR_STOP=1 -f full_cluster.sql
+----
+
 [NOTE]
-`pg_dumpall` 生成的纯文本 SQL 不支持并行恢复，大实例建议优先使用路径一。转储文件开头的全局对象（角色、表空间）会先于各数据库执行；若源端使用了自定义表空间，请先在 IvorySQL 主机创建对应目录。注意 `psql -f` 默认遇错不中止：`CREATE TABLESPACE` 失败后脚本会继续，相关表最终可能落在默认表空间而非预期位置，因此建议配合 `-v ON_ERROR_STOP=1` 使用。
+`pg_dumpall` 生成的纯文本 SQL 不支持并行恢复，大实例建议优先使用路径一。若源端使用了自定义表空间，请先在 IvorySQL 主机创建对应目录。`psql -f` 默认遇错不中止，`CREATE TABLESPACE` 失败后脚本会继续，相关表最终可能落在默认表空间而非预期位置；`-v ON_ERROR_STOP=1` 会让此类错误立即暴露，请在完成上述角色冲突处理后保留该选项。
 
 == 路径三：逻辑复制在线迁移
 
