@@ -6,17 +6,17 @@
 
 == 目的
 
-- 为了满足PG和Oracle的引用标识符大小写兼容，ivorysql设计了三种引用标识符的大小写转换模式。通过guc参数“identifier_case_switch”选择转换模式;
+- 为了满足PG和Oracle的引用标识符大小写兼容，ivorysql设计了三种引用标识符的大小写转换模式。通过guc参数“ivorysql.identifier_case_switch”选择转换模式;
 
 == 功能
 
 === 大小写转换的三种模式（默认为interchange）
 
-- 如果 guc参数“identifier_case_switch”值为“normal”
+- 如果 guc参数“ivorysql.identifier_case_switch”值为“normal”
 
    1). 保持双引号所引用的标识符中的字母大小写不变。
 
-- 如果 guc参数“identifier_case_switch”值为“interchange”：
+- 如果 guc参数“ivorysql.identifier_case_switch”值为“interchange”：
 
    1). 如果双引号所引用的标识符中的字母全部为大写，则将大写转换为小写。
 
@@ -24,7 +24,7 @@
 
    3). 如果用双引号引起来的标识符中的字母是大小写混合的，则保持标识符不变。
 
-- 如果 guc参数“identifier_case_switch”值为“lowercase”
+- 如果 guc参数“ivorysql.identifier_case_switch”值为“lowercase”
 
    1). 如果双引号所引用的标识符中的字母全部为大写，则将大写转换为小写。
 

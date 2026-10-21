@@ -33,7 +33,7 @@ PostmasterMain()-->SetCaseGucOption()-->GetCaseSwitchModeFromControl()
 
 After reading the parameter value, the `SetConfigOption()` function is called to assign the value.
 
-When each new backend process starts, since it is forked from the `postmaster` process, it automatically has the same `ivorysql.identifier_case_switch` parameter value. First, it processes the `startup` packet, and if it contains `database` or `user` parameters, the parameter values are processed accordingly based on `identifier_case_switch`.
+When each new backend process starts, since it is forked from the `postmaster` process, it automatically has the same `ivorysql.identifier_case_switch` parameter value. First, it processes the `startup` packet, and if it contains `database` or `user` parameters, the parameter values are processed accordingly based on `ivorysql.identifier_case_switch`.
 
 The source code is:
 
