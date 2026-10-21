@@ -111,7 +111,7 @@ ivorysql  3238  1551  0 20:35 pts/0    00:00:00 grep --color=auto postgres
 
 [source,bash,subs="attributes"]
 ```
-$ docker pull ivorysql/IvorySQL {ivorysql-version}-ubi8
+$ docker pull ivorysql/ivorysql:{ivorysql-version}-ubi8
 ```
 
 TIP: Users in China can also pull from the IvorySQL community Harbor registry for faster downloads, e.g. `docker pull registry.highgo.com/ivorysql/ivorysql:{ivorysql-version}-ubi8`.
@@ -120,7 +120,7 @@ TIP: Users in China can also pull from the IvorySQL community Harbor registry fo
 
 [source,bash,subs="attributes"]
 ```
-$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/IvorySQL {ivorysql-version}-ubi8
+$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:{ivorysql-version}-ubi8
 ```
 
 ** Check if the IvorySQL container is running successfully
@@ -129,7 +129,7 @@ $ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d 
 ```
 $ docker ps | grep ivorysql
 CONTAINER ID   IMAGE               COMMAND                   CREATED          STATUS          PORTS                              NAMES
-6faa2d0ed705   IvorySQL {ivorysql-version}-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
+6faa2d0ed705   ivorysql/ivorysql:{ivorysql-version}-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
 ```
 
 == Connecting to IvorySQL
