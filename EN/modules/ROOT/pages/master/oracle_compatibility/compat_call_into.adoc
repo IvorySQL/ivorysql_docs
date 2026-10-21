@@ -190,15 +190,15 @@ ERROR:  invalid input syntax for type numeric: "Test processed"
 [source,sql]
 ----
 -- Create a function with an OUT parameter and a return value (for use with the INTO clause)
-CREATE OR REPLACE FUNCTION out_param_func(
-  p_in IN VARCHAR2,
-  p_out OUT VARCHAR2
-) RETURN NUMBER IS
-BEGIN
-  p_out := p_in || ' processed';
-  RETURN LENGTH(p_in);
-END;
-/
+ivorysql=# CREATE OR REPLACE FUNCTION out_param_func(
+ivorysql(#   p_in IN VARCHAR2,
+ivorysql(#   p_out OUT VARCHAR2
+ivorysql(# ) RETURN NUMBER IS
+ivorysql-# BEGIN
+ivorysql-#   p_out := p_in || ' processed';
+ivorysql-#   RETURN LENGTH(p_in);
+ivorysql-# END;
+ivorysql-# /
 -- Prepare binding variables
 ivorysql=# VARIABLE dup_var VARCHAR2(100);
 -- Attempting duplicate binding (will throw an error)
