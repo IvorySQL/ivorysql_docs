@@ -1,0 +1,137 @@
+:sectnums:
+:sectnumlevels: 5
+
+= 动态性能视图
+
+== 目的
+
+IvorySQL 提供 `SYS.V$SESSION`、`SYS.V$PROCESS` 和 `SYS.V$PARAMETER`，用于查询后端会话、进程及配置参数信息。三个视图分别映射到底层活动统计和参数设置，便于使用 Oracle 风格的视图名称进行日常监控。
+
+== 功能说明
+
+[cols="2,4",options="header"]
+|===
+|视图 |用途
+|`SYS.V$SESSION` |查询会话状态、SQL、等待事件及阻塞会话
+|`SYS.V$PROCESS` |查询后端进程编号、应用名称和进程类型
+|`SYS.V$PARAMETER` |查询当前参数值、默认值及修改属性
+|===
+
+=== V$SESSION
+
+[cols="2,2,4",options="header"]
+|===
+|列名 |类型 |说明
+|`SID` |`NUMBER` |后端进程 PID
+|`USERNAME` |`VARCHAR2(128)` |数据库用户名
+|`STATUS` |`VARCHAR2(40)` |底层状态为 `active` 或 `fastpath function call` 时为 `ACTIVE`，其他情况为 `INACTIVE`
+|`MACHINE` |`VARCHAR2(128)` |客户端主机名，未提供时取客户端 IP 地址
+|`PROGRAM` |`VARCHAR2(256)` |连接的 `application_name`
+|`TYPE` |`VARCHAR2(30)` |`client backend` 映射为 `USER`，其他情况为 `BACKGROUND`
+|`LOGON_TIME` |`timestamptz` |后端启动时间
+|`SQL_EXEC_START` |`timestamptz` |当前 SQL 的开始时间；会话空闲时为最近一次 SQL 的开始时间
+|`SQL_ID` |`VARCHAR2(19)` |底层 `query_id` 转换后的字符串
+|`SQL_TEXT` |`VARCHAR2(4000)` |当前或最近一次 SQL 文本
+|`BLOCKING_SESSION` |`NUMBER` |阻塞该后端的 PID 列表中的第一个值；无阻塞时为空
+|`EVENT` |`VARCHAR2(64)` |底层等待事件名称
+|`WAIT_CLASS` |`VARCHAR2(64)` |底层等待事件类型
+|`TRANSACTION_START` |`timestamptz` |当前事务开始时间；没有活动事务时可为空
+|`PORT` |`NUMBER` |客户端端口；Unix 域套接字连接为 `-1`
+|===
+
+`SID` 是操作系统进程编号，会在进程退出后被复用，识别会话时应结合 `LOGON_TIME`。`SQL_ID` 使用底层查询标识，不是 Oracle SQL_ID 编码；`compute_query_id` 关闭或未生成查询标识时，该列为空。
+
+`EVENT` 和 `WAIT_CLASS` 使用底层事件分类。`STATUS = 'ACTIVE'` 的会话也可能正在等待资源。SQL 文本还受 `track_activities` 和 `track_activity_query_size` 的采集设置约束；空闲会话中的 SQL 文本不表示该语句仍在执行。
+
+=== V$PROCESS
+
+[cols="2,2,4",options="header"]
+|===
+|列名 |类型 |说明
+|`SPID` |`NUMBER` |后端进程 PID，可与 `V$SESSION.SID` 关联
+|`USERNAME` |`VARCHAR2(128)` |数据库用户名
+|`PROGRAM` |`VARCHAR2(256)` |连接的 `application_name`
+|`PNAME` |`VARCHAR2(30)` |底层 `backend_type`
+|`BACKGROUND` |`VARCHAR2(1)` |客户端后端为空，其他后端为 `'1'`
+|===
+
+这里的 `USERNAME` 表示数据库用户，`PROGRAM` 表示应用设置的连接名称，应按此含义解读进程信息。
+
+=== V$PARAMETER
+
+[cols="2,2,4",options="header"]
+|===
+|列名 |类型 |说明
+|`NAME` |`VARCHAR2(80)` |IvorySQL 参数名称
+|`TYPE` |`NUMBER` |布尔参数为 `1`，整数参数为 `3`，其他参数为 `2`
+|`VALUE` |`VARCHAR2(4000)` |当前连接可见的参数设置值
+|`DEFAULT_VALUE` |`VARCHAR2(255)` |参数的编译默认值 `boot_val`
+|`ISDEFAULT` |`VARCHAR2(5)` |当前值与编译默认值相同时为 `TRUE`，否则为 `FALSE`
+|`ISSES_MODIFIABLE` |`VARCHAR2(5)` |底层参数上下文为 `user` 或 `superuser` 时为 `TRUE`，否则为 `FALSE`
+|`ISSYS_MODIFIABLE` |`VARCHAR2(9)` |依据参数上下文返回 `IMMEDIATE`、`DEFERRED` 或 `FALSE`
+|`DESCRIPTION` |`VARCHAR2(255)` |参数的简短说明
+|===
+
+参数名称和取值来自 IvorySQL 配置。修改属性列是对参数上下文的映射，不代表当前用户已获得修改权限；实际修改方式仍遵循相应参数的设置、重载或重启规则。
+
+== 查询示例
+
+以下示例在 Oracle 兼容模式下执行，使用 `SYS` 限定视图名称。会话、进程和参数结果随运行环境变化。
+
+=== 查看当前会话和活动会话
+
+[source,sql]
+----
+SELECT sid, username, status, program, logon_time
+FROM sys.v$session
+WHERE sid = pg_backend_pid();
+
+SELECT sid, username, sql_id, sql_exec_start, sql_text
+FROM sys.v$session
+WHERE type = 'USER' AND status = 'ACTIVE'
+ORDER BY sql_exec_start;
+----
+
+=== 查看等待及关联进程
+
+[source,sql]
+----
+SELECT sid, blocking_session, event, wait_class
+FROM sys.v$session
+WHERE blocking_session IS NOT NULL;
+
+SELECT s.sid, s.username, p.spid, p.pname, p.program
+FROM sys.v$session s
+JOIN sys.v$process p ON p.spid = s.sid
+WHERE s.sid = pg_backend_pid();
+----
+
+`BLOCKING_SESSION` 只返回第一个阻塞 PID，不能据此判断全部阻塞关系。
+
+=== 查看参数
+
+[source,sql]
+----
+SELECT name, type, value, default_value, isdefault,
+       isses_modifiable, issys_modifiable
+FROM sys.v$parameter
+WHERE name IN ('application_name', 'archive_mode', 'block_size')
+ORDER BY name;
+----
+
+== 查询权限与注意事项
+
+视图定义不向 `PUBLIC` 授予 `SELECT`。管理员可为已有的监控角色按需授权，例如：
+
+[source,sql]
+----
+GRANT USAGE ON SCHEMA sys TO monitor_user;
+GRANT SELECT ON sys.v$session, sys.v$process, sys.v$parameter
+TO monitor_user;
+----
+
+获得视图查询权限后，底层统计信息仍遵循调用者的可见性规则。查看其他角色的完整会话详情需要相应统计权限，例如 `pg_read_all_stats`；部分参数的可见性受 `pg_read_all_settings` 等权限约束。这些角色应由管理员按需授予，视图授权不会自动附带它们。
+
+权限不足时，其他会话的部分列为空，`SQL_TEXT` 可能显示 `<insufficient privilege>`。`STATUS`、`TYPE` 和 `BACKGROUND` 仍按映射表达式生成，不应在缺少底层信息时仅凭这些值判断实际活动或进程类别。
+
+在长事务中重复查询活动统计，可能读到同一份统计快照。需要重新采样时，可结束事务后查询，或先执行 `SELECT pg_stat_clear_snapshot();` 清除当前统计快照。不同查询之间的会话和阻塞关系可能发生变化。
