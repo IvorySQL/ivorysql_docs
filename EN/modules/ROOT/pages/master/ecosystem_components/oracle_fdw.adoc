@@ -1,0 +1,96 @@
+:sectnums:
+:sectnumlevels: 5
+
+= oracle_fdw
+
+== Overview
+
+link:https://github.com/laurenz/oracle_fdw[oracle_fdw] is an independently maintained foreign data wrapper that lets IvorySQL read and modify tables in a remote Oracle database through foreign tables. Neither the wrapper nor the Oracle client is bundled with IvorySQL; install both separately.
+
+This adaptation was verified with IvorySQL `master` (based on PostgreSQL 19beta1, commit `069766efa8ca`), oracle_fdw 2.9.0 (`ORACLE_FDW_2_9_0`, commit `3ea9a4522c44`), Oracle AI Database 26ai Free 23.26.3.0.0, Oracle client 23.26.3.0.0, and Debian Bookworm x86_64. The findings apply to this combination; other IvorySQL releases and Oracle versions need separate validation.
+
+== Verified compatibility
+
+The same connection, foreign-table, and read/write tests passed through three entry points: a native PostgreSQL-mode cluster, the PostgreSQL port of an Oracle-mode cluster (session dialect `pg`), and that cluster's Oracle port `ivorysql.port` (session dialect `oracle`). All 24 TAP subtests passed on the *unmodified IvorySQL baseline*. The tested versions therefore need neither an IvorySQL core change nor a `PgDialectExtensions` entry to run `CREATE EXTENSION oracle_fdw`.
+
+[cols="2,3"]
+|===
+|Area |Result
+
+|Installation and session state
+|The extension installs through all three entry points; `ivorysql.compatible_mode` and `search_path` remain unchanged in the same connection
+
+|Queries and types
+|`NUMBER`, Chinese `VARCHAR2`, `DATE`, `TIMESTAMP(6)`, `RAW`, `CLOB`, and `NULL` round-trip; remote SQL in `EXPLAIN VERBOSE` confirms predicate, projection, and join pushdown
+
+|Writes and transactions
+|`INSERT`, `UPDATE`, `DELETE`, `RETURNING`, rollback, and savepoints were checked through an independent Oracle connection
+
+|Privileges and connections
+|User-mapping and table-privilege boundaries, session isolation, and reconnect after disconnect passed
+|===
+
+== Prerequisites
+
+* Install server development headers and `pg_config` for the running IvorySQL version, a C compiler, and GNU make.
+* Install Oracle Call Interface (OCI) headers and shared libraries and set `ORACLE_HOME`. The IvorySQL server process must also be able to load the OCI libraries at runtime.
+* Provide an Oracle instance reachable from the IvorySQL server and a dedicated Oracle account with only the required table privileges. The tested character set was `AL32UTF8`.
+
+When installing oracle_fdw 2.9.0, always select *IvorySQL's* `pg_config`, rather than the system PostgreSQL path:
+
+[source,shell]
+----
+git clone --branch ORACLE_FDW_2_9_0 \
+  https://github.com/laurenz/oracle_fdw.git
+cd oracle_fdw
+export ORACLE_HOME=/path/to/oci-home
+make PG_CONFIG=/path/to/ivorysql/bin/pg_config
+sudo make PG_CONFIG=/path/to/ivorysql/bin/pg_config install
+----
+
+The IvorySQL service environment must also find `$ORACLE_HOME/lib`, using the operating-system dynamic linker configuration or the service's `LD_LIBRARY_PATH`. After checking that `pg_config --version` matches the running IvorySQL instance, run the following in each IvorySQL database that needs Oracle access:
+
+[source,sql]
+----
+CREATE EXTENSION oracle_fdw;
+SELECT oracle_diag();
+----
+
+== Configuration and use
+
+The example assumes that the remote Oracle account `APP_USER` has the necessary permissions on `APP_DATA.REMOTE_ITEMS`, with at least `ID NUMBER(10)`, `NAME VARCHAR2(100 CHAR)`, and `UPDATED_AT TIMESTAMP(6)` columns. Replace the address and credentials with real values.
+
+[source,sql]
+----
+CREATE SERVER oracle_server
+  FOREIGN DATA WRAPPER oracle_fdw
+  OPTIONS (dbserver '//oracle.example:1521/FREEPDB1');
+
+CREATE USER MAPPING FOR CURRENT_USER SERVER oracle_server
+  OPTIONS (user 'APP_USER', password 'replace-me');
+
+CREATE FOREIGN TABLE remote_items (
+  id pg_catalog.int4 OPTIONS (key 'true') NOT NULL,
+  name pg_catalog.text,
+  updated_at pg_catalog.timestamp
+)
+SERVER oracle_server
+OPTIONS (schema 'APP_DATA', table 'REMOTE_ITEMS');
+
+SELECT id, name FROM remote_items WHERE id > 10;
+EXPLAIN VERBOSE SELECT id, name FROM remote_items WHERE id > 10;
+
+BEGIN;
+INSERT INTO remote_items (id, name) VALUES (1001, 'example');
+UPDATE remote_items SET name = 'updated' WHERE id = 1001;
+DELETE FROM remote_items WHERE id = 1001;
+ROLLBACK;
+----
+
+Mark columns that belong to the remote primary key with `OPTIONS (key 'true')` so oracle_fdw can identify rows for `UPDATE` and `DELETE`. An IvorySQL role needs `USAGE` on the foreign server, the relevant foreign-table privileges, and its own user mapping to access remote data. Do not grant these rights or the Oracle credentials to `PUBLIC`.
+
+== Oracle mode and limitations
+
+When running the same SQL through the Oracle port, use *standard PostgreSQL types* supported by oracle_fdw for foreign-table columns, qualifying names with `pg_catalog` where necessary. In the verified Oracle-mode session, bare `timestamp` resolved to `sys.oratimestamp` (OID 9510), which oracle_fdw 2.9.0 cannot convert. Using `pg_catalog.timestamp` made the query work. This concerns the local foreign-table column type; the remote Oracle table can still use `TIMESTAMP(6)`.
+
+Oracle treats an empty string as `NULL`; an empty string written through oracle_fdw arrives as `NULL` remotely. Displaying an Oracle execution plan through `EXPLAIN VERBOSE` requires the remote account to read `V$SQL` and `V$SQL_PLAN`; ordinary reads and writes do not require these privileges. Foreign-table queries fail if OCI or the remote Oracle service is unavailable. To upgrade oracle_fdw, follow its upstream instructions to reinstall the wrapper and run the appropriate `ALTER EXTENSION ... UPDATE` in every database that uses it.
