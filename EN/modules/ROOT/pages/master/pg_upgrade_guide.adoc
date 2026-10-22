@@ -7,7 +7,7 @@
 
 IvorySQL is built on the latest PostgreSQL kernel and adds Oracle compatibility on top of it. If you are already running PostgreSQL, this guide helps you upgrade your data to IvorySQL smoothly and enable Oracle-compatible mode as needed.
 
-This guide describes three upgrade paths and provides pre/post-migration checklists:
+This guide describes three logical migration paths and provides pre/post-migration checklists:
 
 [cols="2,2,3,2"]
 |===
@@ -29,8 +29,10 @@ This guide describes three upgrade paths and provides pre/post-migration checkli
 |Requires PostgreSQL 10+, more complex configuration
 |===
 
-[IMPORTANT]
-Do not use `pg_upgrade` to upgrade directly from vanilla PostgreSQL to IvorySQL. IvorySQL adds Oracle-compatibility objects and configuration inside the kernel, and `pg_upgrade` cannot guarantee that these compatibility components are initialized correctly in the system catalogs. Use the logical migration or logical replication paths described in this guide.
+[NOTE]
+If you prefer a physical (in-place) upgrade with a shorter downtime window, IvorySQL also supports upgrading a native PostgreSQL cluster to IvorySQL with `pg_upgrade`. This path requires the `pg_upgrade` binary shipped with the **target IvorySQL version** and the `-g` (`--using-ora-pg`) option to indicate that the source is a native PostgreSQL cluster. Run the compatibility check (`-c`) before upgrading, and validate the result afterwards as required by your workload (statistics, extensions, Oracle-compatible behavior, and so on). For the detailed steps, options, and caveats, see xref:master/operation_guide.adoc[Operation and Maintenance Guide].
+
+This guide focuses on the three logical migration paths above, which suit cross-version, cross-platform migrations and scenarios that need fine-grained control over the objects being migrated. For the physical upgrade path, refer to the operation guide.
 
 == Pre-upgrade preparation
 

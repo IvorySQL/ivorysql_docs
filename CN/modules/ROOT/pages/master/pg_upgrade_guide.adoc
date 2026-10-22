@@ -7,7 +7,7 @@
 
 IvorySQL 基于 PostgreSQL 最新内核构建，并在此基础上提供 Oracle 兼容能力。对于已经在使用 PostgreSQL 的业务，可以按照本指南将数据平滑升级到 IvorySQL，并按需启用 Oracle 兼容模式。
 
-本文介绍三种升级路径，并给出升级前后的检查清单：
+本文介绍三种逻辑迁移路径，并给出升级前后的检查清单：
 
 [cols="2,2,3,2"]
 |===
@@ -29,8 +29,10 @@ IvorySQL 基于 PostgreSQL 最新内核构建，并在此基础上提供 Oracle 
 |需 PostgreSQL 10+，配置相对复杂
 |===
 
-[IMPORTANT]
-不推荐使用 `pg_upgrade` 直接从原生 PostgreSQL 升级到 IvorySQL。IvorySQL 在内核中加入了 Oracle 兼容相关的对象与配置，直接使用 `pg_upgrade` 无法保证系统目录中的兼容组件被正确初始化。请使用本指南中的逻辑迁移或逻辑复制路径。
+[NOTE]
+如果希望采用物理升级（就地升级、停机时间更短），IvorySQL 也支持使用 `pg_upgrade` 将原生 PostgreSQL 集群升级到 IvorySQL。该路径必须使用**目标 IvorySQL 版本自带的** `pg_upgrade`，并指定 `-g`（`--using-ora-pg`）参数以表示源端为原生 PostgreSQL。升级前应先执行兼容性检查（`-c`），升级后按业务需要完成验证（统计信息、扩展、Oracle 兼容行为等）。具体步骤、参数与注意事项请参阅 xref:master/operation_guide.adoc[运维管理指南]。
+
+本文聚焦上述三种逻辑迁移路径，适用于跨版本、跨平台以及需要精细控制迁移对象范围的场景；物理升级路径请以运维管理指南为准。
 
 == 升级前准备
 
