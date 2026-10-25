@@ -7,7 +7,7 @@
 Get started by https://github.com/IvorySQL/IvorySQL[downloading the code from Github].
 
 == Releases
-Go to https://www.ivorysql.org/releases-page[IvorySQL Release Page].
+Go to https://github.com/IvorySQL/IvorySQL/releases[IvorySQL Release Page].
 
 == About IvorySQL
 IvorySQL project is an open source project proposed by Highgo Software to add the Oracle compatibility features into the popular PostgreSQL database.

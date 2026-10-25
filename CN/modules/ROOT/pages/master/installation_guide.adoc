@@ -140,12 +140,12 @@ $ sudo apt -y install pkg-config libreadline-dev libicu-dev libldap2-dev uuid-de
 
 ** 获取deb包
 ```
-$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_5.0/IvorySQL-5.0-a50789d-20250304.amd64.deb
+$ sudo wget https://github.com/IvorySQL/IvorySQL/releases/download/IvorySQL_5.0/IvorySQL-5.0-9d890e9-20251120.amd64.deb
 ```
 
 ** 安装deb包
 ```
-$ sudo dpkg -i IvorySQL-5.0-a50789d-20250304.amd64.deb
+$ sudo dpkg -i IvorySQL-5.0-9d890e9-20251120.amd64.deb
 ```
 数据库将被安装在/usr/ivory-5/路径下。
 

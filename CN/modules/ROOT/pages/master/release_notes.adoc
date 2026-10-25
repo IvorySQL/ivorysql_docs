@@ -161,7 +161,7 @@ IvorySQL 的主要代码仓库：
 
 - IvorySQL 数据库源码：https://github.com/IvorySQL/IvorySQL
 - IvorySQL 官网：https://github.com/IvorySQL/Ivory-www
-- IvorySQL 文档：https://github.com/IvorySQL/IvorySQL-docs
+- IvorySQL 文档：https://github.com/IvorySQL/ivorysql_docs
 - IvorySQL Docker：https://github.com/IvorySQL/docker_library
 
 == 贡献者名单

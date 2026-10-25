@@ -539,7 +539,7 @@ What if IVYO was down during the downtime event? Failover would still occur: the
 
 === Synchronous Replication
 
-IvorySQL supports synchronous replication, which is a replication mode designed to limit the risk of transaction loss. Synchronous replication waits for a transaction to be written to at least one additional server before it considers the transaction to be committed. For more information on synchronous replication, please read about IVYO's https://github.com/CrunchyData/postgres-operator/blob/master/docs/content/architecture/high-availability.md#synchronous-replication-guarding-against-transactions-loss[high availability architecture]
+IvorySQL supports synchronous replication, which is a replication mode designed to limit the risk of transaction loss. Synchronous replication waits for a transaction to be written to at least one additional server before it considers the transaction to be committed. For more information on synchronous replication, please read about IVYO's https://github.com/CrunchyData/postgres-operator-examples[high availability architecture]
 
 To add synchronous replication to your Ivory cluster, you can add the following to your spec:
 
@@ -922,7 +922,7 @@ IVYO lets you adjust CPU and memory within the `resources` sections of the `ivor
 - `spec.backups.pgbackrest.sidecars.pgbackrestConfig.resources` section, which sets the resources for the `pgbackrest-config` sidecar container.
 - `spec.backups.pgbackrest.jobs.resources` section, which sets the resources for any pgBackRest backup job.
 - `spec.backups.pgbackrest.restore.resources` section, which sets the resources for manual pgBackRest restore jobs.
-- `spec.dataSource.ivorycluster.resources` section, which sets the resources for pgBackRest restore jobs created during the https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/clone-cluster.md[cloning] process.
+- `spec.dataSource.ivorycluster.resources` section, which sets the resources for pgBackRest restore jobs created during the https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/create-cluster.md[cloning] process.
 
 The layout of these `resources` sections should be familiar: they follow the same pattern as the standard Kubernetes structure for setting https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/[container resources]. Note that these settings also allow for the configuration of https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/[QoS classes].
 
@@ -2364,7 +2364,7 @@ kubectl apply -k kustomize/ivory
 
 IVYO will detect the change and add the Exporter sidecar to all Ivory Pods that exist in your
 cluster. IVYO will also do the work to allow the Exporter to connect to the database and gather
-metrics that can be accessed using the https://github.com/CrunchyData/postgres-operator-examples/tree/main/kustomize/monitoring[IVYO Monitoring] stack.
+metrics that can be accessed using the https://github.com/CrunchyData/postgres-operator-examples[IVYO Monitoring] stack.
 
 ==== Configuring TLS Encryption for the Exporter
 
@@ -2398,7 +2398,7 @@ for more information on configuring TLS for https://prometheus.io/[Prometheus].
 === Accessing the Metrics
 
 Once the IvorySQL Exporter has been enabled in your cluster, follow the steps outlined in
-https://github.com/CrunchyData/postgres-operator-examples/tree/main/kustomize/monitoring[IVYO Monitoring] to install the monitoring stack. This will allow you to deploy a https://github.com/CrunchyData/pgmonitor[pgMonitor]
+https://github.com/CrunchyData/postgres-operator-examples[IVYO Monitoring] to install the monitoring stack. This will allow you to deploy a https://github.com/CrunchyData/pgmonitor[pgMonitor]
 configuration of https://prometheus.io/[Prometheus], https://grafana.com/[Grafana], and https://prometheus.io/docs/alerting/latest/alertmanager/[Alertmanager] monitoring tools in Kubernetes. These
 tools will be set up by default to connect to the Exporter containers on your Ivory Pods.
 

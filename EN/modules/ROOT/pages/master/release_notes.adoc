@@ -161,7 +161,7 @@ IvorySQL's development is maintained across four main repositories:
 
 - IvorySQL database source code: https://github.com/IvorySQL/IvorySQL
 - IvorySQL official website: https://github.com/IvorySQL/Ivory-www
-- IvorySQL documentation: https://github.com/IvorySQL/IvorySQL-docs
+- IvorySQL documentation: https://github.com/IvorySQL/ivorysql_docs
 - IvorySQL Docker: https://github.com/IvorySQL/docker_library
 
 == Contributors
