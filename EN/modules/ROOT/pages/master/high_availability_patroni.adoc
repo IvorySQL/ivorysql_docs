@@ -24,6 +24,8 @@ Patroni is the de-facto standard HA controller for PostgreSQL-compatible databas
 |===
 
 Everything in this guide was verified on IvorySQL 5beta1 (PostgreSQL 19beta1) with Patroni 4.1.5 and etcd 3.5.
+All command outputs below are captured verbatim from the verification environment (both nodes ran
+on a single host, hence the `localhost` addresses in the outputs).
 
 == Prerequisites
 
@@ -151,12 +153,12 @@ patroni /etc/patroni/node2.yml &
 [literal]
 ----
 $ patronictl -c /etc/patroni/node1.yml list
-+ Cluster: ivory_cluster ----+----+-------------+-----+
-| Member | Host           | Role    | State     | TL | Lag |
-+--------+----------------+---------+-----------+----+-----+
-| node1  | 192.168.1.10:5432 | Leader  | running   |  1 |     |
-| node2  | 192.168.1.11:5433 | Replica | streaming |  1 |   0 |
-+--------+----------------+---------+-----------+----+-----+
++ Cluster: ivory_cluster (7700535459881935048) -+----+-------------+-----+------------+-----+
+| Member | Host           | Role    | State     | TL | Receive LSN | Lag | Replay LSN | Lag |
++--------+----------------+---------+-----------+----+-------------+-----+------------+-----+
+| n1     | localhost:5432 | Leader  | running   |  1 |             |     |            |     |
+| n2     | localhost:5433 | Replica | streaming |  1 |   0/4000118 |   0 |   0/4000118 |   0 |
++--------+----------------+---------+-----------+----+-------------+-----+------------+-----+
 ----
 
 Write on the leader and read from the replica:
@@ -198,18 +200,21 @@ Stop the Patroni process on the leader (simulating a host failure). The survivin
 [literal]
 ----
 # on node1's host
-pkill -f 'patroni node1.yml'
+pkill -f 'patroni.*node1.yml'
 
 # ~40 seconds later, on any node
 $ patronictl -c /etc/patroni/node2.yml list
-+ Cluster: ivory_cluster ----+----+-------------+-----+
-| Member | Host           | Role   | State   | TL |
-+--------+----------------+--------+---------+----+
-| node2  | 192.168.1.11:5433 | Leader | running |  2 |
-+--------+----------------+--------+---------+----+
++ Cluster: ivory_cluster (7700535459881935048) ---+-------------+-----+------------+-----+
+| Member | Host           | Role   | State   | TL | Receive LSN | Lag | Replay LSN | Lag |
++--------+----------------+--------+---------+----+-------------+-----+------------+-----+
+| n2     | localhost:5433 | Leader | running |  2 |             |     |            |     |
++--------+----------------+--------+---------+----+-------------+-----+------------+-----+
 ----
 
-Data written before the failure is intact on the new leader, which accepts writes immediately:
+With asynchronous replication a failover does not by itself guarantee zero data loss: transactions
+committed on the old primary but not yet replicated can be lost. In this drill nothing was lost,
+because writes had already ceased and all committed transactions were replicated; the new leader
+accepts writes immediately:
 
 [literal]
 ----
@@ -218,17 +223,49 @@ $ psql -h 192.168.1.11 -p 5433 -U postgres -d postgres -tAc \
  3
 ----
 
+[NOTE]
+====
+The cluster above runs with *asynchronous* replication (the default, as shown by `async` in
+`pg_stat_replication`): best performance, but a failover can lose the last unreplicated
+transactions. If zero data loss is required, enable synchronous replication:
+
+----
+bootstrap:
+  dcs:
+    synchronous_mode: true
+    synchronous_mode_strict: false
+----
+
+`synchronous_mode` makes commits wait for at least one synchronous standby;
+`synchronous_mode_strict` additionally refuses writes when no standby is available (maximum
+durability, zero write availability during a total standby failure). Weigh data safety against
+write availability for your workload.
+====
+
 === Node Rejoin
 
-Restart Patroni on the failed node. It notices the higher timeline, rewinds itself and rejoins automatically as a replica:
+Restart Patroni on the failed node. It notices the higher timeline, follows it and rejoins automatically as a replica:
 
 [literal]
 ----
 $ patroni /etc/patroni/node1.yml &
 $ patronictl -c /etc/patroni/node1.yml list
-| node1  | 192.168.1.10:5432 | Replica | streaming |  2 |   0 |
-| node2  | 192.168.1.11:5433 | Leader  | running   |  2 |     |
++ Cluster: ivory_cluster (7700535459881935048) -+----+-------------+-----+------------+-----+
+| Member | Host           | Role    | State     | TL | Receive LSN | Lag | Replay LSN | Lag |
++--------+----------------+---------+-----------+----+-------------+-----+------------+-----+
+| n1     | localhost:5432 | Replica | streaming |  2 |   0/403D688 |   0 |   0/403D688 |   0 |
+| n2     | localhost:5433 | Leader  | running   |  2 |             |     |            |     |
++--------+----------------+---------+-----------+----+-------------+-----+------------+-----+
 ----
+
+[NOTE]
+====
+The rejoin above is a plain timeline follow, which works because the failed node had not accepted
+any writes of its own while it was down. If the old primary committed transactions that were never
+replicated before the failover, its timeline has diverged and Patroni needs `pg_rewind` to rejoin
+it: enable `use_pg_rewind: true` in the node configuration (requires `wal_log_hints = on` or data
+checksums enabled at initdb time).
+====
 
 === Planned Switchover
 
@@ -270,6 +307,48 @@ Monitoring essentials:
 * The REST API exposes `/health` (any member), `/master` (200 only on the leader) and `/replica` for HTTP checks; combine `/master` with a floating IP or HAProxy for automatic connection routing.
 * PostgreSQL logs of each node record promotion events (`redo done at ...`, `selected new timeline`).
 * etcd health is a cluster-wide single point of failure in single-node setups — use three etcd nodes in production.
+
+== Production Checklist
+
+The deployment above runs all daemons as background shell processes, which is convenient for
+learning but is not how a production HA cluster should run:
+
+* *Supervise every daemon.* Run etcd, Patroni (and optionally a local HAProxy) as systemd services
+so they come back after crashes or reboots:
+
+----
+# /etc/systemd/system/patroni@.service
+[Unit]
+Description=Patroni IvorySQL %i
+After=network.target etcd.service
+
+[Service]
+User=postgres
+ExecStart=/usr/local/bin/patroni /etc/patroni/%i.yml
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+----
+
+* *Enable the Patroni watchdog.* Set `watchdog: mode: required` so a node that loses quorum cannot
+keep serving as the primary.
+* *Put a load balancer in front.* HAProxy with the Patroni REST health checks gives clients a
+single endpoint that always routes to the current primary:
+
+----
+listen ivorysql_primary
+    bind *:5000
+    option httpchk GET /master
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2
+    server node1 192.168.1.10:5432 check port 8008
+    server node2 192.168.1.11:5433 check port 8009
+----
+
+* *Secure the control plane.* The Patroni REST API and etcd should use TLS and authentication
+(`restapi: verify_client`, `etcd3: cacert/cert/key`) in shared networks.
+* *Use three etcd nodes.* A single-node etcd is itself a single point of failure.
 
 == Troubleshooting
 

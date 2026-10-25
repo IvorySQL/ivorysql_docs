@@ -24,6 +24,7 @@ Patroni 是 PostgreSQL 生态事实上的标准 HA 控制器，同样适用于 I
 |===
 
 本指南全部内容均在 IvorySQL 5beta1（PostgreSQL 19beta1）+ Patroni 4.1.5 + etcd 3.5 环境上实际验证。
+文中命令输出均为验证环境的逐字记录（两节点位于同一主机，故输出中地址为 `localhost`）。
 
 == 前置条件
 
@@ -151,12 +152,12 @@ patroni /etc/patroni/node2.yml &
 [literal]
 ----
 $ patronictl -c /etc/patroni/node1.yml list
-+ Cluster: ivory_cluster ----+----+-------------+-----+
-| Member | Host           | Role    | State     | TL | Lag |
-+--------+----------------+---------+-----------+----+-----+
-| node1  | 192.168.1.10:5432 | Leader  | running   |  1 |     |
-| node2  | 192.168.1.11:5433 | Replica | streaming |  1 |   0 |
-+--------+----------------+---------+-----------+----+-----+
++ Cluster: ivory_cluster (7700535459881935048) -+----+-------------+-----+------------+-----+
+| Member | Host           | Role    | State     | TL | Receive LSN | Lag | Replay LSN | Lag |
++--------+----------------+---------+-----------+----+-------------+-----+------------+-----+
+| n1     | localhost:5432 | Leader  | running   |  1 |             |     |            |     |
+| n2     | localhost:5433 | Replica | streaming |  1 |   0/4000118 |   0 |   0/4000118 |   0 |
++--------+----------------+---------+-----------+----+-------------+-----+------------+-----+
 ----
 
 在主库写入、备库读取：
@@ -198,18 +199,19 @@ $ psql -h 192.168.1.10 -p 5432 -U postgres -d postgres -tAc \
 [literal]
 ----
 # 在 node1 主机上
-pkill -f 'patroni node1.yml'
+pkill -f 'patroni.*node1.yml'
 
 # 约 40 秒后，任意节点执行
 $ patronictl -c /etc/patroni/node2.yml list
-+ Cluster: ivory_cluster ----+----+-------------+-----+
-| Member | Host           | Role   | State   | TL |
-+--------+----------------+--------+---------+----+
-| node2  | 192.168.1.11:5433 | Leader | running |  2 |
-+--------+----------------+--------+---------+----+
++ Cluster: ivory_cluster (7700535459881935048) ---+-------------+-----+------------+-----+
+| Member | Host           | Role   | State   | TL | Receive LSN | Lag | Replay LSN | Lag |
++--------+----------------+--------+---------+----+-------------+-----+------------+-----+
+| n2     | localhost:5433 | Leader | running |  2 |             |     |            |     |
++--------+----------------+--------+---------+----+-------------+-----+------------+-----+
 ----
 
-故障前写入的数据在新主库完整无损，且可立即继续写入：
+需要说明：异步复制下故障转移本身并不保证零丢失——旧主库已提交但尚未复制的事务可能丢失。
+本次演练没有丢数据，是因为故障发生前写入已停止、已提交事务均已复制；新主库可立即继续写入：
 
 [literal]
 ----
@@ -218,17 +220,46 @@ $ psql -h 192.168.1.11 -p 5433 -U postgres -d postgres -tAc \
  3
 ----
 
+[NOTE]
+====
+上面的集群运行在**异步**复制（默认行为，`pg_stat_replication` 中显示 `async`）：性能最好，
+但故障转移可能丢失最后一批未复制的事务。如需零丢失保证，在 Patroni 配置中启用同步复制：
+
+----
+bootstrap:
+  dcs:
+    synchronous_mode: true
+    synchronous_mode_strict: false
+----
+
+`synchronous_mode` 使提交等待至少一个同步备库确认；`synchronous_mode_strict` 进一步在
+没有任何可用备库时拒绝写入（最高持久性，但备库全挂期间写入可用性为零）。请根据业务
+在数据安全与写入可用性之间权衡。
+====
+
 === 节点回归
 
-在故障节点重新启动 Patroni。它检测到更高的时间线，自动回退并重新以备库身份加入：
+在故障节点重新启动 Patroni。它检测到更高的时间线，直接跟随新时间线并重新以备库身份加入：
 
 [literal]
 ----
 $ patroni /etc/patroni/node1.yml &
 $ patronictl -c /etc/patroni/node1.yml list
-| node1  | 192.168.1.10:5432 | Replica | streaming |  2 |   0 |
-| node2  | 192.168.1.11:5433 | Leader  | running   |  2 |     |
++ Cluster: ivory_cluster (7700535459881935048) -+----+-------------+-----+------------+-----+
+| Member | Host           | Role    | State     | TL | Receive LSN | Lag | Replay LSN | Lag |
++--------+----------------+---------+-----------+----+-------------+-----+------------+-----+
+| n1     | localhost:5432 | Replica | streaming |  2 |   0/403D688 |   0 |   0/403D688 |   0 |
+| n2     | localhost:5433 | Leader  | running   |  2 |             |     |            |     |
++--------+----------------+---------+-----------+----+-------------+-----+------------+-----+
 ----
+
+[NOTE]
+====
+上面的回归是直接跟随新时间线，之所以可行是因为故障节点宕机期间没有接受过任何写入。
+如果旧主库在故障转移前提交过未复制的事务，其时间线已分叉，Patroni 需要 `pg_rewind`
+才能让它重新加入：在节点配置中启用 `use_pg_rewind: true`（要求 `wal_log_hints = on`
+或 initdb 时开启数据校验和）。
+====
 
 === 计划内切换
 
@@ -270,6 +301,47 @@ patronictl -c /etc/patroni/node1.yml switchover ivory_cluster --leader node1 --c
 * REST API 提供 `/health`（任意成员）、`/master`（仅主库返回 200）、`/replica`（仅健康备库返回 200），可将 `/master` 与浮动 IP 或 HAProxy 结合实现连接自动路由；
 * 各节点的 PostgreSQL 日志记录提升事件（`redo done at ...`、`selected new timeline`）；
 * 单节点 etcd 是整个集群的单点——生产环境请部署三节点 etcd。
+
+== 生产环境清单
+
+上文所有守护进程均以 shell 后台进程方式运行，便于学习验证，但生产环境不应如此：
+
+* *守护每一个进程。* 将 etcd、Patroni（以及可选的本机 HAProxy）注册为 systemd 服务，
+崩溃或重启后自动拉起：
+
+----
+# /etc/systemd/system/patroni@.service
+[Unit]
+Description=Patroni IvorySQL %i
+After=network.target etcd.service
+
+[Service]
+User=postgres
+ExecStart=/usr/local/bin/patroni /etc/patroni/%i.yml
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+----
+
+* *启用 Patroni watchdog。* 配置 `watchdog: mode: required`，防止失去仲裁的节点继续以
+主库身份提供服务。
+* *前置负载均衡。* HAProxy 配合 Patroni REST 健康检查，给客户端一个永远指向当前主库
+的单一入口：
+
+----
+listen ivorysql_primary
+    bind *:5000
+    option httpchk GET /master
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2
+    server node1 192.168.1.10:5432 check port 8008
+    server node2 192.168.1.11:5433 check port 8009
+----
+
+* *保护控制面。* 共享网络中，Patroni REST API 与 etcd 应启用 TLS 与认证
+（`restapi: verify_client`、`etcd3: cacert/cert/key`）。
+* *etcd 部署三节点。* 单节点 etcd 本身就是单点。
 
 == 常见问题
 
