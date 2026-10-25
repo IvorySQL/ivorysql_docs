@@ -1,0 +1,364 @@
+:sectnums:
+:sectnumlevels: 5
+
+= 基于 Patroni 的高可用集群部署
+
+== 概述
+
+流复制（参见 xref:master/cluster_setup.adoc[集群搭建]）让备节点与主节点保持同步，但故障转移是手动的：主库故障后需要人工执行提升操作。高可用（HA）集群的目的是把人从这个环节中移除。
+
+Patroni 是 PostgreSQL 生态事实上的标准 HA 控制器，同样适用于 IvorySQL。每个 IvorySQL 节点上运行一个 Patroni 守护进程，各守护进程通过分布式配置存储（DCS，如 etcd）协调。只有持有集群锁的节点作为主库运行，其余节点以流复制备库身份跟随。当主库所在 Patroni 失去心跳，其余节点自动选举新领导者并完成提升——通常在几十秒内完成。
+
+[cols="1,1"]
+|===
+| 组件 | 作用
+
+| Patroni
+| 集群控制器：启停 IvorySQL、管理角色、执行故障转移
+
+| etcd（DCS）
+| 集群状态与领导者锁的共识存储
+
+| IvorySQL
+| 数据库本体；每个节点都是一个带流复制的完整 IvorySQL 实例
+|===
+
+本指南全部内容均在 IvorySQL 5beta1（PostgreSQL 19beta1）+ Patroni 4.1.5 + etcd 3.5 环境上实际验证。
+文中命令输出均为验证环境的逐字记录（两节点位于同一主机，故输出中地址为 `localhost`）。
+
+== 前置条件
+
+* 已安装 IvorySQL，安装目录的 `bin` 下可用 `pg_ctl`、`initdb`、`pg_basebackup`
+* Python 3 与 `pip`（用于安装 Patroni）
+* etcd
+* 各节点端口规划：
+
+[cols="1,2"]
+|===
+| 端口（示例） | 用途
+
+| 5432 / 5433
+| 节点1 / 节点2 的 PostgreSQL 协议监听端口
+
+| 15432 / 15433
+| 节点1 / 节点2 的 Oracle 兼容监听端口（`ivorysql.port`）
+
+| 8008 / 8009
+| 节点1 / 节点2 的 Patroni REST API
+
+| 2379
+| etcd 客户端端口
+|===
+
+[TIP]
+====
+每个 IvorySQL 实例会同时监听**两个**端口：`port`（PostgreSQL 协议）和 `ivorysql.port`（Oracle 兼容模式，默认 1521）。同一台主机上运行多个 IvorySQL 实例时，这两个值都必须逐节点唯一，否则实例启动报错：`FATAL: lock file ".s.PGSQL.1521.lock" already exists`。
+====
+
+== 部署步骤
+
+=== 安装 Patroni
+
+[literal]
+----
+sudo apt install etcd-server etcd-client python3-pip
+pip3 install 'patroni[etcd3]' psycopg2-binary
+----
+
+=== 启动 etcd
+
+实验环境单节点 etcd 即可；生产环境应使用三节点 etcd 集群。
+
+[literal]
+----
+etcd \
+  --data-dir /data/etcd \
+  --listen-client-urls http://192.168.1.10:2379 \
+  --advertise-client-urls http://192.168.1.10:2379 \
+  --listen-peer-urls http://192.168.1.10:2380 \
+  --initial-advertise-peer-urls http://192.168.1.10:2380 \
+  --initial-cluster node1=http://192.168.1.10:2380 &
+
+etcdctl endpoint health --endpoints=192.168.1.10:2379
+----
+
+=== 配置 Patroni 节点
+
+在第一个节点创建 `/etc/patroni/node1.yml`：
+
+[literal]
+----
+namespace: /ivorysql-ha/
+scope: ivory_cluster
+name: node1
+restapi:
+  listen: 192.168.1.10:8008
+etcd3:
+  hosts: 192.168.1.10:2379
+bootstrap:
+  method: initdb
+  initdb:
+    - encoding: UTF8
+    - auth: trust
+  dcs:
+    postgresql:
+      parameters:
+        max_wal_senders: 10
+        hot_standby: 'true'
+postgresql:
+  listen: 192.168.1.10:5432
+  bin_dir: /usr/local/ivorysql/bin
+  data_dir: /data/ivorysql/node1
+  parameters:
+    port: 5432
+    ivorysql.port: 15432
+    ivorysql.listen_addresses: '192.168.1.10'
+    unix_socket_directories: '/var/run/ivorysql/node1'
+  pg_hba:
+    - local all all trust
+    - host all all 192.168.1.0/24 scram-sha-256
+    - host replication replicator 192.168.1.0/24 scram-sha-256
+  authentication:
+    superuser:
+      username: postgres
+      password: <超级用户口令>
+    replication:
+      username: replicator
+      password: <复制用户口令>
+----
+
+在第二个节点创建 `/etc/patroni/node2.yml`，结构相同，修改：`name: node2`、REST 监听端口（`8009`）、`listen: 192.168.1.11:5433`、`port: 5433`、`ivorysql.port: 15433` 以及 `data_dir`。
+
+[NOTE]
+====
+* `postgresql.listen` 为必填项——只把 `listen_addresses`/`port` 写进 `parameters` 会导致 Patroni 4.x 启动报 `KeyError: 'listen'`。
+* 数据目录必须以 `0700` 权限存在；`pg_basebackup` 不会收紧预建目录的权限，IvorySQL 将以 `invalid permissions` 拒绝启动。
+* 同机多节点务必让 `ivorysql.port` 与 `unix_socket_directories` 逐节点不同。
+====
+
+=== 启动集群
+
+[literal]
+----
+# 节点1 引导集群并成为 Leader
+patroni /etc/patroni/node1.yml &
+
+# 节点2 通过 pg_basebackup 克隆并以备库身份加入
+patroni /etc/patroni/node2.yml &
+----
+
+=== 验证
+
+[literal]
+----
+$ patronictl -c /etc/patroni/node1.yml list
++ Cluster: ivory_cluster (7700535459881935048) -+----+-------------+-----+------------+-----+
+| Member | Host           | Role    | State     | TL | Receive LSN | Lag | Replay LSN | Lag |
++--------+----------------+---------+-----------+----+-------------+-----+------------+-----+
+| n1     | localhost:5432 | Leader  | running   |  1 |             |     |            |     |
+| n2     | localhost:5433 | Replica | streaming |  1 |   0/4000118 |   0 |   0/4000118 |   0 |
++--------+----------------+---------+-----------+----+-------------+-----+------------+-----+
+----
+
+在主库写入、备库读取：
+
+[literal]
+----
+$ psql -h 192.168.1.10 -p 5432 -U postgres -d postgres \
+    -c "CREATE TABLE ha_demo (id int primary key, note text); INSERT INTO ha_demo VALUES (1,'written on leader');"
+
+$ psql -h 192.168.1.11 -p 5433 -U postgres -d postgres -tAc \
+    "SELECT note FROM ha_demo WHERE id=1;"
+ written on leader
+----
+
+主库复制视图：
+
+[literal]
+----
+$ psql -h 192.168.1.10 -p 5432 -U postgres -d postgres -tAc \
+    "SELECT application_name, state, sync_state FROM pg_stat_replication;"
+ node2 | streaming | async
+----
+
+Oracle 兼容特性在集群中照常可用：
+
+[literal]
+----
+$ psql -h 192.168.1.10 -p 5432 -U postgres -d postgres -tAc \
+    "SELECT sys.last_day('2024-02-10'::sys.oradate);"
+ 2024-02-29
+----
+
+== 故障转移
+
+=== 自动故障转移
+
+在主库节点停止 Patroni 进程（模拟主机宕机）。幸存节点获取集群锁并自动提升；时间线（TL）增加即证明发生了真实故障转移：
+
+[literal]
+----
+# 在 node1 主机上
+pkill -f 'patroni.*node1.yml'
+
+# 约 40 秒后，任意节点执行
+$ patronictl -c /etc/patroni/node2.yml list
++ Cluster: ivory_cluster (7700535459881935048) ---+-------------+-----+------------+-----+
+| Member | Host           | Role   | State   | TL | Receive LSN | Lag | Replay LSN | Lag |
++--------+----------------+--------+---------+----+-------------+-----+------------+-----+
+| n2     | localhost:5433 | Leader | running |  2 |             |     |            |     |
++--------+----------------+--------+---------+----+-------------+-----+------------+-----+
+----
+
+需要说明：异步复制下故障转移本身并不保证零丢失——旧主库已提交但尚未复制的事务可能丢失。
+本次演练没有丢数据，是因为故障发生前写入已停止、已提交事务均已复制；新主库可立即继续写入：
+
+[literal]
+----
+$ psql -h 192.168.1.11 -p 5433 -U postgres -d postgres -tAc \
+    "INSERT INTO ha_demo VALUES (3,'after failover'); SELECT count(*) FROM ha_demo;"
+ 3
+----
+
+[NOTE]
+====
+上面的集群运行在**异步**复制（默认行为，`pg_stat_replication` 中显示 `async`）：性能最好，
+但故障转移可能丢失最后一批未复制的事务。如需零丢失保证，在 Patroni 配置中启用同步复制：
+
+----
+bootstrap:
+  dcs:
+    synchronous_mode: true
+    synchronous_mode_strict: false
+----
+
+`synchronous_mode` 使提交等待至少一个同步备库确认；`synchronous_mode_strict` 进一步在
+没有任何可用备库时拒绝写入（最高持久性，但备库全挂期间写入可用性为零）。请根据业务
+在数据安全与写入可用性之间权衡。
+====
+
+=== 节点回归
+
+在故障节点重新启动 Patroni。它检测到更高的时间线，直接跟随新时间线并重新以备库身份加入：
+
+[literal]
+----
+$ patroni /etc/patroni/node1.yml &
+$ patronictl -c /etc/patroni/node1.yml list
++ Cluster: ivory_cluster (7700535459881935048) -+----+-------------+-----+------------+-----+
+| Member | Host           | Role    | State     | TL | Receive LSN | Lag | Replay LSN | Lag |
++--------+----------------+---------+-----------+----+-------------+-----+------------+-----+
+| n1     | localhost:5432 | Replica | streaming |  2 |   0/403D688 |   0 |   0/403D688 |   0 |
+| n2     | localhost:5433 | Leader  | running   |  2 |             |     |            |     |
++--------+----------------+---------+-----------+----+-------------+-----+------------+-----+
+----
+
+[NOTE]
+====
+上面的回归是直接跟随新时间线，之所以可行是因为故障节点宕机期间没有接受过任何写入。
+如果旧主库在故障转移前提交过未复制的事务，其时间线已分叉，Patroni 需要 `pg_rewind`
+才能让它重新加入：在节点配置中启用 `use_pg_rewind: true`（要求 `wal_log_hints = on`
+或 initdb 时开启数据校验和）。
+====
+
+=== 计划内切换
+
+维护场景下不经历故障地转移主库角色：
+
+[literal]
+----
+patronictl -c /etc/patroni/node1.yml switchover ivory_cluster --leader node1 --candidate node2
+----
+
+== 监控与维护
+
+[cols="1,2"]
+|===
+| 命令 | 用途
+
+| `patronictl list`
+| 集群拓扑、角色、时间线、复制延迟
+
+| `patronictl restart ivory_cluster node1`
+| 重启成员（滚动维护）
+
+| `patronictl reload ivory_cluster node1`
+| 重新加载 Patroni 配置
+
+| `patronictl remove ivory_cluster node3`
+| 移除永久下线的成员
+
+| `curl http://node1:8008/health`
+| REST 健康探测（供负载均衡 / 监控使用）
+
+| `curl http://node1:8008/replica`
+| 仅在健康备库返回 200（用于只读路由）
+|===
+
+监控要点：
+
+* 盯住 `patronictl list`：任何非 `running`/`streaming` 状态的成员都需要关注；
+* REST API 提供 `/health`（任意成员）、`/master`（仅主库返回 200）、`/replica`（仅健康备库返回 200），可将 `/master` 与浮动 IP 或 HAProxy 结合实现连接自动路由；
+* 各节点的 PostgreSQL 日志记录提升事件（`redo done at ...`、`selected new timeline`）；
+* 单节点 etcd 是整个集群的单点——生产环境请部署三节点 etcd。
+
+== 生产环境清单
+
+上文所有守护进程均以 shell 后台进程方式运行，便于学习验证，但生产环境不应如此：
+
+* *守护每一个进程。* 将 etcd、Patroni（以及可选的本机 HAProxy）注册为 systemd 服务，
+崩溃或重启后自动拉起：
+
+----
+# /etc/systemd/system/patroni@.service
+[Unit]
+Description=Patroni IvorySQL %i
+After=network.target etcd.service
+
+[Service]
+User=postgres
+ExecStart=/usr/local/bin/patroni /etc/patroni/%i.yml
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+----
+
+* *启用 Patroni watchdog。* 配置 `watchdog: mode: required`，防止失去仲裁的节点继续以
+主库身份提供服务。
+* *前置负载均衡。* HAProxy 配合 Patroni REST 健康检查，给客户端一个永远指向当前主库
+的单一入口：
+
+----
+listen ivorysql_primary
+    bind *:5000
+    option httpchk GET /master
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2
+    server node1 192.168.1.10:5432 check port 8008
+    server node2 192.168.1.11:5433 check port 8009
+----
+
+* *保护控制面。* 共享网络中，Patroni REST API 与 etcd 应启用 TLS 与认证
+（`restapi: verify_client`、`etcd3: cacert/cert/key`）。
+* *etcd 部署三节点。* 单节点 etcd 本身就是单点。
+
+== 常见问题
+
+[cols="1,2"]
+|===
+| 现象 | 原因与处置
+
+| 备库启动失败：`lock file ".s.PGSQL.1521.lock" already exists`
+| 两个节点共用默认 Oracle 端口。为每个节点设置唯一的 `ivorysql.port`（及 `unix_socket_directories`）。
+
+| Patroni 启动崩溃：`KeyError: 'listen'`
+| 缺少 `postgresql.listen`；Patroni 4.x 必填。
+
+| `pg_basebackup` 之后立即 `failed to start postgres`
+| 数据目录权限不是 `0700`，或 socket 目录不存在。预先执行：`chmod 700 <数据目录>; mkdir -p <socket目录>`。
+
+| `pg_basebackup: error while loading shared libraries: libpq.so.5`
+| IvorySQL 安装在自定义前缀。一次性注册库路径：
+    `echo /usr/local/ivorysql/lib > /etc/ld.so.conf.d/ivorysql.conf && ldconfig`
+|===

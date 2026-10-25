@@ -1,0 +1,371 @@
+:sectnums:
+:sectnumlevels: 5
+
+= High Availability Deployment with Patroni
+
+== Overview
+
+Streaming replication (see xref:master/cluster_setup.adoc[Cluster]) keeps a standby in sync with the primary, but failover is manual: a human must promote the standby after the primary fails. A high-availability (HA) cluster removes the human from the loop.
+
+Patroni is the de-facto standard HA controller for PostgreSQL-compatible databases. Each IvorySQL node runs a Patroni daemon; the daemons coordinate through a distributed configuration store (DCS) such as etcd. Only the node that holds the cluster lock acts as the primary; all others stay connected as streaming-standby replicas. When the primary's Patroni loses its heartbeat, the remaining nodes elect a new leader and promote it automatically — typically within tens of seconds.
+
+[cols="1,1"]
+|===
+| Component | Purpose
+
+| Patroni
+| Cluster controller: starts/stops IvorySQL, manages roles, performs failover
+
+| etcd (DCS)
+| Consensus store for cluster state and the leader lock
+
+| IvorySQL
+| The database; each node is a full IvorySQL instance with streaming replication
+|===
+
+Everything in this guide was verified on IvorySQL 5beta1 (PostgreSQL 19beta1) with Patroni 4.1.5 and etcd 3.5.
+All command outputs below are captured verbatim from the verification environment (both nodes ran
+on a single host, hence the `localhost` addresses in the outputs).
+
+== Prerequisites
+
+* IvorySQL installed from source or packages, with `pg_ctl`, `initdb` and `pg_basebackup` available in the installation `bin` directory
+* Python 3 and `pip` (for Patroni)
+* etcd
+* Network ports planned per node:
+
+[cols="1,2"]
+|===
+| Port (example) | Usage
+
+| 5432 / 5433
+| PostgreSQL-protocol listener of node1 / node2
+
+| 15432 / 15433
+| Oracle-compatibility listener (`ivorysql.port`) of node1 / node2
+
+| 8008 / 8009
+| Patroni REST API of node1 / node2
+
+| 2379
+| etcd client port
+|===
+
+[TIP]
+====
+Each IvorySQL instance listens on *two* ports: `port` (PostgreSQL protocol) and `ivorysql.port` (Oracle compatible mode, default 1521). When running multiple IvorySQL instances on the same host, both values must be unique per node, otherwise the instance fails to start with `FATAL: lock file ".s.PGSQL.1521.lock" already exists`.
+====
+
+== Deployment
+
+=== Install Patroni
+
+[literal]
+----
+sudo apt install etcd-server etcd-client python3-pip
+pip3 install 'patroni[etcd3]' psycopg2-binary
+----
+
+=== Start etcd
+
+For a lab environment a single-node etcd is sufficient; production deployments should use a three-node etcd cluster.
+
+[literal]
+----
+etcd \
+  --data-dir /data/etcd \
+  --listen-client-urls http://192.168.1.10:2379 \
+  --advertise-client-urls http://192.168.1.10:2379 \
+  --listen-peer-urls http://192.168.1.10:2380 \
+  --initial-advertise-peer-urls http://192.168.1.10:2380 \
+  --initial-cluster node1=http://192.168.1.10:2380 &
+
+etcdctl endpoint health --endpoints=192.168.1.10:2379
+----
+
+=== Configure the Patroni Nodes
+
+Create `/etc/patroni/node1.yml` on the first node:
+
+[literal]
+----
+namespace: /ivorysql-ha/
+scope: ivory_cluster
+name: node1
+restapi:
+  listen: 192.168.1.10:8008
+etcd3:
+  hosts: 192.168.1.10:2379
+bootstrap:
+  method: initdb
+  initdb:
+    - encoding: UTF8
+    - auth: trust
+  dcs:
+    postgresql:
+      parameters:
+        max_wal_senders: 10
+        hot_standby: 'true'
+postgresql:
+  listen: 192.168.1.10:5432
+  bin_dir: /usr/local/ivorysql/bin
+  data_dir: /data/ivorysql/node1
+  parameters:
+    port: 5432
+    ivorysql.port: 15432
+    ivorysql.listen_addresses: '192.168.1.10'
+    unix_socket_directories: '/var/run/ivorysql/node1'
+  pg_hba:
+    - local all all trust
+    - host all all 192.168.1.0/24 scram-sha-256
+    - host replication replicator 192.168.1.0/24 scram-sha-256
+  authentication:
+    superuser:
+      username: postgres
+      password: <superuser-password>
+    replication:
+      username: replicator
+      password: <replication-password>
+----
+
+Create `/etc/patroni/node2.yml` on the second node with the same structure, changing: `name: node2`, the REST listen port (`8009`), `listen: 192.168.1.11:5433`, `port: 5433`, `ivorysql.port: 15433`, and `data_dir`.
+
+[NOTE]
+====
+* `postgresql.listen` is required — putting `listen_addresses`/`port` only under `parameters` makes Patroni 4.x fail with `KeyError: 'listen'`.
+* The data directory must exist with permissions `0700`; `pg_basebackup` does not relax permissions on a pre-created directory and IvorySQL will refuse to start with `invalid permissions`.
+* Keep `ivorysql.port` and `unix_socket_directories` different on every node that shares a host.
+====
+
+=== Start the Cluster
+
+[literal]
+----
+# node1 bootstraps the cluster and becomes the leader
+patroni /etc/patroni/node1.yml &
+
+# node2 clones the leader via pg_basebackup and joins as a replica
+patroni /etc/patroni/node2.yml &
+----
+
+=== Verify
+
+[literal]
+----
+$ patronictl -c /etc/patroni/node1.yml list
++ Cluster: ivory_cluster (7700535459881935048) -+----+-------------+-----+------------+-----+
+| Member | Host           | Role    | State     | TL | Receive LSN | Lag | Replay LSN | Lag |
++--------+----------------+---------+-----------+----+-------------+-----+------------+-----+
+| n1     | localhost:5432 | Leader  | running   |  1 |             |     |            |     |
+| n2     | localhost:5433 | Replica | streaming |  1 |   0/4000118 |   0 |   0/4000118 |   0 |
++--------+----------------+---------+-----------+----+-------------+-----+------------+-----+
+----
+
+Write on the leader and read from the replica:
+
+[literal]
+----
+$ psql -h 192.168.1.10 -p 5432 -U postgres -d postgres \
+    -c "CREATE TABLE ha_demo (id int primary key, note text); INSERT INTO ha_demo VALUES (1,'written on leader');"
+
+$ psql -h 192.168.1.11 -p 5433 -U postgres -d postgres -tAc \
+    "SELECT note FROM ha_demo WHERE id=1;"
+ written on leader
+----
+
+Replication view on the leader:
+
+[literal]
+----
+$ psql -h 192.168.1.10 -p 5432 -U postgres -d postgres -tAc \
+    "SELECT application_name, state, sync_state FROM pg_stat_replication;"
+ node2 | streaming | async
+----
+
+Oracle compatible features work through the cluster as usual:
+
+[literal]
+----
+$ psql -h 192.168.1.10 -p 5432 -U postgres -d postgres -tAc \
+    "SELECT sys.last_day('2024-02-10'::sys.oradate);"
+ 2024-02-29
+----
+
+== Failover
+
+=== Automatic Failover
+
+Stop the Patroni process on the leader (simulating a host failure). The surviving node acquires the lock and promotes itself; the timeline increases, which proves a genuine failover:
+
+[literal]
+----
+# on node1's host
+pkill -f 'patroni.*node1.yml'
+
+# ~40 seconds later, on any node
+$ patronictl -c /etc/patroni/node2.yml list
++ Cluster: ivory_cluster (7700535459881935048) ---+-------------+-----+------------+-----+
+| Member | Host           | Role   | State   | TL | Receive LSN | Lag | Replay LSN | Lag |
++--------+----------------+--------+---------+----+-------------+-----+------------+-----+
+| n2     | localhost:5433 | Leader | running |  2 |             |     |            |     |
++--------+----------------+--------+---------+----+-------------+-----+------------+-----+
+----
+
+With asynchronous replication a failover does not by itself guarantee zero data loss: transactions
+committed on the old primary but not yet replicated can be lost. In this drill nothing was lost,
+because writes had already ceased and all committed transactions were replicated; the new leader
+accepts writes immediately:
+
+[literal]
+----
+$ psql -h 192.168.1.11 -p 5433 -U postgres -d postgres -tAc \
+    "INSERT INTO ha_demo VALUES (3,'after failover'); SELECT count(*) FROM ha_demo;"
+ 3
+----
+
+[NOTE]
+====
+The cluster above runs with *asynchronous* replication (the default, as shown by `async` in
+`pg_stat_replication`): best performance, but a failover can lose the last unreplicated
+transactions. If zero data loss is required, enable synchronous replication:
+
+----
+bootstrap:
+  dcs:
+    synchronous_mode: true
+    synchronous_mode_strict: false
+----
+
+`synchronous_mode` makes commits wait for at least one synchronous standby;
+`synchronous_mode_strict` additionally refuses writes when no standby is available (maximum
+durability, zero write availability during a total standby failure). Weigh data safety against
+write availability for your workload.
+====
+
+=== Node Rejoin
+
+Restart Patroni on the failed node. It notices the higher timeline, follows it and rejoins automatically as a replica:
+
+[literal]
+----
+$ patroni /etc/patroni/node1.yml &
+$ patronictl -c /etc/patroni/node1.yml list
++ Cluster: ivory_cluster (7700535459881935048) -+----+-------------+-----+------------+-----+
+| Member | Host           | Role    | State     | TL | Receive LSN | Lag | Replay LSN | Lag |
++--------+----------------+---------+-----------+----+-------------+-----+------------+-----+
+| n1     | localhost:5432 | Replica | streaming |  2 |   0/403D688 |   0 |   0/403D688 |   0 |
+| n2     | localhost:5433 | Leader  | running   |  2 |             |     |            |     |
++--------+----------------+---------+-----------+----+-------------+-----+------------+-----+
+----
+
+[NOTE]
+====
+The rejoin above is a plain timeline follow, which works because the failed node had not accepted
+any writes of its own while it was down. If the old primary committed transactions that were never
+replicated before the failover, its timeline has diverged and Patroni needs `pg_rewind` to rejoin
+it: enable `use_pg_rewind: true` in the node configuration (requires `wal_log_hints = on` or data
+checksums enabled at initdb time).
+====
+
+=== Planned Switchover
+
+For maintenance, move the leader role without any failure:
+
+[literal]
+----
+patronictl -c /etc/patroni/node1.yml switchover ivory_cluster --leader node1 --candidate node2
+----
+
+== Monitoring and Maintenance
+
+[cols="1,2"]
+|===
+| Command | Purpose
+
+| `patronictl list`
+| Cluster topology, roles, timelines, replication lag
+
+| `patronictl restart ivory_cluster node1`
+| Restart a member (rolling restarts for maintenance)
+
+| `patronictl reload ivory_cluster node1`
+| Reload Patroni configuration
+
+| `patronictl remove ivory_cluster node3`
+| Remove a permanently retired member
+
+| `curl http://node1:8008/health`
+| REST health probe (for load balancers / monitoring)
+
+| `curl http://node1:8008/replica`
+| Returns 200 only on a healthy replica (for read-only routing)
+|===
+
+Monitoring essentials:
+
+* Watch `patronictl list` output: any member that is not `running`/`streaming` needs attention.
+* The REST API exposes `/health` (any member), `/master` (200 only on the leader) and `/replica` for HTTP checks; combine `/master` with a floating IP or HAProxy for automatic connection routing.
+* PostgreSQL logs of each node record promotion events (`redo done at ...`, `selected new timeline`).
+* etcd health is a cluster-wide single point of failure in single-node setups — use three etcd nodes in production.
+
+== Production Checklist
+
+The deployment above runs all daemons as background shell processes, which is convenient for
+learning but is not how a production HA cluster should run:
+
+* *Supervise every daemon.* Run etcd, Patroni (and optionally a local HAProxy) as systemd services
+so they come back after crashes or reboots:
+
+----
+# /etc/systemd/system/patroni@.service
+[Unit]
+Description=Patroni IvorySQL %i
+After=network.target etcd.service
+
+[Service]
+User=postgres
+ExecStart=/usr/local/bin/patroni /etc/patroni/%i.yml
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+----
+
+* *Enable the Patroni watchdog.* Set `watchdog: mode: required` so a node that loses quorum cannot
+keep serving as the primary.
+* *Put a load balancer in front.* HAProxy with the Patroni REST health checks gives clients a
+single endpoint that always routes to the current primary:
+
+----
+listen ivorysql_primary
+    bind *:5000
+    option httpchk GET /master
+    http-check expect status 200
+    default-server inter 3s fall 3 rise 2
+    server node1 192.168.1.10:5432 check port 8008
+    server node2 192.168.1.11:5433 check port 8009
+----
+
+* *Secure the control plane.* The Patroni REST API and etcd should use TLS and authentication
+(`restapi: verify_client`, `etcd3: cacert/cert/key`) in shared networks.
+* *Use three etcd nodes.* A single-node etcd is itself a single point of failure.
+
+== Troubleshooting
+
+[cols="1,2"]
+|===
+| Symptom | Cause and fix
+
+| Replica fails to start: `lock file ".s.PGSQL.1521.lock" already exists`
+| Two nodes share the default Oracle-mode port. Set a unique `ivorysql.port` (and `unix_socket_directories`) per node.
+
+| Patroni crashes at startup: `KeyError: 'listen'`
+| `postgresql.listen` missing; it is required by Patroni 4.x.
+
+| `failed to start postgres` right after `pg_basebackup`
+| Data directory permissions are not `0700`, or the socket directory does not exist. Pre-create both: `chmod 700 <data_dir>; mkdir -p <socket_dir>`.
+
+| `pg_basebackup: error while loading shared libraries: libpq.so.5`
+| IvorySQL installed in a custom prefix. Register the library path once:
+    `echo /usr/local/ivorysql/lib > /etc/ld.so.conf.d/ivorysql.conf && ldconfig`
+|===

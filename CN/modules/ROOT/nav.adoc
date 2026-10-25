@@ -6,6 +6,7 @@
 * 安装部署
 ** xref:master/installation_guide.adoc[安装指南]
 ** xref:master/cluster_setup.adoc[集群搭建]
+** xref:master/high_availability_patroni.adoc[高可用集群（Patroni）]
 * Oracle兼容功能
 ** xref:master/oracle_compatibility/compat_case_conversion.adoc[大小写转换]
 ** xref:master/oracle_compatibility/compat_like_operator.adoc[LIKE操作符]
