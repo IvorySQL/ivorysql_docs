@@ -56,7 +56,7 @@ Finally, keep in mind that it is NEVER a good idea to remove licensing headers f
 You can upload your modified bugs, new functions and other codes to your personal warehouse, and finally submit PR requests to merge them on the official website: https://github.com/IvorySQL/IvorySQL.
 
 
-==== Document Contribution(https://www.ivorysql.org/zh-CN/docs/intro)
+==== Document Contribution(https://github.com/IvorySQL/ivorysql_docs)
 
 The IvorySQL community provides Chinese and English documents. English documents are saved in ... document repository, Chinese documents are saved in i18n document repository. You can contribute to one of them or both.
 
