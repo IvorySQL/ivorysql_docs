@@ -1,0 +1,149 @@
+:sectnums:
+:sectnumlevels: 5
+
+= LISTAGG 聚合函数
+
+== 目的
+
+`LISTAGG` 按指定顺序将多行非 NULL 字符串拼接为一个结果，适用于生成分组名单、标签列表等汇总信息。IvorySQL 在 Oracle 兼容模式下提供 `LISTAGG(...) WITHIN GROUP (ORDER BY ...)` 语法。
+
+== 功能说明
+
+* 不带 `GROUP BY` 时，将符合条件的输入行聚合为一个结果；带 `GROUP BY` 时，每个分组产生一个结果。
+* `WITHIN GROUP (ORDER BY ...)` 指定组内拼接顺序，必须提供；可以使用多列排序及升降序。
+* 分隔符可省略。省略或为 `NULL` 时，直接连接字符串；指定分隔符时，只在参与拼接的值之间插入。
+* NULL 值不参与拼接，也不产生多余分隔符。没有输入行或全部输入值为 NULL 时，返回 `NULL`。
+* 支持 `FILTER (WHERE ...)`，只聚合满足过滤条件的行。
+* 返回类型为 `text`，结果最长为 4000 字节，恰好 4000 字节允许返回，超过则报错。
+
+== 语法
+
+[source,sql]
+----
+LISTAGG(measure_expr [, delimiter])
+    WITHIN GROUP (ORDER BY sort_expr [ASC | DESC] [, ...])
+    [FILTER (WHERE condition)]
+----
+
+[cols="2,4",options="header"]
+|===
+|参数 |说明
+|`measure_expr` |参与拼接的字符表达式。其他数据类型可先显式转换为 `text`
+|`delimiter` |可选的分隔字符串，例如 `','` 或 `', '`
+|`sort_expr` |组内排序表达式，可以与拼接表达式不同
+|`condition` |聚合输入行的过滤条件
+|===
+
+组内排序由 `WITHIN GROUP` 决定，查询末尾的 `ORDER BY` 只决定结果行的显示顺序。如果排序键存在并列值且对应字符串不同，应增加能够区分这些行的排序列，以获得确定的拼接顺序。建议为结果指定列别名。
+
+== 使用示例
+
+=== 准备数据
+
+[source,sql]
+----
+CREATE TABLE listagg_test (
+    deptno integer,
+    ename varchar2(20),
+    sal numeric
+);
+
+INSERT INTO listagg_test VALUES
+    (10, 'CLARK', 2450),
+    (10, 'KING', 5000),
+    (10, 'MILLER', 1300),
+    (20, 'ADAMS', 1100),
+    (20, 'FORD', 3000),
+    (20, 'JONES', 2975),
+    (30, 'ALLEN', 1600),
+    (30, 'BLAKE', 2850),
+    (30, 'MARTIN', 1250);
+----
+
+=== 整组聚合与不同排序列
+
+[source,sql]
+----
+SELECT LISTAGG(ename, ',') WITHIN GROUP (ORDER BY ename) AS employees
+FROM listagg_test WHERE deptno = 10;
+-- CLARK,KING,MILLER
+
+SELECT LISTAGG(ename, ', ') WITHIN GROUP (ORDER BY sal DESC) AS employees
+FROM listagg_test WHERE deptno = 10;
+-- KING, CLARK, MILLER
+----
+
+=== 分组聚合
+
+[source,sql]
+----
+SELECT deptno,
+    LISTAGG(ename, '|') WITHIN GROUP (ORDER BY ename) AS employees
+FROM listagg_test
+GROUP BY deptno
+ORDER BY deptno;
+----
+
+[source,text]
+----
+10  CLARK|KING|MILLER
+20  ADAMS|FORD|JONES
+30  ALLEN|BLAKE|MARTIN
+----
+
+=== 省略分隔符、NULL 值和空集
+
+[source,sql]
+----
+SELECT LISTAGG(ename) WITHIN GROUP (ORDER BY ename) AS employees
+FROM listagg_test WHERE deptno = 10;
+-- CLARKKINGMILLER
+
+INSERT INTO listagg_test VALUES (10, NULL, 999);
+
+SELECT LISTAGG(ename, ',') WITHIN GROUP (ORDER BY ename) AS employees
+FROM listagg_test WHERE deptno = 10;
+-- CLARK,KING,MILLER
+
+SELECT LISTAGG(ename, ',') WITHIN GROUP (ORDER BY ename) AS employees
+FROM listagg_test WHERE ename IS NULL;
+-- NULL
+
+SELECT LISTAGG(ename, ',') WITHIN GROUP (ORDER BY ename) AS employees
+FROM listagg_test WHERE deptno = 99;
+-- NULL
+----
+
+=== 过滤聚合输入
+
+[source,sql]
+----
+SELECT LISTAGG(ename, ',') WITHIN GROUP (ORDER BY ename)
+    FILTER (WHERE sal > 1500) AS employees
+FROM listagg_test;
+-- ALLEN,BLAKE,CLARK,FORD,JONES,KING
+
+DROP TABLE listagg_test;
+----
+
+== 长度限制与语法注意事项
+
+4000 字节上限针对最终结果的有效数据，包含值之间的分隔符。多字节字符按数据库编码后的字节长度计算，不能用字符数代替字节数判断是否超限。
+
+[source,sql]
+----
+SELECT octet_length(
+    LISTAGG(repeat('x', 1000)) WITHIN GROUP (ORDER BY n)
+) AS result_bytes
+FROM generate_series(1, 4) AS t(n);
+-- 4000
+
+SELECT LISTAGG(repeat('x', 1000), ',')
+    WITHIN GROUP (ORDER BY n) AS result_text
+FROM generate_series(1, 4) AS t(n);
+-- ERROR: result of aggregation exceeds 4000 bytes
+----
+
+第二个查询包含三个逗号，结果长度为 4003 字节，因此报错。
+
+排序子句应放在 `WITHIN GROUP` 中，不要写入 `LISTAGG` 的参数列表。省略 `WITHIN GROUP` 会报 `LISTAGG requires WITHIN GROUP (ORDER BY ...)`；例如 `LISTAGG(ename, ',' ORDER BY ename)` 这种参数内排序写法会产生语法错误。
