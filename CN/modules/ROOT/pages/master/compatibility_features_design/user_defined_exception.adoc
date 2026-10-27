@@ -1,0 +1,140 @@
+:sectnums:
+:sectnumlevels: 5
+
+
+= **功能概述**
+
+IvorySQL提供了兼容Oracle的用户自定义EXCEPTION功能，支持在PL/iSQL存储过程、包声明和包体中声明异常，使用RAISE按名称抛出异常，使用WHEN按名称捕获异常，并通过PRAGMA EXCEPTION_INIT将异常名称与指定错误码关联。
+
+基本用法如下：
+
+```sql
+CREATE OR REPLACE PROCEDURE test_exception IS
+  my_exception EXCEPTION;
+  PRAGMA EXCEPTION_INIT(my_exception, -20001);
+BEGIN
+  RAISE my_exception;
+EXCEPTION
+  WHEN my_exception THEN
+    RAISE INFO 'caught: %', SQLERRM;
+END;
+/
+```
+
+== 实现原理
+
+=== 自定义EXCEPTION数据结构
+
+在PLiSQL_datum_type枚举中增加PLISQL_DTYPE_EXCEPTION，用于区分用户自定义异常与普通变量、记录和包变量。
+
+在pl_exception_type.h中定义PLiSQL_exception_var结构体：
+
+```
+typedef struct PLiSQL_exception_var
+{
+    PLiSQL_datum_type dtype;
+    int               dno;
+    Oid               pkgoid;
+    char             *refname;
+    int               lineno;
+    int               sqlcode;
+} PLiSQL_exception_var;
+```
+
+其中dno是异常在当前PL/iSQL编译单元datum数组中的编号，refname保存异常名称，lineno保存声明位置，sqlcode保存抛出和捕获时使用的错误码。
+
+plisql_build_exception函数负责创建异常datum，通过plisql_adddatum加入编译器datum数组，并以PLISQL_NSTYPE_VAR类型加入当前命名空间。命名空间类型复用普通变量类型，具体是否为异常由datum的PLISQL_DTYPE_EXCEPTION类型进一步判断。
+
+没有使用PRAGMA EXCEPTION_INIT时，异常的sqlcode初始化为ERRCODE_RAISE_EXCEPTION，对应PostgreSQL内部SQLSTATE P0001。异常datum只保存编译期元数据，不保存可变的运行期值。
+
+=== 自定义EXCEPTION声明语法
+
+在pl_gram.y的声明语句中增加以下语法：
+
+```
+decl_varname K_EXCEPTION ';'
+```
+
+解析到该语法后调用plisql_build_exception创建异常，并注册到当前PL/iSQL命名空间。因此，异常名称使用已有的词法作用域和重名检查规则：内层作用域可以查找外层异常，同一作用域内不能重复声明同名对象。
+
+异常是PL/iSQL的特殊标识符，不是PostgreSQL数据类型。执行器在变量初始化、datum复制、函数内存释放和包资源释放等路径中增加PLISQL_DTYPE_EXCEPTION分支。异常不需要在语句块入口初始化，也不复制运行期值；赋值、OUT参数等不允许使用异常对象的场景会拒绝该类型或跳过无关处理。
+
+=== RAISE用户自定义异常
+
+PLiSQL_stmt_raise结构体增加exception_var成员，用于保存编译期解析到的PLiSQL_exception_var指针。
+
+编译RAISE语句时，如果词法分析器返回T_DATUM，并且datum类型为PLISQL_DTYPE_EXCEPTION，则将该异常保存到exception_var，而不是按照内置异常条件名称处理：
+
+```
+RAISE exception_name;
+```
+
+执行时，exec_stmt_raise从exception_var取得sqlcode和异常名称，将sqlcode写入ErrorData使用的错误码字段。没有显式指定消息时，用户自定义异常的默认错误消息为User-Defined Exception，因此异常处理器中的SQLERRM也返回该字符串。
+
+错误码与错误消息分别处理。PRAGMA EXCEPTION_INIT只修改错误码，不会根据错误码自动生成ORA错误消息。可以使用RAISE的MESSAGE选项覆盖默认消息：
+
+```sql
+RAISE my_exception USING MESSAGE = 'application error';
+```
+
+不带异常名称和其他参数的RAISE仍用于在异常处理器中重新抛出当前异常。为避免将RAISE exception_name误判为无参数RAISE，重抛判断同时检查exception_var是否为空。
+
+=== WHEN捕获用户自定义异常
+
+plisql_parse_err_condition函数在解析WHEN条件时，先调用plisql_lookup_exception从当前命名空间查找用户自定义异常，再查找OTHERS和内置异常条件。
+
+找到用户异常后，编译器创建PLiSQL_condition，并将PLiSQL_exception_var中的sqlcode复制到PLiSQL_condition.sqlerrstate：
+
+```
+EXCEPTION
+  WHEN exception_name THEN
+    handler_statement;
+```
+
+运行时继续复用PL/iSQL原有的异常块实现。包含EXCEPTION区域的语句块在内部子事务中执行；发生错误后回滚内部子事务，复制ErrorData，然后由exception_matches_conditions比较ErrorData.sqlerrcode和PLiSQL_condition.sqlerrstate。匹配成功后设置SQLSTATE、SQLERRM和当前错误信息，再执行对应的异常处理语句。
+
+通过复用原有处理流程，用户自定义异常自动支持异常块回滚、SQLERRM、SQLSTATE以及处理器中的无参数RAISE重新抛出。
+
+=== PRAGMA EXCEPTION_INIT错误码绑定
+
+在关键字和语法文件中增加PRAGMA与EXCEPTION_INIT支持。语法使用any_identifier引用已经声明的异常，同时支持正整数和负整数：
+
+```
+PRAGMA EXCEPTION_INIT(exception_name, error_code);
+```
+
+plisql_process_pragma_exception_init在编译期完成以下处理：
+
+1. 从当前命名空间查找exception_name；
+2. 检查对应datum是否为PLISQL_DTYPE_EXCEPTION；
+3. 调用plisql_validate_exception_error_code校验错误码；
+4. 调用plisql_exception_set_sqlcode更新异常datum中的sqlcode。
+
+错误码校验规则为：正数只接受100；负数接受-1000000到-1，但拒绝-1403；同时拒绝0、除100之外的正数以及小于-1000000的数值。非法错误码在编译期报告illegal ORACLE error number错误。
+
+PRAGMA EXCEPTION_INIT不生成运行期语句。后续编译RAISE时保存异常datum指针，可以取得更新后的sqlcode；后续编译WHEN时将更新后的sqlcode写入条件节点。
+
+=== 存储过程与包中的异常
+
+独立存储过程编译时，异常datum存储在对应PLiSQL_function的datum数组中，并遵循过程声明区的命名空间范围。
+
+包编译沿用现有的包命名空间和datum管理机制。编译包体时，package_body_init恢复包声明已有的命名空间、datum和子程序信息，因此包声明中的异常可以在包体中使用，包体级异常也可以被包内子程序引用。异常是常量标识符，不需要包状态初始化，也没有需要释放的运行期值。
+
+copy_plisql_datums直接共享异常datum指针；plisql_free_function_memory和包资源清理代码只识别该datum类型，不对其执行普通变量值释放。plisql_dumptree通过plisql_dump_exception输出异常名称、dno、sqlcode和声明行号，用于调试编译结果。
+
+=== 构建与回归测试
+
+Makefile和meson.build均加入pl_exception_type.c。Oracle回归测试列表加入plisql_exception，测试输入和预期输出分别位于：
+
+```
+src/pl/plisql/src/sql/plisql_exception.sql
+src/pl/plisql/src/expected/plisql_exception.out
+```
+
+回归测试实际执行异常抛出和捕获，并由命中的处理器向结果表写入记录。测试覆盖包级异常、过程局部异常、包内传播、多个异常、PRAGMA EXCEPTION_INIT、不同绑定错误码的处理器选择、错误码边界检查以及SQLERRM在包过程之间的传递。
+
+=== 当前实现边界
+
+当前实现的WHEN处理器按照sqlcode匹配，不按照异常datum的声明身份匹配。所有未使用PRAGMA EXCEPTION_INIT的用户异常共享P0001，因此两个未绑定的不同异常无法仅依靠错误码相互区分；绑定相同错误码的不同异常也具有相同的匹配结果。需要区分多个用户异常时，应通过PRAGMA EXCEPTION_INIT为它们设置不同的合法错误码。
+
+PLiSQL_exception_var的sqlcode字段同时用于保存PostgreSQL内部SQLSTATE编码和PRAGMA指定的Oracle风格整数错误号。当前实现保证同一异常的RAISE与WHEN使用相同整数完成匹配，但没有提供独立的Oracle错误号到PostgreSQL SQLSTATE转换层。

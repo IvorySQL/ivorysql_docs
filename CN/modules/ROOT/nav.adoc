@@ -146,7 +146,7 @@
 **** xref:master/compatibility_features_design/with_function_procedure_impl.adoc[WITH FUNCTION/PROCEDURE]
 **** xref:master/compatibility_features_design/create_index_online.adoc[索引 ONLINE 参数]
 **** xref:master/compatibility_features_design/alter_index_unusable_impl.adoc[禁用索引]
-**** xref:master/compatibility_features_design/user_defined_exception_impl.adoc[用户自定义异常]
+**** xref:master/compatibility_features_design/user_defined_exception.adoc[用户自定义异常]
 **** xref:master/compatibility_features_design/for_loop_implicit_record_impl.adoc[FOR循环隐式记录声明]
 **** xref:master/compatibility_features_design/autonomous_transaction_impl.adoc[自治事务]
 **** xref:master/compatibility_features_design/rownum_pseudocolumn_impl.adoc[ROWNUM伪列]
