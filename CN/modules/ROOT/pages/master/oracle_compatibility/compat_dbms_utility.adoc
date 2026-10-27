@@ -1,0 +1,140 @@
+:sectnums:
+:sectnumlevels: 5
+
+= DBMS_UTILITY 包
+
+== 目的
+
+`DBMS_UTILITY` 提供错误消息、异常位置和当前调用栈的格式化接口，便于在 PL/iSQL 程序中记录诊断信息、定位异常发生位置。
+
+== 功能说明
+
+三个函数均无参数，返回类型为 `text`：
+
+[cols="3,4",options="header"]
+|===
+|函数 |功能
+|`FORMAT_ERROR_BACKTRACE` |返回当前被处理异常的发生位置及传播路径，以 `ORA-06512` 行表示
+|`FORMAT_ERROR_STACK` |返回映射后的 `ORA-XXXXX` 错误号和原始错误消息
+|`FORMAT_CALL_STACK` |返回调用时仍在执行的 PL/iSQL 调用栈，不要求发生异常
+|===
+
+在 PL/iSQL 中可直接将函数结果赋给变量：
+
+[source,sql]
+----
+v_backtrace := DBMS_UTILITY.FORMAT_ERROR_BACKTRACE;
+v_error_stack := DBMS_UTILITY.FORMAT_ERROR_STACK;
+v_call_stack := DBMS_UTILITY.FORMAT_CALL_STACK;
+----
+
+=== 异常位置与错误消息
+
+`FORMAT_ERROR_BACKTRACE` 描述异常发生时的调用路径；`FORMAT_ERROR_STACK` 描述当前异常的错误号和消息，当前实现不自动将位置回溯附加到错误消息中。记录异常时可同时保存二者。
+
+没有正在处理的异常时，两个错误诊断函数返回 `NULL`。外层异常处理器调用带有自己异常处理器的子程序后，子程序正常返回时，外层异常上下文恢复，仍可读取原异常信息。
+
+=== 当前调用栈
+
+`FORMAT_CALL_STACK` 返回调用时的 PL/iSQL 栈，包含固定表头、对象句柄、行号和名称。异常发生后调用它，看到的是当前仍在执行的栈，不是已经退出的异常发生路径；异常路径应使用 `FORMAT_ERROR_BACKTRACE`。
+
+对象句柄是运行时地址，会随执行环境变化。当前输出统一使用 `function` 标签表示栈帧，过程也可能使用该标签。没有可显示的调用者栈帧时返回 `NULL`。
+
+== 使用示例
+
+以下示例在 Oracle 兼容模式下执行，并假定调用者具备包的执行权限。为方便对照对象名，示例启用以下大小写设置，结束时恢复默认值。
+
+[source,sql]
+----
+SET ivorysql.enable_case_switch = true;
+SET ivorysql.identifier_case_switch = interchange;
+----
+
+=== 同时记录错误消息与异常位置
+
+[source,sql]
+----
+CREATE OR REPLACE PROCEDURE public.utility_error_demo AS
+    v_error_stack text;
+    v_backtrace text;
+BEGIN
+    RAISE EXCEPTION 'demo error';
+EXCEPTION
+    WHEN OTHERS THEN
+        v_error_stack := DBMS_UTILITY.FORMAT_ERROR_STACK;
+        v_backtrace := DBMS_UTILITY.FORMAT_ERROR_BACKTRACE;
+        RAISE INFO 'Error stack: %', v_error_stack;
+        RAISE INFO 'Backtrace: %', v_backtrace;
+END;
+/
+
+CALL public.utility_error_demo();
+----
+
+输出的主要内容如下；行号与过程体中的语句位置有关：
+
+[source,text]
+----
+INFO:  Error stack: ORA-06510: demo error
+INFO:  Backtrace: ORA-06512: at "PUBLIC.UTILITY_ERROR_DEMO", line 4
+----
+
+函数只返回诊断文本，不会自动重新抛出已捕获的异常。需要继续向上传播异常时，在完成记录后执行 `RAISE;`。
+
+=== 查看嵌套调用栈
+
+[source,sql]
+----
+CREATE OR REPLACE PROCEDURE public.utility_stack_inner AS
+    v_stack text;
+BEGIN
+    v_stack := DBMS_UTILITY.FORMAT_CALL_STACK;
+    RAISE INFO 'Call stack: %', v_stack;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE public.utility_stack_outer AS
+BEGIN
+    public.utility_stack_inner();
+END;
+/
+
+CALL public.utility_stack_outer();
+----
+
+结果包含 `----- PL/SQL Call Stack -----` 表头，以及 `UTILITY_STACK_INNER`、`UTILITY_STACK_OUTER` 两个调用者的栈帧。诊断函数自身的首个栈帧被省略。
+
+=== 没有正在处理的异常
+
+[source,sql]
+----
+DO $$
+DECLARE
+    v_backtrace text;
+    v_error_stack text;
+BEGIN
+    v_backtrace := DBMS_UTILITY.FORMAT_ERROR_BACKTRACE;
+    v_error_stack := DBMS_UTILITY.FORMAT_ERROR_STACK;
+    RAISE INFO 'Backtrace: [%], error stack: [%]', v_backtrace, v_error_stack;
+END;
+$$;
+----
+
+这里两个返回值均为 `NULL`，psql 的 INFO 输出中显示为 `<NULL>`。
+
+[source,sql]
+----
+DROP PROCEDURE public.utility_error_demo;
+DROP PROCEDURE public.utility_stack_outer;
+DROP PROCEDURE public.utility_stack_inner;
+RESET ivorysql.identifier_case_switch;
+RESET ivorysql.enable_case_switch;
+----
+
+== 输出说明
+
+* 错误号是对 SQLSTATE 的部分映射，例如除零对应 `ORA-01476`，`RAISE EXCEPTION` 对应 `ORA-06510`。其他错误可能使用通用号 `ORA-06502`；诊断时应同时查看原始消息和位置回溯。
+* 对象名称的显示受 `ivorysql.enable_case_switch` 和 `ivorysql.identifier_case_switch` 影响，不应假定总是大写。
+* 包成员的栈帧名称包含模式、包和子程序；已带模式的名称不会重复添加 `PUBLIC`。未限定名的独立子程序仍可能采用 `public` 作为回溯前缀，不能仅据该前缀确认实际所属模式。
+* `FORMAT_CALL_STACK` 收集 PL/iSQL 栈帧。混合语言调用中，它不表示所有语言的完整运行栈。
+* 返回文本可以包含多行，保存完整诊断结果时宜使用 `text`，避免接收变量长度过小。PL/iSQL 上下文接口不可用时函数也可能返回 `NULL`。

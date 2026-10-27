@@ -1,0 +1,107 @@
+:sectnums:
+:sectnumlevels: 5
+
+= DBMS_UTILITY 包设计
+
+== 目的
+
+通过 `ivorysql_ora` 中的三个包函数，读取 PL/iSQL 当前异常和调用上下文，并生成 Oracle 风格的诊断文本：`FORMAT_ERROR_BACKTRACE`、`FORMAT_ERROR_STACK` 和 `FORMAT_CALL_STACK`。
+
+实现由包接口、C 格式转换和 PL/iSQL 上下文接口组成。使用示例见 xref:master/oracle_compatibility/compat_dbms_utility.adoc[DBMS_UTILITY 包]。
+
+== 实现说明
+
+=== 代码组织
+
+包定义和 C 实现位于 `contrib/ivorysql_ora/src/builtin_packages/dbms_utility/`；PL/iSQL 文件位于 `src/pl/plisql/src/`。回归 SQL 和期望输出分别位于扩展的 `sql/`、`expected/` 目录。下表只列文件名。
+
+[cols="3,4",options="header"]
+|===
+|文件 |职责
+|`dbms_utility--1.0.sql` |注册 C 入口，定义包规范和包体
+|`dbms_utility.c` |动态查找上下文接口，转换错误位置、错误消息和调用栈
+|`pl_exec.c` |维护异常上下文，导出诊断接口，构造包成员限定名
+|`plisql.h` |声明并导出 PL/iSQL 诊断接口
+|`dbms_utility.sql` |异常、调用栈、上下文恢复和名称显示的回归测试
+|`dbms_utility.out` |对应诊断输出及校验结果
+|===
+
+扩展的 `Makefile`、`meson.build` 和 `ivorysql_ora_merge_sqls` 将包的 C 模块、SQL 脚本及回归测试纳入构建和安装流程。
+
+[source,text]
+----
+DBMS_UTILITY.FORMAT_ERROR_BACKTRACE
+    → sys.ora_format_error_backtrace()
+    → PL/iSQL 异常上下文 API
+    → ORA-06512 位置文本
+
+FORMAT_ERROR_STACK → 异常消息及 SQLSTATE API → 错误号与消息
+FORMAT_CALL_STACK  → 当前 PL/iSQL 栈 API   → 调用栈表头及栈帧
+----
+
+=== 包接口与动态查找
+
+包规范中的三个函数均无参数，返回 `text`；包体分别转调同名职责的 `sys.ora_format_*` C 函数。C 入口标记为 `VOLATILE`，因为结果随当前执行和异常上下文变化。
+
+C 模块通过 `dlsym(RTLD_DEFAULT, ...)` 查找已加载的 PL/iSQL 模块导出符号，避免建立到 `plisql.so` 的链接期依赖。首次查找结果缓存在后端静态函数指针中，后续调用复用；当前实现只尝试查找一次。
+
+四个 PL/iSQL 接口分别提供：
+
+* `plisql_get_current_exception_context()`：当前异常的上下文文本。
+* `plisql_get_current_exception_message()`：当前异常的原始消息。
+* `plisql_get_current_exception_sqlerrcode()`：当前异常的内部 SQLSTATE 编码，无异常时为 0。
+* `plisql_get_call_stack()`：当前 PL/iSQL 栈，每帧包含句柄、行号和签名。
+
+接口无法取得时，相应包函数返回 `NULL`。异常消息和上下文由 PL/iSQL 持有；调用栈接口返回新分配的字符串，由使用方处理完后释放。
+
+=== 异常上下文保存与恢复
+
+`pl_exec.c` 使用 `exception_handling_estate` 指向正在处理异常的执行状态。进入匹配的异常处理器时保存原指针并切换到当前状态，处理器正常执行结束后恢复原值。
+
+诊断函数虽然在另一次包函数调用中执行，仍可通过该指针读取异常处理器的 `cur_error`，而不是诊断函数自身的执行状态。内层异常被处理并正常返回后，外层异常上下文恢复，使前后两次读取外层回溯得到相同结果。
+
+=== FORMAT_ERROR_BACKTRACE
+
+函数读取异常上下文并逐行转换。`transform_and_append_line()` 识别 `PL/iSQL function` 和 `PL/pgSQL function` 行，提取名称及 `line N`；跳过 `SQL statement` 和其他无法识别的行。
+
+命名子程序输出 `ORA-06512: at "对象名", line N`；匿名块输出 `ORA-06512: at line N`。多行按原异常上下文的顺序拼接，形成从异常发生处到外层调用者的回溯。
+
+包成员的名称由 PL/iSQL 根据包目录信息构造为模式、包、子程序限定名。格式转换检测名称是否已经含有限定部分，避免重复添加模式；未限定的独立子程序仍回退到 `public`，没有在该转换函数中查询其真实所属模式。
+
+=== FORMAT_ERROR_STACK
+
+函数读取当前异常消息和 SQLSTATE，通过 `sqlstate_to_ora_errnum()` 选择错误号，并生成 `ORA-XXXXX: 原始消息`，末尾添加换行。不自动附加位置回溯，也不重新翻译原始消息。
+
+[cols="3,2",options="header"]
+|===
+|异常类型 |输出错误号
+|除零 |`ORA-01476`
+|无数据或未找到数据 |`ORA-01403`
+|返回行数过多 |`ORA-01422`
+|不允许 NULL |`ORA-06502`
+|无效游标状态 |`ORA-01001`
+|`RAISE EXCEPTION` |`ORA-06510`
+|其他 SQLSTATE |`ORA-06502`
+|===
+
+该映射保留常见错误分类，不能仅凭通用错误号区分全部底层异常。无异常消息或 SQLSTATE 为 0 时返回 `NULL`。
+
+=== FORMAT_CALL_STACK
+
+`plisql_get_call_stack()` 遍历 `error_context_stack`，只收集回调为 `plisql_exec_error_callback` 的帧。每帧包含执行对象的地址、当前行号和签名，包成员使用限定名。
+
+C 格式转换跳过诊断函数自身的第一个栈帧，将其余帧排在固定的 `PL/SQL Call Stack` 表头后，并统一使用 `function` 标签。没有可显示的调用者帧时返回 `NULL`。这条路径读取当前执行栈，与保存在 `cur_error->context` 中的异常路径不同。
+
+=== 标识符显示
+
+回溯和调用栈通过 `apply_identifier_case_switch()` 处理名称：未启用大小写切换或模式为 `normal` 时保留原文本；`lowercase` 将全大写文本转为小写；`interchange` 交换全大写和全小写文本，混合大小写保持不变。
+
+该处理作用于取得的名称文本，显示结果受会话配置影响。调用栈句柄来自运行时地址，不能视为持久对象标识。
+
+== 测试验证
+
+`dbms_utility` 回归组覆盖基础异常、多层调用、函数和匿名块、重新抛出、包成员及模式限定名、嵌套异常上下文恢复、错误号映射、无异常返回值、调用栈结构及三个函数组合使用。
+
+当前 master 的用例还核对非 `public` 模式中的包成员限定名，防止缺失包名或重复添加 `PUBLIC`。调用栈地址随运行变化，测试检查表头、名称和帧数量，不固定地址值。
+
+在已配置、编译并安装的当前 master 源码目录中，可运行 `make -C contrib/ivorysql_ora oracle-installcheck ORA_REGRESS=dbms_utility`。目标实例需具备对应版本的 PL/iSQL 和 `ivorysql_ora`。
