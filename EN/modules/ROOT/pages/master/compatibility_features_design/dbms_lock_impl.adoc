@@ -1,0 +1,177 @@
+:sectnums:
+:sectnumlevels: 5
+
+
+= **Feature Overview**
+
+IvorySQL provides the Oracle-compatible built-in package `DBMS_LOCK` in the `ivorysql_ora` extension. It creates application locks, acquires and releases shared or exclusive locks, and pauses the current session. The current implementation provides four subprograms: `ALLOCATE_UNIQUE`, `REQUEST`, `RELEASE`, and `SLEEP`.
+
+Basic usage:
+
+```sql
+DECLARE
+  v_handle text;
+  v_result integer;
+BEGIN
+  dbms_lock.allocate_unique('order_batch', v_handle);
+  v_result := dbms_lock.request(v_handle, dbms_lock.x_mode, 10);
+
+  IF v_result = dbms_lock.success THEN
+    -- Perform business operations that must be serialized
+    v_result := dbms_lock.release(v_handle);
+  END IF;
+END;
+/
+```
+
+== Implementation
+
+=== Overall Structure
+
+`DBMS_LOCK` consists of two layers: C functions and a PL/iSQL package wrapper.
+
+The C implementation is located at:
+
+```
+contrib/ivorysql_ora/src/builtin_packages/dbms_lock/dbms_lock.c
+```
+
+The SQL definitions are located at:
+
+```
+contrib/ivorysql_ora/src/builtin_packages/dbms_lock/dbms_lock--1.0.sql
+```
+
+The SQL file first registers four `STRICT` C functions in the `sys` schema:
+
+```sql
+sys.dbms_lock_allocate_unique(text) RETURNS text
+sys.dbms_lock_request(text, int, int) RETURNS int
+sys.dbms_lock_release(text) RETURNS int
+sys.dbms_lock_sleep(float8) RETURNS void
+```
+
+It then creates the `DBMS_LOCK` package. The subprograms in the package body simply call these C functions, allowing users to access the functionality in Oracle package form. The build system compiles `dbms_lock.c` through `contrib/ivorysql_ora/Makefile` and `contrib/ivorysql_ora/meson.build`. The extension installation script `ivorysql_ora--1.0.sql` also contains the same package definition.
+
+=== Lock Modes and Return Codes
+
+The C code defines and implements two lock modes:
+
+[cols="2,1,4"]
+|====
+|*Package Constant*|*Value*|*Internal Implementation*
+|`S_MODE`|4|PostgreSQL session-level shared advisory lock
+|`X_MODE`|6|PostgreSQL session-level exclusive advisory lock
+|====
+
+The package declaration exposes the following return-code constants:
+
+[cols="2,1,4"]
+|====
+|*Package Constant*|*Value*|*Meaning*
+|`SUCCESS`|0|The operation succeeded
+|`TIMEOUT`|1|The lock was not acquired within the specified time
+|`DEADLOCK`|2|Deadlock
+|`PARAMETER_ERROR`|3|Invalid parameter
+|`ALREADY_OWNED`|4|The current session already owns the lock
+|`ILLEGAL_HANDLE`|5|The lock handle is invalid
+|====
+
+The current C implementation returns `SUCCESS`, `TIMEOUT`, and `PARAMETER_ERROR`. `DEADLOCK`, `ALREADY_OWNED`, and `ILLEGAL_HANDLE` are exposed as compatibility constants, but the current code does not return these values. When a lock mode other than 4 or 6 is passed, `is_exclusive_mode` raises an `invalid DBMS_LOCK mode` error directly instead of returning a status code.
+
+=== ALLOCATE_UNIQUE Handle Generation
+
+`ivorysql_dbms_lock_allocate_unique` converts the lock name to a C string, computes a 64-bit hash using `hash_any_extended` with a seed of 0, and formats the unsigned hash value as decimal text. The buffer has a maximum length of 64 bytes, which is sufficient for the generated decimal handle.
+
+```text
+lock name -> hash_any_extended(name, seed 0) -> uint64 -> decimal text handle
+```
+
+The implementation neither creates a system-table record nor persists the name-to-handle mapping in the database catalog. The same input generates the same handle through the same algorithm. Callers should pass the returned handle to `REQUEST` and `RELEASE` and should not rely on its specific textual representation.
+
+=== Mapping a Lock Handle to an Advisory Lock Key
+
+`REQUEST` and `RELEASE` use `lockname_to_key` to convert the handle text to the 64-bit signed key used by PostgreSQL advisory locks. The function calculates two 32-bit hash values:
+
+* The high-order 32 bits use `hash_any`;
+* The low-order 32 bits use `hash_any_extended` with a seed of `0x9e3779b9`;
+* The two parts are combined into one `int64` lock key.
+
+Therefore, the value returned by `ALLOCATE_UNIQUE` is the public handle, while the advisory lock key is an internal value obtained by hashing that handle again. Hash collisions are theoretically possible, and the current implementation has no additional name directory to detect or eliminate them.
+
+=== Backend-Local Lock Record Table
+
+Each database backend creates a private hash table named `pg_dbms_lock table` on demand, with an initial capacity of 128. The table is keyed by the internal 64-bit lock key and records the mode of the most recently acquired lock:
+
+```c
+typedef struct
+{
+    int64 key;
+    int8  mode;
+} lock_entry;
+```
+
+`dbms_lock_record_acquire` writes a record after a successful acquisition, `dbms_lock_check` checks the current backend's recorded mode before release, and `dbms_lock_record_release` removes the record after a successful release. The table exists only in the current backend's memory and is not shared between sessions. Actual cross-session mutual exclusion is provided by advisory locks in the PostgreSQL lock manager.
+
+=== REQUEST Lock Acquisition Flow
+
+`ivorysql_dbms_lock_request` accepts a handle, a mode, and an integer timeout in seconds. It performs the following steps:
+
+1. Maps the handle to a 64-bit advisory lock key;
+2. Maps `X_MODE` to `pg_try_advisory_lock_int8` and `S_MODE` to `pg_try_advisory_lock_shared_int8`;
+3. Attempts to acquire the session-level advisory lock;
+4. On success, writes the key and mode to the backend-local hash table and returns 0;
+5. On failure with `timeout = 0`, immediately returns 1;
+6. On failure before the timeout expires, retries every 100 milliseconds and calls `CHECK_FOR_INTERRUPTS()` to respond to cancellation, interrupts, and similar events.
+
+When `timeout < 0`, the function returns 3. Timeout calculation uses `GetCurrentTimestamp()`, converts the elapsed microseconds to whole seconds, and compares the result with the supplied value.
+
+The implementation calls session-level advisory lock interfaces, so a lock is not released automatically when the current transaction commits or rolls back. During normal use, the caller must invoke `DBMS_LOCK.RELEASE`, or PostgreSQL must clean up the lock when the database session ends.
+
+=== RELEASE Lock Release Flow
+
+`ivorysql_dbms_lock_release` first converts the handle to an internal lock key and then queries the current backend's private hash table:
+
+* If the recorded mode is `S_MODE`, it calls `pg_advisory_unlock_shared_int8`;
+* If the recorded mode is `X_MODE`, it calls `pg_advisory_unlock_int8`;
+* After PostgreSQL confirms successful release, it removes the record from the private hash table and returns 0;
+* If no record is found for the current backend or the underlying release fails, it returns 3.
+
+The private hash table allows `RELEASE` to select the correct shared or exclusive unlock function, but it currently stores only one mode and one record per lock key. PostgreSQL session-level advisory locks allow the same session to acquire a lock repeatedly and maintain a reference count, while this private table does not track the number of acquisitions. A session should therefore not acquire the same handle again before releasing it and should not rely on lock-mode conversion behavior.
+
+=== SLEEP Implementation
+
+`ivorysql_dbms_lock_sleep` accepts a double-precision number of seconds, converts it to microseconds, and calls `pg_usleep` in intervals of no more than one second. It executes `CHECK_FOR_INTERRUPTS()` after every interval, so a long sleep can still respond to query cancellation and server interrupts.
+
+A negative value raises `DBMS_LOCK.SLEEP: seconds must be non-negative`; a value greater than 100000000 seconds raises an argument-too-large error. The argument is a `float8`, so fractional seconds are supported. The C function is declared `STRICT`, so its body is not executed when NULL is passed.
+
+=== Build and Regression Tests
+
+The Oracle-compatible regression test input and expected output are located at:
+
+```
+contrib/ivorysql_ora/sql/dbms_lock.sql
+contrib/ivorysql_ora/expected/dbms_lock.out
+```
+
+The tests are registered by `contrib/ivorysql_ora/Makefile` and cover the following behavior:
+
+* Calling `DBMS_LOCK.SLEEP(1)`;
+* Allocating a handle, successfully acquiring `S_MODE`, and confirming that the mode in `pg_locks` is `ShareLock`;
+* Releasing the shared lock and confirming that it no longer exists in `pg_locks`;
+* Allocating a handle, successfully acquiring `X_MODE`, and confirming that the mode in `pg_locks` is `ExclusiveLock`;
+* Releasing the exclusive lock and confirming that it no longer exists in `pg_locks`.
+
+The Oracle-compatible regression tests can be run with `make oracle-check` in a built and installed environment.
+
+=== Current Implementation Limitations
+
+Compared with the complete Oracle `DBMS_LOCK` interface, the current implementation has the following limitations:
+
+* Only `S_MODE` and `X_MODE` are supported; other Oracle lock modes are not supported;
+* `REQUEST` accepts only a handle, a mode, and a timeout; it has no `release_on_commit` parameter;
+* The implementation uses session-level locks, which are not released automatically when a transaction ends;
+* Lock names are not persisted, and arbitrary text is not checked to determine whether it is a valid handle generated by `ALLOCATE_UNIQUE`;
+* `DEADLOCK`, `ALREADY_OWNED`, and `ILLEGAL_HANDLE` are defined only as package constants and are not returned by the current code paths;
+* Repeatedly acquiring the same lock in one session can cause the PostgreSQL lock reference count to become inconsistent with the private hash-table record;
+* The current regression tests verify single-session acquisition, lock modes, and release, but do not yet cover multi-session contention, timeouts, or repeated acquisition.
