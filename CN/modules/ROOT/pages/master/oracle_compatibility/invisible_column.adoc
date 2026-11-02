@@ -63,7 +63,8 @@ ivorysql=# \d+ mytable
 Access method: heap
 ```
 
+可通过 `ALTER TABLE ... MODIFY` 修改列的可见性，具体语法见 xref:master/oracle_compatibility/compat_modify_column_compatibility.adoc[MODIFY 列兼容]。
+
 == 限制
 
-- 目前不支持modify column，将在未来版本实现；
 - 在Oracle中，不可见列和列顺序有特别的注意事项。当一个表包含一个或多个不可见列时，这些不可见列不会包含在表的列顺序中。目前我们尚未对这块做处理。
