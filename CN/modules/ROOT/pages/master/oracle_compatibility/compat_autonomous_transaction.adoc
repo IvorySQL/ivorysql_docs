@@ -1,0 +1,221 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= 自治事务
+
+== 目的
+
+IvorySQL提供了兼容Oracle的 `PRAGMA AUTONOMOUS_TRANSACTION` 功能，支持将PL/iSQL存储过程、函数及包体中的子程序声明为自治事务例程。
+
+自治事务通过独立数据库连接执行，与调用者事务具有不同的事务上下文。自治事务成功结束后产生的修改不会随调用者事务回滚；调用者尚未提交的修改也不会被自治事务看到。该功能适合审计、日志和错误记录等需要独立持久化的场景。
+
+本文档旨在为使用人员介绍此新增功能。
+
+== 功能说明
+
+=== 安装dblink扩展
+
+当前实现使用PostgreSQL的 `dblink` 扩展建立独立连接。使用自治事务前，必须在自治例程所在的数据库中安装该扩展：
+
+```sql
+CREATE EXTENSION dblink;
+```
+
+如果扩展未安装，调用自治过程时会报告 `dblink_exec function not found`，调用有返回值的自治函数时会报告 `dblink function not found`，并提示安装 `dblink` 扩展。
+
+自治调用会连接当前数据库，并使用当前实例的端口和本地连接地址。因此，数据库的本地连接与认证配置必须允许该连接成功建立。
+
+=== 声明自治事务例程
+
+`PRAGMA AUTONOMOUS_TRANSACTION` 是编译期指令，必须写在PL/iSQL例程的声明区。它可以和变量声明一起出现，但同一例程中只能声明一次。
+
+语法如下：
+
+```sql
+PRAGMA AUTONOMOUS_TRANSACTION;
+```
+
+在独立存储过程中使用：
+
+```sql
+CREATE OR REPLACE PROCEDURE write_audit(p_action TEXT) AS
+  PRAGMA AUTONOMOUS_TRANSACTION;
+BEGIN
+  INSERT INTO audit_log(action, created_at)
+  VALUES (p_action, CURRENT_TIMESTAMP);
+END;
+/
+```
+
+在函数中使用时，可以返回标量结果或 `NULL`：
+
+```sql
+CREATE OR REPLACE FUNCTION write_audit_and_return(p_action TEXT)
+RETURN NUMBER AS
+  PRAGMA AUTONOMOUS_TRANSACTION;
+  v_id NUMBER;
+BEGIN
+  SELECT COALESCE(MAX(id), 0) + 1 INTO v_id FROM audit_log;
+  INSERT INTO audit_log(id, action, created_at)
+  VALUES (v_id, p_action, CURRENT_TIMESTAMP);
+  RETURN v_id;
+END;
+/
+```
+
+在包体子程序中使用：
+
+```sql
+CREATE OR REPLACE PACKAGE audit_pkg AS
+  PROCEDURE write_log(p_action TEXT);
+END audit_pkg;
+/
+
+CREATE OR REPLACE PACKAGE BODY audit_pkg AS
+  PROCEDURE write_log(p_action TEXT) AS
+    PRAGMA AUTONOMOUS_TRANSACTION;
+  BEGIN
+    INSERT INTO audit_log(action, created_at)
+    VALUES (p_action, CURRENT_TIMESTAMP);
+  END write_log;
+END audit_pkg;
+/
+```
+
+=== 自治事务与调用者事务相互独立
+
+调用自治例程时，IvorySQL暂停当前调用路径，在当前数据库的新连接中同步执行该例程，等待执行完成后再继续调用者事务。
+
+自治例程成功返回时，其修改在独立连接中提交。之后即使调用者事务执行 `ROLLBACK`，自治事务已经提交的数据仍然保留：
+
+```sql
+BEGIN;
+  INSERT INTO business_data VALUES (1, 'will rollback');
+  CALL write_audit('business operation started');
+ROLLBACK;
+```
+
+以上事务回滚后，`business_data` 中的记录被撤销，而 `write_audit` 写入的审计记录仍然存在。
+
+自治事务不能看到调用者尚未提交的数据，包括尚未提交的表、例程定义和数据修改。因此，新建或替换自治例程后，应先提交定义，再在其他显式事务中调用。调用者能否立即看到自治事务提交的数据，还取决于调用者的事务隔离级别和当前快照。
+
+=== 参数、NULL与函数返回值
+
+调用自治例程时，实际参数被转换成SQL文本并传递到独立连接。实现对数值、布尔值、字符串及其他可通过类型输出函数转换的参数进行处理，并保留 `NULL` 参数。
+
+自治函数通过远端 `SELECT` 取得返回值，再转换为函数声明的返回类型。回归测试覆盖了 `INT`、`TEXT`、`NUMERIC`、`DATE`、`BOOLEAN` 以及 `NULL` 返回值。
+
+=== 异常处理
+
+自治例程执行失败时，独立连接中的本次修改不会提交，远端错误会传回调用者。调用者如果不捕获该错误，当前调用语句仍会失败；如需继续执行，应使用PL/iSQL异常处理器捕获错误。
+
+自治例程的成功提交与调用者事务独立，但这并不表示错误会被自动忽略。
+
+=== 嵌套调用
+
+自治例程可以调用另一个标记为自治事务的例程。为避免每层调用都创建新连接，进入自治连接后，当前会话设置内部防重入标记；后续标记为自治事务的例程直接在同一个自治连接和事务上下文中执行，而不会再次建立独立连接。
+
+因此，嵌套自治调用中的修改会和最外层自治调用一起成功提交或一起回滚，并不是每一层各自形成新的独立事务。
+
+=== 使用注意事项
+
+* 当前实现依赖 `dblink`，每次最外层自治调用都需要建立新连接，存在额外的连接和执行开销，不适合无控制的高频逐行调用。
+* 本PR实现中，自治例程内不支持显式 `COMMIT` 或 `ROLLBACK`；执行这些语句会报告 `invalid transaction termination`。例程正常结束时由独立连接完成提交，例程报错时本次远端执行回滚。
+* 自治事务看不到调用者未提交的数据。如果自治事务访问被调用者持有未提交锁的对象，可能发生等待；设计自治日志表时应避免与主事务更新相同的行。
+* 自治例程定义及其依赖对象必须已提交，远端连接才能访问。
+* 该实现适合普通标量参数和单值函数结果。集合返回、过程OUT结果等未包含在本PR的回归测试范围内。
+* `PRAGMA AUTONOMOUS_TRANSACTION` 重复出现会在编译期报告 `duplicate PRAGMA AUTONOMOUS_TRANSACTION`。
+
+== 测试用例
+
+下面的用例验证自治事务的修改在外层事务回滚后仍然保留。
+
+=== 准备测试对象
+
+```sql
+CREATE EXTENSION IF NOT EXISTS dblink;
+
+CREATE TABLE autonomous_business
+(
+  id  NUMBER,
+  msg VARCHAR2(100)
+);
+
+CREATE TABLE autonomous_audit
+(
+  id      NUMBER,
+  action  VARCHAR2(100)
+);
+
+CREATE OR REPLACE PROCEDURE autonomous_write_log(
+  p_id NUMBER,
+  p_action VARCHAR2
+) AS
+  PRAGMA AUTONOMOUS_TRANSACTION;
+BEGIN
+  INSERT INTO autonomous_audit VALUES (p_id, p_action);
+END;
+/
+
+COMMIT;
+```
+
+必须先提交过程定义，使独立连接能够看到该过程。
+
+=== 验证外层回滚不影响自治事务
+
+```sql
+BEGIN;
+  INSERT INTO autonomous_business VALUES (1, 'outer transaction');
+  CALL autonomous_write_log(1, 'autonomous transaction');
+ROLLBACK;
+
+SELECT * FROM autonomous_business ORDER BY id;
+SELECT * FROM autonomous_audit ORDER BY id;
+```
+
+预期 `autonomous_business` 没有记录，而 `autonomous_audit` 中保留自治事务写入的数据：
+
+```
+ id |         action
+----+-------------------------
+  1 | autonomous transaction
+```
+
+=== 验证自治函数返回值
+
+```sql
+CREATE OR REPLACE FUNCTION autonomous_double(p_value NUMBER)
+RETURN NUMBER AS
+  PRAGMA AUTONOMOUS_TRANSACTION;
+  v_result NUMBER;
+BEGIN
+  v_result := p_value * 2;
+  INSERT INTO autonomous_audit VALUES (p_value, 'function call');
+  RETURN v_result;
+END;
+/
+
+COMMIT;
+
+SELECT autonomous_double(10) AS result;
+```
+
+预期结果为：
+
+```
+ result
+--------
+     20
+```
+
+测试结束后清理对象：
+
+```sql
+DROP FUNCTION autonomous_double(NUMBER);
+DROP PROCEDURE autonomous_write_log(NUMBER, VARCHAR2);
+DROP TABLE autonomous_business;
+DROP TABLE autonomous_audit;
+```

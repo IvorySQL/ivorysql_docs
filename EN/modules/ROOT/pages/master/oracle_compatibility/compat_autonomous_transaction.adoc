@@ -1,0 +1,221 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= Autonomous Transactions
+
+== Purpose
+
+IvorySQL provides Oracle-compatible `PRAGMA AUTONOMOUS_TRANSACTION` functionality, allowing PL/iSQL stored procedures, functions, and subprograms in package bodies to be declared as autonomous transaction routines.
+
+An autonomous transaction executes through an independent database connection and has a transaction context separate from the caller's transaction. Changes made by an autonomous transaction remain committed after it completes successfully, even if the caller's transaction is rolled back. Conversely, an autonomous transaction cannot see the caller's uncommitted changes. This feature is suitable for auditing, logging, error recording, and other scenarios that require independent persistence.
+
+This document introduces the new feature to users.
+
+== Feature Description
+
+=== Installing the dblink Extension
+
+The current implementation uses PostgreSQL's `dblink` extension to establish an independent connection. Before using autonomous transactions, install the extension in the database that contains the autonomous routine:
+
+```sql
+CREATE EXTENSION dblink;
+```
+
+If the extension is not installed, invoking an autonomous procedure reports `dblink_exec function not found`, while invoking an autonomous function with a return value reports `dblink function not found`. Both errors include a hint to install the `dblink` extension.
+
+An autonomous call connects to the current database using the current server instance's port and local connection address. The database's local connection and authentication configuration must therefore permit the connection.
+
+=== Declaring an Autonomous Transaction Routine
+
+`PRAGMA AUTONOMOUS_TRANSACTION` is a compile-time directive and must appear in the declaration section of a PL/iSQL routine. It can appear alongside variable declarations, but it may be declared only once in a given routine.
+
+The syntax is:
+
+```sql
+PRAGMA AUTONOMOUS_TRANSACTION;
+```
+
+Use it in a standalone stored procedure as follows:
+
+```sql
+CREATE OR REPLACE PROCEDURE write_audit(p_action TEXT) AS
+  PRAGMA AUTONOMOUS_TRANSACTION;
+BEGIN
+  INSERT INTO audit_log(action, created_at)
+  VALUES (p_action, CURRENT_TIMESTAMP);
+END;
+/
+```
+
+When used in a function, it can return a scalar result or `NULL`:
+
+```sql
+CREATE OR REPLACE FUNCTION write_audit_and_return(p_action TEXT)
+RETURN NUMBER AS
+  PRAGMA AUTONOMOUS_TRANSACTION;
+  v_id NUMBER;
+BEGIN
+  SELECT COALESCE(MAX(id), 0) + 1 INTO v_id FROM audit_log;
+  INSERT INTO audit_log(id, action, created_at)
+  VALUES (v_id, p_action, CURRENT_TIMESTAMP);
+  RETURN v_id;
+END;
+/
+```
+
+Use it in a package-body subprogram as follows:
+
+```sql
+CREATE OR REPLACE PACKAGE audit_pkg AS
+  PROCEDURE write_log(p_action TEXT);
+END audit_pkg;
+/
+
+CREATE OR REPLACE PACKAGE BODY audit_pkg AS
+  PROCEDURE write_log(p_action TEXT) AS
+    PRAGMA AUTONOMOUS_TRANSACTION;
+  BEGIN
+    INSERT INTO audit_log(action, created_at)
+    VALUES (p_action, CURRENT_TIMESTAMP);
+  END write_log;
+END audit_pkg;
+/
+```
+
+=== Independence from the Caller Transaction
+
+When an autonomous routine is invoked, IvorySQL suspends the current call path, executes the routine synchronously through a new connection to the current database, and waits for it to complete before resuming the caller's transaction.
+
+When the autonomous routine returns successfully, its changes are committed through the independent connection. Even if the caller's transaction subsequently runs `ROLLBACK`, the data committed by the autonomous transaction remains:
+
+```sql
+BEGIN;
+  INSERT INTO business_data VALUES (1, 'will rollback');
+  CALL write_audit('business operation started');
+ROLLBACK;
+```
+
+After this transaction is rolled back, the row in `business_data` is undone, while the audit record inserted by `write_audit` remains.
+
+An autonomous transaction cannot see the caller's uncommitted data, including uncommitted tables, routine definitions, and data changes. Therefore, after creating or replacing an autonomous routine, commit its definition before invoking it in another explicit transaction. Whether the caller can immediately see data committed by the autonomous transaction also depends on the caller's transaction isolation level and current snapshot.
+
+=== Arguments, NULL, and Function Return Values
+
+When an autonomous routine is invoked, actual arguments are converted to SQL text and passed to the independent connection. The implementation handles numeric, Boolean, string, and other arguments that can be converted by a type output function, and it preserves `NULL` arguments.
+
+An autonomous function obtains its return value through a remote `SELECT`, then converts it to the function's declared return type. Regression tests cover `INT`, `TEXT`, `NUMERIC`, `DATE`, `BOOLEAN`, and `NULL` return values.
+
+=== Exception Handling
+
+If an autonomous routine fails, the changes from that execution in the independent connection are not committed, and the remote error is returned to the caller. If the caller does not catch the error, the current call statement fails. To continue execution, catch the error with a PL/iSQL exception handler.
+
+An autonomous routine's successful commit is independent of the caller's transaction, but this does not mean that errors are automatically ignored.
+
+=== Nested Calls
+
+An autonomous routine can call another routine marked as autonomous. To avoid creating a new connection at each level, the session sets an internal reentry-prevention flag after entering the autonomous connection. Subsequent routines marked as autonomous execute directly in the same autonomous connection and transaction context, without establishing another independent connection.
+
+Consequently, changes made by nested autonomous calls are committed or rolled back together with the outermost autonomous call. Each nested level does not form a separate independent transaction.
+
+=== Usage Notes
+
+* The current implementation depends on `dblink`. Every outermost autonomous call must establish a new connection, adding connection and execution overhead. It is not suitable for uncontrolled, high-frequency row-by-row calls.
+* In this PR, explicit `COMMIT` or `ROLLBACK` is not supported inside an autonomous routine; executing either statement reports `invalid transaction termination`. The independent connection commits when the routine completes normally and rolls back the remote execution when the routine raises an error.
+* An autonomous transaction cannot see the caller's uncommitted data. If it accesses an object on which the caller holds an uncommitted lock, it may wait. When designing autonomous logging tables, avoid updating the same rows as the main transaction.
+* Autonomous routine definitions and their dependent objects must be committed before the remote connection can access them.
+* This implementation is intended for ordinary scalar arguments and single-value function results. Set-returning routines, procedure OUT results, and similar cases are not covered by this PR's regression tests.
+* Repeating `PRAGMA AUTONOMOUS_TRANSACTION` causes the compile-time error `duplicate PRAGMA AUTONOMOUS_TRANSACTION`.
+
+== Test Cases
+
+The following test verifies that changes made by an autonomous transaction remain after the outer transaction is rolled back.
+
+=== Preparing the Test Objects
+
+```sql
+CREATE EXTENSION IF NOT EXISTS dblink;
+
+CREATE TABLE autonomous_business
+(
+  id  NUMBER,
+  msg VARCHAR2(100)
+);
+
+CREATE TABLE autonomous_audit
+(
+  id      NUMBER,
+  action  VARCHAR2(100)
+);
+
+CREATE OR REPLACE PROCEDURE autonomous_write_log(
+  p_id NUMBER,
+  p_action VARCHAR2
+) AS
+  PRAGMA AUTONOMOUS_TRANSACTION;
+BEGIN
+  INSERT INTO autonomous_audit VALUES (p_id, p_action);
+END;
+/
+
+COMMIT;
+```
+
+The procedure definition must be committed first so that the independent connection can see it.
+
+=== Verifying That an Outer Rollback Does Not Affect the Autonomous Transaction
+
+```sql
+BEGIN;
+  INSERT INTO autonomous_business VALUES (1, 'outer transaction');
+  CALL autonomous_write_log(1, 'autonomous transaction');
+ROLLBACK;
+
+SELECT * FROM autonomous_business ORDER BY id;
+SELECT * FROM autonomous_audit ORDER BY id;
+```
+
+As expected, `autonomous_business` contains no rows, while `autonomous_audit` retains the data written by the autonomous transaction:
+
+```
+ id |         action
+----+-------------------------
+  1 | autonomous transaction
+```
+
+=== Verifying an Autonomous Function's Return Value
+
+```sql
+CREATE OR REPLACE FUNCTION autonomous_double(p_value NUMBER)
+RETURN NUMBER AS
+  PRAGMA AUTONOMOUS_TRANSACTION;
+  v_result NUMBER;
+BEGIN
+  v_result := p_value * 2;
+  INSERT INTO autonomous_audit VALUES (p_value, 'function call');
+  RETURN v_result;
+END;
+/
+
+COMMIT;
+
+SELECT autonomous_double(10) AS result;
+```
+
+The expected result is:
+
+```
+ result
+--------
+     20
+```
+
+Clean up the objects after the test:
+
+```sql
+DROP FUNCTION autonomous_double(NUMBER);
+DROP PROCEDURE autonomous_write_log(NUMBER, VARCHAR2);
+DROP TABLE autonomous_business;
+DROP TABLE autonomous_audit;
+```
