@@ -65,6 +65,7 @@
 ** xref:master/oracle_compatibility/compat_lengthc_function.adoc[LENGTHC Function]
 ** xref:master/oracle_compatibility/compat_to_binary_float_function.adoc[TO_BINARY_FLOAT Function]
 ** xref:master/oracle_compatibility/compat_to_binary_double_function.adoc[TO_BINARY_DOUBLE Function]
+** xref:master/oracle_compatibility/compat_create_type_as_object_en.adoc[TYPE AS OBJECT]
 * Containerization and Cloud Service
 ** Containerization
 *** xref:master/containerization/k8s_deployment.adoc[K8S deployment]
@@ -170,6 +171,7 @@
 *** xref:master/compatibility_features_design/dbms_utility_impl.adoc[DBMS_UTILITY Package]
 *** xref:master/compatibility_features_design/dbms_scheduler_impl.adoc[DBMS_SCHEDULER Package]
 *** xref:master/compatibility_features_design/dbms_transaction_impl.adoc[DBMS_TRANSACTION Package]
+*** xref:master/compatibility_features_design/create_type_as_object_en.adoc[TYPE AS OBJECT]
 ** Built-in Functions
 *** xref:master/oracle_builtin_functions/sys_context.adoc[sys_context]
 *** xref:master/oracle_builtin_functions/userenv.adoc[userenv]

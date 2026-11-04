@@ -1,0 +1,355 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= 对象类型 CREATE TYPE AS OBJECT
+
+== 目的
+
+IvorySQL提供了部分兼容Oracle的 `CREATE TYPE ... AS OBJECT` 功能，支持将属性和方法封装为对象类型，并在SQL及PL/iSQL中构造、存储和调用对象。
+
+当前实现包括对象类型声明、类型体、系统构造函数、自定义构造函数、成员方法、静态方法、MAP/ORDER比较，以及基于对象表的类型化REF引用。对象可以作为普通表的列值保存，也可以通过 `CREATE TABLE ... OF` 创建对象表，由 `REF` 和 `DEREF` 建立及访问对象之间的引用。
+
+本文档旨在为使用人员介绍此新增功能。说明范围以以下四个提交及其回归用例为准，不表示已经实现Oracle对象关系模型的全部功能：
+
+* `21bdf4b7695`：oracle: support AS OBJECT in CREATE TYPE
+* `4a99a716cf2`：oracle: implement typed REF object references
+* `5bf290b149e`：oracle: harden REF helpers and ROWID restoration
+* `18574b4d88a`：oracle: fix ROWID restore ownership and trigger checks
+
+== 功能说明
+
+=== 使用环境
+
+下面的Oracle语法应在Oracle兼容模式下执行：
+
+```sql
+SET ivorysql.compatible_mode = oracle;
+```
+
+使用具有上述功能的IvorySQL服务端及配套客户端工具。类型体和PL/iSQL块示例使用独立一行的 `/` 作为客户端提交结束符。
+
+=== 声明对象类型
+
+基本语法如下，方括号表示可选部分：
+
+```sql
+CREATE [OR REPLACE] TYPE type_name AS OBJECT
+(
+    attribute_name attribute_type
+    [, attribute_name attribute_type ...]
+    [, method_declaration ...]
+)
+[ [NOT] INSTANTIABLE ] [ [NOT] FINAL ];
+```
+
+对象类型必须至少包含一个属性，属性可以是普通数据类型，也可以使用 `REF object_type` 声明对象引用。
+
+默认类型可实例化且为FINAL。`NOT INSTANTIABLE` 禁止构造对象，并且必须同时指定 `NOT FINAL`。当前支持记录和检查这些标志，但不能据此认为已经支持 `UNDER` 子类型继承及完整的类型替代语义。
+
+简单示例：
+
+```sql
+CREATE TYPE address_obj AS OBJECT
+(
+    city VARCHAR2(40),
+    postcode VARCHAR2(10)
+);
+
+SELECT address_obj('Beijing', '100000') FROM dual;
+```
+
+系统自动提供与类型同名的属性值构造函数，按属性声明顺序接收位置参数，并将参数转换为相应属性类型。参数数量、顺序及可转换性必须匹配；系统属性值构造路径不支持命名参数。
+
+只有 `AS OBJECT` 声明的类型具有这里描述的对象构造和成员调用语义，普通表行类型、视图行类型以及 `CREATE TYPE ... AS (...)` 复合类型不会自动成为Oracle对象类型。
+
+=== 对象列与对象表
+
+对象列把整个对象作为一个列值保存；对象表把对象的各属性作为表列，并使每行具有可引用的对象身份：
+
+```sql
+CREATE TABLE address_holder (id INTEGER, address address_obj);
+INSERT INTO address_holder VALUES (1, address_obj('Beijing', '100000'));
+SELECT (h.address).city FROM address_holder h;
+
+CREATE TABLE address_objects OF address_obj;
+INSERT INTO address_objects VALUES ('Shanghai', '200000');
+SELECT a.city, REF(a) FROM address_objects a;
+```
+
+对象表自动启用ROWID。不需要在属性列表中声明ROWID，也不需要将其作为普通列写入。普通表中的对象列不等于对象表，不能对其值直接调用 `REF` 获得对象表引用。
+
+=== 类型体、成员方法与静态方法
+
+方法签名在类型声明中给出，方法实现写在 `CREATE [OR REPLACE] TYPE BODY` 中。支持以下方法形式：
+
+* `MEMBER FUNCTION` 和 `MEMBER PROCEDURE`：通过对象实例调用，具有SELF参数；
+* `STATIC FUNCTION` 和 `STATIC PROCEDURE`：通过类型名调用，不带隐式SELF；
+* `CONSTRUCTOR FUNCTION`：自定义对象构造过程，声明为 `RETURN SELF AS RESULT`；
+* `MAP MEMBER FUNCTION` 或 `ORDER MEMBER FUNCTION`：定义对象比较规则。
+
+例如：
+
+```sql
+CREATE TYPE counter_obj AS OBJECT
+(
+    value INTEGER,
+    MEMBER FUNCTION current_value RETURN INTEGER,
+    MEMBER PROCEDURE bump(delta INTEGER),
+    STATIC FUNCTION double_value(p_value INTEGER) RETURN INTEGER
+);
+/
+
+CREATE TYPE BODY counter_obj AS
+    MEMBER FUNCTION current_value RETURN INTEGER IS
+    BEGIN
+        RETURN self.value;
+    END current_value;
+
+    MEMBER PROCEDURE bump(delta INTEGER) IS
+    BEGIN
+        self.value := self.value + delta;
+    END bump;
+
+    STATIC FUNCTION double_value(p_value INTEGER) RETURN INTEGER IS
+    BEGIN
+        RETURN p_value * 2;
+    END double_value;
+END;
+/
+
+SELECT v.obj.current_value(), counter_obj.double_value(7)
+FROM (SELECT counter_obj(10) obj FROM dual) v;
+```
+
+结果分别为 `10` 和 `14`。成员方法内部可以使用 `SELF.attribute` 访问属性，也支持在名称解析允许时省略 `SELF.`。成员过程可以修改PL/iSQL对象变量：
+
+```sql
+DECLARE
+    v counter_obj;
+BEGIN
+    v := counter_obj(10);
+    v.bump(5);
+    IF v.current_value() <> 15 THEN
+        RAISE EXCEPTION 'unexpected counter value';
+    END IF;
+END;
+/
+```
+
+支持显式声明SELF，例如 `MEMBER PROCEDURE set_value(self IN OUT NOCOPY some_object_type, p_value INTEGER)`；此时不会再增加第二个隐式SELF。方法调用支持重载、默认参数和命名参数匹配。仅在模式中定义一个首参数为对象类型的普通函数，并不会使它成为该对象的成员方法。
+
+=== 自定义构造函数
+
+自定义构造函数必须与对象类型同名。在构造函数体中赋值SELF属性，并使用不带表达式的 `RETURN;`；不允许使用 `RETURN SELF;` 或其他返回表达式。
+
+```sql
+CREATE TYPE tagged_obj AS OBJECT
+(
+    value INTEGER,
+    label VARCHAR2(20),
+    CONSTRUCTOR FUNCTION tagged_obj(p_value INTEGER,
+                                    p_label VARCHAR2 DEFAULT 'default')
+        RETURN SELF AS RESULT
+);
+/
+
+CREATE TYPE BODY tagged_obj AS
+    CONSTRUCTOR FUNCTION tagged_obj(p_value INTEGER, p_label VARCHAR2)
+        RETURN SELF AS RESULT IS
+    BEGIN
+        self.value := p_value + 100;
+        self.label := p_label;
+        RETURN;
+    END tagged_obj;
+END;
+/
+
+SELECT tagged_obj(7) FROM dual;
+SELECT tagged_obj(p_label => 'named', p_value => 9) FROM dual;
+```
+
+结果中的属性值分别为 `(107,default)` 和 `(109,named)`。匹配的自定义构造函数优先于系统属性值构造函数；调用方不需要提供内部SELF参数。静态方法中也可以调用构造函数。
+
+=== 对象比较
+
+未声明MAP/ORDER时，对象相等性使用复合值的逐属性比较规则；大小比较及需要对象排序的操作会报告 `object type ... has no MAP or ORDER method`。因此，不能因为对象支持 `=` 就认为它也能用于 `ORDER BY`、排序索引或需要排序的去重操作。
+
+MAP方法不接收显式参数，返回可排序的标量值。比较两个对象时比较各自的MAP结果。ORDER方法接收一个同类型的输入参数，返回数值；负数、零、正数分别表示SELF小于、等于、大于另一个对象。
+
+一个类型最多声明一个MAP或一个ORDER，不能同时声明二者。MAP不能返回复合类型或不可排序类型；ORDER参数不能是OUT参数。
+
+```sql
+CREATE TYPE ranked_obj AS OBJECT
+(
+    value INTEGER,
+    MAP MEMBER FUNCTION sort_key RETURN INTEGER
+);
+/
+
+CREATE TYPE BODY ranked_obj AS
+    MAP MEMBER FUNCTION sort_key RETURN INTEGER IS
+    BEGIN
+        RETURN mod(self.value, 10);
+    END sort_key;
+END;
+/
+
+SELECT ranked_obj(11) = ranked_obj(1) AS same_key,
+       ranked_obj(2) < ranked_obj(9) AS less_key
+FROM dual;
+```
+
+两项结果均为真。MAP/ORDER也用于排序、B-tree索引、分组和去重；比较语义不会因会话切换到PG兼容模式而改变。SQL NULL对象仍遵循严格比较运算符的NULL传播规则。
+
+=== REF与DEREF
+
+`REF object_type` 是带目标类型约束的引用，可以作为对象属性或普通表的列类型。允许对象类型通过REF引用自身：
+
+```sql
+CREATE TYPE person_ref_obj AS OBJECT
+(
+    name VARCHAR2(20),
+    parent REF person_ref_obj
+);
+CREATE TABLE person_objects OF person_ref_obj;
+CREATE TABLE person_links (person REF person_ref_obj);
+```
+
+`REF(table_alias)` 从对象表的一行生成引用；参数必须是对象表的别名，而不是任意对象表达式、普通表、视图或子查询的结果。`DEREF(ref_value)` 接收类型化REF，返回目标对象类型的值：
+
+```sql
+INSERT INTO person_objects(name) VALUES ('root'), ('child');
+UPDATE person_objects p
+SET parent = (SELECT REF(r) FROM person_objects r WHERE r.name = 'root')
+WHERE p.name = 'child';
+
+INSERT INTO person_links
+SELECT REF(p) FROM person_objects p WHERE p.name = 'child';
+
+SELECT p.name, (DEREF(p.parent)).name AS parent_name
+FROM person_objects p ORDER BY p.name;
+SELECT (DEREF(l.person)).name AS person_name FROM person_links l;
+```
+
+第一条查询中child的parent_name为root，root的parent_name为空；第二条查询返回child。
+
+REF保存对象身份，而不是目标属性的副本。DEREF读取当前查询可见的目标行，并遵循调用者对目标表的SELECT权限。将不同对象类型的引用赋给该REF属性或列，会违反生成的 `ref_target` 域约束。
+
+REF不是外键，不阻止删除目标行。目标行删除后引用可以继续存在，成为悬空引用；对悬空引用或NULL引用执行DEREF返回NULL。对已不存在的目标表，解引用也返回NULL。
+
+=== 类型替换、权限与删除
+
+`CREATE OR REPLACE TYPE` 支持在存储依赖允许时调整属性定义及方法声明，包括属性增加、删除、改名和类型修改。存在使用该对象类型的存储列等依赖时，替换会被拒绝，即使新旧属性定义相同也不能绕过检查。
+
+对象类型与同一模式中的独立函数、过程及普通包存在名称冲突检查。对象方法权限以类型的USAGE权限为准：
+
+```sql
+GRANT USAGE ON TYPE counter_obj TO application_user;
+```
+
+其中 `application_user` 应是已经存在的角色。`ALTER TYPE ... OWNER TO ...` 会同步内部方法命名空间的所有者。当前不支持对Oracle对象类型执行 `ALTER TYPE ... RENAME TO` 或 `ALTER TYPE ... SET SCHEMA`。
+
+删除时使用 `DROP TYPE`，并按通常的依赖规则先清理依赖表等对象。内部方法命名空间及自动生成的REF类型由系统依赖关系管理，不应作为应用对象单独维护。
+
+=== 导出与恢复
+
+配套 `pg_dump` 能导出 `AS OBJECT` 声明、方法声明、TYPE BODY、类型标志和 `REF type_name` 定义。自动生成的内部方法包和REF域不会作为普通用户对象重复导出。
+
+对象表恢复不仅需要属性值，还需要保留原ROWID及相应序列状态，否则原本悬空的REF可能错误指向恢复后重新编号的行。当前导出逻辑为ROWID表生成保留身份的INSERT语句，恢复后有效引用和悬空引用保持原有含义。
+
+恢复ROWID要求执行者是目标表所有者或超级用户；仅有INSERT或恢复辅助函数EXECUTE权限不足以指定ROWID。当前复制角色下会触发的BEFORE INSERT行触发器和INSERT规则会阻止ROWID恢复。已禁用的触发器、规则，以及与INSERT无关的规则不会因此被拒绝。`pg_restore --data-only --disable-triggers` 场景仍须满足该选项自身的权限要求。
+
+使用同版本配套工具在Oracle兼容连接上恢复。普通SQL导出、自定义归档、仅数据恢复、会话授权恢复和非超级用户表所有者恢复均有对应回归覆盖。
+
+=== 当前使用限制
+
+* 本功能是部分Oracle兼容实现，不包含完整的对象继承、对象视图、SCOPE或引用完整性约束等能力承诺。
+* 当前不支持分区对象表；CREATE及 `ALTER TABLE ... OF` 路径都会检查该限制。
+* 对象表不能使用 `WITHOUT ROWID`，也不能用 `TRUNCATE ... RESTART IDENTITY` 重置身份序列，以免重用ROWID导致悬空REF指向其他对象。
+* 内部REF以表身份和64位行号定位。不要把它当作跨数据库通用标识，也不要在日常DML中手工调用ROWID恢复辅助函数或重置其序列。
+* DEREF通过目标表查询取得数据，逐行大量解引用会产生额外开销，应结合查询规模验证性能。
+* MAP/ORDER改变的是对象比较规则；为索引和排序使用的方法应保持一致、稳定的比较结果。
+
+== 测试用例
+
+以下独立用例验证对象构造、引用、目标更新及悬空引用。可在Oracle兼容模式下依次执行；预期报错语句应单独执行，或置于可回滚的保存点中。
+
+=== 准备测试对象
+
+```sql
+CREATE TYPE object_demo_person AS OBJECT
+(
+    name VARCHAR2(20),
+    parent REF object_demo_person
+);
+CREATE TABLE object_demo_people OF object_demo_person;
+CREATE TABLE object_demo_refs (person REF object_demo_person);
+
+SELECT object_demo_person('standalone', NULL) FROM dual;
+INSERT INTO object_demo_people(name) VALUES ('root'), ('child');
+UPDATE object_demo_people
+SET parent = (SELECT REF(p) FROM object_demo_people p WHERE p.name = 'root')
+WHERE name = 'child';
+INSERT INTO object_demo_refs
+SELECT REF(p) FROM object_demo_people p WHERE p.name = 'root';
+```
+
+=== 验证解引用与身份稳定性
+
+```sql
+SELECT p.name, (DEREF(p.parent)).name AS parent_name
+FROM object_demo_people p ORDER BY p.name;
+
+UPDATE object_demo_people SET name = 'root_new' WHERE name = 'root';
+SELECT (DEREF(r.person)).name AS referenced_name FROM object_demo_refs r;
+```
+
+第一次查询中child引用root；更新后第二次查询返回 `root_new`，说明REF并不保存旧属性值。
+
+=== 验证悬空引用
+
+```sql
+DELETE FROM object_demo_people WHERE name = 'root_new';
+SELECT DEREF(r.person) IS NULL AS dangling FROM object_demo_refs r;
+SELECT p.name, DEREF(p.parent) IS NULL AS dangling
+FROM object_demo_people p;
+```
+
+两次查询中的dangling均为真；对象表中保留child这一行。
+
+=== 验证错误目标与ROWID保护
+
+```sql
+CREATE TYPE object_demo_other AS OBJECT (name VARCHAR2(20));
+CREATE TABLE object_demo_others OF object_demo_other;
+INSERT INTO object_demo_others VALUES ('other');
+
+-- 预期拒绝重置对象表ROWID序列。
+TRUNCATE object_demo_people RESTART IDENTITY;
+```
+
+=== 清理测试对象
+
+```sql
+DROP TABLE object_demo_refs;
+DROP TABLE object_demo_people;
+DROP TABLE object_demo_others;
+DROP TYPE object_demo_person;
+DROP TYPE object_demo_other;
+```
+
+功能说明各节的示例对象可以在使用完毕后依次清理：
+
+```sql
+DROP TABLE person_links;
+DROP TABLE person_objects;
+DROP TYPE person_ref_obj;
+DROP TYPE ranked_obj;
+DROP TYPE tagged_obj;
+DROP TYPE counter_obj;
+DROP TABLE address_holder;
+DROP TABLE address_objects;
+DROP TYPE address_obj;
+```

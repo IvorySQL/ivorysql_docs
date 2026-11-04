@@ -1,0 +1,284 @@
+:sectnums:
+:sectnumlevels: 5
+
+
+= **Feature Overview**
+
+IvorySQL provides partial Oracle compatibility for `CREATE TYPE ... AS OBJECT` by extending PostgreSQL composite types, PL/iSQL package compilation and execution, and ROWID storage. Object attributes reuse composite type storage, methods are managed through an internal package-style namespace, and typed REFs are implemented using domain types and logical row identifiers.
+
+This document covers the final implementation from four commits: `21bdf4b7695`, `4a99a716cf2`, `5bf290b149e`, and `18574b4d88a`. Although the first commit message describes TYPE BODY as future work, its actual code and regression tests already include type bodies, method compilation, user-defined constructors, and MAP/ORDER support. This document follows the code. ROWID restore privileges and trigger checks reflect the fourth commit.
+
+Basic usage:
+
+```sql
+CREATE TYPE person_obj AS OBJECT
+(
+    name VARCHAR2(20),
+    parent REF person_obj
+);
+CREATE TABLE people OF person_obj;
+INSERT INTO people(name) VALUES ('root');
+SELECT (DEREF(REF(p))).name FROM people p;
+```
+
+== Implementation Details
+
+=== Overall Design
+
+The implementation consists of three parts: object values, object methods, and object identity:
+
+1. The Oracle parser recognizes object attributes, method declarations, type options, and TYPE BODY, producing extended DDL nodes.
+2. `DefineCompositeType` creates the composite type and attribute catalog entries, marking Oracle object types with `pg_type.typisobject`.
+3. An internal method package with the same name stores method signatures, type options, and method bodies, reusing PL/iSQL package compilation, caching, privilege checks, and execution.
+4. Constructor calls become object row expressions or internal constructor method calls. Member calls become method calls with a SELF argument.
+5. Composite comparison entry points execute MAP/ORDER according to type metadata, or retain attribute-by-attribute equality and reject ordering when no comparison method exists.
+6. Each object type has an associated REF domain based on `sys.object_ref`. Object tables provide ROWIDs, and DEREF uses SPI to read the currently visible referenced row.
+7. `pg_dump` translates the internal representation back into object DDL and preserves ROWIDs and sequence state to maintain reference identity.
+
+The composite type relation associated with an object type describes only the attribute layout. Object tables created with `CREATE TABLE ... OF` store object rows. Object columns in ordinary tables store object values but do not automatically acquire separate object identities usable by REF.
+
+=== Syntax Nodes and Client Recognition
+
+`src/backend/oracle_parser/ora_gram.y` extends CREATE TYPE syntax to parse attribute lists, method lists, `INSTANTIABLE` / `FINAL` options, and TYPE BODY. `src/include/nodes/parsenodes.h` adds object method descriptions and type body nodes, and stores object flags and method metadata in the relevant type declaration nodes.
+
+`ObjectTypeMethod` distinguishes member functions, member procedures, static functions, static procedures, constructors, MAP methods, and ORDER methods. It stores parameters, return types, source text, and other information. Method source text is used to build subsequent PL/iSQL compilation input and preserves declaration details such as default arguments.
+
+`TypeName.refTypeName` represents `REF target_type`. Normal type lookup in `parse_type.c` resolves it to the REF domain associated with the target object type. Self-referencing attributes are handled earlier during object creation to avoid lookup failures before the target type exists.
+
+`liboracle_parser.c`, `ora_psqlscan.l`, and scanner state structures handle type declarations and type bodies together, allowing input containing methods, semicolons, and `/` terminators to be submitted as complete statements. `utility.c` dispatches DDL to the type and type body creation entry points.
+
+=== Object Type Catalogs and Creation Order
+
+The key catalog fields are:
+
+[cols="1,3",options="header"]
+|===
+|Field |Purpose
+|`pg_type.typisobject` |Distinguishes Oracle object types from ordinary composite types, table row types, and view row types.
+|`pg_type.typrefbase` |Records the target object type OID on an automatically generated REF domain.
+|`pg_type.typrelid` |Points to the composite type relation that describes the object's attribute layout.
+|`pg_package.pkgtypeoid` |Associates the internal method namespace with the object type.
+|`pg_package.pkginstantiable` / `pkgfinal` |Stores instantiability and FINAL flags.
+|`pg_class.reloftype` |Identifies the type to which an object table belongs.
+|`pg_class.relhasrowid` |Indicates whether the object table has ROWIDs.
+|===
+
+`DefineCompositeType` first rejects object types without attributes and checks for schema name conflicts with types, packages, standalone functions, and procedures. Because the object type and its method namespace share a name, an existing package name cannot be reused. Standalone routine creation also checks for conflicts in the reverse direction.
+
+To support `parent REF current_type`, creation first generates a domain based on `sys.object_ref` and its target-check constraint, then replaces REF declarations in attributes with that domain's OID. It next calls `DefineRelation(..., RELKIND_COMPOSITE_TYPE, ...)` to create the object type, fills in the REF domain's `typrefbase`, records an automatic dependency from the domain to the object type, and finally creates the internal method package.
+
+`get_object_ref_domain_name` generates the REF domain name from the object type name, placing it in the corresponding schema. The domain is an internal implementation object; applications should use `REF type_name` rather than depend on the generated name. REF lookup includes a fallback search by `typrefbase` in addition to name lookup, and verifies that the domain belongs to the target type.
+
+=== Replacement, Dependencies, and Ownership Synchronization
+
+`CREATE OR REPLACE TYPE` preserves the identities of the existing object type and REF domain, adjusts composite attributes through `replace_object_type_attributes`, and then replaces method declarations.
+
+Attribute replacement holds an `AccessExclusiveLock` on the composite type relation and first calls `find_composite_type_dependencies` to check storage dependencies. Existing stored columns that use the type cause rejection even when attribute definitions are unchanged. When changes are allowed, the implementation reuses attribute renaming and ALTER TYPE/ALTER TABLE mechanisms for additions, removals, and type changes, keeping dependency checks and cache invalidation centralized. Bulk attribute renaming uses temporary names first to avoid conflicts between positional renames.
+
+The internal method package belongs to the object type through dependencies. Changing the type owner also changes the method package owner. Method calls use the type's USAGE privilege rather than exposing the hidden package ACL as the user privilege interface. Type renaming and cross-schema moves currently report an unsupported-operation error to avoid breaking method source and compilation contracts.
+
+=== Method Declarations and TYPE BODY Storage
+
+`CreateObjectTypePackage` in `packagecmds.c` converts method declarations into package-style declaration source. It prefers the original method source captured during parsing. If reconstruction is needed, it generates declarations according to method kind and appends a package-style END marker.
+
+Creation validates the following:
+
+* A user-defined constructor must have the same name as its object type.
+* NOT INSTANTIABLE must be accompanied by NOT FINAL.
+* At most one MAP method is allowed. It must have no explicit parameters and must return an orderable scalar.
+* At most one ORDER method is allowed. It must have one input parameter of the same object type, and its return type must be one of the integer or NUMERIC types accepted by the implementation.
+* MAP and ORDER cannot coexist.
+
+`GetObjectTypePackageOid` looks up the package with the same name and validates `pkgtypeoid`, preventing an ordinary package from being mistaken for an object method collection. `CreateObjectTypeBody` verifies that the target is an object type, then reuses package body creation to store the type body in `pg_package_body` and submit it for PL/iSQL compilation.
+
+TYPE BODY therefore does not introduce a separate executor. Package-style storage is an internal representation; exported definitions and user-facing operations retain object type syntax.
+
+=== PL/iSQL Method Compilation and SELF
+
+`pl_gram.y` recognizes object method kinds. During subprogram compilation, `pl_subproc_function.c` carries `object_method_kind` and builds the SELF parameter and attribute access entries.
+
+Member functions, member procedures, constructors, MAP, and ORDER require an object context; static methods have no implicit SELF. Explicit SELF declarations are recognized as that context, preventing duplicate parameter insertion. Member procedures update the caller's variable through SELF's input/output semantics.
+
+SELF must be assignable inside a constructor, but its callable signature receives an initial object as an input parameter so that callers can construct objects using expressions. The compiler translates a constructor's RETURN without an expression into returning SELF, while rejecting `RETURN expression`.
+
+Member method compilation also creates field access entries for object attributes, allowing the method body to use attribute names directly. Explicit `SELF.attribute` uses the object record field access path. The method kind must match its earlier declaration.
+
+When a static method calls a constructor with the same name as the type, PL/iSQL subprogram lookup may encounter a constructor with a hidden SELF parameter. It does not stop resolution merely because the source-level argument count differs. Instead, it lets `parse_func.c` continue object constructor resolution, add SELF, and then perform overload, default argument, and named argument matching.
+
+=== System-Defined Construction, User-Defined Construction, and Member Dispatch
+
+`FuncNameAsObjectType` in `parse_func.c` recognizes only composite types marked with `typisobject` as Oracle object types.
+
+User-defined constructor resolution first checks that the type is instantiable. `BuildObjectConstructorSelf` creates an object whose attributes initially contain NULL, adds SELF to the arguments, and looks up a matching constructor in the internal method package. This SELF is an actual composite object, not an object that is itself SQL NULL.
+
+If routine and user-defined constructor lookup finds no candidate, the system-defined attribute-value constructor path builds a `RowExpr` and converts it to the target object type with `coerce_to_target_type`. This reuses composite field-count checks and attribute type conversion. The fallback accepts only positional arguments and does not handle named arguments, aggregate calls, or window calls.
+
+For `table_alias.object_column.method(args)`, member invocation resolves the object portion as SELF, validates its object type, locates the type's internal method package, and resolves the method using a signature that includes SELF. It does not treat arbitrary standalone functions with the same name as members. Static methods enter package-style lookup through a method name qualified by the type name.
+
+Package method or subprogram resolution may reorder named arguments and insert default values. The actual argument type array is therefore rebuilt after resolution so that subsequent coercion matches the final argument order.
+
+=== MAP/ORDER Comparison and Index Consistency
+
+`rowtypes.c` calls `compare_oracle_object_records` from generic composite comparison entry points. It uses metadata returned by `GetObjectTypeComparisonMethod` to perform comparisons:
+
+* MAP: evaluate a scalar key for each object, compare the keys, and normalize the result to -1, 0, or 1.
+* ORDER: invoke the method with the left object as SELF and the right object as its argument, and normalize the sign of the result to -1, 0, or 1.
+* No MAP/ORDER: continue attribute-by-attribute equality comparison, but reject ordering comparisons.
+
+Comparison methods are invoked through SPI to reuse normal package compilation, privilege checks, and execution. MAP queries use a materialized CTE, while ORDER queries use a subquery with `OFFSET 0`, preventing expression expansion from evaluating methods repeatedly. SPI plans are cached in the backend using the object type OID, method name, and whether the method is ORDER as the key.
+
+Comparison semantics are determined by the object type, independently of the caller's compatibility mode. In PG mode, internal comparison temporarily switches to Oracle mode to parse the method call and restores the original GUC state afterward. This ensures that B-tree lookups, sorting, and REINDEX do not use different object comparison rules in different session modes.
+
+`typcache.c` retains generic record comparison entry points for object types but disables both ordinary and extended record hashing. Otherwise, attribute-by-attribute hashing could disagree with equality defined by MAP/ORDER, producing incorrect grouping or duplicate elimination. Grouping, DISTINCT, and UNION currently rely on a consistent sorting-based comparison path.
+
+SQL NULL objects are handled by strict record operators. In the current internal comparison SQL, the CASE expression falls through to zero when a method result is NULL. This should not be interpreted as complete coverage of Oracle's edge-case semantics for comparison methods returning NULL.
+
+=== Typed REF Representation and Target Validation
+
+`contrib/ivorysql_ora/preload_ora_misc.sql` defines the base REF representation:
+
+```sql
+CREATE TYPE sys.object_ref AS (table_id regclass, rowno bigint);
+```
+
+`table_id` identifies the target table within the database, and `rowno` is the logical ROWID's 64-bit row number. Using regclass rather than a bare OID allows text input/output to resolve the new table OID by name after a logical restore.
+
+The REF domain associated with each object type is based on this composite type and adds a constraint:
+
+```sql
+CHECK (sys.object_ref_matches_domain(VALUE, ref_domain_oid))
+```
+
+The helper validates the type using the domain's `typrefbase` and the target table's `reloftype`. If the target table still exists, it must belong to the declared object type. If the table no longer exists, the constraint allows the dangling reference to remain. The constraint does not check target row existence and is not a foreign key constraint.
+
+Type information is stored in domain metadata rather than duplicated in each REF value. When assigning REFs between different object types, the destination domain constraint checks the referenced table's type.
+
+=== REF and DEREF Expression Transformation
+
+In Oracle mode, `parse_expr.c` applies special transformations to unqualified `REF` and `DEREF` calls.
+
+REF requires a single object table alias argument. It looks up the range table entry and verifies that it is a relation, has an object type in `reloftype`, and has ROWID enabled. Partitioned object tables are rejected. It then builds the alias's ROWID expression, calls `sys.make_object_ref`, and explicitly coerces the result to the corresponding REF domain.
+
+DEREF requires a typed REF argument, determines the returned object type from its `typrefbase`, and transforms the expression into a call conceptually equivalent to:
+
+```sql
+sys.ora_deref_internal(ref_expression, NULL::target_object_type)
+```
+
+The second argument is a type witness for the polymorphic return type, not an object value to be dereferenced.
+
+=== DEREF Runtime Validation and Query Execution
+
+Users can call `ora_deref_internal` in `rowtypes.c` directly, so it cannot rely solely on parsing to guarantee valid input. Before reading the Datum, it verifies that the first argument's base type, after unwrapping domains, is `sys.object_ref`, and that the second argument is an Oracle object type. This prevents integers, text, or domains over those types from being interpreted as composite Datums.
+
+It then verifies that the REF layout contains exactly two columns of types regclass and int8, and reads the table OID and row number. It returns NULL for a NULL reference, NULL identity fields, a missing target table, a mismatched target table type, or a target without the supported ROWID heap table layout.
+
+For a valid target table, it acquires `AccessShareLock` and builds a parameterized query with schema-qualified names:
+
+```sql
+SELECT ROW(t.*)::target_object_type
+FROM target_table AS t
+WHERE (t.rowid).rowno = $1
+```
+
+SPI executes the read-only query with the caller's privileges, passing the row number as an INT8 parameter and retrieving at most one row. If no target row is visible, it returns NULL. The path retains normal SELECT privilege checks; the helper does not bypass access control on the target table.
+
+When an object is found, `SPI_palloc` copies the composite result into memory usable by the outer caller before SPI ends. The implementation then finishes SPI and releases the relation lock. DEREF therefore returns the object value visible to the current query, without returning invalid SPI memory or reading attributes cached when the REF was created.
+
+=== Object Table ROWIDs and Identity Protection
+
+`parse_utilcmd.c` and `tablecmds.c` enable ROWIDs for object tables and reject `WITHOUT ROWID` and partitioned object tables. The partition restriction applies to both creation and `ALTER TABLE ... OF`, preventing alternative entry paths from creating tables that cannot be dereferenced correctly.
+
+The heap insertion path allocates row numbers through an implicit ROWID sequence. Relevant variables and restored values use int64 to avoid truncation beyond the 32-bit range, including coverage of the `INT64_MAX` boundary. Object tables prohibit `TRUNCATE ... RESTART IDENTITY` so that normal truncation cannot reuse row numbers stored in old references.
+
+ROWID sequences have whole-table dependencies rather than the column-level dependencies used by ordinary serial sequences. The fourth commit adjusts sequence scanning during table ownership changes so that ownership of these implicit sequences changes with the table. Otherwise, after archive restoration, the table owner might still be unable to use or restore the table's ROWID sequence.
+
+=== ROWID Restore State and Lifecycle
+
+`ora_set_next_rowid` in `heapam.c` provides a one-shot row-number override for the restore stream. Its state includes the target relation OID, an int64 row number, a command ID, and a subtransaction ID.
+
+The helper first clears old state, verifies that the row number is positive, acquires `RowExclusiveLock` on the target relation, checks that the caller owns the target table, and verifies that the target is an ordinary heap table with ROWID. Superusers pass the ownership check; ordinary INSERT or EXECUTE grants do not replace ownership.
+
+The entry point registers transaction and subtransaction callbacks. Transaction end, subtransaction commit, and subtransaction rollback all clear pending state. `heap_prepare_insert` also validates the command and subtransaction IDs, discarding stale state immediately if they do not match. Only one insertion into the target table within the current scope can consume the specified row number. Consumption immediately resets the state; other insertions use normal sequence allocation.
+
+This prevents an unconsumed restore row number from an earlier statement from affecting later insertions, and prevents failed statements or savepoint rollbacks from leaving state across transactions. The dump stream restores the sequence position separately after table data. The restore helper does not advance the sequence.
+
+=== Trigger and Rule Checks During Restore
+
+A BEFORE INSERT row trigger can skip or redirect an insertion, and an INSERT rule can rewrite it, potentially misusing the one-shot ROWID state. `ora_restore_rowid_has_insert_hooks` therefore checks the relevant hooks that can execute for the current insertion.
+
+The check covers only row-level BEFORE INSERT triggers and INSERT event rules. Applicability depends on their enabled state and `SessionReplicationRole`: disabled entries are skipped; replica mode skips origin-only entries; other modes skip replica-only entries. ALWAYS-enabled entries still cause rejection.
+
+This is a conservative check based on event and firing mode. It does not attempt to determine whether a trigger's WHEN expression is true for a particular row. Rules unrelated to INSERT do not block restoration.
+
+The check allows `pg_restore --data-only --disable-triggers` to restore ROWIDs while triggers are disabled, retaining the behavior of re-enabling them after restoration. It does not grant ordinary users additional permission to disable triggers.
+
+=== pg_dump and pg_restore Integration
+
+`pg_dump.c` detects object type and REF catalog fields, reads type attributes, internal method source, TYPE BODY, and instantiability flags, and emits composite types as `CREATE TYPE ... AS OBJECT`. Method declarations are converted from package-style source into comma-separated type elements, and type bodies are emitted as `CREATE TYPE BODY`.
+
+REF domain columns and attributes are rendered as `REF schema.type_name`. Automatically generated REF domains and internal method packages are not emitted again as ordinary domains or packages. Dependency handling associates these implicit objects with the object types that create them, avoiding unnecessary dump dependency cycles from self-referencing REFs.
+
+Data in ROWID tables is emitted as INSERT statements that preserve row numbers. The restore helper call and insertion are placed in the same SQL command, in the following form:
+
+```sql
+INSERT INTO schema_name.object_table (attribute_name)
+SELECT attribute_value
+FROM sys.ora_set_next_rowid('schema_name.object_table'::regclass, saved_rowno)
+WHERE true;
+```
+
+The helper call cannot be split into a preceding standalone SELECT, because restore state is restricted to the current command ID. The dump logic also handles generated columns and tables with no writable ordinary columns, and saves ROWID sequence state separately.
+
+Table OIDs can change after a logical restore. The regclass text in each REF resolves the table identity again, while restored rows retain their original rowno. Together, these preserve references. Restoring only attribute data while reallocating row numbers changes object identities and cannot replace this restore process.
+
+=== Source Files and Regression Tests
+
+The main implementation files are:
+
+[cols="2,3",options="header"]
+|===
+|File |Responsibility
+|`src/backend/oracle_parser/ora_gram.y` |Object declarations, methods, and TYPE BODY syntax.
+|`src/backend/commands/typecmds.c` |Object creation and replacement, REF domains, and dependency management.
+|`src/backend/commands/packagecmds.c` |Internal method namespaces, method constraints, TYPE BODY, and comparison metadata.
+|`src/backend/parser/parse_func.c` |System-defined and user-defined construction, and member method dispatch.
+|`src/backend/parser/parse_expr.c` |REF/DEREF transformation and object expression resolution.
+|`src/pl/plisql/src/pl_gram.y`, `pl_subproc_function.c` |Method compilation, SELF, constructor returns, and subprogram lookup.
+|`src/backend/utils/adt/rowtypes.c`, `utils/cache/typcache.c` |DEREF execution, object comparison, and hashing policy.
+|`src/backend/access/heap/heapam.c`, `commands/tablecmds.c` |ROWID allocation, restore state, table restrictions, and ownership synchronization.
+|`src/bin/pg_dump/pg_dump.c` |Export of object DDL, REFs, and ROWID data.
+|===
+
+SQL regression inputs and expected outputs are located at:
+
+```
+src/oracle_test/regress/sql/create_type.sql
+src/oracle_test/regress/expected/create_type.out
+src/oracle_test/regress/sql/ref_type.sql
+src/oracle_test/regress/expected/ref_type.out
+```
+
+`create_type` covers constructor coercion, name conflicts, methods and default arguments, type replacement, explicit SELF, privileges and ownership, MAP/ORDER, cross-mode index queries, and unsupported operations. `ref_type` covers self-referencing types, REF columns, wrong targets, dangling references, protection against scalar helper arguments, partition rejection, and identity reset protection.
+
+TAP tests for dump/restore and safety boundaries are located at:
+
+```
+src/bin/pg_dump/t/oracle/001_pg_dump_ora_specific.pl
+src/bin/pg_dump/t/oracle/002_ref_type_dump.pl
+src/bin/pg_dump/t/oracle/003_ref_safety.pl
+src/bin/pg_dump/t/oracle/004_rowid_restore.pl
+```
+
+These tests cover object DDL, live and dangling REFs, 64-bit ROWIDs, helper privileges and state lifecycle, generated columns, zero ordinary columns, owner restores, plain SQL and custom archives, data-only restores, session authorization, replication roles, disabled triggers, and ROWID sequence ownership synchronization. The coverage listed here is based on repository test code; it does not indicate that the entire regression suite was rerun while writing this document.
+
+=== Current Implementation Boundaries
+
+* Reusing composite types and package execution provides object semantics, but not the complete Oracle object inheritance and substitutability system. The FINAL flag is not evidence that inheritance has been implemented.
+* Object columns in ordinary tables have value semantics only. REF requires a supported object table with ROWID.
+* REF domains validate the target type but do not provide foreign-key-style row existence constraints. Dangling references are allowed.
+* Partitioned object tables are outside the current dereferencing model and are explicitly rejected at the relevant entry points.
+* Object comparison executes methods through SPI, and DEREF queries target rows through SPI. Both incur additional execution costs.
+* Object hashing is disabled to avoid conflicts with method-defined equality. Sorting, grouping, and duplicate elimination are not guaranteed to work for objects without MAP/ORDER.
+* ROWID restoration is an internal restore protocol constrained by ownership and statement, transaction, and subtransaction scope. It is not an identity allocation interface for ordinary applications.
+* Type renaming, schema moves, and replacement with storage dependencies have explicit restrictions. Support for object types cannot be inferred from the full set of DDL capabilities available to ordinary composite types.
