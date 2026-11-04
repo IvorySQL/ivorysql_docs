@@ -1,0 +1,141 @@
+:sectnums:
+:sectnumlevels: 5
+
+= ROWNUM Pseudocolumn
+
+== Purpose
+
+`ROWNUM` numbers the rows a query returns: 1 for the first row, 2 for the second, and so on. Oracle applications use it to limit result sets and to page through them. IvorySQL supports it in Oracle compatibility mode.
+
+== Functionality
+
+* `ROWNUM` is assigned to each row as it passes the `WHERE` clause, before `ORDER BY` sorts the result. To number sorted rows, sort in a subquery and apply `ROWNUM` in the outer query.
+* A row gets the next number only when it is returned, so `ROWNUM > 1` and `ROWNUM = 2` never match any row. Use `ROWNUM <= n` or `ROWNUM < n` to limit a result.
+* `ROWNUM` can be used in `SELECT`, `UPDATE` and `DELETE` statements, and in SQL inside PL/iSQL blocks.
+* Its type is `bigint`.
+
+== Examples
+
+The examples use this table:
+
+[source,sql]
+----
+CREATE TABLE emp (empno NUMBER, ename VARCHAR2(20), sal NUMBER);
+INSERT INTO emp VALUES (7369, 'SMITH', 800), (7499, 'ALLEN', 1600), (7521, 'WARD', 1250),
+                       (7566, 'JONES', 2975), (7654, 'MARTIN', 1250), (7698, 'BLAKE', 2850);
+----
+
+=== Limit the number of rows
+
+[source,sql]
+----
+SELECT ROWNUM, ename FROM emp WHERE ROWNUM <= 3;
+----
+
+[source,text]
+----
+ rownum | ename
+--------+-------
+      1 | SMITH
+      2 | ALLEN
+      3 | WARD
+(3 rows)
+----
+
+=== ROWNUM and ORDER BY
+
+`ROWNUM` is assigned before sorting, so this query takes three rows and then sorts them:
+
+[source,sql]
+----
+SELECT ROWNUM, ename, sal FROM emp WHERE ROWNUM <= 3 ORDER BY sal DESC;
+----
+
+[source,text]
+----
+ rownum | ename | sal
+--------+-------+------
+      2 | ALLEN | 1600
+      3 | WARD  | 1250
+      1 | SMITH | 800
+(3 rows)
+----
+
+To get the three highest salaries, sort in a subquery first:
+
+[source,sql]
+----
+SELECT ROWNUM, ename, sal
+  FROM (SELECT ename, sal FROM emp ORDER BY sal DESC)
+ WHERE ROWNUM <= 3;
+----
+
+[source,text]
+----
+ rownum | ename | sal
+--------+-------+------
+      1 | JONES | 2975
+      2 | BLAKE | 2850
+      3 | ALLEN | 1600
+(3 rows)
+----
+
+=== Conditions that match no row
+
+[source,sql]
+----
+SELECT count(*) FROM emp WHERE ROWNUM > 1;
+SELECT count(*) FROM emp WHERE ROWNUM = 2;
+----
+
+Both return `0`.
+
+=== Paging
+
+Number the sorted rows in an inner query, then select a range in the outer query. Rows 3 and 4 by salary:
+
+[source,sql]
+----
+SELECT ename, sal FROM (
+  SELECT ROWNUM rn, ename, sal
+    FROM (SELECT ename, sal FROM emp ORDER BY sal DESC, empno)
+   WHERE ROWNUM <= 4
+) WHERE rn >= 3;
+----
+
+[source,text]
+----
+ ename | sal
+-------+------
+ ALLEN | 1600
+ WARD  | 1250
+(2 rows)
+----
+
+WARD and MARTIN have the same salary. Without `empno` in `ORDER BY`, either of them could be fourth, and a row could appear on two pages or on none; sort by a unique column as well to keep pages stable.
+
+=== Limit an UPDATE or DELETE
+
+[source,sql]
+----
+UPDATE emp SET sal = sal + 1 WHERE ROWNUM <= 2;   -- UPDATE 2
+DELETE FROM emp WHERE ROWNUM <= 1;                -- DELETE 1
+----
+
+=== In PL/iSQL
+
+[source,sql]
+----
+DECLARE
+  n NUMBER;
+BEGIN
+  SELECT count(*) INTO n FROM (SELECT ename FROM emp WHERE ROWNUM <= 2);
+  RAISE NOTICE 'rows: %', n;
+END;
+/
+----
+
+[source,text]
+----
+NOTICE:  rows: 2
+----
