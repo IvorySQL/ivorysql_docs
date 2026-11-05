@@ -49,7 +49,7 @@ baseurl=https://yum.highgo.com/dists/ivorysql-rpms/5/redhat/rhel-$releasever-$ba
 enabled=1
 gpgcheck=0
 ```
-After saving and exiting, you can install IvorySQL 4 with the following steps
+After saving and exiting, you can install IvorySQL 5 with the following steps
 [source,bash,subs="attributes"]
 ```
 $ sudo dnf install -y ivorysql5-{ivorysql-version}
@@ -134,7 +134,7 @@ CONTAINER ID   IMAGE               COMMAND                   CREATED          ST
 
 == Connecting to IvorySQL
 
-Connect to IovrySQL via psql:
+Connect to IvorySQL via psql:
 [source,subs="attributes"]
 ```
 $ psql -d YOUR_DATABASE
