@@ -348,7 +348,7 @@ git checkout -b new-branch-name
 
 ==== Edit Documentation
 
-Edit the documentation in the newly created new-branch-name. IvorySQL documentation is written in AsciiDoc format. Please refer to xref:master/contribution/asciidoc_syntax_reference.adoc[AsciiDoc Syntax Reference].
+Edit the documentation in the newly created new-branch-name. IvorySQL documentation is written in AsciiDoc format. Please refer to https://docs.asciidoctor.org/asciidoc/latest/syntax-quick-reference/[AsciiDoc Syntax Reference].
 
 When adding new pages:
 . Place the `.adoc` file in the correct directory (CN/ or EN/ corresponding version directory)
@@ -474,7 +474,7 @@ After confirming that the target extension belongs to the applicable scenario, y
 
 ==== Documentation Writing
 
-IvorySQL documentation is written using AsciiDoc, which has syntax similar to Markdown but more powerful. If you are not familiar with AsciiDoc syntax, please refer to xref:master/contribution/asciidoc_syntax_reference.adoc[AsciiDoc Syntax Quick Reference].
+IvorySQL documentation is written using AsciiDoc, which has syntax similar to Markdown but more powerful. If you are not familiar with AsciiDoc syntax, please refer to https://docs.asciidoctor.org/asciidoc/latest/syntax-quick-reference/[AsciiDoc Syntax Quick Reference].
 
 ===== Documentation Structure
 
