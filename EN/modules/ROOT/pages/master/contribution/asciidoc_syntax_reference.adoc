@@ -1,0 +1,473 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= AsciiDoc Syntax Quick Reference
+
+IvorySQL documentation is written in AsciiDoc. To ensure formatting quality and consistency, follow the https://docs.asciidoctor.org/asciidoc/latest/syntax-quick-reference[AsciiDoc] rules when modifying or updating the documentation.
+
+== Formatting Guidelines
+
+**AsciiDoc Guidelines**
+
+1. Use heading levels in ascending order, starting with level 1. Do not skip levels. For example, a level 1 heading must not be followed directly by a level 3 heading, and a level 2 heading must not be followed directly by a level 4 heading.
+
+2. Use ATX-style headings consistently, with = signs before the heading text to indicate the heading level.
+
+3. Leave a space between the heading marker = and the heading text.
+
+4. Use exactly one space between the heading marker = and the heading text. Multiple spaces are not allowed.
+
+5. Headings must start at the beginning of a line. No spaces are allowed before the = signs.
+
+6. The only punctuation allowed at the end of a heading is question marks, backticks, and single or double quotation marks (including their Chinese equivalents). Other punctuation, such as colons, commas, periods, and exclamation marks, must not appear at the end of a heading.
+
+7. Leave a blank line before each heading.
+
+8. Do not use consecutive headings with identical text. For example, if a level 1 heading is = IvorySQL Architecture, the immediately following level 2 heading must not be == IvorySQL Architecture. Heading text may be repeated if the headings are not consecutive.
+
+9. A document must contain only one level 1 heading.
+
+10. In general, use 4 spaces for each indentation level in all .adoc files, except TOC.adoc, which may use 2 spaces.
+
+11. Do not use tab characters anywhere in the document, including code blocks. Always use spaces for indentation.
+
+12. Do not use consecutive blank lines.
+
+13. Use exactly one space after the blockquote marker >, followed by the quoted text.
+
+14. Ordered lists must start at 1 and increment sequentially.
+
+15. Use exactly one space after each list item marker (+, -, *, or a number), followed by the list item text.
+
+16. Leave a blank line before and after each list, whether ordered or unordered.
+
+17. Leave a blank line before and after each code block.
+
+18. Do not use bare URLs in the document. To make a URL clickable, enclose it in angle brackets (<URL>). If a bare URL is required in a special case and does not need to be clickable, enclose it in backticks (\`URL`).
+
+19. Do not include extra spaces inside emphasis markers for bold, italic, or similar formatting. For example, do not use `\\** bold text **`.
+
+20. Do not include extra spaces inside inline code enclosed in single backticks. For example, do not use \`{nbsp}sample text`.
+
+21. Do not include extra spaces on either side of link text. For example, do not use https://www.example.com/[a link].
+
+22. Every link must have a target. Empty links are not allowed.
+
+== Examples
+
+1. Use heading levels in ascending order, starting with level 1. Do not skip levels.
+
+```
+= Heading 1
+=== Heading 3
+
+We skipped out a 2nd level heading in this document
+```
+
+
+
+2. Use ATX-style headings consistently, with = signs before the heading text to indicate the heading level.
+
+```
+= Heading 1
+== Heading 2
+=== Heading 3
+==== Heading 4
+== Another Heading 2
+=== Another Heading 3
+```
+
+
+
+3. Use exactly one space between the heading marker = and the heading text. Do not use multiple spaces after = or any spaces before it.
+
+Incorrect example:
+
+```
+= Heading 1
+== Heading 2
+```
+
+Correct example:
+
+```
+= Heading 1
+== Heading 2
+```
+
+
+
+4. The only punctuation allowed at the end of a heading is question marks, backticks, and single or double quotation marks (including their Chinese equivalents).
+
+Incorrect example:
+
+```
+= This is a heading.
+```
+
+Correct example:
+
+```
+= This is a heading
+```
+
+
+
+5. Leave a blank line before each heading.
+
+Incorrect example:
+
+```
+= Heading 1
+Some text
+Some more text## Heading 2
+```
+
+Correct example:
+
+```
+= Heading 1
+Some text
+Some more text
+
+== Heading 2
+```
+
+
+
+6. Do not use consecutive headings with identical text. For example, if a level 1 heading is = IvorySQL Description, the immediately following level 2 heading must not be == IvorySQL Description. Heading text may be repeated if the headings are not consecutive.
+
+Incorrect example:
+
+```
+= Some text
+
+== Some text
+```
+
+Correct example:
+
+```
+= Some text
+
+== Some more text
+```
+
+
+
+7. A document must contain only one level 1 heading.
+
+Incorrect example:
+
+```
+= Top level heading
+
+= Another top-level heading
+```
+
+Correct example:
+
+```
+= Title
+
+== Heading
+
+== Another heading
+```
+
+
+
+8. In general, use 4 spaces for each indentation level in all .adoc files, except TOC.adoc, which may use 2 spaces.
+
+Incorrect example:
+
+```
+* List item
+  * Nested list item indented by 3 spaces
+```
+
+Correct example:
+
+```
+* List item
+    * Nested list item indented by 4 spaces
+```
+
+
+
+9. Do not use tab characters anywhere in the document, including code blocks. Always use spaces for indentation.
+
+Incorrect example:
+
+```
+Some text
+	* hard tab character used to indent the list item
+```
+
+Correct example:
+
+```
+Some text
+  * Spaces used to indent the list item instead
+```
+
+
+
+10. Do not use consecutive blank lines.
+
+Incorrect example:
+
+```
+Some text here
+
+
+Some more text here
+```
+
+Correct example:
+
+```
+Some text here
+
+Some more text here
+```
+
+
+
+11. Use exactly one space after the blockquote marker >, followed by the quoted text.
+
+Incorrect example:
+
+```
+>  This is a blockquote with bad indentation>  there should only be one.
+```
+
+Correct example:
+
+```
+> This is a blockquote with correct> indentation.
+```
+
+
+
+12. Ordered lists must start at 1 and increment sequentially.
+
+Incorrect example:
+
+```
+1. Do this.
+1. Do that.
+1. Done.
+```
+
+```
+0. Do this.
+1. Do that.
+2. Done.
+```
+
+Correct example:
+
+```
+1. Do this.
+2. Do that.
+3. Done.
+```
+
+
+
+13. Use exactly one space after each list item marker (+, -, *, or a number), followed by the list item text.
+
+Correct example:
+
+```
+* Foo
+* Bar
+* Baz
+
+1. Foo
+  * Bar
+1. Baz
+```
+
+
+
+14. Leave a blank line before and after each list, whether ordered or unordered.
+
+Incorrect example:
+
+```
+Some text* Some* List
+
+1. Some2. List
+
+Some text
+```
+
+Correct example:
+
+```
+Some text
+
+* Some
+* List
+
+1. Some
+2. List
+
+Some text
+```
+
+
+
+15. Leave a blank line before and after each code block.
+
+Incorrect example:
+
+```
+Some text
+​```
+Code block
+​```
+​```
+Another code block
+​```
+Some more text
+```
+
+Correct example:
+
+```
+Some text
+
+​```
+Code block
+​```
+
+​```
+Another code block
+​```
+
+Some more text
+```
+
+
+
+16. Do not use bare URLs in the document. To make a URL clickable, enclose it in angle brackets (<URL>). If a bare URL is required in a special case and does not need to be clickable, enclose it in backticks (\`URL`).
+
+Incorrect example:
+
+```
+For more information, see https://www.example.com/.
+```
+
+Correct example:
+
+```
+For more information, see <https://www.example.com/>.
+```
+
+
+
+17. Do not include extra spaces inside emphasis markers for bold, italic, or similar formatting. For example, do not use `\\** bold text **`.
+
+Incorrect example:
+
+```
+Here is some ** bold ** text.
+
+Here is some * italic * text.
+
+Here is some more __ bold __ text.
+
+Here is some more _ italic _ text.
+```
+
+Correct example:
+
+```
+Here is some **bold** text.
+
+Here is some *italic* text.
+
+Here is some more __bold__ text.
+
+Here is some more _italic_ text.
+```
+
+
+
+18. Do not include extra spaces inside inline code enclosed in single backticks. For example, do not use \`{nbsp}sample text`.
+
+Incorrect example:
+
+```
+some text 
+ some text
+```
+
+Correct example:
+
+```
+some text
+```
+
+
+
+19. Do not include extra spaces on either side of link text. For example, do not use https://www.example.com/[a link].
+
+Incorrect example:
+
+```
+[ a link ](https://www.example.com/)
+```
+
+Correct example:
+
+```
+[a link](https://www.example.com/)
+```
+
+
+
+20. Every link must have a target. Empty links are not allowed.
+
+Incorrect example:
+
+```
+[an empty link]()
+
+[an empty fragment](#)
+```
+
+Correct example:
+
+```
+[a valid link](https://example.com/)
+
+[a valid fragment](#fragment)
+```
+
+
+
+21. Enclose all code blocks in the document in triple backticks. Do not use the four-space indentation style for code blocks.
+
+Incorrect example:
+
+```
+Some text.
+
+  # Indented code
+
+More text.
+```
+
+Correct example:
+
+```
+```ruby
+# Fenced code
+​```
+More text.
+```
