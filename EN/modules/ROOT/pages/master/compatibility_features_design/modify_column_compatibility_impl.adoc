@@ -1,0 +1,105 @@
+:sectnums:
+:sectnumlevels: 5
+
+= MODIFY Column Compatibility Design
+
+== Purpose
+
+Support Oracle-style `ALTER TABLE ... MODIFY` column definitions by translating type and nullability changes into existing ALTER TABLE internal commands. For examples, see xref:master/oracle_compatibility/compat_modify_column_compatibility.adoc[MODIFY Column Compatibility].
+
+The type and NOT NULL parts of a column definition are separate operations. Placing a constraint only in the type command's `ColumnDef.constraints` does not apply it through the existing type-change path. Parsing must therefore generate an explicit, separate subcommand.
+
+== Implementation
+
+=== Code Organization
+
+Oracle grammar resides in `src/backend/oracle_parser/`; parse transformation and execution code reside in `src/backend/parser/` and `src/backend/commands/`. Node definitions are in `src/include/nodes/`. Regression SQL and expected output are in `src/oracle_test/regress/sql/` and `expected/`. The table lists filenames only.
+
+[cols="2,4",options="header"]
+|===
+|File |Responsibility
+|`ora_gram.y` |Defines MODIFY syntax and constructs and concatenates internal command lists
+|`parsenodes.h` |Provides the existing AlterTableStmt, AlterTableCmd, and ColumnDef nodes
+|`parse_utilcmd.c` |Reuses column type and related transformations in transformAlterTableStmt()
+|`tablecmds.c` |Reuses ALTER TABLE permission checks, phase scheduling, catalog updates, and data validation
+|`alter_table.sql` |Regression cases for MODIFY types, nullability, and multiple columns
+|`alter_table.out` |Expected errors, table definitions, and data results
+|===
+
+The feature changes the Oracle grammar and regression tests. It introduces no dedicated execution node or catalog field.
+
+=== Grammar Entry and List Expansion
+
+`alter_table_cmds` accepts `MODIFY modify_clause` and also allows MODIFY to be combined with other ALTER TABLE subcommands using commas.
+
+* `modify_clause` accepts a parenthesized `modify_column_list` or a single `modify_column_item`.
+* `modify_column_list` uses `list_concat()` to combine the command lists produced for multiple columns.
+* Each `modify_column_item` returns a list, even for a single action, keeping the data structure consistent.
+* `modify_column_null` represents NOT NULL and NULL as true and false, respectively, to select the command type.
+
+The resulting `AlterTableStmt.cmds` is a flat list of `AlterTableCmd` nodes, rather than lists nested by column.
+
+[source,text]
+----
+ALTER TABLE t MODIFY (a VARCHAR2(20) NOT NULL, b NULL)
+    → AlterTableStmt.cmds
+        → AT_AlterColumnType(a, VARCHAR2(20))
+        → AT_SetNotNull(a)
+        → AT_DropNotNull(b)
+    → transformAlterTableStmt()
+    → ALTER TABLE execution
+----
+
+=== Column Definitions and Internal Commands
+
+[cols="3,4",options="header"]
+|===
+|Column definition |Generated commands
+|`column_name data_type` |`AT_AlterColumnType`
+|`column_name data_type NOT NULL` |`AT_AlterColumnType` and `AT_SetNotNull`
+|`column_name data_type NULL` |`AT_AlterColumnType` and `AT_DropNotNull`
+|`column_name NOT NULL` / `column_name NULL` |`AT_SetNotNull` / `AT_DropNotNull`
+|`column_name INVISIBLE` / `column_name VISIBLE` |`AT_SetInvisible` / `AT_DropInvisible`
+|`column_name [data_type] GENERATED ... AS IDENTITY` |Optional `AT_AlterColumnType`, followed by `AT_SetIdentity`
+|`column_name DROP IDENTITY` |`AT_DropIdentity`
+|===
+
+The type command stores the column name in `name`; its `def` points to a `ColumnDef` containing the target `typeName` and error `location`. The nullability command stores the same column name independently, avoiding reliance on the type-change path to process column constraints.
+
+A type-only definition generates no nullability command, preserving the existing NULL/NOT NULL state. Identity branches reuse the existing attribute modification logic and translate the generation mode into the corresponding Oracle identity flag.
+
+=== Resolving Type and Visibility Ambiguity
+
+VISIBLE and INVISIBLE are unreserved keywords and can be accepted by `Typename`. `makeModifyColumnTypeOrVisibilityCmd()` resolves this ambiguity in the `column_name data_type` branch, avoiding conflicting grammar rules for bare type and visibility changes.
+
+The helper interprets `visible` and `invisible` as visibility commands only for an unqualified, single-part type name without type modifiers, array dimensions, SETOF, %TYPE, or a row-type marker. A schema-qualified, modified, or array type with the same name still follows the normal type-change path.
+
+=== Reusing Execution
+
+`transformAlterTableStmt()` processes type-related transformations. `ATController()` in `tablecmds.c` then organizes preparation, catalog modification, and data validation. Permission, dependency, conversion, and constraint validity checks all reuse the existing implementation.
+
+Internal commands are not simply executed in their order in the grammar list. `ATPrepCmd()` assigns commands to passes by type: removing a non-null constraint uses `AT_PASS_DROP`, changing a type uses `AT_PASS_ALTER_TYPE`, and setting non-null uses `AT_PASS_COL_ATTRS`. Thus, although a type-plus-NULL definition generates the type command first, removal of the non-null requirement is processed in an earlier pass.
+
+When NOT NULL is set, existing validation ensures that data satisfies the requirement. `ATRewriteTables()` and `ATRewriteTable()` handle scanning or rewriting when needed. Existing NULL values cause an error, and transaction handling rolls back the statement without retaining a partial type change.
+
+== Validation
+
+The MODIFY cases in the `alter_table` regression group cover:
+
+* Type plus NOT NULL changes with and without parentheses.
+* Failure with existing NULL values and success after updating the data.
+* Removing non-null requirements separately and changing multiple columns' types and nullability.
+* Preserving existing rows and inserting longer strings after widening columns.
+* Preserving nullability during type-only changes and checking column definitions with psql `\d`.
+
+When changing these rules, also validate the type-plus-NULL branch and the retained identity and visibility branches, rather than covering only type-plus-NOT-NULL changes.
+
+From a configured, built, and installed source checkout of the corresponding version, run against an Oracle compatibility instance:
+
+[source,bash]
+----
+make -C src/oracle_test/regress oracle-installcheck-tests \
+    TESTS=alter_table EXTRA_REGRESS_OPTS='--port=1521'
+----
+
+Adjust the port for the instance. This command runs the entire `alter_table` regression group.

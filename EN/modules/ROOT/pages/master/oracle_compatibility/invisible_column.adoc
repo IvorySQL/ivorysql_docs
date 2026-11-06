@@ -63,7 +63,8 @@ ivorysql=# \d+ mytable
 Access method: heap
 ```
 
+Use `ALTER TABLE ... MODIFY` to change column visibility. For syntax, see xref:master/oracle_compatibility/compat_modify_column_compatibility.adoc[MODIFY Column Compatibility].
+
 == Limitations
 
-- Modify column is not supported currently. Will be enhanced in later version;
 - In Oracle, there are special considerations for invisible columns and column ordering. When a table contains one or more invisible columns, the invisible columns are not included in the column order for the table. We have not yet addressed this part.
