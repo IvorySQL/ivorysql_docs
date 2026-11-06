@@ -11,13 +11,6 @@ IvorySQL provides partial Oracle compatibility for `CREATE TYPE ... AS OBJECT`, 
 
 The current implementation includes object type declarations, type bodies, system-defined constructors, user-defined constructors, member methods, static methods, MAP/ORDER comparisons, and typed REF references to object table rows. Objects can be stored as column values in ordinary tables, or as rows in object tables created with `CREATE TABLE ... OF`. `REF` and `DEREF` create and access references between objects.
 
-This document introduces the feature to users. Its scope is based on the following four commits and their regression tests; it does not imply that the entire Oracle object-relational model has been implemented:
-
-* `21bdf4b7695`: oracle: support AS OBJECT in CREATE TYPE
-* `4a99a716cf2`: oracle: implement typed REF object references
-* `5bf290b149e`: oracle: harden REF helpers and ROWID restoration
-* `18574b4d88a`: oracle: fix ROWID restore ownership and trigger checks
-
 == Feature Description
 
 === Environment

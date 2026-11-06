@@ -11,12 +11,7 @@ IvorySQL提供了部分兼容Oracle的 `CREATE TYPE ... AS OBJECT` 功能，支�
 
 当前实现包括对象类型声明、类型体、系统构造函数、自定义构造函数、成员方法、静态方法、MAP/ORDER比较，以及基于对象表的类型化REF引用。对象可以作为普通表的列值保存，也可以通过 `CREATE TABLE ... OF` 创建对象表，由 `REF` 和 `DEREF` 建立及访问对象之间的引用。
 
-本文档旨在为使用人员介绍此新增功能。说明范围以以下四个提交及其回归用例为准，不表示已经实现Oracle对象关系模型的全部功能：
-
-* `21bdf4b7695`：oracle: support AS OBJECT in CREATE TYPE
-* `4a99a716cf2`：oracle: implement typed REF object references
-* `5bf290b149e`：oracle: harden REF helpers and ROWID restoration
-* `18574b4d88a`：oracle: fix ROWID restore ownership and trigger checks
+本文档旨在为使用人员介绍此新增功能。
 
 == 功能说明
 

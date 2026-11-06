@@ -6,8 +6,6 @@
 
 IvorySQL provides partial Oracle compatibility for `CREATE TYPE ... AS OBJECT` by extending PostgreSQL composite types, PL/iSQL package compilation and execution, and ROWID storage. Object attributes reuse composite type storage, methods are managed through an internal package-style namespace, and typed REFs are implemented using domain types and logical row identifiers.
 
-This document covers the final implementation from four commits: `21bdf4b7695`, `4a99a716cf2`, `5bf290b149e`, and `18574b4d88a`. Although the first commit message describes TYPE BODY as future work, its actual code and regression tests already include type bodies, method compilation, user-defined constructors, and MAP/ORDER support. This document follows the code. ROWID restore privileges and trigger checks reflect the fourth commit.
-
 Basic usage:
 
 ```sql
