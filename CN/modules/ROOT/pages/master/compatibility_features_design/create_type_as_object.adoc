@@ -1,0 +1,282 @@
+:sectnums:
+:sectnumlevels: 5
+
+
+= **功能概述**
+
+IvorySQL通过扩展PostgreSQL复合类型、PL/iSQL包编译执行机制和ROWID存储机制，实现了部分兼容Oracle的 `CREATE TYPE ... AS OBJECT` 功能。对象属性复用复合类型存储，方法由内部包式命名空间管理，类型化REF由域类型和逻辑行标识实现。
+
+基本用法如下：
+
+```sql
+CREATE TYPE person_obj AS OBJECT
+(
+    name VARCHAR2(20),
+    parent REF person_obj
+);
+CREATE TABLE people OF person_obj;
+INSERT INTO people(name) VALUES ('root');
+SELECT (DEREF(REF(p))).name FROM people p;
+```
+
+== 实现原理
+
+=== 总体设计
+
+实现由对象值、对象方法和对象身份三部分组成：
+
+1. Oracle语法分析器识别对象属性、方法声明、类型选项及TYPE BODY，生成扩展后的DDL节点；
+2. `DefineCompositeType` 建立复合类型和属性目录，使用 `pg_type.typisobject` 标记Oracle对象类型；
+3. 同名内部方法包保存方法签名、类型选项及方法体，复用PL/iSQL包的编译、缓存、权限与执行路径；
+4. 构造调用转换为对象行表达式或内部构造方法调用，成员调用转换为带SELF实参的方法调用；
+5. 复合值比较入口按类型元数据执行MAP/ORDER，或在无比较方法时保留逐属性相等性并拒绝排序；
+6. 每个对象类型关联一个基于 `sys.object_ref` 的REF域，对象表提供ROWID，DEREF通过SPI读取引用的当前行；
+7. `pg_dump` 将内部表示还原为对象DDL，并保留ROWID及序列状态，维持引用身份。
+
+对象类型自身对应的复合类型关系只描述属性布局；通过 `CREATE TABLE ... OF` 创建的对象表才存储对象行。普通表中的对象列保存对象值，但不会自动获得可供REF使用的独立对象身份。
+
+=== 语法节点与客户端识别
+
+`src/backend/oracle_parser/ora_gram.y` 扩展CREATE TYPE语法，解析属性列表、方法列表、 `INSTANTIABLE` / `FINAL` 选项和TYPE BODY。`src/include/nodes/parsenodes.h` 增加对象方法描述及类型体节点，并在相关类型声明节点中保存对象标志和方法元数据。
+
+`ObjectTypeMethod` 区分成员函数、成员过程、静态函数、静态过程、构造函数、MAP和ORDER方法，保存参数、返回类型及源文本等信息。方法源文本用于构造后续PL/iSQL编译输入，也保留默认参数等声明细节。
+
+`TypeName.refTypeName` 表示 `REF target_type`。普通类型查找在 `parse_type.c` 中将它解析为目标对象类型对应的REF域；自引用属性则由对象创建流程提前处理，避免在目标类型尚未建立时查找失败。
+
+`liboracle_parser.c`、 `ora_psqlscan.l` 以及扫描状态结构同步处理类型声明和类型体，使包含方法、分号和 `/` 结束符的输入能按完整语句提交。`utility.c` 将DDL分派到类型及类型体创建入口。
+
+=== 对象类型目录与创建顺序
+
+关键目录字段如下：
+
+[cols="1,3",options="header"]
+|===
+|字段 |用途
+|`pg_type.typisobject` |区分Oracle对象类型与普通复合类型、表行类型和视图行类型。
+|`pg_type.typrefbase` |在自动生成的REF域上记录目标对象类型OID。
+|`pg_type.typrelid` |指向对象属性布局对应的复合类型关系。
+|`pg_package.pkgtypeoid` |将内部方法命名空间关联到对象类型。
+|`pg_package.pkginstantiable` / `pkgfinal` |保存实例化与FINAL标志。
+|`pg_class.reloftype` |对象表所属类型。
+|`pg_class.relhasrowid` |对象表是否具备ROWID。
+|===
+
+`DefineCompositeType` 首先拒绝无属性的对象类型，并检查模式中的类型、包、独立函数和过程名称冲突。对象类型和方法命名空间同名，因此必须避免占用已有包名；独立例程创建路径也检查反方向冲突。
+
+为支持 `parent REF current_type`，创建流程先生成基于 `sys.object_ref` 的域和目标检查约束，再将属性中的REF声明替换为该域OID。随后调用 `DefineRelation(..., RELKIND_COMPOSITE_TYPE, ...)` 建立对象类型，回填REF域的 `typrefbase`，建立域到对象类型的自动依赖，最后创建内部方法包。
+
+REF域名由 `get_object_ref_domain_name` 根据对象类型名生成，放在对应模式中。它是内部实现对象，应用应使用 `REF type_name`，而不是依赖生成名称。REF查找除名称查找外还有按 `typrefbase` 查找的回退，并验证域确实属于目标类型。
+
+=== 替换、依赖与所有者同步
+
+`CREATE OR REPLACE TYPE` 保留已有对象类型及REF域的身份，通过 `replace_object_type_attributes` 调整复合类型属性，再替换方法声明。
+
+属性替换持有复合类型关系的 `AccessExclusiveLock`，先调用 `find_composite_type_dependencies` 检查存储依赖。即使属性定义不变，已有存储列使用该类型也会触发拒绝。允许修改时，内部复用属性重命名及ALTER TYPE/ALTER TABLE机制处理增加、删除和类型变更，以统一依赖检查与缓存失效。属性批量改名先使用临时名称，避免位置对应的改名相互冲突。
+
+内部方法包通过依赖关系附属于对象类型。修改类型所有者时同步修改方法包所有者；方法调用使用类型的USAGE权限，而非把隐藏包ACL作为用户权限入口。类型改名与跨模式移动目前直接报不支持，避免破坏方法源码及编译契约。
+
+=== 方法声明与TYPE BODY存储
+
+`packagecmds.c` 中的 `CreateObjectTypePackage` 将方法声明转换为包式声明源码。优先复用解析得到的原始方法源码；需要重新构造时按方法种类生成对应声明，最后附加包式END标记。
+
+创建阶段验证：
+
+* 自定义构造函数必须与对象类型同名；
+* NOT INSTANTIABLE必须同时为NOT FINAL；
+* MAP最多一个，不得有显式参数，返回值必须是可排序标量；
+* ORDER最多一个，必须有一个同类型的输入参数，返回类型限定为实现接受的整数或NUMERIC类型；
+* MAP与ORDER不能同时存在。
+
+`GetObjectTypePackageOid` 查找同名包并验证 `pkgtypeoid`，防止将普通包误认为对象方法集合。`CreateObjectTypeBody` 验证目标为对象类型，随后复用包体创建逻辑，将类型体保存到 `pg_package_body` 并交由PL/iSQL编译。
+
+因此，TYPE BODY不是独立的新执行器。包式存储只是内部表示，对外导出与使用仍保持对象类型语法。
+
+=== PL/iSQL方法编译与SELF
+
+`pl_gram.y` 识别各类对象方法，`pl_subproc_function.c` 在编译子程序时携带 `object_method_kind`，并建立SELF参数与属性访问项。
+
+成员函数、成员过程、构造函数、MAP和ORDER需要对象上下文；静态方法没有隐式SELF。显式SELF声明会被识别为对象上下文本身，避免重复插入参数。成员过程通过SELF的输入输出语义更新调用者变量。
+
+构造函数内部的SELF必须可赋值，但在调用签名中作为输入参数接收一个初始对象，使调用者能使用表达式构造对象。编译器支持把构造函数的无表达式RETURN转换为返回SELF的语义，同时拒绝 `RETURN expression`。
+
+编译成员方法时还为对象属性建立字段访问项，允许方法体直接使用属性名。显式 `SELF.attribute` 则走对象记录字段访问路径。方法种类需与先前声明一致。
+
+在静态方法内调用同名构造函数时，PL/iSQL子程序查找若遇到带隐藏SELF的构造函数，不会仅因源代码参数数量不一致就结束解析，而是让 `parse_func.c` 继续执行对象构造解析，补齐SELF后再进行重载、默认参数及命名参数匹配。
+
+=== 系统构造、自定义构造与成员分派
+
+`parse_func.c` 的 `FuncNameAsObjectType` 只将带 `typisobject` 标志的复合类型识别为Oracle对象类型。
+
+自定义构造函数解析时先检查类型可实例化，使用 `BuildObjectConstructorSelf` 建立一个属性初始为NULL的对象值，再将SELF加入实参，查找内部方法包中匹配的构造函数。该SELF是一个实际复合对象，不是整个对象为SQL NULL。
+
+当例程及自定义构造查找未找到候选时，系统属性值构造路径建立 `RowExpr`，通过 `coerce_to_target_type` 转换为目标对象类型。这复用了复合类型的字段数量检查和属性类型转换。该回退路径只接收位置参数，不处理命名参数、聚合或窗口调用等形式。
+
+成员调用将 `table_alias.object_column.method(args)` 的对象部分解析为SELF，验证其对象类型，定位该类型的内部方法包，再按带SELF的签名解析方法。它不会把任意同名独立函数当作成员。静态方法则以类型名限定的方法名进入包式查找。
+
+包方法或子程序解析可能重排命名实参、补齐默认值，因此解析后会重建实际参数类型数组，确保后续强制转换与最终参数顺序一致。
+
+=== MAP/ORDER比较与索引一致性
+
+`rowtypes.c` 在通用复合值比较入口中调用 `compare_oracle_object_records`，根据 `GetObjectTypeComparisonMethod` 返回的元数据执行比较：
+
+* MAP：分别求两个对象的标量键，比较键值并归一化为-1、0、1；
+* ORDER：执行以左对象为SELF、右对象为参数的方法，将返回值符号归一化为-1、0、1；
+* 没有MAP/ORDER：相等比较继续逐属性处理，排序比较报错。
+
+比较方法通过SPI调用，以复用正常包编译、权限与执行机制。MAP查询使用物化CTE，ORDER查询使用带 `OFFSET 0` 的子查询，避免比较表达式展开造成方法重复求值。SPI计划以对象类型OID、方法名称及是否ORDER为键保存在后端缓存中。
+
+比较语义由对象类型决定，与调用者兼容模式无关。若当前是PG模式，内部比较暂时切换到Oracle模式以解析方法调用，并在完成后恢复原GUC状态。这保证B-tree查找、排序和REINDEX不会因会话模式不同而使用不同的对象比较规则。
+
+`typcache.c` 为对象类型保留通用record比较入口，但关闭普通及扩展record哈希能力。否则逐属性哈希可能与MAP/ORDER定义的相等性不一致，导致分组或去重错误。当前分组、DISTINCT和UNION依赖一致的排序比较路径。
+
+SQL NULL对象由严格record运算符处理。当前内部比较SQL的CASE表达式在方法结果为NULL时落入零值分支；不能据此推断其覆盖Oracle对比较方法返回NULL的全部边界语义。
+
+=== 类型化REF表示与目标校验
+
+`contrib/ivorysql_ora/preload_ora_misc.sql` 定义REF基础表示：
+
+```sql
+CREATE TYPE sys.object_ref AS (table_id regclass, rowno bigint);
+```
+
+`table_id` 在数据库内标识目标表，`rowno` 是逻辑ROWID的64位行号。使用regclass而不是裸OID，是为了使文本输入输出能通过表名在逻辑恢复后解析新的表OID。
+
+每个对象类型对应的REF域以该复合类型为基础，并附加约束：
+
+```sql
+CHECK (sys.object_ref_matches_domain(VALUE, ref_domain_oid))
+```
+
+辅助函数根据域的 `typrefbase` 和目标表的 `reloftype` 验证类型。若目标表仍存在，它必须属于声明的对象类型；若目标表已不存在，约束允许保留悬空引用。该约束不检查目标行存在性，也不是外键约束。
+
+类型化信息保存在域元数据中，而不重复存储在每个REF值内。不同对象类型REF赋值时，目标域约束会检查所引用的表类型。
+
+=== REF和DEREF表达式转换
+
+`parse_expr.c` 在Oracle模式下对未限定的 `REF` 和 `DEREF` 调用进行专门转换。
+
+REF要求单个对象表别名参数，查找范围表项并验证其为关系、具有对象类型 `reloftype` 且启用ROWID；分区对象表被拒绝。随后构造别名的ROWID表达式，调用 `sys.make_object_ref`，再显式转换为对应的REF域。
+
+DEREF要求一个类型化REF实参，使用其 `typrefbase` 确定返回对象类型，转换为概念上如下的调用：
+
+```sql
+sys.ora_deref_internal(ref_expression, NULL::target_object_type)
+```
+
+第二个参数是多态返回类型的类型见证，不是待解引用对象值。
+
+=== DEREF运行期校验与查询
+
+`rowtypes.c` 中的 `ora_deref_internal` 也可能被用户直接调用，因此不能仅依赖解析阶段保证输入正确。读取Datum前，先验证第一个参数去除域包装后的基础类型确实为 `sys.object_ref`，并确认第二个参数是Oracle对象类型。这样整数、文本或其域类型不会被误当作复合Datum解读。
+
+随后检查REF布局恰好为regclass和int8两列，读取表OID及行号。空引用、空身份字段、目标表不存在、目标表类型不匹配或不具备受支持的ROWID堆表布局时返回NULL。
+
+对于有效目标表，取得 `AccessShareLock`，生成带模式限定名和参数的查询：
+
+```sql
+SELECT ROW(t.*)::target_object_type
+FROM target_table AS t
+WHERE (t.rowid).rowno = $1
+```
+
+SPI以调用者权限执行只读查询，行号按INT8参数传入，最多取一行。没有可见目标行则返回NULL。该路径保留普通SELECT权限检查，不通过辅助函数绕过目标表访问控制。
+
+找到对象后，在SPI结束前使用 `SPI_palloc` 将复合返回值复制到外层可用内存，再结束SPI并释放关系锁。因此DEREF返回当前查询可见的对象值，不会返回已失效的SPI内存，也不会读取REF创建时缓存的对象属性。
+
+=== 对象表ROWID与身份保护
+
+`parse_utilcmd.c` 和 `tablecmds.c` 对对象表启用ROWID，拒绝 `WITHOUT ROWID` 以及分区对象表。分区限制同时覆盖创建和 `ALTER TABLE ... OF` 路径，以避免绕过语法入口建立无法正确解引用的表。
+
+堆插入路径通过隐式ROWID序列分配行号。相关变量及恢复值使用int64，避免超过32位范围后截断，并覆盖 `INT64_MAX` 边界。对象表禁止 `TRUNCATE ... RESTART IDENTITY`，防止正常清空操作复用旧引用中的行号。
+
+ROWID序列对表建立整表依赖，而非普通serial序列的列级依赖。第四个提交调整表所有者变更时的序列扫描，使这类隐式序列的所有者随表同步修改。否则归档恢复后表所有者可能仍无法使用或恢复其ROWID序列。
+
+=== ROWID恢复状态及生命周期
+
+`heapam.c` 中的 `ora_set_next_rowid` 为恢复流提供一次性行号覆盖。状态包含目标关系OID、int64行号、命令ID和子事务ID。
+
+辅助函数首先清除旧状态，验证行号为正数，对目标关系取得 `RowExclusiveLock`，检查调用者拥有目标表，并验证目标是带ROWID的普通堆表。超级用户通过所有者检查；普通INSERT或EXECUTE授权不能替代所有者权限。
+
+该入口注册事务和子事务回调。事务结束、子事务提交或回滚均清除待消费状态。`heap_prepare_insert` 还会验证命令ID与子事务ID；不匹配的旧状态立即丢弃。只有当前作用域内目标表的一次插入可以消费指定行号，消费后立即重置状态，其余插入使用正常序列分配。
+
+这避免前一语句未消费的恢复行号影响后续插入，也防止失败语句或保存点回滚留下跨事务状态。序列位置由导出流在数据之后独立恢复，恢复辅助函数不承担序列推进。
+
+=== 恢复时的触发器和规则检查
+
+插入可能被BEFORE INSERT行触发器跳过、重定向，或被INSERT规则改写，导致一次性ROWID状态被错误使用。因此 `ora_restore_rowid_has_insert_hooks` 检查当前插入可能执行的相关钩子。
+
+检查只针对行级BEFORE INSERT触发器和INSERT事件规则，并根据启用状态及 `SessionReplicationRole` 判断是否适用：禁用项跳过；replica模式跳过仅origin触发的项；其他模式跳过仅replica触发的项。ALWAYS启用项仍需拒绝。
+
+这里按事件和启用模式进行保守检查，不尝试判断触发器WHEN表达式是否对某条具体数据为真。与INSERT无关的规则不会阻止恢复。
+
+该检查允许 `pg_restore --data-only --disable-triggers` 在触发器已禁用的阶段恢复ROWID，同时保留恢复结束后重新启用触发器的行为。它不为普通用户增加禁用触发器的权限。
+
+=== pg_dump与pg_restore集成
+
+`pg_dump.c` 检测对象类型及REF目录字段，读取类型属性、内部方法源码、TYPE BODY和实例化标志，将复合类型输出为 `CREATE TYPE ... AS OBJECT`。方法声明从包式源码还原为逗号分隔的类型元素，类型体输出为 `CREATE TYPE BODY`。
+
+REF域列和属性还原为 `REF schema.type_name`。自动REF域及内部方法包不按普通域、包重复输出；依赖处理将这些隐含对象关联到负责创建它们的对象类型，避免自引用REF引入不必要的导出循环。
+
+含ROWID表的数据使用保留行号的INSERT形式，恢复辅助调用与插入放在同一SQL命令中，形式如下：
+
+```sql
+INSERT INTO schema_name.object_table (attribute_name)
+SELECT attribute_value
+FROM sys.ora_set_next_rowid('schema_name.object_table'::regclass, saved_rowno)
+WHERE true;
+```
+
+不能把辅助调用拆为前一条独立SELECT，因为恢复状态受当前命令ID限制。导出逻辑还处理生成列和无可写普通列的场景，并单独保存ROWID序列状态。
+
+逻辑恢复后表OID可以变化。REF中的regclass文本重新解析表身份，数据行保留原rowno，两者共同维持引用。仅恢复属性数据而重新分配行号会改变对象身份，不能替代这一恢复流程。
+
+=== 源码与回归测试
+
+主要实现文件如下：
+
+[cols="2,3",options="header"]
+|===
+|文件 |职责
+|`src/backend/oracle_parser/ora_gram.y` |对象声明、方法及TYPE BODY语法。
+|`src/backend/commands/typecmds.c` |对象创建、替换、REF域及依赖管理。
+|`src/backend/commands/packagecmds.c` |内部方法命名空间、方法约束、TYPE BODY和比较元数据。
+|`src/backend/parser/parse_func.c` |系统与自定义构造、成员方法分派。
+|`src/backend/parser/parse_expr.c` |REF/DEREF转换及对象表达式解析。
+|`src/pl/plisql/src/pl_gram.y`、 `pl_subproc_function.c` |方法编译、SELF、构造返回和子程序查找。
+|`src/backend/utils/adt/rowtypes.c`、 `utils/cache/typcache.c` |DEREF执行、对象比较及哈希策略。
+|`src/backend/access/heap/heapam.c`、 `commands/tablecmds.c` |ROWID分配、恢复状态、表约束及所有者同步。
+|`src/bin/pg_dump/pg_dump.c` |对象DDL及REF、ROWID数据导出。
+|===
+
+SQL回归输入及预期输出位于：
+
+```
+src/oracle_test/regress/sql/create_type.sql
+src/oracle_test/regress/expected/create_type.out
+src/oracle_test/regress/sql/ref_type.sql
+src/oracle_test/regress/expected/ref_type.out
+```
+
+`create_type` 覆盖构造转换、名称冲突、方法和默认参数、类型替换、显式SELF、权限与所有者、MAP/ORDER、跨模式索引查询及不支持的操作。`ref_type` 覆盖自引用类型、REF列、错误目标、悬空引用、标量辅助调用防护、分区拒绝和身份重置保护。
+
+导出恢复及安全边界的TAP测试位于：
+
+```
+src/bin/pg_dump/t/oracle/001_pg_dump_ora_specific.pl
+src/bin/pg_dump/t/oracle/002_ref_type_dump.pl
+src/bin/pg_dump/t/oracle/003_ref_safety.pl
+src/bin/pg_dump/t/oracle/004_rowid_restore.pl
+```
+
+这些测试覆盖对象DDL、有效及悬空REF、64位ROWID、辅助函数权限与状态生命周期、生成列、零普通列、所有者恢复、普通SQL和自定义归档、仅数据恢复、会话授权、复制角色、禁用触发器及ROWID序列所有者同步。本文所列范围来自仓库测试代码，不表示编写文档时重新执行了全部回归。
+
+=== 当前实现边界
+
+* 复用复合类型与包执行机制实现对象语义，不等于完整的Oracle对象继承和替代系统；FINAL标志不能作为继承已经实现的依据。
+* 普通表对象列只有值语义；REF需要具备ROWID的受支持对象表。
+* REF域验证目标类型，不提供外键式行存在性约束；悬空引用是允许的状态。
+* 分区对象表不在当前解引用模型内，相关入口明确拒绝。
+* 对象比较经SPI执行方法，DEREF经SPI查询目标行，都有额外执行成本。
+* 对象哈希能力被禁用，避免与方法定义的相等性冲突；无MAP/ORDER对象不能保证排序、分组和去重可用。
+* ROWID恢复是受所有者、语句、事务和子事务范围限制的内部恢复协议，不能用作普通应用的身份分配接口。
+* 类型改名、模式迁移及有存储依赖时的替换存在明确限制，不能按普通复合类型的全部DDL能力推断对象类型支持范围。

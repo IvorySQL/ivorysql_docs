@@ -1,0 +1,348 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= Object Types: CREATE TYPE AS OBJECT
+
+== Purpose
+
+IvorySQL provides partial Oracle compatibility for `CREATE TYPE ... AS OBJECT`, allowing attributes and methods to be encapsulated in object types and objects to be constructed, stored, and used in SQL and PL/iSQL.
+
+The current implementation includes object type declarations, type bodies, system-defined constructors, user-defined constructors, member methods, static methods, MAP/ORDER comparisons, and typed REF references to object table rows. Objects can be stored as column values in ordinary tables, or as rows in object tables created with `CREATE TABLE ... OF`. `REF` and `DEREF` create and access references between objects.
+
+== Feature Description
+
+=== Environment
+
+Execute the Oracle syntax below in Oracle compatibility mode:
+
+```sql
+SET ivorysql.compatible_mode = oracle;
+```
+
+Use an IvorySQL server that includes these features and the corresponding client tools. The type body and PL/iSQL block examples use `/` on a separate line as the client submission terminator.
+
+=== Declaring Object Types
+
+The basic syntax is shown below. Square brackets indicate optional parts:
+
+```sql
+CREATE [OR REPLACE] TYPE type_name AS OBJECT
+(
+    attribute_name attribute_type
+    [, attribute_name attribute_type ...]
+    [, method_declaration ...]
+)
+[ [NOT] INSTANTIABLE ] [ [NOT] FINAL ];
+```
+
+An object type must contain at least one attribute. Attributes can use ordinary data types, or declare object references with `REF object_type`.
+
+By default, a type is instantiable and FINAL. `NOT INSTANTIABLE` prevents object construction and must be accompanied by `NOT FINAL`. The implementation stores and checks these flags, but this does not imply support for `UNDER` subtype inheritance or full type substitutability semantics.
+
+A simple example:
+
+```sql
+CREATE TYPE address_obj AS OBJECT
+(
+    city VARCHAR2(40),
+    postcode VARCHAR2(10)
+);
+
+SELECT address_obj('Beijing', '100000') FROM dual;
+```
+
+The system automatically provides an attribute-value constructor with the same name as the type. It accepts positional arguments in attribute declaration order and converts them to the corresponding attribute types. The argument count, order, and convertibility must match. The system-defined attribute-value constructor path does not support named arguments.
+
+Only types declared with `AS OBJECT` have the object construction and member invocation semantics described here. Ordinary table row types, view row types, and composite types declared with `CREATE TYPE ... AS (...)` do not automatically become Oracle object types.
+
+=== Object Columns and Object Tables
+
+An object column stores an entire object as a single column value. An object table exposes the object's attributes as table columns and gives each row an object identity that can be referenced:
+
+```sql
+CREATE TABLE address_holder (id INTEGER, address address_obj);
+INSERT INTO address_holder VALUES (1, address_obj('Beijing', '100000'));
+SELECT (h.address).city FROM address_holder h;
+
+CREATE TABLE address_objects OF address_obj;
+INSERT INTO address_objects VALUES ('Shanghai', '200000');
+SELECT a.city, REF(a) FROM address_objects a;
+```
+
+ROWID is enabled automatically for object tables. It does not need to be declared in the attribute list or inserted as an ordinary column. An object column in an ordinary table is not an object table: calling `REF` directly on its value cannot produce an object table reference.
+
+=== Type Bodies, Member Methods, and Static Methods
+
+Method signatures appear in the type declaration, and implementations are written in `CREATE [OR REPLACE] TYPE BODY`. The following method forms are supported:
+
+* `MEMBER FUNCTION` and `MEMBER PROCEDURE`: invoked through an object instance and have a SELF parameter.
+* `STATIC FUNCTION` and `STATIC PROCEDURE`: invoked through the type name and have no implicit SELF.
+* `CONSTRUCTOR FUNCTION`: custom object construction, declared with `RETURN SELF AS RESULT`.
+* `MAP MEMBER FUNCTION` or `ORDER MEMBER FUNCTION`: define object comparison rules.
+
+For example:
+
+```sql
+CREATE TYPE counter_obj AS OBJECT
+(
+    value INTEGER,
+    MEMBER FUNCTION current_value RETURN INTEGER,
+    MEMBER PROCEDURE bump(delta INTEGER),
+    STATIC FUNCTION double_value(p_value INTEGER) RETURN INTEGER
+);
+/
+
+CREATE TYPE BODY counter_obj AS
+    MEMBER FUNCTION current_value RETURN INTEGER IS
+    BEGIN
+        RETURN self.value;
+    END current_value;
+
+    MEMBER PROCEDURE bump(delta INTEGER) IS
+    BEGIN
+        self.value := self.value + delta;
+    END bump;
+
+    STATIC FUNCTION double_value(p_value INTEGER) RETURN INTEGER IS
+    BEGIN
+        RETURN p_value * 2;
+    END double_value;
+END;
+/
+
+SELECT v.obj.current_value(), counter_obj.double_value(7)
+FROM (SELECT counter_obj(10) obj FROM dual) v;
+```
+
+The results are `10` and `14`, respectively. Within a member method, attributes can be accessed using `SELF.attribute`; `SELF.` can also be omitted when name resolution permits. Member procedures can modify PL/iSQL object variables:
+
+```sql
+DECLARE
+    v counter_obj;
+BEGIN
+    v := counter_obj(10);
+    v.bump(5);
+    IF v.current_value() <> 15 THEN
+        RAISE EXCEPTION 'unexpected counter value';
+    END IF;
+END;
+/
+```
+
+Explicit SELF declarations are supported, such as `MEMBER PROCEDURE set_value(self IN OUT NOCOPY some_object_type, p_value INTEGER)`. No second implicit SELF is added in this case. Method calls support overload resolution, default arguments, and named argument matching. Defining an ordinary schema function whose first parameter is an object type does not make that function a member method of the object.
+
+=== User-Defined Constructors
+
+A user-defined constructor must have the same name as its object type. Assign SELF attributes in the constructor body and use `RETURN;` without an expression. `RETURN SELF;` and other return expressions are not allowed.
+
+```sql
+CREATE TYPE tagged_obj AS OBJECT
+(
+    value INTEGER,
+    label VARCHAR2(20),
+    CONSTRUCTOR FUNCTION tagged_obj(p_value INTEGER,
+                                    p_label VARCHAR2 DEFAULT 'default')
+        RETURN SELF AS RESULT
+);
+/
+
+CREATE TYPE BODY tagged_obj AS
+    CONSTRUCTOR FUNCTION tagged_obj(p_value INTEGER, p_label VARCHAR2)
+        RETURN SELF AS RESULT IS
+    BEGIN
+        self.value := p_value + 100;
+        self.label := p_label;
+        RETURN;
+    END tagged_obj;
+END;
+/
+
+SELECT tagged_obj(7) FROM dual;
+SELECT tagged_obj(p_label => 'named', p_value => 9) FROM dual;
+```
+
+The resulting attribute values are `(107,default)` and `(109,named)`, respectively. A matching user-defined constructor takes precedence over the system-defined attribute-value constructor. Callers do not supply the internal SELF argument. Constructors can also be called from static methods.
+
+=== Object Comparison
+
+Without MAP/ORDER, object equality uses attribute-by-attribute composite value comparison. Ordering comparisons and operations that require object sorting report `object type ... has no MAP or ORDER method`. Support for `=` therefore does not imply support for `ORDER BY`, ordered indexes, or duplicate elimination that requires sorting.
+
+A MAP method takes no explicit parameters and returns an orderable scalar value. Two objects are compared using their MAP results. An ORDER method takes one input parameter of the same object type and returns a numeric value: negative, zero, and positive values indicate that SELF is less than, equal to, or greater than the other object, respectively.
+
+A type can declare at most one MAP or one ORDER method, and cannot declare both. MAP cannot return a composite or non-orderable type. The ORDER parameter cannot be an OUT parameter.
+
+```sql
+CREATE TYPE ranked_obj AS OBJECT
+(
+    value INTEGER,
+    MAP MEMBER FUNCTION sort_key RETURN INTEGER
+);
+/
+
+CREATE TYPE BODY ranked_obj AS
+    MAP MEMBER FUNCTION sort_key RETURN INTEGER IS
+    BEGIN
+        RETURN mod(self.value, 10);
+    END sort_key;
+END;
+/
+
+SELECT ranked_obj(11) = ranked_obj(1) AS same_key,
+       ranked_obj(2) < ranked_obj(9) AS less_key
+FROM dual;
+```
+
+Both results are true. MAP/ORDER also applies to sorting, B-tree indexes, grouping, and duplicate elimination. Comparison semantics do not change when the session switches to PG compatibility mode. SQL NULL objects still follow the NULL propagation rules of strict comparison operators.
+
+=== REF and DEREF
+
+`REF object_type` is a reference constrained to a target object type. It can be used as an object attribute or an ordinary table column type. An object type can reference itself through REF:
+
+```sql
+CREATE TYPE person_ref_obj AS OBJECT
+(
+    name VARCHAR2(20),
+    parent REF person_ref_obj
+);
+CREATE TABLE person_objects OF person_ref_obj;
+CREATE TABLE person_links (person REF person_ref_obj);
+```
+
+`REF(table_alias)` creates a reference to a row in an object table. Its argument must be an object table alias, rather than an arbitrary object expression, ordinary table, view, or subquery result. `DEREF(ref_value)` accepts a typed REF and returns a value of the target object type:
+
+```sql
+INSERT INTO person_objects(name) VALUES ('root'), ('child');
+UPDATE person_objects p
+SET parent = (SELECT REF(r) FROM person_objects r WHERE r.name = 'root')
+WHERE p.name = 'child';
+
+INSERT INTO person_links
+SELECT REF(p) FROM person_objects p WHERE p.name = 'child';
+
+SELECT p.name, (DEREF(p.parent)).name AS parent_name
+FROM person_objects p ORDER BY p.name;
+SELECT (DEREF(l.person)).name AS person_name FROM person_links l;
+```
+
+In the first query, child's parent_name is root, and root's parent_name is NULL. The second query returns child.
+
+A REF stores object identity, not a copy of the target attributes. DEREF reads the target row visible to the current query and respects the caller's SELECT privileges on the target table. Assigning a reference to a different object type to the REF attribute or column violates the generated `ref_target` domain constraint.
+
+A REF is not a foreign key and does not prevent deletion of the target row. After the target row is deleted, the reference can remain as a dangling reference. DEREF returns NULL for a dangling or NULL reference. It also returns NULL if the target table no longer exists.
+
+=== Type Replacement, Privileges, and Removal
+
+`CREATE OR REPLACE TYPE` can change attribute definitions and method declarations when storage dependencies permit. Supported changes include adding, dropping, and renaming attributes, and changing their types. Replacement is rejected when dependencies such as stored columns use the object type; identical old and new attribute definitions do not bypass this check.
+
+Object type names are checked for conflicts with standalone functions, procedures, and ordinary packages in the same schema. Object method access is governed by the type's USAGE privilege:
+
+```sql
+GRANT USAGE ON TYPE counter_obj TO application_user;
+```
+
+Here, `application_user` must be an existing role. `ALTER TYPE ... OWNER TO ...` also updates ownership of the internal method namespace. `ALTER TYPE ... RENAME TO` and `ALTER TYPE ... SET SCHEMA` are currently unsupported for Oracle object types.
+
+Use `DROP TYPE` to remove a type, first removing dependent tables and other objects according to the usual dependency rules. System dependencies manage the internal method namespace and automatically generated REF type; they should not be maintained separately as application objects.
+
+=== Dump and Restore
+
+The corresponding `pg_dump` can export `AS OBJECT` declarations, method declarations, TYPE BODY, type flags, and `REF type_name` definitions. Automatically generated internal method packages and REF domains are not exported again as ordinary user objects.
+
+Restoring an object table requires preserving its original ROWIDs and sequence state as well as its attribute values. Otherwise, a previously dangling REF could incorrectly point to a row renumbered during restore. The current dump logic generates INSERT statements that preserve identity for ROWID tables, maintaining the meaning of both live and dangling references after restore.
+
+ROWID restoration requires the executor to be the target table owner or a superuser. INSERT privilege or EXECUTE privilege on the restore helper alone does not allow specifying ROWIDs. BEFORE INSERT row triggers and INSERT rules that can fire under the current replication role prevent ROWID restoration. Disabled triggers and rules, and rules unrelated to INSERT, do not cause this rejection. `pg_restore --data-only --disable-triggers` still requires the privileges normally required by that option.
+
+Restore using the matching tool version over an Oracle compatibility connection. Regression coverage includes plain SQL dumps, custom archives, data-only restores, session authorization restores, and restores by non-superuser table owners.
+
+=== Current Usage Limitations
+
+* This is a partial Oracle compatibility implementation. It does not promise complete object inheritance, object views, SCOPE, or referential integrity constraints.
+* Partitioned object tables are currently unsupported. Both CREATE and `ALTER TABLE ... OF` check this restriction.
+* Object tables cannot use `WITHOUT ROWID` or reset their identity sequences through `TRUNCATE ... RESTART IDENTITY`, because reusing a ROWID could redirect a dangling REF to a different object.
+* Internal REFs locate objects by table identity and a 64-bit row number. Do not treat them as universal identifiers across databases, or manually call ROWID restore helpers or reset their sequences in routine DML.
+* DEREF retrieves data by querying the target table. Large numbers of per-row dereferences incur additional overhead; validate performance at the intended query scale.
+* MAP/ORDER changes object comparison rules. Methods used for indexing and sorting should produce consistent, stable comparison results.
+
+== Test Cases
+
+The following standalone example verifies object construction, references, target updates, and dangling references. Execute the statements in order in Oracle compatibility mode. Statements expected to fail should be executed separately or within savepoints that can be rolled back.
+
+=== Preparing Test Objects
+
+```sql
+CREATE TYPE object_demo_person AS OBJECT
+(
+    name VARCHAR2(20),
+    parent REF object_demo_person
+);
+CREATE TABLE object_demo_people OF object_demo_person;
+CREATE TABLE object_demo_refs (person REF object_demo_person);
+
+SELECT object_demo_person('standalone', NULL) FROM dual;
+INSERT INTO object_demo_people(name) VALUES ('root'), ('child');
+UPDATE object_demo_people
+SET parent = (SELECT REF(p) FROM object_demo_people p WHERE p.name = 'root')
+WHERE name = 'child';
+INSERT INTO object_demo_refs
+SELECT REF(p) FROM object_demo_people p WHERE p.name = 'root';
+```
+
+=== Verifying Dereferencing and Identity Stability
+
+```sql
+SELECT p.name, (DEREF(p.parent)).name AS parent_name
+FROM object_demo_people p ORDER BY p.name;
+
+UPDATE object_demo_people SET name = 'root_new' WHERE name = 'root';
+SELECT (DEREF(r.person)).name AS referenced_name FROM object_demo_refs r;
+```
+
+In the first query, child references root. After the update, the second query returns `root_new`, showing that the REF does not store the old attribute value.
+
+=== Verifying Dangling References
+
+```sql
+DELETE FROM object_demo_people WHERE name = 'root_new';
+SELECT DEREF(r.person) IS NULL AS dangling FROM object_demo_refs r;
+SELECT p.name, DEREF(p.parent) IS NULL AS dangling
+FROM object_demo_people p;
+```
+
+The dangling result is true in both queries. The child row remains in the object table.
+
+=== Verifying Wrong-Target Rejection and ROWID Protection
+
+```sql
+CREATE TYPE object_demo_other AS OBJECT (name VARCHAR2(20));
+CREATE TABLE object_demo_others OF object_demo_other;
+INSERT INTO object_demo_others VALUES ('other');
+
+-- Expected to reject resetting the object table's ROWID sequence.
+TRUNCATE object_demo_people RESTART IDENTITY;
+```
+
+=== Cleaning Up Test Objects
+
+```sql
+DROP TABLE object_demo_refs;
+DROP TABLE object_demo_people;
+DROP TABLE object_demo_others;
+DROP TYPE object_demo_person;
+DROP TYPE object_demo_other;
+```
+
+After using the examples in the feature description sections, remove their objects in the following order:
+
+```sql
+DROP TABLE person_links;
+DROP TABLE person_objects;
+DROP TYPE person_ref_obj;
+DROP TYPE ranked_obj;
+DROP TYPE tagged_obj;
+DROP TYPE counter_obj;
+DROP TABLE address_holder;
+DROP TABLE address_objects;
+DROP TYPE address_obj;
+
