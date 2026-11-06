@@ -1,0 +1,132 @@
+:sectnums:
+:sectnumlevels: 3
+
+= Connecting to IvorySQL
+
+This guide shows how to choose a port and connect to a running IvorySQL instance. For installation and startup instructions, see xref:master/getting-started/quick_start.adoc[Quick Start] or xref:master/installation_guide.adoc[Installation].
+
+== Before you connect
+
+Have the server host name or IP address, database name, database user, and the port exposed to your client. Use `127.0.0.1` only when the server (or a published container port) is on the same machine as the client. The examples below use `your_database` and `your_user` as placeholders; replace them with values for your instance. If the `ivorysql` database does not exist, you can connect to an existing database such as `postgres`. Install `psql` if you want to use the command-line examples.
+
+== Choose a port
+
+[cols="1,2,3",options="header"]
+|===
+|Default port |Session mode |Use it for
+
+|`5432`
+|PostgreSQL-compatible mode
+|PostgreSQL SQL and tools
+
+|`1521`
+|Oracle-compatible mode
+|IvorySQL's Oracle-compatible SQL syntax and features
+|===
+
+These are defaults; your administrator may configure different ports. The Oracle-compatible endpoint is available only when Oracle compatibility is enabled for the instance. The port selects the initial SQL compatibility mode; it does not imply that an Oracle JDBC URL or Oracle Net client is required. See xref:master/architecture/framework_design.adoc[Dual-port design] for more on the two modes.
+
+== Connect with psql
+
+Specify the host, port, user, and database explicitly. For the PostgreSQL-compatible port:
+
+[source,console]
+----
+psql -h 127.0.0.1 -p 5432 -U your_user -d your_database
+----
+
+For the Oracle-compatible port:
+
+[source,console]
+----
+psql -h 127.0.0.1 -p 1521 -U your_user -d your_database
+----
+
+`psql` prompts for a password when the server's authentication method requires one. Do not put a password in the command line. After connecting, confirm the session and its SQL mode:
+
+[source,sql]
+----
+SHOW ivorysql.compatible_mode;
+----
+
+The mode is normally `pg` on the PostgreSQL-compatible port and `oracle` on the Oracle-compatible port. In `psql`, run `\conninfo` to inspect the current connection and `\q` to exit. On an Oracle-enabled instance, a session connected through the PostgreSQL-compatible port can also change its SQL mode with `SET ivorysql.compatible_mode = oracle;`.
+
+== Connect with other clients
+
+In a GUI tool such as pgAdmin or DBeaver, create a *PostgreSQL* connection and supply the same values used with `psql`:
+
+[cols="1,3",options="header"]
+|===
+|Connection field |Value
+
+|Host
+|Server address, or `127.0.0.1` for a local connection
+
+|Port
+|`5432` for PostgreSQL-compatible mode or `1521` for Oracle-compatible mode, unless configured otherwise
+
+|Database
+|Your database name
+
+|User name and password
+|Credentials for a database role permitted to connect
+
+|SSL/TLS
+|Follow your server's connection policy
+|===
+
+For a Java application using the PostgreSQL JDBC driver, a PostgreSQL-compatible connection URL has this form:
+
+[source,text]
+----
+jdbc:postgresql://db.example.com:5432/your_database
+----
+
+Supply the user and password through your application's connection settings. Select a PostgreSQL driver for these examples, including when connecting to IvorySQL's Oracle-compatible port; the number `1521` alone does not make it an Oracle JDBC connection.
+
+== Connecting to a container
+
+Use the *host* port published by Docker, which can differ from the port inside the container. For example, the Quick Start command publishes container port `5432` as host port `5434` (`-p 5434:5432`). Connect from the Docker host with:
+
+[source,console]
+----
+psql -h 127.0.0.1 -p 5434 -U ivorysql -d ivorysql
+----
+
+The container's `1521` endpoint is not published by that mapping. For access from the Docker host only, publish it separately when creating the container with `-p 127.0.0.1:1521:1521`. Confirm that IvorySQL listens on that port inside the container and permits the connection. A remote client also needs an intentional host-interface binding and restricted network access. Check `docker ps` for the actual mappings. If local-only access is intended for the `5434` example, bind that host port to `127.0.0.1` as well. See xref:master/containerization/docker_podman_deployment.adoc[Docker and Podman deployment].
+
+== Remote access and troubleshooting
+
+If a local connection works but a remote one fails, check the following:
+
+. *Address and port:* Use the server's reachable address and the port for the intended mode. For a container, use its published host port. A refused connection can also mean the server is stopped or, for port `1521`, that Oracle compatibility is not enabled.
+. *Listening addresses:* `listen_addresses` in `postgresql.conf` controls the PostgreSQL-compatible endpoint; `ivorysql.listen_addresses` in `ivorysql.conf` controls the Oracle-compatible endpoint. Both default to localhost. Configure the required server interface for each endpoint you need, then restart the server.
+. *Client authentication:* A `host` entry in `pg_hba.conf` must match the client's address, database, and user. Use a suitable authentication method and limit the allowed client addresses. Changes to this file require a configuration reload, not a server restart.
+. *Network access:* Allow only the required TCP ports through the host firewall, cloud security group, and container network to the intended clients.
+
+For example, if the server's network interface is `192.0.2.10`, configure the PostgreSQL-compatible endpoint in `postgresql.conf` as follows:
+
+[source,conf]
+----
+listen_addresses = '192.0.2.10'
+----
+
+If remote access to the Oracle-compatible endpoint is also needed, set this in `ivorysql.conf`:
+
+[source,conf]
+----
+ivorysql.listen_addresses = '192.0.2.10'
+----
+
+Replace the example address with the server's actual interface address. A change to either listening address takes effect only after a server restart.
+
+To allow only client `192.0.2.20` to connect as user `ivorysql` to database `ivorysql`, an example `pg_hba.conf` entry is:
+
+[source,conf]
+----
+host    ivorysql    ivorysql    192.0.2.20/32    scram-sha-256
+----
+
+Replace the example address, database, and user with your own. Before using this rule, ensure the client supports SCRAM and the user has a SCRAM-compatible password. `pg_hba.conf` uses the first matching rule, so check earlier entries and server logs if authentication still fails. Reload the configuration after editing this file (for example, `pg_ctl -D /path/to/data reload`). Avoid broad access rules or `trust` authentication for remote clients.
+
+If the connection succeeds but SQL behaves unexpectedly, run `SHOW ivorysql.compatible_mode;` and check that the session mode matches the SQL you intend to use.
