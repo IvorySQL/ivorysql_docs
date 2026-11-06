@@ -3,6 +3,7 @@
 ** xref:master/release_notes.adoc[发行说明]
 * 快速上手
 ** xref:master/getting-started/quick_start.adoc[快速开始]
+** xref:master/getting-started/connecting_to_ivorysql.adoc[连接 IvorySQL]
 * 安装部署
 ** xref:master/installation_guide.adoc[安装指南]
 ** xref:master/cluster_setup.adoc[集群搭建]

@@ -3,6 +3,7 @@
 ** xref:master/release_notes.adoc[Release]
 * Get Started 
 ** xref:master/getting-started/quick_start.adoc[Quick Start]
+** xref:master/getting-started/connecting_to_ivorysql.adoc[Connecting to IvorySQL]
 * Deploy
 ** xref:master/installation_guide.adoc[Installation]
 ** xref:master/cluster_setup.adoc[Cluster]
