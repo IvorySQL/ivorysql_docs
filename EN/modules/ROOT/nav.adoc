@@ -188,4 +188,6 @@
 ** xref:master/gb18030.adoc[GB18030 Character Set]
 * Reference
 ** xref:master/tools_reference.adoc[Tool Reference]
-* xref:master/contribution/faq.adoc[FAQ]
+** xref:master/contribution/asciidoc_syntax_reference.adoc[asciidoc grammar quick reference]
+* FAQ
+** xref:master/contribution/faq.adoc[FAQ]
