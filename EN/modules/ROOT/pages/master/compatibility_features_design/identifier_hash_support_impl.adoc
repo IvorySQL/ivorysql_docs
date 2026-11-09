@@ -1,0 +1,90 @@
+:sectnums:
+:sectnumlevels: 5
+
+= Identifier Hash Character Support Design
+
+== Purpose
+
+Support unquoted identifiers containing `#` in Oracle compatibility mode while preserving operators that start with #. For examples, see xref:master/oracle_compatibility/compat_identifier_hash_support.adoc[Identifier Hash Character Support].
+
+The implementation has two parts: extending the Oracle lexer's identifier character set and using lookahead to distinguish identifiers from JSON operators; and updating identifier quoting so that a valid name does not require double quotes solely because it contains #.
+
+== Implementation
+
+=== Code Organization
+
+Parser files reside in `src/backend/oracle_parser/`. Regression SQL, expected output, and the schedule reside in the `sql/`, `expected/`, and root directories of `src/oracle_test/regress/`, respectively. The table lists filenames only.
+
+[cols="2,4",options="header"]
+|===
+|File |Responsibility
+|`ora_scan.l` |Extends the identifier character set and resolves boundaries between trailing # and operators
+|`liboracle_parser.c` |Updates the safe-character check in oracle_quote_identifier()
+|`ora_identifiers.sql` |Regression cases for special-character names, XOR, and JSON operators
+|`ora_identifiers.out` |Expected table operations, queries, and operator results
+|`parallel_schedule` |Adds ora_identifiers to the Oracle parallel regression schedule
+|===
+
+The extension regression output `ora_misc_functions.out` in `contrib/ivorysql_ora/expected/` also updates the expected diagnostic for invalid input to reflect changed token boundaries when # becomes part of an identifier.
+
+=== Identifier Character Set
+
+`ora_scan.l` leaves the initial character set unchanged and adds # only to the continuation set, `ident_cont`:
+
+[source,text]
+----
+ident_start     [A-Za-z\200-\377_]
+ident_cont      [A-Za-z\200-\377_0-9\$#]
+identifier      {ident_start}{ident_cont}*
+----
+
+This recognizes `statistic#`, `col#1`, and `test#table` as individual identifiers without allowing # as an unquoted initial character. Existing rules for $, underscores, digits, and high-bit bytes are preserved.
+
+The lexer then performs keyword lookup. For a non-keyword, it calls `downcase_truncate_identifier()`, stores the name in the semantic value, and returns `IDENT`, preserving existing case and length handling.
+
+=== Lookahead and Operator Boundaries
+
+Extending the character set alone would cause longest-match scanning to recognize `json#` in `json#>'{a}'` as an identifier, leaving a separate > and changing the expression's meaning. The identifier action resolves this before keyword lookup:
+
+. If the match has at least two characters and ends with #, call `input(yyscanner)` to inspect the next character.
+. If the next character is > or -, return it with `unput()`, then call `yyless(len - 1)` to return the trailing # to the input stream.
+. Subsequent scanning starts at # and uses the existing operator rules to recognize `#>`, `#>>`, or `#-`.
+. Otherwise, retain # in the name and return the lookahead character when it is an ordinary character.
+
+The scanner removes `%option noinput` and `%option nounput` to enable the Flex input and pushback interfaces.
+
+[source,text]
+----
+statistic#          → IDENT(statistic#)
+col#1              → IDENT(col#1)
+jsonb#>>'{b}'      → IDENT(jsonb) + #>> + string literal
+statistic# > 0     → IDENT(statistic#) + > + integer
+a#b                → IDENT(a#b)
+a # b              → IDENT(a) + # + IDENT(b)
+----
+
+This approach reuses the existing operator rules without adding JSON operators or dedicated grammar nodes. Lookahead is limited to identifier candidates ending with #. Separate an actual trailing # in a name from > or - with spaces to avoid triggering operator recognition.
+
+=== Identifier Quoting
+
+Parser initialization registers `oracle_quote_identifier()` in `liboracle_parser.c` as `quote_identifier_hook`. The function includes # and $ among safe continuation characters, keeping quoting consistent with the lexer.
+
+A name eligible for unquoted output must still start with an ASCII lowercase letter or underscore and contain only ASCII lowercase letters, digits, underscores, #, and $. Keyword classification is still checked: unreserved keywords may remain unquoted, while other keywords require quoting. Enabling `quote_all_identifiers` also forces double quotes.
+
+The change therefore does not exempt every name containing # from quoting. Uppercase, mixed-case, or other characters remain subject to existing checks. When quoting is required, the function retains the existing double-quote escaping logic.
+
+== Validation
+
+The `ora_identifiers` regression group covers column names with trailing and embedded #, table names containing #, existing $ support, mixed special characters, integer and bit-string XOR, and `#>`, `#>>`, and `#-` without spaces.
+
+When changing these rules, also check spaces separating column names ending with # from comparison or subtraction operators, and identifier quoting output, rather than validating only successful table creation.
+
+From a configured, built, and installed source checkout of the corresponding version, run against an Oracle compatibility instance:
+
+[source,bash]
+----
+make -C src/oracle_test/regress oracle-installcheck-tests \
+    TESTS=ora_identifiers EXTRA_REGRESS_OPTS='--port=1521'
+----
+
+Adjust the port for the instance. This test group is included in the Oracle parallel regression schedule.
