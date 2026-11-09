@@ -1,0 +1,138 @@
+:sectnums:
+:sectnumlevels: 5
+
+= AUTHID DEFINER 过程中的事务控制
+
+== 目的
+
+IvorySQL 允许 Oracle 兼容模式下的 PL/iSQL `AUTHID DEFINER` 过程在符合调用条件时执行 COMMIT 和 ROLLBACK，同时保持过程定义者的执行权限，并在返回后恢复调用者身份。
+
+Oracle 语法创建的过程默认使用 `AUTHID DEFINER`，无需为了执行事务控制而改成 `AUTHID CURRENT_USER`。AUTHID 语法见 xref:master/oracle_compatibility/compat_function_procedure.adoc[存储函数和过程兼容]。
+
+== 功能说明
+
+=== 事务与权限行为
+
+* COMMIT 提交当前事务，ROLLBACK 回滚当前事务；结束后自动开始新事务，过程继续执行。
+* 事务结束后，过程中的后续语句仍以过程所有者的有效身份执行。
+* 过程正常返回时，调用者的有效身份恢复；调用者仍需具备目标过程的 EXECUTE 权限。
+* 嵌套过程既可通过 CALL 调用，也可使用 PL/iSQL 中省略 CALL 的过程调用形式；整条调用链仍须允许事务控制。
+
+内层过程的事务控制作用于当前会话事务，包含外层过程在该事务中已完成的修改。它不会自动形成独立于外层过程的自治事务。
+
+=== 调用条件
+
+[cols="2,4",options="header"]
+|===
+|场景 |说明
+|顶层 CALL |在显式事务块之外调用 Oracle 模式的 PL/iSQL DEFINER 过程，可执行事务控制
+|嵌套过程调用 |保留可执行事务控制的调用上下文时，内层过程也可提交或回滚
+|显式事务块或函数调用链 |已有的原子执行限制仍生效，例如 START TRANSACTION 开启的事务中的 CALL，或通过 SELECT 调用函数再进入过程
+|过程级 SET 配置 |带有过程级 SET 配置的过程仍受事务控制限制
+|活动子事务 |由异常处理块等建立的活动子事务内，仍不能结束顶层事务
+|===
+
+此项放开针对 Oracle 模式的 PL/iSQL 过程，不会统一放开其他语言、PostgreSQL 模式或其他安全上下文的限制。
+
+== 使用示例
+
+以下示例使用能够创建角色、模式并执行 SET ROLE 的管理账户，在 Oracle 兼容模式的 psql 会话中按顺序运行。启用自动提交，不在 CALL 外层用 START TRANSACTION 显式开启事务。
+
+=== 提交、回滚与身份恢复
+
+创建过程所有者持有的表和过程，仅给调用者模式使用权限及过程执行权限：
+
+[source,sql]
+----
+CREATE ROLE authid_tx_caller;
+CREATE SCHEMA authid_tx_demo;
+CREATE TABLE authid_tx_demo.events (event text, effective_user name);
+
+CREATE OR REPLACE PROCEDURE authid_tx_demo.record_events AUTHID DEFINER IS
+BEGIN
+    INSERT INTO authid_tx_demo.events VALUES ('before commit', current_user);
+    COMMIT;
+    INSERT INTO authid_tx_demo.events VALUES ('before rollback', current_user);
+    ROLLBACK;
+    INSERT INTO authid_tx_demo.events VALUES ('after rollback', current_user);
+END;
+/
+
+REVOKE EXECUTE ON PROCEDURE authid_tx_demo.record_events FROM PUBLIC;
+GRANT USAGE ON SCHEMA authid_tx_demo TO authid_tx_caller;
+GRANT EXECUTE ON PROCEDURE authid_tx_demo.record_events TO authid_tx_caller;
+
+SET ROLE authid_tx_caller;
+CALL authid_tx_demo.record_events();
+SELECT current_user = 'authid_tx_caller'::name AS caller_restored;
+RESET ROLE;
+
+SELECT event, effective_user = current_user AS ran_as_owner
+FROM authid_tx_demo.events ORDER BY event;
+----
+
+`caller_restored` 为 t，说明调用结束后已恢复调用者。恢复为创建对象的账户后，事件查询得到：
+
+[source,text]
+----
+     event      | ran_as_owner
+----------------+--------------
+ after rollback | t
+ before commit  | t
+(2 rows)
+----
+
+`before commit` 已提交，`before rollback` 被回滚，`after rollback` 在新事务中写入。两个保留事件均由过程所有者执行，说明事务边界没有丢失定义者权限。
+
+=== 默认 DEFINER 过程的嵌套回滚
+
+下面两个过程省略 AUTHID，使用 Oracle 语法默认的 DEFINER 权限。仍由创建对象的账户执行：
+
+[source,sql]
+----
+CREATE TABLE authid_tx_demo.nested_events (id int);
+
+CREATE OR REPLACE PROCEDURE authid_tx_demo.inner_rollback IS
+BEGIN
+    INSERT INTO authid_tx_demo.nested_events VALUES (201);
+    ROLLBACK;
+    INSERT INTO authid_tx_demo.nested_events VALUES (202);
+END;
+/
+
+CREATE OR REPLACE PROCEDURE authid_tx_demo.outer_rollback IS
+BEGIN
+    INSERT INTO authid_tx_demo.nested_events VALUES (200);
+    CALL authid_tx_demo.inner_rollback();
+    INSERT INTO authid_tx_demo.nested_events VALUES (203);
+END;
+/
+
+CALL authid_tx_demo.outer_rollback();
+SELECT id FROM authid_tx_demo.nested_events ORDER BY id;
+----
+
+结果仅包含 202、203。内层的 ROLLBACK 同时撤销了外层插入的 200 和内层插入的 201；回滚后内外层继续执行。
+
+=== 显式事务块中的限制
+
+[source,sql]
+----
+START TRANSACTION;
+CALL authid_tx_demo.record_events();
+ROLLBACK;
+----
+
+此时过程中的 COMMIT 会报 `invalid transaction termination`，因为外层显式事务块仍使调用处于原子执行上下文。最后的 ROLLBACK 用于退出已中止的事务。
+
+[source,sql]
+----
+DROP SCHEMA authid_tx_demo CASCADE;
+DROP ROLE authid_tx_caller;
+----
+
+== 使用说明
+
+* 驱动关闭自动提交后可能在 CALL 外层创建事务；使用前应核对客户端的事务管理方式。
+* 过程内已经成功提交的数据不会因后续错误或回滚而撤销，应按业务需要安排事务边界。
+* 遇到事务结束错误时，应检查完整调用链、过程级配置及活动子事务，不能只检查 AUTHID 属性。
