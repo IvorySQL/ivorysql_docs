@@ -1,0 +1,165 @@
+:sectnums:
+:sectnumlevels: 5
+
+= **Feature Overview**
+
+IvorySQL implements the Oracle-compatible `ROWNUM` pseudocolumn through a new expression node, planner-level semantic rewrites, and executor row-number state. `ROWNUM` is assigned when a candidate row is retrieved at the current query level, starts at 1, and returns the internal `int8` type. The implementation also handles evaluation before sorting, independent counters for nested queries, counter resets for correlated subqueries and set-operation branches, aggregate expressions, and stable results for scrollable cursors.
+
+Basic usage is as follows:
+
+```sql
+SET ivorysql.compatible_mode = oracle;
+
+SELECT ROWNUM, id
+FROM employee
+WHERE ROWNUM <= 10;
+```
+
+== Implementation
+
+=== The RownumExpr Expression Node
+
+`RownumExpr` is defined in `primnodes.h`:
+
+```
+typedef struct RownumExpr
+{
+    pg_node_attr(no_query_jumble)
+    Expr        xpr;
+    ParseLoc    location;
+} RownumExpr;
+```
+
+`RownumExpr` does not reference a relation attribute or store a counter value. It only represents an operation that reads the current row number from the executor state. `location` is used for error positioning. The node infrastructure provides copy, equality comparison, serialization, deserialization, and deparsing support; rule deparsing emits `ROWNUM`.
+
+`exprType` defines the expression's result type as `INT8OID`, and the expression has no collation. Both `contain_mutable_functions` and `contain_volatile_functions` treat it as a volatile expression, preventing the optimizer from folding, duplicating, or moving it in ways that would change its per-row evaluation semantics.
+
+=== Lexical Analysis and Expression Transformation
+
+The Oracle keyword list registers `rownum` as an unreserved keyword and a bare-label keyword. When parsing a single-field `ColumnRef`, `transformColumnRef` creates a `RownumExpr` when all of the following conditions are satisfied:
+
+1. The current session uses the Oracle parser;
+2. The identifier matches `rownum` case-insensitively;
+3. The identifier has no table or schema qualifier.
+
+Consequently, `ROWNUM` does not need to be registered as a function or column in the system catalogs. PostgreSQL compatibility mode does not enter this branch and continues to resolve it as an ordinary column name.
+
+In Oracle compatibility mode, `parse_target.c` and `parse_relation.c` reject the explicit use of `ROWNUM` as a column alias, relation alias, or subquery alias. `parse_agg.c` includes `RownumExpr` in the normal grouping validation: a grouping error is reported if it does not appear in the current-level `GROUP BY` clause and is not inside an aggregate function.
+
+The PL/iSQL pre-parse hook performs an additional variable lookup for `ROWNUM` and `ROWID`. If a procedure parameter or local variable with the same name exists, it returns a PL/iSQL variable node, preventing the SQL parser from converting the name into a pseudocolumn prematurely.
+
+=== Planner-Level ROWNUM Predicate Rewrites
+
+`subquery_planner` calls `transform_rownum_to_limit` before normal expression preprocessing. The function recursively processes subqueries in the range table and looks through top-level `AND` conditions for comparison expressions whose left operand is a `RownumExpr` and whose right operand is an `int2`, `int4`, or `int8` constant.
+
+Comparison conditions are rewritten according to the following rules:
+
+[cols="1,1,2"]
+|===
+|Condition |Constant range |Rewrite result
+
+|`ROWNUM <= N`
+|`N <= 0`
+|Replace with the constant `false`
+
+|`ROWNUM <= N`
+|`N > 0`
+|Rewrite as `LIMIT N` for a simple query
+
+|`ROWNUM < N`
+|`N <= 1`
+|Replace with the constant `false`
+
+|`ROWNUM < N`
+|`N > 1`
+|Rewrite as `LIMIT N - 1` for a simple query
+
+|`ROWNUM = N`
+|`N = 1`
+|Rewrite as `LIMIT 1` for a simple query
+
+|`ROWNUM = N`
+|`N != 1`
+|Replace with the constant `false`
+
+|`ROWNUM > N`
+|`N >= 1` / `N < 1`
+|Replace with `false` / remove the always-true predicate, respectively
+
+|`ROWNUM >= N`
+|`N > 1` / `N <= 1`
+|Replace with `false` / remove the always-true predicate, respectively
+|===
+
+A `LIMIT` rewrite is used only when the current query level has no existing `LIMIT`, grouping, aggregation, `DISTINCT`, sorting, window functions, set operations, or set-returning functions in the target list. PostgreSQL applies `LIMIT` after these higher-level operations, whereas Oracle applies `ROWNUM` before them, so a rewrite in a complex query would change its semantics. The always-true and always-false rules are independent of query complexity and can always be applied.
+
+The current rewrite does not recognize a constant on the left-hand side, `ROWNUM` nested in another expression, a non-integer constant, or a condition inside `OR`. These forms retain the `RownumExpr` and are evaluated row by row by the executor.
+
+=== Executor Counter and Predicate Evaluation
+
+`EState` contains an `es_rownum` field, which `CreateExecutorState` initializes to 0. The expression compiler compiles `RownumExpr` into `EEOP_ROWNUM`. `ExecEvalRownum` reads the counter from the `EState` associated with the current plan state and returns it as `int8`; before counting has started, it returns 1 by default.
+
+The core counting logic is in `ExecScanExtended`:
+
+1. Retrieve a candidate tuple from the access method;
+2. Increment `es_rownum` before checking the scan conditions;
+3. Evaluate the filter conditions, including `ROWNUM`, using the incremented value;
+4. If the conditions pass, retain the counter value and project the result;
+5. If the conditions fail, undo the increment and retrieve the next candidate tuple.
+
+Undoing the increment after a failed condition is the key reason why `ROWNUM > 1` and `ROWNUM = 2` return an empty result. The first candidate row sees a value of 1. After the condition fails, the counter returns to 0, so the next candidate row also sees 1 and the counter can never reach 2. Rows that fail other ordinary filter conditions do not consume a `ROWNUM` value either.
+
+=== Evaluation Before Sorting and Projection Materialization
+
+Oracle requires `ROWNUM` to be assigned before an `ORDER BY` at the same query level. During plan creation, if the target list contains a `RownumExpr` and the subplan is a `Sort`, `createplan.c` adds the corresponding `RownumExpr` to the target list of the scan plan below the sort. It then replaces the original expressions in the sort node and upper target list with `Var` nodes that reference these additional columns. Multiple `ROWNUM` occurrences nested in arithmetic expressions, `CASE` expressions, and function calls are also handled by walking, counting, and replacing them individually.
+
+`ProjectionInfo` contains a `pi_needsMaterialization` field. When a target list contains `ROWNUM`, scan nodes and `Result` nodes materialize their result slots, preserving evaluated row numbers as ordinary values and preventing outer queries, sorting, or repeated reads from evaluating the `RownumExpr` again.
+
+When an aggregate function argument contains `ROWNUM`, the plan creation logic adds a `RownumExpr` to the aggregate node's subplan target list. This allows `setrefs` to associate the aggregate argument with the value generated during the scan. Consequently, `SUM(ROWNUM)`, `MIN(ROWNUM)`, and multi-level aggregates obtain the correct numbers at the input-row stage.
+
+=== Query-Level Isolation and Counter Resets
+
+The top-level executor state has a single `es_rownum` field. Plan nodes save, switch, or reset it when entering an independently numbered scope:
+
+* `SubqueryScanState` stores its own `sub_rownum`. Before executing the subplan, `SubqueryNext` swaps the local value into `EState`; afterward, it saves the updated value and restores the outer value. A rescan resets the local value to 0.
+* Before executing a correlated subquery, `ExecSubPlan` saves the outer scan direction and row number, resets the counter to 0, and restores them after execution. This ensures that every correlated-subquery invocation starts at 1. The init-plan and subplan rescan paths perform corresponding resets.
+* `AppendPath`, `MergeAppendPath`, and their corresponding plan nodes contain an `is_union` flag. When switching branches of `UNION` or `UNION ALL`, the `Append` and `MergeAppend` executors reset `es_rownum` to 0 so that each branch is numbered independently.
+
+The current implementation does not establish equivalent branch state for the two sides of `INTERSECT` and `EXCEPT`, which therefore share a counter. A parameterized `LATERAL` subquery also does not reset its local counter for each outer row. These are known differences from Oracle behavior.
+
+=== Scrollable Cursors
+
+A scrollable cursor can read backward or reposition itself. If it reevaluated `RownumExpr` on every read, the same result row could receive a different number.
+
+In `pquery.c`, `plan_contains_rownum` traverses ordinary child plans as well as the additional child plans of `SubqueryScan`, `Append`, and `MergeAppend`. For a `SCROLL` cursor whose plan contains `ROWNUM`, `FillPortalStoreForSelect` writes the entire result to the portal's tuplestore during the initial execution. Subsequent `FETCH PRIOR`, `FETCH NEXT`, `FETCH ABSOLUTE`, and `FETCH RELATIVE` operations read the materialized result and therefore preserve the numbers generated during the initial scan.
+
+=== Node Copying, Deparsing, and Plan Support
+
+`RownumExpr` is integrated with the node copy, comparison, output, and read infrastructure, allowing it to pass safely through query and plan trees. `ruleutils.c` emits `ROWNUM` when deparsing views and rules. Expression walking, type lookup, and collation lookup functions also contain branches for this node.
+
+To carry set-operation branch information to the executor, the `is_union` field is propagated through Append/MergeAppend path nodes, plan nodes, and execution state, and is integrated with node copying, serialization, and deserialization.
+
+=== Regression Tests
+
+The Oracle SQL regression test input and expected output are located at:
+
+```
+src/oracle_test/regress/sql/rownum.sql
+src/oracle_test/regress/expected/rownum.out
+```
+
+The tests cover basic comparison semantics, `LIMIT` rewrites, sorting at the same query level, nested queries, joins, aggregation and grouping, correlated subqueries, `UNION`/`UNION ALL`, DML, Oracle-style pagination, empty tables, scrollable cursors, alias restrictions, and the current compatibility boundaries for `INTERSECT`, `EXCEPT`, and `LATERAL`.
+
+The PL/iSQL regression tests are located at:
+
+```
+src/pl/plisql/src/sql/plisql_rownum.sql
+src/pl/plisql/src/expected/plisql_rownum.out
+```
+
+The PostgreSQL-mode keyword behavior tests are located at:
+
+```
+src/test/regress/sql/ora_keywords_pg.sql
+src/test/regress/expected/ora_keywords_pg.out
+```
