@@ -5,36 +5,36 @@
 
 == Purpose
 
-In Oracle compatibility mode, IvorySQL allows unquoted identifiers to contain `#`. This supports migration of Oracle SQL using names such as `STATISTIC#` and reduces the need to add double quotes around table and column names.
+In Oracle compatibility mode, IvorySQL allows unquoted identifiers to contain `+#+`. This supports migration of Oracle SQL using names such as `+STATISTIC#+` and reduces the need to add double quotes around table and column names.
 
 == Function Description
 
 === Identifier Rules
 
-`#` can appear within or at the end of an unquoted identifier, but cannot be its first character. Existing rules for the first character remain unchanged; for example, a name can start with an ASCII letter or underscore.
+`+#+` can appear within or at the end of an unquoted identifier, but cannot be its first character. Existing rules for the first character remain unchanged; for example, a name can start with an ASCII letter or underscore.
 
 [cols="2,3",options="header"]
 |===
 |Example |Description
-|`statistic#` |Column name ending with #
-|`col#1`, `my#column` |Column names containing # within the name
-|`test#table` |Table name containing #
-|`col_$#4` |Combination of an underscore, $, #, and a digit
+|`+statistic#+` |Column name ending with +#+
+|`+col#1+`, `+my#column+` |Column names containing +#+ within the name
+|`+test#table+` |Table name containing +#+
+|`+col_$#4+` |Combination of an underscore, $, +#+, and a digit
 |===
 
-`$` was already allowed after the first character; this feature adds `#`. Including `#` does not change identifier case handling or length rules. Quoted identifiers still follow the existing double-quote and case-conversion rules; see xref:master/oracle_compatibility/compat_case_conversion.adoc[Quoted Identifier Case Conversion].
+`$` was already allowed after the first character; this feature adds `+#+`. Including `+#+` does not change identifier case handling or length rules. Quoted identifiers still follow the existing double-quote and case-conversion rules; see xref:master/oracle_compatibility/compat_case_conversion.adoc[Quoted Identifier Case Conversion].
 
 === Coexistence with Operators
 
-`#` remains a bitwise XOR operator, and `#>`, `#>>`, and `#-` remain JSON path extraction or deletion operators. The lexer distinguishes these operators from `#` within names, allowing forms without spaces such as `jsonb#>>'{b}'`.
+`+#+` remains a bitwise XOR operator, and `+#>+`, `+#>>+`, and `+#-+` remain JSON path extraction or deletion operators. The lexer distinguishes these operators from `+#+` within names, allowing forms without spaces such as `+jsonb#>>'{b}'+`.
 
-If an identifier ending with `#` is immediately followed by `>` or `-`, the trailing `#` is interpreted as the start of an operator. Write comparisons and subtraction as `statistic# > 0` and `statistic# - 1`, using spaces to separate the tokens. Similarly, `a#b` is one identifier; write `a # b` to apply XOR to a and b.
+If an identifier ending with `+#+` is immediately followed by `>` or `-`, the trailing `+#+` is interpreted as the start of an operator. Write comparisons and subtraction as `+statistic# > 0+` and `+statistic# - 1+`, using spaces to separate the tokens. Similarly, `+a#b+` is one identifier; write `+a # b+` to apply XOR to a and b.
 
 == Examples
 
 Run the following examples in a psql session in Oracle compatibility mode.
 
-=== Create and Query Columns Containing #
+=== Create and Query Columns Containing +#+
 
 [source,sql]
 ----
@@ -55,7 +55,7 @@ SELECT statistic#, col#1, my#column FROM test_hash_ident;
 (1 row)
 ----
 
-Subsequent references do not require double quotes solely because of #. Use spaces to separate column names from operators in comparisons and arithmetic expressions:
+Subsequent references do not require double quotes solely because of +#+. Use spaces to separate column names from operators in comparisons and arithmetic expressions:
 
 [source,sql]
 ----
@@ -66,7 +66,7 @@ WHERE statistic# > 0;
 
 The query returns one row with `previous_statistic` equal to 0.
 
-=== Create a Table Name and a Mixed-Character Column Name Containing #
+=== Create a Table Name and a Mixed-Character Column Name Containing +#+
 
 [source,sql]
 ----
@@ -75,7 +75,7 @@ INSERT INTO test#table VALUES (100);
 SELECT col_$#4 FROM test#table;
 ----
 
-The query returns one row with `col_$#4` equal to 100. These names can be used directly in table creation, inserts, and queries.
+The query returns one row with `+col_$#4+` equal to 100. These names can be used directly in table creation, inserts, and queries.
 
 === Use XOR and JSON Operators
 
@@ -90,7 +90,7 @@ SELECT '{"b":2}'::jsonb#>>'{b}' AS jsonb_path_no_space;
 SELECT '{"a":1,"b":2}'::jsonb#-'{a}' AS jsonb_delete_no_space;
 ----
 
-The XOR results are 6, 6, and `0110`, respectively. The JSON operations return JSON value `1`, text `2`, and `{"b": 2}`, respectively. Allowing # within identifiers preserves the meaning of these operators.
+The XOR results are 6, 6, and `0110`, respectively. The JSON operations return JSON value `1`, text `2`, and `{"b": 2}`, respectively. Allowing +#+ within identifiers preserves the meaning of these operators.
 
 [source,sql]
 ----
@@ -101,5 +101,5 @@ DROP TABLE test_hash_ident;
 == Usage Notes
 
 * This feature applies to identifiers handled by the Oracle compatibility parser. It does not imply that PostgreSQL mode accepts the same unquoted syntax.
-* A # within a name is part of the identifier and must be retained when referencing the object.
-* When a name ending with # is adjacent to an operator, use spaces to make the boundary explicit and avoid interpreting part of the name as a JSON operator.
+* A +#+ within a name is part of the identifier and must be retained when referencing the object.
+* When a name ending with +#+ is adjacent to an operator, use spaces to make the boundary explicit and avoid interpreting part of the name as a JSON operator.
