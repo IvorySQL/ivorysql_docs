@@ -1,0 +1,389 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= XXX_COLUMNS系统视图
+
+== 目的
+
+IvorySQL提供了兼容Oracle数据字典的 `SYS.USER_CONS_COLUMNS`、`SYS.ALL_CONS_COLUMNS`、`SYS.DBA_CONS_COLUMNS` 和 `SYS.ALL_TAB_COLUMNS` 系统视图，用于查询约束列及用户可访问对象的列元数据。
+
+本文档统一介绍这四个视图的用途、列定义、可见性规则、使用方法和当前兼容边界。
+
+== 功能说明
+
+=== 视图概览
+
+四个视图均位于 `SYS` 模式，并向 `PUBLIC` 授予了查询权限。
+
+[cols="1,2,2"]
+|===
+|视图 |用途 |当前可见范围
+
+|`SYS.USER_CONS_COLUMNS`
+|当前用户所拥有表的约束列
+|仅显示表所有者为 `CURRENT_USER` 的对象
+
+|`SYS.ALL_CONS_COLUMNS`
+|当前用户可访问对象的约束列
+|要求对模式具有 `USAGE`，并对对象具有 `SELECT` 权限
+
+|`SYS.DBA_CONS_COLUMNS`
+|数据库中普通表的约束列
+|当前实现不按当前用户过滤对象，查询者可以看到该视图包含的全部元数据
+
+|`SYS.ALL_TAB_COLUMNS`
+|当前用户可访问对象的列定义和部分统计信息
+|当前用户对对象具有 `SELECT`、`INSERT`、`UPDATE`、`DELETE`、`TRUNCATE`、`REFERENCES` 或 `TRIGGER` 中任一权限
+|===
+
+标识符通过 `SYS.ORA_CASE_TRANS` 按IvorySQL的标识符大小写规则转换。默认Oracle兼容配置下，常规未加引号的对象名通常以大写形式显示。
+
+=== SYS.USER_CONS_COLUMNS
+
+`SYS.USER_CONS_COLUMNS` 返回当前用户所拥有对象的约束及其列。每个约束列对应一行，复合约束按照 `POSITION` 标识列在约束中的次序。
+
+该视图包含以下列：
+
+[cols="1,3"]
+|===
+|列名 |说明
+
+|`OWNER`
+|表所有者对应的数据库角色名
+
+|`TABLE_NAME`
+|约束所在的表名
+
+|`CONSTRAINT_NAME`
+|约束名称
+
+|`COLUMN_NAME`
+|参与约束的列名
+
+|`POSITION`
+|列在复合约束键中的位置，从1开始
+|===
+
+视图从系统约束目录读取主键、唯一约束、外键、检查约束以及当前版本记录在约束目录中的非空约束。系统模式 `PG_CATALOG`、`PG_TOAST` 和 `INFORMATION_SCHEMA` 中的对象不显示。
+
+例如，查询当前用户的复合主键列：
+
+```sql
+SELECT table_name, constraint_name, column_name, position
+FROM sys.user_cons_columns
+WHERE table_name = 'ORDERS'
+  AND constraint_name = 'ORDERS_PK'
+ORDER BY position;
+```
+
+=== SYS.ALL_CONS_COLUMNS
+
+`SYS.ALL_CONS_COLUMNS` 返回当前用户具有模式访问权限和表查询权限的约束列。其列顺序为：
+
+```
+OWNER, CONSTRAINT_NAME, TABLE_NAME, COLUMN_NAME, POSITION
+```
+
+`OWNER` 来自表所有者角色，而不是表所在模式。常规约束包括主键、唯一约束、外键和检查约束。
+
+非空列通过附加分支转换为约束列记录，生成的约束名称格式为：
+
+```
+table_name_column_name_NOT_NULL
+```
+
+如果非空列已经属于主键，附加分支不会再为该列生成非空记录，从而避免主键列在该分支中重复出现。
+
+例如，查询当前用户可访问的某个表上的约束列：
+
+```sql
+SELECT owner, constraint_name, table_name, column_name, position
+FROM sys.all_cons_columns
+WHERE table_name = 'ORDERS'
+ORDER BY constraint_name, position;
+```
+
+该视图包含普通表、视图、物化视图和分区表的相关目录记录，但不包含 `PG_CATALOG`、`INFORMATION_SCHEMA` 和 `PG_TOAST` 模式中的对象，也不显示已删除列。
+
+=== SYS.DBA_CONS_COLUMNS
+
+`SYS.DBA_CONS_COLUMNS` 用于从数据库范围查看普通表的约束列。其列顺序与 `SYS.ALL_CONS_COLUMNS` 相同：
+
+```
+OWNER, CONSTRAINT_NAME, TABLE_NAME, COLUMN_NAME, POSITION
+```
+
+常规约束记录来自系统约束目录，非空记录由列目录中的非空标志附加生成。复合约束通过 `POSITION` 表示列顺序。
+
+当前实现虽然将视图命名为 `DBA_CONS_COLUMNS`，但查询权限授予了 `PUBLIC`，并且视图定义没有检查当前用户的对象权限。因此，应把它视为数据库范围的元数据视图，而不是只有数据库管理员才能查询的安全边界。
+
+建议查询时通过所有者、表名或约束名限定范围：
+
+```sql
+SELECT owner, constraint_name, table_name, column_name, position
+FROM sys.dba_cons_columns
+WHERE table_name = 'ORDERS'
+  AND constraint_name IN ('ORDERS_PK', 'ORDERS_CUSTOMER_FK')
+ORDER BY constraint_name, position;
+```
+
+=== SYS.ALL_TAB_COLUMNS
+
+`SYS.ALL_TAB_COLUMNS` 返回当前用户具有任一受支持表级权限的对象列。支持的对象类型包括普通表、视图、物化视图、分区表和外部表；分区子表、已删除列和系统模式对象不显示。
+
+该视图包含34列，可以按用途分为以下几组。
+
+==== 对象和类型信息
+
+[cols="1,3"]
+|===
+|列名 |说明
+
+|`OWNER`
+|对象所在的模式名
+
+|`TABLE_NAME`
+|表或其他受支持关系对象的名称
+
+|`COLUMN_NAME`
+|列名
+
+|`COLUMN_ID`
+|列在对象中的显示顺序，从1开始
+
+|`DATA_TYPE`
+|映射后的Oracle风格数据类型名称
+
+|`DATA_TYPE_MOD`
+|数据类型修饰信息；当前固定为 `NULL`
+
+|`DATA_TYPE_OWNER`
+|用户自定义类型的所有者；内置类型为 `NULL`
+
+|`DATA_LENGTH`
+|按类型和类型修饰符计算的数据长度
+
+|`DATA_PRECISION`
+|数值精度
+
+|`DATA_SCALE`
+|数值标度
+
+|`NULLABLE`
+|允许空值时为 `Y`，非空列为 `N`
+
+|`DATA_DEFAULT`
+|通过系统默认值表达式反解析得到的列默认值
+|===
+
+常见类型映射包括：整数和 `NUMERIC` 映射为 `NUMBER`，浮点类型映射为 `FLOAT`，字符类型映射为 `VARCHAR2` 或 `CHAR`，文本类型映射为 `CLOB`，二进制类型映射为 `BLOB`，日期和时间戳类型映射为 `DATE` 和 `TIMESTAMP`。
+
+==== 统计信息
+
+[cols="1,3"]
+|===
+|列名 |说明
+
+|`NUM_DISTINCT`
+|不同值数量；当前固定为 `NULL`
+
+|`LOW_VALUE`, `HIGH_VALUE`
+|统计范围边界；当前固定为 `NULL`
+
+|`DENSITY`
+|列值密度；当前固定为 `NULL`
+
+|`NUM_NULLS`
+|根据 `pg_stats.null_frac` 和关系估算行数计算的空值数量
+
+|`NUM_BUCKETS`
+|直方图桶数；当前固定为 `NULL`
+
+|`LAST_ANALYZED`
+|关系最近一次执行 `ANALYZE` 的时间
+
+|`SAMPLE_SIZE`
+|统计样本数量；当前固定为 `NULL`
+
+|`GLOBAL_STATS`
+|当前固定为 `YES`
+
+|`USER_STATS`
+|当前固定为 `NO`
+
+|`AVG_COL_LEN`
+|来自 `pg_stats.avg_width` 的平均列宽
+
+|`HISTOGRAM`
+|直方图类型；当前固定为 `NULL`
+|===
+
+只有执行过 `ANALYZE` 且能够在 `pg_stats` 中找到对应记录时，`NUM_NULLS` 和 `AVG_COL_LEN` 等字段才可能具有值。
+
+==== 字符、默认值和其他属性
+
+[cols="1,3"]
+|===
+|列名 |说明
+
+|`CHARACTER_SET_NAME`
+|字符类型为 `CHAR_CS`，其他类型为 `NULL`
+
+|`CHAR_COL_DECL_LENGTH`
+|字符或RAW列声明的长度
+
+|`CHAR_LENGTH`
+|字符列的字符长度
+
+|`CHAR_USED`
+|字节语义为 `B`，字符语义为 `C`；不适用时为 `NULL`
+
+|`V80_FMT_IMAGE`
+|当前固定为 `NO`
+
+|`DATA_UPGRADED`
+|当前固定为 `NO`
+
+|`DEFAULT_LENGTH`
+|默认值表达式的字节长度
+
+|`COLLATION`
+|排序规则；当前固定为 `NULL`。当前列名为 `COLLATION`，不是 `COLLATION_NAME`
+
+|`IDENTITY_COLUMN`
+|底层列具有PostgreSQL identity标志时为 `YES`，否则为 `NO`
+
+|`DEFAULT_ON_NULL`
+|当前固定为 `NO`
+|===
+
+基本查询示例如下：
+
+```sql
+SELECT owner, table_name, column_name, column_id,
+       data_type, data_length, data_precision, data_scale,
+       nullable, data_default
+FROM sys.all_tab_columns
+WHERE owner = SYS.ORA_CASE_TRANS(CURRENT_SCHEMA::VARCHAR2)
+  AND table_name = 'ORDERS'
+ORDER BY column_id;
+```
+
+=== 视图之间的OWNER差异
+
+三个约束列视图的 `OWNER` 来自 `PG_CLASS.RELOWNER`，表示拥有表的数据库角色。`SYS.ALL_TAB_COLUMNS.OWNER` 来自 `PG_NAMESPACE.NSPNAME`，表示对象所在模式。
+
+IvorySQL允许模式名与表所有者角色名不同，因此同一个对象在约束列视图和 `ALL_TAB_COLUMNS` 中显示的 `OWNER` 可能不同。关联这些视图时，不应只依赖 `OWNER` 和 `TABLE_NAME`；应结合当前对象命名和权限模型判断。
+
+=== 当前实现边界
+
+* 四个对象是基于PostgreSQL系统目录构造的兼容视图，并非Oracle数据字典的完整复制。
+* `SYS.USER_CONS_COLUMNS` 当前包含 `OWNER` 列；其列顺序与 `SYS.ALL_CONS_COLUMNS` 和 `SYS.DBA_CONS_COLUMNS` 不同。
+* `SYS.DBA_CONS_COLUMNS` 的非空约束分支当前未排除系统列，可能产生 `TABLEOID`、`XMIN`、`CMIN`、`XMAX`、`CMAX` 和 `CTID` 等合成记录；同一用户列也可能同时出现系统约束记录和合成记录。建议按显式约束名过滤，或排除这些系统列。
+* `SYS.DBA_CONS_COLUMNS` 只限制为普通表，且当前未排除 `PG_TOAST` 模式；另外两个约束列视图的对象范围和模式过滤规则与其不同。
+* `SYS.ALL_CONS_COLUMNS` 只把 `SELECT` 作为表权限条件；`SYS.ALL_TAB_COLUMNS` 接受多种表级权限，两者的可见对象集合可能不同。
+* `SYS.ALL_TAB_COLUMNS` 的多个Oracle统计字段目前为固定值或 `NULL`，`NUM_NULLS` 也是基于PostgreSQL统计信息的估算值。
+
+== 测试用例
+
+=== 准备测试对象
+
+```sql
+SET ivorysql.compatible_mode = oracle;
+
+CREATE TABLE TEST_XXX_COLUMNS
+(
+  ID            INT NOT NULL,
+  NAME          VARCHAR2(30) NOT NULL,
+  EMAIL         VARCHAR2(50),
+  REQUIRED_NOTE VARCHAR2(20) NOT NULL,
+  AMOUNT        NUMBER(8,2) DEFAULT 0,
+  CONSTRAINT PK_TEST_XXX_COLUMNS PRIMARY KEY (ID, NAME),
+  CONSTRAINT UQ_TEST_XXX_COLUMNS UNIQUE (EMAIL),
+  CONSTRAINT CK_TEST_XXX_COLUMNS CHECK (AMOUNT >= 0)
+);
+
+ANALYZE TEST_XXX_COLUMNS;
+```
+
+=== 查询USER_CONS_COLUMNS
+
+```sql
+SELECT table_name, constraint_name, column_name, position
+FROM sys.user_cons_columns
+WHERE table_name = 'TEST_XXX_COLUMNS'
+  AND constraint_name IN ('PK_TEST_XXX_COLUMNS', 'UQ_TEST_XXX_COLUMNS')
+ORDER BY constraint_name, position;
+```
+
+预期结果为：
+
+```
+    table_name    |    constraint_name     | column_name | position
+------------------+------------------------+-------------+----------
+ TEST_XXX_COLUMNS | PK_TEST_XXX_COLUMNS    | ID          |        1
+ TEST_XXX_COLUMNS | PK_TEST_XXX_COLUMNS    | NAME        |        2
+ TEST_XXX_COLUMNS | UQ_TEST_XXX_COLUMNS    | EMAIL       |        1
+```
+
+=== 查询ALL_CONS_COLUMNS和DBA_CONS_COLUMNS
+
+```sql
+SELECT constraint_name, column_name, position
+FROM sys.all_cons_columns
+WHERE table_name = 'TEST_XXX_COLUMNS'
+  AND constraint_name IN ('PK_TEST_XXX_COLUMNS',
+                          'UQ_TEST_XXX_COLUMNS',
+                          'CK_TEST_XXX_COLUMNS')
+ORDER BY constraint_name, position;
+
+SELECT constraint_name, column_name, position
+FROM sys.dba_cons_columns
+WHERE table_name = 'TEST_XXX_COLUMNS'
+  AND constraint_name IN ('PK_TEST_XXX_COLUMNS',
+                          'UQ_TEST_XXX_COLUMNS',
+                          'CK_TEST_XXX_COLUMNS')
+ORDER BY constraint_name, position;
+```
+
+两个查询对显式约束返回相同的约束列及位置：
+
+```
+    constraint_name     | column_name | position
+------------------------+-------------+----------
+ CK_TEST_XXX_COLUMNS    | AMOUNT      |        1
+ PK_TEST_XXX_COLUMNS    | ID          |        1
+ PK_TEST_XXX_COLUMNS    | NAME        |        2
+ UQ_TEST_XXX_COLUMNS    | EMAIL       |        1
+```
+
+`ALL_CONS_COLUMNS` 还会为不属于主键的 `REQUIRED_NOTE` 生成非空记录，可以使用以下查询查看：
+
+```sql
+SELECT constraint_name, column_name, position
+FROM sys.all_cons_columns
+WHERE table_name = 'TEST_XXX_COLUMNS'
+  AND column_name = 'REQUIRED_NOTE';
+```
+
+=== 查询ALL_TAB_COLUMNS
+
+```sql
+SELECT table_name, column_name, column_id, data_type,
+       data_length, data_precision, data_scale,
+       nullable, data_default
+FROM sys.all_tab_columns
+WHERE table_name = 'TEST_XXX_COLUMNS'
+  AND owner = SYS.ORA_CASE_TRANS(CURRENT_SCHEMA::VARCHAR2)
+ORDER BY column_id;
+```
+
+结果中 `ID` 映射为 `NUMBER`，`NAME`、`EMAIL` 和 `REQUIRED_NOTE` 映射为 `VARCHAR2`，`AMOUNT` 的精度和标度分别为8和2，默认值为0。
+
+测试结束后清理对象：
+
+```sql
+DROP TABLE TEST_XXX_COLUMNS;
+```

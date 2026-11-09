@@ -1,0 +1,389 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= XXX_COLUMNS System Views
+
+== Purpose
+
+IvorySQL provides the Oracle data dictionary-compatible system views `SYS.USER_CONS_COLUMNS`, `SYS.ALL_CONS_COLUMNS`, `SYS.DBA_CONS_COLUMNS`, and `SYS.ALL_TAB_COLUMNS` for querying constraint columns and column metadata for objects accessible to a user.
+
+This document describes the purpose, column definitions, visibility rules, usage, and current compatibility boundaries of all four views.
+
+== Feature Description
+
+=== View Overview
+
+All four views reside in the `SYS` schema, and `SELECT` privilege on them is granted to `PUBLIC`.
+
+[cols="1,2,2"]
+|===
+|View |Purpose |Current visibility
+
+|`SYS.USER_CONS_COLUMNS`
+|Constraint columns of tables owned by the current user
+|Shows only objects whose table owner is `CURRENT_USER`
+
+|`SYS.ALL_CONS_COLUMNS`
+|Constraint columns of objects accessible to the current user
+|Requires `USAGE` on the schema and `SELECT` on the object
+
+|`SYS.DBA_CONS_COLUMNS`
+|Constraint columns of ordinary tables in the database
+|The current implementation does not filter by the current user; a caller can see all metadata included by the view
+
+|`SYS.ALL_TAB_COLUMNS`
+|Column definitions and partial statistics for objects accessible to the current user
+|The current user must have at least one of `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `TRUNCATE`, `REFERENCES`, or `TRIGGER` on the object
+|===
+
+Identifiers are converted by `SYS.ORA_CASE_TRANS` according to IvorySQL identifier case rules. With the default Oracle-compatible configuration, ordinary unquoted object names are generally displayed in uppercase.
+
+=== SYS.USER_CONS_COLUMNS
+
+`SYS.USER_CONS_COLUMNS` returns the constraints and constraint columns of objects owned by the current user. Each constraint column occupies one row. For a composite constraint, `POSITION` identifies the order of the column within the constraint.
+
+The view contains the following columns:
+
+[cols="1,3"]
+|===
+|Column |Description
+
+|`OWNER`
+|Name of the database role that owns the table
+
+|`TABLE_NAME`
+|Name of the table containing the constraint
+
+|`CONSTRAINT_NAME`
+|Constraint name
+
+|`COLUMN_NAME`
+|Name of a column participating in the constraint
+
+|`POSITION`
+|One-based position of the column in a composite constraint key
+|===
+
+The view reads primary keys, unique constraints, foreign keys, check constraints, and the NOT NULL constraints recorded in the constraint catalog by the current version. Objects in the `PG_CATALOG`, `PG_TOAST`, and `INFORMATION_SCHEMA` schemas are excluded.
+
+For example, query the columns in a composite primary key owned by the current user as follows:
+
+```sql
+SELECT table_name, constraint_name, column_name, position
+FROM sys.user_cons_columns
+WHERE table_name = 'ORDERS'
+  AND constraint_name = 'ORDERS_PK'
+ORDER BY position;
+```
+
+=== SYS.ALL_CONS_COLUMNS
+
+`SYS.ALL_CONS_COLUMNS` returns constraint columns for which the current user has both schema access and table query privileges. Its column order is:
+
+```
+OWNER, CONSTRAINT_NAME, TABLE_NAME, COLUMN_NAME, POSITION
+```
+
+`OWNER` is derived from the role that owns the table, not from the schema containing the table. Regular constraints include primary keys, unique constraints, foreign keys, and check constraints.
+
+NOT NULL columns are converted into constraint-column rows by an additional branch. The generated constraint name has the following format:
+
+```
+table_name_column_name_NOT_NULL
+```
+
+If a NOT NULL column already belongs to a primary key, the additional branch does not generate another NOT NULL row for that column, thereby avoiding duplication in that branch.
+
+For example, query constraint columns on an accessible table as follows:
+
+```sql
+SELECT owner, constraint_name, table_name, column_name, position
+FROM sys.all_cons_columns
+WHERE table_name = 'ORDERS'
+ORDER BY constraint_name, position;
+```
+
+The view includes relevant catalog records for ordinary tables, views, materialized views, and partitioned tables. It excludes objects in the `PG_CATALOG`, `INFORMATION_SCHEMA`, and `PG_TOAST` schemas, as well as dropped columns.
+
+=== SYS.DBA_CONS_COLUMNS
+
+`SYS.DBA_CONS_COLUMNS` provides a database-wide view of constraint columns on ordinary tables. Its column order is the same as that of `SYS.ALL_CONS_COLUMNS`:
+
+```
+OWNER, CONSTRAINT_NAME, TABLE_NAME, COLUMN_NAME, POSITION
+```
+
+Regular constraint rows come from the system constraint catalog, while NOT NULL rows are additionally generated from column NOT NULL flags. `POSITION` represents the column order in a composite constraint.
+
+Although this view is named `DBA_CONS_COLUMNS`, query privilege is granted to `PUBLIC`, and its definition does not check the current user's object privileges. It should therefore be treated as a database-wide metadata view rather than as a security boundary restricted to database administrators.
+
+Queries should restrict the result by owner, table name, or constraint name:
+
+```sql
+SELECT owner, constraint_name, table_name, column_name, position
+FROM sys.dba_cons_columns
+WHERE table_name = 'ORDERS'
+  AND constraint_name IN ('ORDERS_PK', 'ORDERS_CUSTOMER_FK')
+ORDER BY constraint_name, position;
+```
+
+=== SYS.ALL_TAB_COLUMNS
+
+`SYS.ALL_TAB_COLUMNS` returns columns of objects on which the current user has at least one supported table-level privilege. Supported object types include ordinary tables, views, materialized views, partitioned tables, and foreign tables. Partition children, dropped columns, and objects in system schemas are excluded.
+
+The view contains 34 columns, grouped below by purpose.
+
+==== Object and Type Information
+
+[cols="1,3"]
+|===
+|Column |Description
+
+|`OWNER`
+|Name of the schema containing the object
+
+|`TABLE_NAME`
+|Name of the table or other supported relation object
+
+|`COLUMN_NAME`
+|Column name
+
+|`COLUMN_ID`
+|One-based display position of the column in the object
+
+|`DATA_TYPE`
+|Mapped Oracle-style data type name
+
+|`DATA_TYPE_MOD`
+|Data type modifier information; currently always `NULL`
+
+|`DATA_TYPE_OWNER`
+|Owner of a user-defined type; `NULL` for built-in types
+
+|`DATA_LENGTH`
+|Data length calculated from the type and type modifier
+
+|`DATA_PRECISION`
+|Numeric precision
+
+|`DATA_SCALE`
+|Numeric scale
+
+|`NULLABLE`
+|`Y` if NULL values are allowed, or `N` for a NOT NULL column
+
+|`DATA_DEFAULT`
+|Column default obtained by deparsing the system default expression
+|===
+
+Common mappings include integer and `NUMERIC` types to `NUMBER`, floating-point types to `FLOAT`, character types to `VARCHAR2` or `CHAR`, text types to `CLOB`, binary types to `BLOB`, and date and timestamp types to `DATE` and `TIMESTAMP`.
+
+==== Statistics
+
+[cols="1,3"]
+|===
+|Column |Description
+
+|`NUM_DISTINCT`
+|Number of distinct values; currently always `NULL`
+
+|`LOW_VALUE`, `HIGH_VALUE`
+|Statistical range boundaries; currently always `NULL`
+
+|`DENSITY`
+|Column value density; currently always `NULL`
+
+|`NUM_NULLS`
+|Number of NULL values calculated from `pg_stats.null_frac` and the relation's estimated row count
+
+|`NUM_BUCKETS`
+|Number of histogram buckets; currently always `NULL`
+
+|`LAST_ANALYZED`
+|Time of the most recent `ANALYZE` on the relation
+
+|`SAMPLE_SIZE`
+|Statistical sample size; currently always `NULL`
+
+|`GLOBAL_STATS`
+|Currently always `YES`
+
+|`USER_STATS`
+|Currently always `NO`
+
+|`AVG_COL_LEN`
+|Average column width from `pg_stats.avg_width`
+
+|`HISTOGRAM`
+|Histogram type; currently always `NULL`
+|===
+
+Fields such as `NUM_NULLS` and `AVG_COL_LEN` can have values only after `ANALYZE` has run and a corresponding row can be found in `pg_stats`.
+
+==== Character, Default, and Other Attributes
+
+[cols="1,3"]
+|===
+|Column |Description
+
+|`CHARACTER_SET_NAME`
+|`CHAR_CS` for character types; otherwise `NULL`
+
+|`CHAR_COL_DECL_LENGTH`
+|Declared length of a character or RAW column
+
+|`CHAR_LENGTH`
+|Character length of a character column
+
+|`CHAR_USED`
+|`B` for byte semantics or `C` for character semantics; otherwise `NULL`
+
+|`V80_FMT_IMAGE`
+|Currently always `NO`
+
+|`DATA_UPGRADED`
+|Currently always `NO`
+
+|`DEFAULT_LENGTH`
+|Byte length of the default expression
+
+|`COLLATION`
+|Collation; currently always `NULL`. The current column name is `COLLATION`, not `COLLATION_NAME`
+
+|`IDENTITY_COLUMN`
+|`YES` if the underlying column has a PostgreSQL identity flag; otherwise `NO`
+
+|`DEFAULT_ON_NULL`
+|Currently always `NO`
+|===
+
+A basic query is shown below:
+
+```sql
+SELECT owner, table_name, column_name, column_id,
+       data_type, data_length, data_precision, data_scale,
+       nullable, data_default
+FROM sys.all_tab_columns
+WHERE owner = SYS.ORA_CASE_TRANS(CURRENT_SCHEMA::VARCHAR2)
+  AND table_name = 'ORDERS'
+ORDER BY column_id;
+```
+
+=== Differences in OWNER Semantics
+
+The `OWNER` column in the three constraint-column views comes from `PG_CLASS.RELOWNER` and represents the database role that owns the table. `SYS.ALL_TAB_COLUMNS.OWNER` comes from `PG_NAMESPACE.NSPNAME` and represents the schema containing the object.
+
+IvorySQL allows a schema name to differ from the role that owns a table. Consequently, the same object can have different `OWNER` values in a constraint-column view and in `ALL_TAB_COLUMNS`. When joining these views, do not rely solely on `OWNER` and `TABLE_NAME`; account for the current object naming and privilege model.
+
+=== Current Implementation Boundaries
+
+* The four objects are compatibility views built on PostgreSQL system catalogs, not complete replicas of the Oracle data dictionary.
+* `SYS.USER_CONS_COLUMNS` currently contains an `OWNER` column, and its column order differs from that of `SYS.ALL_CONS_COLUMNS` and `SYS.DBA_CONS_COLUMNS`.
+* The NOT NULL branch of `SYS.DBA_CONS_COLUMNS` currently does not exclude system columns. It may generate rows for `TABLEOID`, `XMIN`, `CMIN`, `XMAX`, `CMAX`, and `CTID`; the same user column can also appear both as a catalog constraint and as a generated row. Filter by explicit constraint names or exclude these system columns when necessary.
+* `SYS.DBA_CONS_COLUMNS` is restricted to ordinary tables but currently does not exclude the `PG_TOAST` schema. Its object scope and schema filters differ from those of the other two constraint-column views.
+* `SYS.ALL_CONS_COLUMNS` uses only `SELECT` as its table privilege condition, whereas `SYS.ALL_TAB_COLUMNS` accepts multiple table-level privileges. Their visible object sets can therefore differ.
+* Several Oracle statistics fields in `SYS.ALL_TAB_COLUMNS` currently contain fixed values or `NULL`; `NUM_NULLS` is also an estimate based on PostgreSQL statistics.
+
+== Test Cases
+
+=== Preparing Test Objects
+
+```sql
+SET ivorysql.compatible_mode = oracle;
+
+CREATE TABLE TEST_XXX_COLUMNS
+(
+  ID            INT NOT NULL,
+  NAME          VARCHAR2(30) NOT NULL,
+  EMAIL         VARCHAR2(50),
+  REQUIRED_NOTE VARCHAR2(20) NOT NULL,
+  AMOUNT        NUMBER(8,2) DEFAULT 0,
+  CONSTRAINT PK_TEST_XXX_COLUMNS PRIMARY KEY (ID, NAME),
+  CONSTRAINT UQ_TEST_XXX_COLUMNS UNIQUE (EMAIL),
+  CONSTRAINT CK_TEST_XXX_COLUMNS CHECK (AMOUNT >= 0)
+);
+
+ANALYZE TEST_XXX_COLUMNS;
+```
+
+=== Querying USER_CONS_COLUMNS
+
+```sql
+SELECT table_name, constraint_name, column_name, position
+FROM sys.user_cons_columns
+WHERE table_name = 'TEST_XXX_COLUMNS'
+  AND constraint_name IN ('PK_TEST_XXX_COLUMNS', 'UQ_TEST_XXX_COLUMNS')
+ORDER BY constraint_name, position;
+```
+
+Expected result:
+
+```
+    table_name    |    constraint_name     | column_name | position
+------------------+------------------------+-------------+----------
+ TEST_XXX_COLUMNS | PK_TEST_XXX_COLUMNS    | ID          |        1
+ TEST_XXX_COLUMNS | PK_TEST_XXX_COLUMNS    | NAME        |        2
+ TEST_XXX_COLUMNS | UQ_TEST_XXX_COLUMNS    | EMAIL       |        1
+```
+
+=== Querying ALL_CONS_COLUMNS and DBA_CONS_COLUMNS
+
+```sql
+SELECT constraint_name, column_name, position
+FROM sys.all_cons_columns
+WHERE table_name = 'TEST_XXX_COLUMNS'
+  AND constraint_name IN ('PK_TEST_XXX_COLUMNS',
+                          'UQ_TEST_XXX_COLUMNS',
+                          'CK_TEST_XXX_COLUMNS')
+ORDER BY constraint_name, position;
+
+SELECT constraint_name, column_name, position
+FROM sys.dba_cons_columns
+WHERE table_name = 'TEST_XXX_COLUMNS'
+  AND constraint_name IN ('PK_TEST_XXX_COLUMNS',
+                          'UQ_TEST_XXX_COLUMNS',
+                          'CK_TEST_XXX_COLUMNS')
+ORDER BY constraint_name, position;
+```
+
+For explicit constraints, both queries return the same constraint columns and positions:
+
+```
+    constraint_name     | column_name | position
+------------------------+-------------+----------
+ CK_TEST_XXX_COLUMNS    | AMOUNT      |        1
+ PK_TEST_XXX_COLUMNS    | ID          |        1
+ PK_TEST_XXX_COLUMNS    | NAME        |        2
+ UQ_TEST_XXX_COLUMNS    | EMAIL       |        1
+```
+
+`ALL_CONS_COLUMNS` also generates a NOT NULL row for `REQUIRED_NOTE`, which is not part of the primary key. Query it as follows:
+
+```sql
+SELECT constraint_name, column_name, position
+FROM sys.all_cons_columns
+WHERE table_name = 'TEST_XXX_COLUMNS'
+  AND column_name = 'REQUIRED_NOTE';
+```
+
+=== Querying ALL_TAB_COLUMNS
+
+```sql
+SELECT table_name, column_name, column_id, data_type,
+       data_length, data_precision, data_scale,
+       nullable, data_default
+FROM sys.all_tab_columns
+WHERE table_name = 'TEST_XXX_COLUMNS'
+  AND owner = SYS.ORA_CASE_TRANS(CURRENT_SCHEMA::VARCHAR2)
+ORDER BY column_id;
+```
+
+In the result, `ID` is mapped to `NUMBER`; `NAME`, `EMAIL`, and `REQUIRED_NOTE` are mapped to `VARCHAR2`; and `AMOUNT` has precision 8, scale 2, and a default value of 0.
+
+Clean up the test object after testing:
+
+```sql
+DROP TABLE TEST_XXX_COLUMNS;
+```

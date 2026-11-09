@@ -1,0 +1,245 @@
+:sectnums:
+:sectnumlevels: 5
+
+= **Feature Overview**
+
+IvorySQL defines four Oracle-compatible system views in the `ivorysql_ora` extension: `SYS.USER_CONS_COLUMNS`, `SYS.ALL_CONS_COLUMNS`, `SYS.DBA_CONS_COLUMNS`, and `SYS.ALL_TAB_COLUMNS`. The first three views map PostgreSQL constraint catalogs to constraint-column rows. The fourth combines the relation, column, type, default, privilege, and statistics catalogs into Oracle-style column metadata.
+
+All four views are created by a single extension SQL definition, and query privilege is granted to `PUBLIC`. They share identifier case-conversion rules but use different object scopes and privilege filters.
+
+== Implementation
+
+=== Definition Files and Installation
+
+The view definitions are located in:
+
+```
+contrib/ivorysql_ora/src/sysview/sysview--1.0.sql
+```
+
+During the build, `contrib/ivorysql_ora/gensql.pl` combines the system-view SQL with the extension's other SQL fragments into:
+
+```
+contrib/ivorysql_ora/ivorysql_ora--1.0.sql
+```
+
+When an Oracle-mode database installs or preloads the `ivorysql_ora` extension, it executes the corresponding `CREATE OR REPLACE VIEW` and `GRANT SELECT ... TO PUBLIC` statements. The four views add no new system catalogs or dedicated caches; each query reads the current database's PostgreSQL system catalogs directly.
+
+=== Identifier Case Conversion
+
+Constraint names, table names, column names, schema names, and role names are converted by the C function `SYS.ORA_CASE_TRANS`. The SQL function definition maps to `ora_case_trans` in `sysview_functions.c`, which calls the core function `identifier_case_transform` to transform text according to the IvorySQL identifier case configuration.
+
+The views therefore do not simply call `UPPER` on every name. Their output depends on `ivorysql.identifier_case_switch` and on whether the object was created with quoted identifiers. Generated NOT NULL constraint names contain a fixed `_NOT_NULL` suffix. If the combined text already contains mixed case, the displayed result can also contain mixed case.
+
+=== Common Catalog Mapping for Constraint Columns
+
+The three constraint-column views primarily use the following catalogs:
+
+[cols="1,3"]
+|===
+|System catalog |Purpose
+
+|`PG_CONSTRAINT`
+|Provides the constraint OID, name, type, owning relation, and the `CONKEY` array of constrained attribute numbers
+
+|`PG_CLASS`
+|Provides the relation name, relation type, namespace, and table owner role OID
+
+|`PG_ATTRIBUTE`
+|Maps attribute numbers in `CONKEY` to column names and provides NOT NULL and dropped-column flags
+
+|`PG_NAMESPACE`
+|Provides schema names and supports system-schema exclusion and schema privilege checks
+
+|`PG_AUTHID` / `PG_GET_USERBYID`
+|Converts relation owner OIDs to role names
+|===
+
+`CONKEY` stores attribute numbers in constraint-key order. The implementation must expand these attribute numbers into rows while retaining their array order to produce an Oracle-compatible `POSITION`.
+
+=== SYS.ALL_CONS_COLUMNS
+
+The regular-constraint branch of `SYS.ALL_CONS_COLUMNS` starts with `PG_CONSTRAINT` and joins the relation, owner, schema, and attribute catalogs. It accepts only the following constraint types:
+
+```
+p: PRIMARY KEY
+u: UNIQUE
+f: FOREIGN KEY
+c: CHECK
+```
+
+The implementation uses:
+
+```sql
+CROSS JOIN LATERAL unnest(con.conkey)
+  WITH ORDINALITY AS pos(attnum, pos)
+```
+
+`unnest` expands the `CONKEY` of a composite constraint into multiple rows, while `WITH ORDINALITY` directly produces a one-based `POSITION`. A subsequent join to `PG_ATTRIBUTE` on `ATTRELID` and `ATTNUM` obtains the column name.
+
+The object filters require that:
+
+* The schema is not `PG_CATALOG`, `INFORMATION_SCHEMA`, or `PG_TOAST`;
+* The relation is an ordinary table, view, materialized view, or partitioned table;
+* The attribute number is greater than zero and the column has not been dropped;
+* The current user has `USAGE` on the schema;
+* The current user has `SELECT` on the relation.
+
+A second `UNION ALL` branch scans `PG_ATTRIBUTE.ATTNOTNULL`. For every NOT NULL column, it generates a constraint row named `relation_name_column_name_NOT_NULL` with a position of 1. A `NOT EXISTS` subquery checks the primary key's `CONKEY` so the branch does not generate another row for a primary-key column.
+
+The view is ordered by `OWNER`, `TABLE_NAME`, `CONSTRAINT_NAME`, and `POSITION`.
+
+=== SYS.USER_CONS_COLUMNS
+
+`SYS.USER_CONS_COLUMNS` directly joins `PG_CONSTRAINT`, `PG_CLASS`, and `PG_ATTRIBUTE` using:
+
+```sql
+ATT.ATTRELID = C.OID
+AND ATT.ATTNUM = ANY(CON.CONKEY)
+```
+
+`ARRAY_POSITION(CON.CONKEY, ATT.ATTNUM)` calculates the position of each attribute number in the constraint array. The view does not explicitly filter `CONTYPE`; any constraint that has a relation and a column-number array can produce rows. On the current PostgreSQL 19 base, NOT NULL constraints are also recorded in `PG_CONSTRAINT`, so their constraint names can be displayed.
+
+The user scope is implemented by:
+
+```sql
+C.RELOWNER::REGROLE = CURRENT_USER::REGROLE
+```
+
+This condition compares the table owner role and does not filter by `CURRENT_SCHEMA`. The implementation also excludes `PG_CATALOG`, `PG_TOAST`, and `INFORMATION_SCHEMA` by namespace OID. Results are ordered by table name, constraint name, and column name.
+
+Compared with the Oracle view of the same name, the current implementation additionally returns `OWNER`. Its column order is:
+
+```
+OWNER, TABLE_NAME, CONSTRAINT_NAME, COLUMN_NAME, POSITION
+```
+
+=== SYS.DBA_CONS_COLUMNS
+
+`SYS.DBA_CONS_COLUMNS` consists of two `UNION ALL` branches.
+
+The first branch joins `PG_CONSTRAINT`, `PG_CLASS`, `PG_NAMESPACE`, and `PG_ATTRIBUTE`. It locates constraint columns through `ATTNUM = ANY(CONKEY)` and calculates `POSITION` with `ARRAY_POSITION`. It does not restrict `CONTYPE`, but it accepts only ordinary tables with `RELKIND = 'r'` and excludes `PG_CATALOG` and `INFORMATION_SCHEMA`.
+
+The second branch scans `PG_ATTRIBUTE.ATTNOTNULL`, generates NOT NULL constraint rows named `relation_name_column_name_NOT_NULL`, and assigns them a position of 1.
+
+Neither branch calls `HAS_TABLE_PRIVILEGE`, `HAS_SCHEMA_PRIVILEGE`, or performs an administrator-role check. Although the view has a `DBA_` prefix, it does not itself provide privilege isolation. Because query privilege is also granted to `PUBLIC`, any role that can connect to the database can query the metadata returned by the view.
+
+The second branch currently has no `ATTNUM > 0` condition and does not exclude NOT NULL constraints already represented in `PG_CONSTRAINT`. This produces two types of results:
+
+* NOT NULL system columns such as `TABLEOID`, `XMIN`, `CMIN`, `XMAX`, `CMAX`, and `CTID` can be emitted as generated constraint rows;
+* A user column's catalog-backed NOT NULL constraint and generated row can both appear, potentially with differently cased names.
+
+This is a current implementation boundary. Callers that require stable results should filter by explicit constraint names or add a `COLUMN_NAME` exclusion condition.
+
+=== Base Catalog Joins in SYS.ALL_TAB_COLUMNS
+
+`SYS.ALL_TAB_COLUMNS` uses `PG_CLASS` as its primary relation and joins:
+
+* `PG_NAMESPACE` to obtain the object's schema, which becomes the output `OWNER`;
+* `PG_ATTRIBUTE` to obtain the attribute number, type OID, type modifier, length, NOT NULL flag, identity flag, and dropped-column flag;
+* `PG_TYPE` to obtain the internal type name, type namespace, and type owner;
+* `PG_STATS` to obtain the null fraction and average column width;
+* `PG_ATTRDEF`, through a LATERAL subquery, to deparse the default expression and calculate its byte length.
+
+`COLUMN_ID` is calculated with a window function:
+
+```sql
+ROW_NUMBER() OVER (
+  PARTITION BY pg_class.oid
+  ORDER BY pg_attribute.attnum
+)
+```
+
+The view retains only non-dropped user columns whose attribute numbers are greater than zero. Relation types are restricted to ordinary tables, views, materialized views, partitioned tables, and foreign tables. Objects in `PG_CATALOG`, `PG_TOAST`, and `INFORMATION_SCHEMA`, as well as partition children for which `RELISPARTITION` is true, are excluded.
+
+The privilege condition calls:
+
+```sql
+has_table_privilege(
+  current_user,
+  pg_class.oid,
+  'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'
+)
+```
+
+The underlying ACL check uses “any privilege” semantics, so an object is visible when the user has at least one table-level privilege in the list.
+
+=== Type, Length, Precision, and Scale Mapping
+
+`DATA_TYPE` uses a `CASE` expression to map PostgreSQL and IvorySQL internal types to Oracle-style names. The main mappings are:
+
+[cols="2,2"]
+|===
+|Internal type |Output type
+
+|`int2`, `int4`, `int8`, `numeric`
+|`NUMBER`
+
+|`float4`, `float8`
+|`FLOAT`
+
+|`varchar`, `oravarcharbyte`
+|`VARCHAR2`
+
+|`bpchar`, `oracharbyte`
+|`CHAR`
+
+|`text`, `clob`
+|`CLOB`
+
+|`bytea`, `blob`
+|`BLOB`
+
+|`date`, `oradate`
+|`DATE`
+
+|`timestamp`, `timestamptz`, `oratimestamp`, `oratimestamptz`
+|`TIMESTAMP`
+
+|`raw`, `rowid`
+|`RAW`, `ROWID`
+|===
+
+For a type not covered by these mappings, the case-converted internal type name is used. For a type outside the `PG_CATALOG` and `SYS` schemas, `DATA_TYPE_OWNER` is populated from the role that owns the type.
+
+`DATA_LENGTH` is calculated from fixed Oracle type lengths, `ATTTYPMOD - 4`, the database encoding's maximum character width, and `ATTLEN`. The precision and scale of `NUMBER`/`NUMERIC` are decoded from the `ATTTYPMOD` bit fields. Integer types use fixed precisions of 5, 10, and 19 with a scale of 0. Floating-point types use a precision of 63 or 126.
+
+=== Defaults, Character Attributes, and Statistics
+
+The default-value LATERAL subquery calls `PG_GET_EXPR(ADBIN, ADRELID)` to produce `DATA_DEFAULT` and uses `OCTET_LENGTH` to produce `DEFAULT_LENGTH`.
+
+For character types, `CHARACTER_SET_NAME` is fixed to `CHAR_CS`. `CHAR_COL_DECL_LENGTH` and `CHAR_LENGTH` are calculated from the type modifier. `CHAR_USED` returns `B` for byte-semantics types and `C` for character-semantics types.
+
+The current statistics implementation has three categories:
+
+* `NUM_NULLS` is estimated as `PG_STATS.NULL_FRAC * PG_CLASS.RELTUPLES`;
+* `AVG_COL_LEN` comes from `PG_STATS.AVG_WIDTH`, while `LAST_ANALYZED` comes from `PG_STAT_GET_LAST_ANALYZE_TIME`;
+* `NUM_DISTINCT`, `LOW_VALUE`, `HIGH_VALUE`, `DENSITY`, `NUM_BUCKETS`, `SAMPLE_SIZE`, and `HISTOGRAM` are currently `NULL`.
+
+`GLOBAL_STATS`, `USER_STATS`, `V80_FMT_IMAGE`, `DATA_UPGRADED`, and `DEFAULT_ON_NULL` use fixed string values. `COLLATION` is currently `NULL`, and the view has no column named `COLLATION_NAME`. `IDENTITY_COLUMN` checks only whether `PG_ATTRIBUTE.ATTIDENTITY` is empty.
+
+=== Differences in OWNER Sources
+
+The constraint-column views obtain the table owner role from `PG_CLASS.RELOWNER` and derive `OWNER` through `PG_AUTHID.ROLNAME` or `PG_GET_USERBYID`. `ALL_TAB_COLUMNS` instead uses `PG_NAMESPACE.NSPNAME` directly as `OWNER`.
+
+In PostgreSQL, schemas and table owners are independent concepts. The same object can therefore have different `OWNER` values in these two categories of views. This is the current behavior resulting from the catalog-model mapping.
+
+=== Regression Tests
+
+Regression tests for all four views are located in:
+
+```
+contrib/ivorysql_ora/sql/ora_sysview.sql
+contrib/ivorysql_ora/expected/ora_sysview.out
+```
+
+The tests cover primary keys, composite primary keys, unique constraints, foreign keys, check constraints, NOT NULL constraints, constraint-column positions, view existence, primary data type mappings, length/precision/scale, nullability, default values, statistics fields, character attributes, the identity flag, and the negative check that `ALL_TAB_COLUMNS` has no `COLLATION_NAME` column.
+
+=== Current Implementation Boundaries
+
+* The four views implement their object scopes, system-schema filters, and privilege conditions separately. Their complete Oracle privilege semantics cannot be inferred solely from the `USER_`, `ALL_`, and `DBA_` prefixes.
+* `USER_CONS_COLUMNS` has a different column order from the other two constraint-column views and additionally contains `OWNER`.
+* `DBA_CONS_COLUMNS` has no privilege filtering. Its NOT NULL branch also includes system columns and can produce duplicate rows.
+* `ALL_CONS_COLUMNS` generates names for NOT NULL columns and skips primary-key columns. Its set and naming of NOT NULL rows can differ from those of the two views that read `PG_CONSTRAINT` directly.
+* Statistics compatibility in `ALL_TAB_COLUMNS` is partial; multiple fields contain fixed values or `NULL`.
+* `OWNER` in the constraint-column views is the table owner role, while `ALL_TAB_COLUMNS.OWNER` is the schema name.
