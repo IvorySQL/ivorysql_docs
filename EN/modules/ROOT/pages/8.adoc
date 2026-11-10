@@ -49,6 +49,15 @@ If the contribution you're submitting is NOT original work you have to indicate 
 Finally, keep in mind that it is NEVER a good idea to remove licensing headers from the work that is not your original one. Even if you are using parts of the file that originally had a licensing header at the top you should err on the side of preserving it. As always, if you are not quite sure about the licensing implications of your contributions, feel free to reach out to us on the developer mailing list.
 
 
+==== Signing the CLA
+
+Before submitting any code or documentation contribution you must sign the Contributor License Agreement (CLA). The CLA is a hard requirement of the IvorySQL community: a pull request from a contributor without a signed CLA on file cannot enter the review process.
+
+* https://ivorysql.org/pdf/individual_cla.pdf[Individual Contributor License Agreement]
+* https://ivorysql.org/pdf/corporate_cla.pdf[Corporate Contributor License Agreement]
+
+Download the agreement that applies to you, fill in your full name, e-mail address and GitHub/Gitee/AtomGit account name, sign it by hand, and send the signed PDF to cla@ivorysql.org. Keep a copy for your own records. Contributions are covered from the date of your first submission, so the earlier the CLA is filed the better.
+
 === What Contribution Can You Make
 
 ==== Code Contribution
