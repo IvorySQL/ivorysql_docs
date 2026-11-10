@@ -72,6 +72,75 @@ CREATE EXTENSION
 [TIP]
 建议用户使用1521端口进行测试， psql -p 1521
 
+=== 双监听端口
+
+Oracle 模式集群中，同一个 postmaster 会同时监听两个端口，连哪个端口就由哪套解析器接管：
+
+|====
+| 参数 | 默认端口 | 连该端口时生效的解析器
+| `port` | 5432 | PostgreSQL 解析器（`ivorysql.compatible_mode` = `pg`）
+| `ivorysql.port` | 1521 | Oracle 兼容解析器（`ivorysql.compatible_mode` = `oracle`）
+|====
+
+两个参数都有内置默认值，`postgresql.conf` 里不写也照样生效。用 psql 分别连接两个端口就能看到差别：
+
+[literal]
+----
+$ psql -h 127.0.0.1 -p 1521 -d postgres -c "select current_setting('ivorysql.compatible_mode'), current_setting('ivorysql.port'), current_setting('port')"
+ current_setting | current_setting | current_setting
+-----------------+-----------------+-----------------
+ oracle          | 1521            | 5432
+(1 row)
+
+$ psql -h 127.0.0.1 -p 5432 -d postgres -c "select current_setting('ivorysql.compatible_mode'), current_setting('ivorysql.port'), current_setting('port')"
+ current_setting | current_setting | current_setting
+-----------------+-----------------+-----------------
+ pg              | 1521            | 5432
+(1 row)
+----
+
+同一个用户、同一个数据库、同一个集群，只换了连接端口，会话的兼容模式就跟着变。模式在连接建立时确定，判定依据是服务端本地端口，与客户端地址、用户名、数据库名都无关。
+
+[TIP]
+====
+要判断当前会话处在哪种模式，请读 `current_setting('ivorysql.compatible_mode')`。
+
+不要用 `show port` 或 `show ivorysql.port`：这两个值在两个端口上的输出完全一样（5432 和 1521），它们描述的是监听器，不是会话模式。
+====
+
+`ivorysql.compatible_mode` 可以在会话里用 `SET` 临时改掉，但重连即复位，新连接会被端口重新判定一次。`ivorysql.database_mode` 则是集群属性，在 `initdb` 时写进 `pg_control`，与连哪个端口无关。
+
+[WARNING]
+====
+两个监听端口必须不相等。默认的 5432 与 1521 本身正确，不需要额外配置。
+
+不要用 `pg_ctl -o "-p 1521"` 启动服务：`-o` 只覆盖 PostgreSQL 侧的 `port`，改不动 `ivorysql.port`，两个 1521 撞在一起，服务直接起不来——和把 `port` 改成 1521 是同一个冲突。
+
+也不要在 `postgresql.conf` 里把 `port` 改成 1521：
+
+[literal]
+----
+LOG:  could not bind IPv4 address "127.0.0.1": Address already in use
+HINT:  Is another postmaster already running on port 1521? If not, wait a few seconds and retry.
+WARNING:  could not create listen socket for "localhost"
+FATAL:  could not create any Oracle TCP/IP sockets
+----
+
+`Address already in use` 很容易被理解成别的进程占了端口，实际占用它的是这个集群自己的 Oracle 监听器，`ss` 里找不到第二个进程。排查时先确认配置里 `port` 与 `ivorysql.port` 是否相等。
+====
+
+确实需要换端口时，只改 `ivorysql.port`，并保持两个值不相等：
+
+[literal]
+----
+port = 5432
+ivorysql.port = 1522
+----
+
+重启后连 1522 得到 `oracle`，连 5432 得到 `pg`。
+
+双监听是 Oracle 模式集群独有的：只有 `initdb --dbmode=oracle` 建出的集群，postmaster 才会额外创建 Oracle 监听套接字（源码里对应 `DB_ORACLE == database_mode` 判断）。PostgreSQL 模式的集群只有 `port` 一个监听端口。
+
 === 数据类型
 
 [literal]
