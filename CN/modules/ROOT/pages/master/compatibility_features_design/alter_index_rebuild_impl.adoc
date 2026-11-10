@@ -1,0 +1,259 @@
+:sectnums:
+:sectnumlevels: 5
+
+= **功能概述**
+
+IvorySQL通过Oracle语法扩展、新的utility语句节点以及对现有 `REINDEX` 执行链路的复用，实现 `ALTER INDEX ... REBUILD`。功能支持普通和在线重建、重建时迁移表空间、按表分区名选择一个叶子索引分区，以及显式或自动控制非在线重建的并行度。
+
+基本用法如下：
+
+```sql
+SET ivorysql.compatible_mode = oracle;
+
+ALTER INDEX employee_name_idx REBUILD;
+ALTER INDEX employee_name_idx REBUILD ONLINE TABLESPACE fast_tbs;
+ALTER INDEX sales_id_idx REBUILD PARTITION sales_p1 PARALLEL 4;
+```
+
+== 实现原理
+
+=== 总体执行链路
+
+索引重建的主要执行链路如下：
+
+```text
+Oracle lexer/parser
+  -> OraAlterIndexRebuildStmt
+  -> ProcessUtilitySlow
+  -> ExecOraAlterIndexRebuild
+       -> 解析DefElem选项并构造ReindexParams
+       -> 无PARTITION: ReindexIndex
+       -> 有PARTITION: 定位叶子索引
+            -> ONLINE: ReindexRelationConcurrently
+            -> 非ONLINE或临时索引: reindex_index
+  -> index_build / 并发索引构建流程
+```
+
+实现尽量复用PostgreSQL已有的 `REINDEX` 基础设施，使对象解析、权限检查、锁、事件触发器、进度报告、表空间迁移和并发重建保持与现有路径一致。
+
+=== 词法与语法分析
+
+Oracle关键字表 `src/include/oracle_parser/ora_kwlist.h` 增加以下非保留关键字：
+
+* `REBUILD`；
+* `ONLINE`；
+* `NOPARALLEL`。
+
+`src/backend/oracle_parser/ora_gram.y` 在Oracle版 `ALTER INDEX` 语法中增加：
+
+```text
+ALTER INDEX qualified_name REBUILD rebuild_index_opt_list
+```
+
+`rebuild_index_opt_list` 允许选项为空，也允许多个选项以任意顺序出现。每个选项转换成一个 `DefElem`：
+
+[cols="2,2,3"]
+|====
+|*语法*|*DefElem名称与参数*|*说明*
+|`ONLINE`|`online = true`|进入并发重建路径
+|`TABLESPACE name`|`tablespace = name`|目标表空间名称
+|`PARTITION name`|`partition = name`|目标表分区名称
+|`PARALLEL N`|`parallel = N`|显式Oracle并行度
+|`PARALLEL`|`parallel = 0`|自动选择并行度
+|`NOPARALLEL`|`noparallel = true`|强制串行
+|====
+
+语法动作直接检查 `PARALLEL N` 的N必须大于0，因此 `PARALLEL 0` 在解析阶段报告参数错误。
+
+该语法只加入Oracle解析器。PostgreSQL兼容解析器不通过这条规则识别 `ALTER INDEX ... REBUILD`。
+
+=== OraAlterIndexRebuildStmt语句节点
+
+`src/include/nodes/parsenodes.h` 定义新的解析树节点：
+
+```c
+typedef struct OraAlterIndexRebuildStmt
+{
+    NodeTag     type;
+    RangeVar   *relation;
+    List       *options;
+} OraAlterIndexRebuildStmt;
+```
+
+`relation` 保存目标索引的限定名称，`options` 保存语法阶段生成的 `DefElem` 列表。节点采用PostgreSQL节点定义机制，因此可以随utility解析树进入标准命令处理流程。
+
+`src/backend/tcop/utility.c` 将该节点接入以下utility基础设施：
+
+* `ClassifyUtilityCommandAsReadOnly`：与 `REINDEX` 相同，允许在只读事务中执行，但不允许在并行worker或恢复模式中执行；
+* `ProcessUtilitySlow`：调用 `ExecOraAlterIndexRebuild`，事件触发器命令收集由后续REINDEX路径完成；
+* `CreateCommandTag`：返回 `CMDTAG_ALTER_INDEX`，客户端完成标签显示为 `ALTER INDEX`；
+* `GetCommandLogLevel`：与 `REINDEX` 一样使用 `LOGSTMT_ALL` 分类。
+
+=== 选项解析与ReindexParams映射
+
+核心入口 `ExecOraAlterIndexRebuild` 位于 `src/backend/commands/indexcmds.c`。函数遍历 `OraAlterIndexRebuildStmt.options`，提取 `online`、`tablespacename`、`partitionname` 和并行控制参数。
+
+为了复用原有接口，函数构造一个 `REINDEX_OBJECT_INDEX` 类型的合成 `ReindexStmt`。该对象主要用于下层错误上下文和事件触发器收集；实际参数通过 `ReindexParams` 传递。
+
+`ReindexParams` 在 `src/include/catalog/index.h` 中增加 `nworkers` 字段：
+
+```c
+int nworkers;
+```
+
+其内部约定为：
+
+[cols="1,4"]
+|====
+|*值*|*含义*
+|`0`|自动选择；普通 `REBUILD` 和不带数字的 `PARALLEL` 都使用此值
+|`-1`|强制串行；来自 `NOPARALLEL` 或 `PARALLEL 1`
+|`> 0`|显式请求的PostgreSQL后台工作进程数
+|====
+
+Oracle并行度N表示N个实际数据处理参与者。PostgreSQL构建索引时leader也参与处理，所以入口函数按下式转换：
+
+```text
+PARALLEL 1      -> nworkers = -1
+PARALLEL N>=2   -> nworkers = N - 1
+```
+
+执行阶段显式拒绝 `PARALLEL` 与 `NOPARALLEL` 的组合，也拒绝重复的 `PARALLEL` 或重复的 `NOPARALLEL`。
+
+=== ONLINE与事务控制
+
+指定 `ONLINE` 时，入口函数执行两项映射：
+
+1. 在 `ReindexParams.options` 中设置 `REINDEXOPT_CONCURRENTLY`；
+2. 调用 `PreventInTransactionBlock`，要求语句位于显式事务块之外。
+
+非分区目标随后由 `ReindexIndex` 分派到 `ReindexRelationConcurrently`。带 `PARTITION` 的目标在定位叶子索引后直接进入同一并发重建函数。该路径使用多事务并发重建机制，因此不能包含在用户事务块中。
+
+临时索引是例外。`ReindexIndex` 检测到临时持久性后会改走普通 `reindex_index`；PARTITION分支也以相同方式对临时索引退化处理。其他会话无法访问当前会话的临时表，所以不需要并发构建。
+
+并发重建函数不读取本功能新增的 `ReindexParams.nworkers`。因此 `ONLINE` 与 `PARALLEL` 或 `NOPARALLEL` 同时出现时，入口函数发出WARNING，继续在线重建并忽略并行提示。
+
+=== TABLESPACE解析与权限检查
+
+入口函数使用 `get_tablespace_oid` 把表空间名称转换成OID。目标不是数据库默认表空间时，通过 `object_aclcheck` 检查当前用户是否具有 `ACL_CREATE` 权限。
+
+解析完成的OID写入 `ReindexParams.tablespaceOid`；未指定表空间时使用 `InvalidOid`。下层普通重建和并发重建继续复用原有REINDEX表空间移动逻辑。
+
+普通重建的 `reindex_index` 使用 `CheckRelationTableSpaceMove` 判断是否确实需要移动，并更新 `pg_class` 的表空间信息、安排旧存储在事务提交时删除，再为索引建立新的物理存储。系统关系的移动由原有检查拒绝。
+
+=== PARTITION目标定位
+
+指定 `PARTITION` 后，入口函数不直接调用根索引的 `ReindexIndex`，而是执行以下步骤：
+
+1. 通过 `RangeVarGetRelidExtended` 解析并锁定用户指定的根索引；
+2. 检查根对象的 `relkind` 必须为 `RELKIND_PARTITIONED_INDEX`；
+3. 使用 `find_inheritance_children` 取得根索引的直接子索引；
+4. 对每个子索引调用 `IndexGetRelation`，取得该索引所属的表分区OID；
+5. 使用 `get_rel_name` 取得表分区名，并与语句中的 `partitionname` 比较；
+6. 找到后只重建该子索引；没有匹配项则报告分区不存在。
+
+这里特意按照表分区名匹配，而不是按照索引分区名匹配，以兼容Oracle语法。例如根索引为 `sales_id_idx`、表分区为 `sales_p1` 时，语句使用 `PARTITION sales_p1`，即使叶子索引具有另一个内部名称也不受影响。
+
+选中的对象必须是可物理重建的直接叶子索引。当前查找不递归多级分区树，也只比较不带模式限定的关系名称。
+
+PARTITION路径复制已有参数并设置 `REINDEXOPT_REPORT_PROGRESS`。非临时在线目标调用 `ReindexRelationConcurrently`，其余目标调用 `reindex_index`。
+
+=== 普通索引与分区根索引分派
+
+未指定 `PARTITION` 时，入口函数把合成的 `ReindexStmt` 和 `ReindexParams` 传给现有 `ReindexIndex`：
+
+* 普通索引：根据 `ONLINE` 和持久性选择并发或普通重建；
+* 分区根索引：调用已有 `ReindexPartitions`，遍历并重建叶子索引分区；
+* 普通非在线索引：设置 `REINDEXOPT_REPORT_PROGRESS` 后调用 `reindex_index`。
+
+这使普通索引、唯一索引、约束索引和分区索引继续使用成熟的REINDEX检查与构建机制。`reindex_index` 生成新的索引物理存储，调用访问方法重新构建内容，并保持原索引的目录身份和约束关系。
+
+=== 锁与权限处理
+
+目标解析使用 `RangeVarCallbackForReindexIndex`。回调先确认对象是普通索引或分区索引，再通过 `IndexGetRelation` 找到所属表，并检查当前用户对表的 `ACL_MAINTAIN` 权限。
+
+为避免表和索引之间的死锁，回调先锁定所属表，再由 `RangeVarGetRelidExtended` 锁定索引。主要锁模式如下：
+
+[cols="2,2,2"]
+|====
+|*路径*|*所属表*|*目标索引*
+|普通重建|`ShareLock`|`AccessExclusiveLock`
+|在线重建|`ShareUpdateExclusiveLock`|`ShareUpdateExclusiveLock`
+|====
+
+进入普通 `reindex_index` 后会以 `AccessExclusiveLock` 打开物理叶子索引。在线路径则使用已有的并发索引重建协议，在不同事务阶段管理旧索引和新索引。
+
+=== 并行度传递与索引构建
+
+`src/backend/catalog/index.c` 的 `reindex_index` 根据 `ReindexParams.nworkers` 决定如何调用 `index_build`：
+
+* `nworkers == -1`：把 `parallel` 参数设为false，完全跳过并行估算；
+* `nworkers == 0`：允许并行，交给 `index_build` 自动调用规划器估算；
+* `nworkers > 0`：先调用带显式覆盖值的 `plan_create_index_workers`，把结果写入 `IndexInfo.ii_ParallelWorkers`。
+
+`index_build` 增加 `ii_ParallelWorkers == 0` 条件。显式路径已经填入工作进程数时，不再进行第二次自动估算；自动路径仍按原有逻辑工作。
+
+`plan_create_index_workers` 在 `src/backend/optimizer/plan/planner.c` 中增加 `override_workers` 参数。值大于0时，函数仍执行以下前置检查：
+
+* 服务器必须运行在postmaster下，且 `max_parallel_maintenance_workers` 不能为0；
+* 目标不能是临时表；
+* 索引表达式和部分索引谓词必须并行安全。
+
+检查通过后，显式工作进程数取：
+
+```text
+Min(override_workers, max_parallel_maintenance_workers)
+```
+
+显式覆盖跳过自动估算中的表大小和32 MB内存上限启发式，与显式 `parallel_workers` 存储参数的优先行为一致。最终是否能够启动全部请求进程，还取决于系统全局并行worker资源。
+
+只有声明 `amcanbuildparallel` 的访问方法会进入显式并行规划。当前框架中B-tree、GIN和BRIN支持并行构建；不支持的访问方法保持串行。
+
+=== 事件触发器、命令标签与进度报告
+
+入口函数构造的合成 `ReindexStmt` 会沿重建调用链传递。普通 `reindex_index` 使用它调用 `EventTriggerCollectSimpleCommand`，从而复用REINDEX路径的事件触发器收集。
+
+utility层把外部命令标签设置为 `ALTER INDEX`，而不是 `REINDEX`。这使客户端命令完成信息与用户提交的语法保持一致。
+
+普通单索引和显式PARTITION路径设置 `REINDEXOPT_REPORT_PROGRESS`。下层通过 `pgstat_progress_start_command(PROGRESS_COMMAND_CREATE_INDEX, ...)` 报告进度，命令类型记录为REINDEX，可以从 `pg_stat_progress_create_index` 观察执行状态。分区根索引则沿用 `ReindexPartitions` 的进度处理。
+
+=== 回归测试
+
+Oracle兼容回归测试输入和预期输出位于：
+
+```text
+src/oracle_test/regress/sql/alter_index.sql
+src/oracle_test/regress/expected/alter_index.out
+```
+
+测试通过 `src/oracle_test/regress/parallel_schedule` 注册，覆盖以下内容：
+
+* 普通索引、主键索引、唯一索引和分区根索引重建；
+* 普通索引及分区索引的 `ONLINE` 重建；
+* `ONLINE` 在显式事务块中报错，以及临时索引退化为普通重建；
+* `TABLESPACE` 迁移、目录状态和不存在的表空间；
+* 按表分区名重建叶子索引，以及不存在分区、普通索引和叶子索引的错误路径；
+* `ONLINE`、`TABLESPACE` 和 `PARTITION` 的不同顺序与组合；
+* 数据完整性、主键扫描和唯一约束在重建后保持有效；
+* `NOPARALLEL`、`PARALLEL 1`、显式并行度、自动并行度和GUC上限；
+* `PARALLEL`/`NOPARALLEL` 与 `ONLINE`、`TABLESPACE`、`PARTITION` 的组合；
+* `PARALLEL 0`、互斥并行选项和数据完整性错误路径。
+
+提交 `2b1b5d550d434883bd5bbf264a54e16e7e32de94` 在显式并行测试中关闭 `log_temp_files` 输出，避免不同运行环境产生非确定性日志；提交 `2d05e63d1e5b30eab3ebfce6425ec586bcc1e8c7` 又补充了表空间目录断言、稳定的索引扫描计划以及分区和并行选项组合测试。
+
+可通过以下命令运行Oracle兼容回归测试：
+
+```sh
+make oracle-check
+```
+
+=== 当前实现边界
+
+* 语法只由Oracle解析器提供；
+* `PARTITION` 只搜索根索引的直接子索引，目标需要是可物理重建的叶子索引；
+* 分区匹配只比较表分区的关系名，不比较模式名，也不按索引分区名匹配；
+* `ONLINE` 使用已有并发重建路径，不能在显式事务块中执行；
+* `ONLINE` 路径不使用 `ReindexParams.nworkers`，所以会忽略 `PARALLEL` 和 `NOPARALLEL`；
+* `PARALLEL N` 只控制请求的参与度，GUC上限、访问方法能力、安全检查和可用worker资源仍可能降低实际并行度；
+* 显式并行度跳过自动估算的大小与内存启发式，但不会绕过临时表和表达式并行安全检查；
+* `nworkers` 复用 `ReindexParams` 向下传递；未设置该字段的原有调用方使用零初始化，保持原来的自动并行行为。

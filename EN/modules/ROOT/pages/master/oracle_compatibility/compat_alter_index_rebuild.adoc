@@ -1,0 +1,269 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= Index Rebuild
+
+== Purpose
+
+In Oracle compatibility mode, IvorySQL supports the `ALTER INDEX ... REBUILD` syntax for recreating the physical storage of an index. It supports online rebuilds, tablespace migration, rebuilding a specified partition, and controlling parallelism.
+
+This document describes the syntax, option behavior, combination rules, privilege and transaction requirements, and current compatibility boundaries of index rebuilds.
+
+== Feature Description
+
+=== Basic Syntax
+
+The syntax is:
+
+```sql
+ALTER INDEX [schema_name.]index_name REBUILD
+  [ONLINE]
+  [TABLESPACE tablespace_name]
+  [PARTITION partition_name]
+  [PARALLEL [degree] | NOPARALLEL];
+```
+
+`ONLINE`, `TABLESPACE`, `PARTITION`, and `PARALLEL`/`NOPARALLEL` can be combined in any order. For example:
+
+```sql
+ALTER INDEX sales_idx
+  REBUILD PARTITION sales_p1 TABLESPACE fast_tbs ONLINE;
+```
+
+This syntax is provided by the Oracle parser and should be used in Oracle compatibility mode:
+
+```sql
+SET ivorysql.compatible_mode = oracle;
+```
+
+=== Regular Index Rebuild
+
+When no option is specified, IvorySQL recreates the physical file of the target index. The index definition, name, constraint association, and logical contents remain unchanged.
+
+```sql
+ALTER INDEX employee_name_idx REBUILD;
+```
+
+Regular indexes, unique indexes, and primary-key indexes can all be rebuilt. Running the statement on the root of a partitioned index rebuilds all of its leaf index partitions:
+
+```sql
+ALTER INDEX sales_id_idx REBUILD;
+```
+
+A regular rebuild reuses the `REINDEX INDEX` execution path. The index and its underlying table are locked during the operation. A maintenance window with little conflicting concurrent access is generally preferable for rebuilding a large index.
+
+=== ONLINE Rebuild
+
+`ONLINE` uses the concurrent rebuild path and is equivalent to running `REINDEX ... CONCURRENTLY` for the target index:
+
+```sql
+ALTER INDEX employee_name_idx REBUILD ONLINE;
+```
+
+An online rebuild avoids holding the exclusive index lock required by a regular rebuild throughout the build, allowing other sessions to continue ordinary DML during most of the operation. A concurrent rebuild performs more work, can take longer, and still needs short-lived locks at several stages.
+
+`REBUILD ONLINE` cannot run inside an explicit transaction block:
+
+```sql
+BEGIN;
+ALTER INDEX employee_name_idx REBUILD ONLINE;
+-- ERROR: ALTER INDEX ... REBUILD ONLINE cannot run inside a transaction block
+ROLLBACK;
+```
+
+An index on a temporary table cannot use the cross-transaction concurrent rebuild process. If `ONLINE` is specified for an index on a temporary table owned by the current session, IvorySQL automatically falls back to a regular rebuild.
+
+=== TABLESPACE Migration
+
+`TABLESPACE` moves an index to the specified tablespace while rebuilding it:
+
+```sql
+ALTER INDEX employee_name_idx REBUILD TABLESPACE fast_tbs;
+```
+
+This option can also be applied to the root of a partitioned index, or combined with `PARTITION` to move only the index or index partition being rebuilt:
+
+```sql
+ALTER INDEX sales_id_idx
+  REBUILD PARTITION sales_p1 TABLESPACE fast_tbs;
+```
+
+The target tablespace must exist. Except for the database default tablespace, the executing user needs the `CREATE` privilege on the target tablespace. System relations cannot be moved with this option.
+
+The tablespace after the rebuild can be inspected through `pg_class.reltablespace`. A relation in the database default tablespace normally has a recorded value of zero:
+
+```sql
+SELECT c.relname, c.reltablespace, t.spcname
+FROM pg_class c
+LEFT JOIN pg_tablespace t ON t.oid = c.reltablespace
+WHERE c.relname = 'employee_name_idx';
+```
+
+=== PARTITION Rebuild
+
+`PARTITION` rebuilds only one leaf index partition of a partitioned index:
+
+```sql
+ALTER INDEX sales_id_idx REBUILD PARTITION sales_p1;
+```
+
+Here, `sales_p1` is the name of the table partition, not the name of an internally generated or explicitly named index partition. IvorySQL examines the direct child indexes of the partitioned-index root and rebuilds the leaf index whose underlying table is named `sales_p1`.
+
+`PARTITION` must be applied to the root of a partitioned index. Using it with a regular index or a leaf index reports an error:
+
+```sql
+ALTER INDEX employee_name_idx REBUILD PARTITION sales_p1;
+-- ERROR: "employee_name_idx" is not a partitioned index
+```
+
+An error is also reported if the specified table partition does not exist. The partition name in the current syntax is a single, schema-unqualified name.
+
+=== PARALLEL Rebuild
+
+A non-online rebuild can use `PARALLEL` to request a parallel build:
+
+```sql
+ALTER INDEX employee_name_idx REBUILD PARALLEL;
+ALTER INDEX employee_name_idx REBUILD PARALLEL 4;
+```
+
+The forms have the following meanings:
+
+[cols="2,4"]
+|====
+|*Form*|*Behavior*
+|No parallel option|Use IvorySQL's existing automatic estimation for index-build parallelism
+|`PARALLEL`|Use the table's `parallel_workers` storage parameter or automatically estimate the worker count
+|`PARALLEL 1`|Force a serial rebuild
+|`PARALLEL N`, where `N >= 2`|Request total parallelism N, internally mapped to N-1 background workers plus the current leader process
+|`NOPARALLEL`|Force a serial rebuild without automatic parallelism estimation
+|====
+
+`degree` must be at least 1, and `PARALLEL 0` reports an error. `PARALLEL` and `NOPARALLEL` are mutually exclusive and cannot appear in the same statement. Repeating either `PARALLEL` or `NOPARALLEL` also reports an error.
+
+An explicit degree is a request and does not guarantee that the same number of workers will start. Actual parallel execution is also affected by:
+
+* the `max_parallel_maintenance_workers` limit;
+* available parallel-worker slots;
+* whether the index access method supports parallel builds;
+* whether temporary tables, index expressions, and index predicates meet parallel-safety requirements.
+
+The current index-build framework supports parallel builds for B-tree, GIN, and BRIN. Other access methods fall back to serial execution according to their capabilities.
+
+`PARALLEL` and `NOPARALLEL` can be combined with `TABLESPACE` and `PARTITION`:
+
+```sql
+ALTER INDEX sales_id_idx REBUILD PARALLEL 4 PARTITION sales_p1;
+ALTER INDEX employee_name_idx REBUILD NOPARALLEL TABLESPACE fast_tbs;
+```
+
+=== Combining ONLINE and Parallel Options
+
+An online rebuild uses a separate concurrent rebuild path that does not read the worker count specified by `PARALLEL` or `NOPARALLEL`. When these option types are combined, the online rebuild still runs, but the parallel hint is ignored and a warning is issued:
+
+```sql
+ALTER INDEX employee_name_idx REBUILD ONLINE PARALLEL 4;
+-- WARNING: PARALLEL/NOPARALLEL option is ignored when ONLINE is specified
+```
+
+To control rebuild parallelism through this feature, do not specify `ONLINE` at the same time.
+
+=== Privileges, Locks, and Transactions
+
+The executing user needs the `MAINTAIN` privilege on the table underlying the index. When `TABLESPACE` is used, the target-tablespace privilege requirements must also be satisfied.
+
+A regular rebuild uses the `REINDEX INDEX` locking strategy: a `ShareLock` is acquired on the underlying table and an `AccessExclusiveLock` on the target index. An online rebuild enters the concurrent rebuild process using `ShareUpdateExclusiveLock`, reducing its impact on ordinary DML.
+
+A regular `REBUILD` can run inside an explicit transaction block and a read-only transaction. Because `REBUILD ONLINE` must switch transactions internally, it must run as a top-level statement.
+
+=== Usage Notes
+
+* A rebuild rewrites the physical index storage. Reserve sufficient disk space, WAL capacity, and maintenance time.
+* `ONLINE` primarily reduces the impact of long-held locks on application DML; it does not mean that the operation never takes locks.
+* Rebuilding the root of a partitioned index without `PARTITION` processes every leaf index partition. With `PARTITION`, only the specified direct leaf partition is processed.
+* `PARTITION` accepts a table partition name, not an index partition name.
+* The current `PARTITION` lookup examines only direct child indexes of the partitioned-index root. A non-leaf child in a multi-level partition tree is not a supported target for this option.
+* Partition matching currently uses an unqualified table-partition name. If direct partitions with the same name exist in different schemas, do not rely on their matching order.
+* `PARALLEL N` is a parallelism request. Server settings and safety checks can result in fewer workers or serial execution.
+* When `ONLINE` is combined with `PARALLEL`/`NOPARALLEL`, the parallel option is ignored.
+* A successful rebuild does not change the index definition or constraint semantics. A unique index continues to enforce uniqueness after rebuilding.
+
+== Test Cases
+
+=== Preparing Test Data
+
+```sql
+SET ivorysql.compatible_mode = oracle;
+
+CREATE TABLE index_rebuild_employee
+(
+  id   integer PRIMARY KEY,
+  name text
+);
+
+INSERT INTO index_rebuild_employee
+SELECT g, 'name_' || g
+FROM generate_series(1, 1000) AS g;
+
+CREATE INDEX index_rebuild_employee_name_idx
+  ON index_rebuild_employee(name);
+
+CREATE TABLE index_rebuild_sales
+(
+  id     integer,
+  region text
+) PARTITION BY RANGE (id);
+
+CREATE TABLE index_rebuild_sales_p1
+  PARTITION OF index_rebuild_sales FOR VALUES FROM (1) TO (1001);
+CREATE TABLE index_rebuild_sales_p2
+  PARTITION OF index_rebuild_sales FOR VALUES FROM (1001) TO (2001);
+
+INSERT INTO index_rebuild_sales
+SELECT g, CASE WHEN g <= 1000 THEN 'east' ELSE 'west' END
+FROM generate_series(1, 2000) AS g;
+
+CREATE INDEX index_rebuild_sales_id_idx ON index_rebuild_sales(id);
+```
+
+=== Regular and Online Rebuilds
+
+```sql
+ALTER INDEX index_rebuild_employee_name_idx REBUILD;
+ALTER INDEX index_rebuild_employee_name_idx REBUILD ONLINE;
+```
+
+Query the data to verify that the rebuild did not change its logical contents:
+
+```sql
+SELECT count(*)
+FROM index_rebuild_employee
+WHERE name = 'name_100';
+```
+
+The expected result is 1.
+
+=== Partition and Parallel Rebuilds
+
+```sql
+ALTER INDEX index_rebuild_sales_id_idx
+  REBUILD PARTITION index_rebuild_sales_p1;
+
+ALTER INDEX index_rebuild_sales_id_idx
+  REBUILD PARTITION index_rebuild_sales_p2 PARALLEL 2;
+```
+
+The following statement verifies that the root index can rebuild all leaf partitions in one operation:
+
+```sql
+ALTER INDEX index_rebuild_sales_id_idx REBUILD NOPARALLEL;
+```
+
+=== Cleaning Up
+
+```sql
+DROP TABLE index_rebuild_employee CASCADE;
+DROP TABLE index_rebuild_sales CASCADE;
+```
