@@ -1,0 +1,237 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= Production Go-Live Checklist and Best Practices
+
+This page collects the checks that must be confirmed one by one before an IvorySQL deployment goes live, together with the three compatibility cases that most often surface only after go-live. Every command and output below comes from a measured record on a single host: IvorySQL 5.6 from `/opt/ivory56/bin` (`PostgreSQL 18.6 (IvorySQL 5.6)`), with the instance listening on both `127.0.0.1:1521` (Oracle compatible) and `127.0.0.1:5432` (PG compatible). Container images usually publish the container `5432` on the host as `-p 1521:1521 -p 5433:5432`, which makes the PG port `5433` on the host; replace `5432` with `5433` and the commands and conclusions on this page still hold.
+
+== Go-Live Checklist
+
+Commands in the "Command" column run on the database host. The "Expected result" column gives the measured sample value, which must be resized for the machine in production, while the "Impact if it fails" column describes what actually happens when nothing is adjusted.
+
+|===
+|Check|Command|Expected result|Impact if it fails
+|Both listeners are serving and the ports do not collide|`pg_isready -h 127.0.0.1 -p 1521`, `pg_isready -h 127.0.0.1 -p 5432`, then compare `show port` with `show ivorysql.port`|Both return `accepting connections`; `port` is `5432` and `ivorysql.port` is `1521`|With equal values the server fails to start and the log reads `FATAL:  could not create any Oracle TCP/IP sockets`, so every Oracle client fails to connect
+|Which compatibility mode the connection landed in|`select current_setting('ivorysql.compatible_mode'), current_setting('ivorysql.database_mode');` on both ports|`oracle / oracle` on 1521 and `pg / oracle` on 5432|Connecting to the wrong port raises no error at all; only casing, empty strings and built-in functions drift silently
+|Initialization mode of the cluster|`pg_controldata $PGDATA` and read `database mode`|`1` for `-m oracle`, `0` for `-m pg`|The mode is a cluster-wide property; a wrong choice can only be fixed by running initdb again
+|uuid functions are usable on the Oracle port|`select uuid_generate_v4();` on 1521|Returns a UUID such as `930959e6-86dd-4b6b-ba1e-0b2d5c08df61`|Table definitions that use a UUID default or function fail, and migration scripts stop at that statement
+|Visibility of uuid functions on the PG port|`select sys.uuid_generate_v4();` and `select uuid_generate_v4();` on 5432|The `sys.` qualified form succeeds; the bare form fails with `ERROR:  function uuid_generate_v4() does not exist`, because `current_schemas(true)` is only `{pg_catalog,public}`|The same SQL moved from the Oracle port to the PG port fails everywhere with "function does not exist"
+|How to spell the identifier when installing an extension|`create extension "uuid-ossp";` on 1521, then retry after `set ivorysql.identifier_case_switch = normal;`|With the default value it fails as `ERROR:  extension "UUID-OSSP" is not available`; after switching to `normal` it fails as `ERROR:  extension "uuid-ossp" already exists`, which means the name now resolves|The `not available` message leads to reinstalling or rebuilding the UUID library while the real problem is folded identifier case
+|Whether empty strings are converted to NULL|`show ivorysql.enable_emptystring_to_NULL;`, then `insert into t(code) values ('')` followed by `select code is null from t;`|On 1521 the value is `on` and the insert becomes NULL (`t`); on 5432 the value is also `on` but the value stays an empty string (`f`)|Unique constraints are bypassed by NULL on the Oracle side, and the same table written through two ports gets two different semantics
+|Identifier case switch|`show ivorysql.identifier_case_switch;` with `select 1 as "ABC";`|On 1521 the default is `interchange` and the column prints as `abc`; on the PG port it always prints `ABC`|Result column names drift with the mode, so ORMs and result mappers pick the wrong column
+|WAL level and archiving (PITR prerequisite)|`select name, setting from pg_settings where name in ('wal_level','archive_mode','archive_command');`|Production needs `wal_level=replica`, `archive_mode=on` and an `archive_command` that is not `(disabled)` (the sample read `off` and `(disabled)`)|Without archiving only the latest base backup can be restored, and point-in-time recovery is impossible
+|Memory baseline|Read `shared_buffers` and `work_mem` from `pg_settings`|Defaults measured were `shared_buffers=16384` in 8kB units (128MB) and `work_mem=4096 kB`; resize for the machine before go-live|Large scans and sorts spill to disk, producing hard-to-reproduce latency spikes
+|Connection ceiling|`show max_connections;`|Must match the sum of the connection pool limits; the sample value is `100` from `configuration file`|Connections above the ceiling are rejected, the pool times out as a whole, and the visible symptom is a total outage
+|No trust rule in pg_hba.conf|`select count(*) from pg_hba_file_rules where auth_method = 'trust';`|`0` (the sample read `6`, with local and host, replication included, all on trust)|Any process that reaches the port can impersonate any role, and replication connections are equally open
+|Password encryption algorithm|`show password_encryption;`|`scram-sha-256`|An older algorithm combined with trust rules leaves the deployment effectively unauthenticated
+|autovacuum is enabled|`show autovacuum;`|`on`|Table bloat and transaction ID ageing are never reclaimed until a manual shutdown for cleanup
+|Slow statement logging threshold|`show log_min_duration_statement;`|A positive number of milliseconds (the sample read `-1`, which disables it)|Slow queries on production leave no trace, so performance work is guesswork
+|Synchronous replication settings after promotion or switchover|`show synchronous_standby_names;` and `select wait_event_type, wait_event from pg_stat_activity where state = 'active';`|It must be empty when no standby exists; when it is not empty and no standby exists the wait is `IPC / SyncRep`|Every commit stalls, `statement_timeout='8s'` does not break it, and the business side sees writes hang forever
+|Logical backup drill|`pg_dump -h 127.0.0.1 -p 5432 -U ivy -d d3bp -Fc -f /tmp/d3bak/d3bp.dump`, then `pg_restore -l /tmp/d3bak/d3bp.dump`|`pg_dump` returns 0; the measured artifact was 9285 bytes with `Format: CUSTOM` and `TOC Entries: 29`|The backup file was never read back, so its unusability is discovered during the incident
+|Physical backup drill|`pg_basebackup -h 127.0.0.1 -p 5432 -U ivy -D /tmp/d3bak/base -Fp -X stream -c fast -P`|Returns 0; `backup_label` shows `BACKUP METHOD: streamed` and `BACKUP FROM: primary`, and `PG_VERSION` is `18`|Without a usable base backup the first step of PITR is already missing
+|===
+
+A new database inherits the extensions of `template1`: both `template1` and a freshly created database measured five rows (`gb18030_2022`, `ivorysql_ora`, `plisql`, `plpgsql`, `uuid-ossp`), so an `already exists` error from `create extension` only means the template already has it, not that this deployment installed it. `uuid-ossp` lives in the `sys` schema, which holds all five functions `uuid_generate_v1`, `uuid_generate_v1mc`, `uuid_generate_v3`, `uuid_generate_v4` and `uuid_generate_v5`; the Oracle port puts `sys` on the effective search path and the PG port does not, so this check has to be repeated per port.
+
+== Compatibility Best-Practice Cases
+
+=== Case 1: one database, two ports, two compatibility modes
+
+==== Scenario
+
+Only the port changed in the application configuration, yet behaviour differs from the test environment. IvorySQL decides the compatibility mode of a session from the listener that accepted the connection, and neither `port` nor `ivorysql.port` reveals which one that was.
+
+==== Reproduction SQL
+
+[source,sql]
+----
+-- run once per port; the database and the role are identical
+select current_setting('ivorysql.compatible_mode') as mode,
+       current_setting('ivorysql.database_mode') as db_mode,
+       current_setting('ivorysql.port')                as ora_port,
+       current_setting('port')                         as pg_port;
+
+show port;
+show ivorysql.port;
+----
+
+==== Measured output
+
+----
+-- psql -h 127.0.0.1 -p 1521 -d d3bp
+ compatible_mode | database_mode | ora_port | pg_port
+-----------------+---------------+----------+---------
+ oracle          | oracle        | 1521     | 5432
+(1 row)
+
+-- psql -h 127.0.0.1 -p 5432 -d d3bp
+ compatible_mode | database_mode | ora_port | pg_port
+-----------------+---------------+----------+---------
+ pg              | oracle        | 1521     | 5432
+(1 row)
+----
+
+On both ports `show port` returns `5432` and `show ivorysql.port` returns `1521`, byte for byte identical.
+
+==== Conclusions and recommendations
+
+* Only `current_setting('ivorysql.compatible_mode')` identifies the mode of the current session; `port`, `ivorysql.port` and `ivorysql.database_mode` cannot distinguish anything, and `database_mode` is a cluster-wide property that stays `oracle` on both ports.
+* Map roles to ports explicitly: Oracle-compatible workloads connect to `1521`, PG workloads to `5432`, and never mix both ports inside one connection pool.
+* Before go-live run the SQL above on both ports and attach the output to the change record; on a container deployment where the host PG port is `5433`, run it against `5433` instead.
+
+=== Case 2: the identifier case switch changes result column names
+
+==== Scenario
+
+The same query returns differently cased column names on the Oracle port depending on `ivorysql.identifier_case_switch`, because quoted aliases are folded; the switch has no effect on the PG port. Applications that read columns by name then report a missing column or read the wrong one.
+
+==== Reproduction SQL
+
+[source,sql]
+----
+show ivorysql.identifier_case_switch;
+
+set ivorysql.identifier_case_switch = normal;
+select 1 as "ABC", 2 as "abc", 3 as MiXeD;
+
+set ivorysql.identifier_case_switch = interchange;
+select 1 as "ABC", 2 as "abc", 3 as MiXeD;
+
+set ivorysql.identifier_case_switch = lowercase;
+select 1 as "ABC", 2 as "abc", 3 as MiXeD;
+----
+
+==== Measured output
+
+Port 1521 (Oracle compatible):
+
+----
+ ivorysql.identifier_case_switch
+---------------------------------
+ interchange
+(1 row)
+
+-- normal
+ ABC | abc | mixed
+-----+-----+-------
+   1 |   2 |     3
+(1 row)
+
+-- interchange
+ abc | ABC | mixed
+-----+-----+-------
+   1 |   2 |     3
+(1 row)
+
+-- lowercase
+ abc | abc | mixed
+-----+-----+-------
+   1 |   2 |     3
+(1 row)
+----
+
+On port 5432 (PG compatible) all three values produce exactly the same output, `ABC | abc | mixed`, so the switch does not apply.
+
+Checking the table definition and the access path next: with `create table d3_case ("UserId" int, payload text);` and `create index d3_case_userid_idx on d3_case ("UserId");` created under `normal`, the same `select * from d3_case where "UserId" = 42;` still reports this plan after switching to `interchange`:
+
+----
+ Index Scan using d3_case_userid_idx on d3_case
+   Index Cond: ("UserId" = 42)
+(2 rows)
+----
+
+==== Conclusions and recommendations
+
+* Under all three values the stored column name stays `UserId` and the index `d3_case_userid_idx` is still used through an `Index Scan`, so the drift never happens on the access path, only on the output column names of quoted aliases.
+* When diagnosing a "column does not exist" failure, first check whether a quoted alias was folded instead of suspecting the table definition or the index.
+* Where stable column names matter, pin `ivorysql.identifier_case_switch` to `normal` or use unquoted lower-case aliases only; the PG port needs no setting at all.
+
+=== Case 3: empty strings become NULL and defeat unique constraints
+
+==== Scenario
+
+In Oracle semantics an empty string equals NULL, and IvorySQL controls that conversion with `ivorysql.enable_emptystring_to_NULL`. When it is on, `''` is stored as NULL, unique constraints no longer apply to NULLs, and any number of "empty" values can be inserted into the same column; a `not null` column rejects `''` with a not-null violation whose message shows `null`, which is easily mistaken for an application sending an empty object.
+
+==== Reproduction SQL
+
+[source,sql]
+----
+show ivorysql.enable_emptystring_to_NULL;
+
+create table d3_empty (id serial primary key, code text);
+insert into d3_empty (code) values ('');
+select id, code, code is null as is_null, length(code) as len from d3_empty;
+
+create unique index d3_empty_code_uq on d3_empty (code);
+insert into d3_empty (code) values ('');
+insert into d3_empty (code) values ('');
+select count(*) as total_rows, count(*) filter (where code is null) as null_rows from d3_empty;
+
+create table d3_notnull (id int primary key, code text not null);
+insert into d3_notnull (id, code) values (1, '');
+
+analyze d3_empty;
+select attname, null_frac, n_distinct from pg_stats where tablename = 'd3_empty' order by attname;
+----
+
+==== Measured output
+
+With the default value `on` (port 1521):
+
+----
+ id | code | is_null | len
+----+------+---------+-----
+  1 |      | t       |
+(1 row)
+
+ rows_matching_empty
+---------------------
+                   0
+(1 row)
+
+ total_rows | null_rows
+------------+-----------
+          3 |         3
+(1 row)
+
+ERROR:  null value in column "code" of relation "d3_notnull" violates not-null constraint
+DETAIL:  Failing row contains (1, null).
+
+ attname | null_frac | n_distinct
+---------+-----------+------------
+ code    |         1 |          0
+ id      |         0 |         -1
+(2 rows)
+----
+
+All three inserts (one plain, two behind the unique index) succeeded, `code = ''` matches no row at all, and the statistics report `null_frac` of `1` with `n_distinct` of `0`.
+
+The same statements with the switch `off`:
+
+----
+ id | code | is_null | len
+----+------+---------+-----
+  1 |      | f       |   0
+(1 row)
+
+ERROR:  duplicate key value violates unique constraint "d3_empty_off_code_uq"
+DETAIL:  Key (code)=() already exists.
+
+ attname | null_frac | n_distinct
+---------+-----------+------------
+ code    |         0 |         -1
+ id      |         0 |         -1
+(2 rows)
+----
+
+Here the empty string stays an empty string, the second copy is rejected by the unique constraint, the same `not null` column accepts `''`, and `length(code)` reads `0`.
+
+Also note the port difference: on 5432 (PG compatible) `show ivorysql.enable_emptystring_to_NULL` still returns `on`, yet after inserting `''` the value of `code is null` is `f` and the empty string remains an empty string.
+
+==== Conclusions and recommendations
+
+* Applications that rely on "empty string equals NULL" must rewrite uniqueness checks on the Oracle port so they cover NULLs; otherwise `code = ''` matches nothing and the unique index still lets duplicates through.
+* The not-null violation for `''` prints `null` in the message, so do not read it as the application sending a NULL.
+* With `null_frac = 1` and `n_distinct = 0` the planner estimates the whole column as empty and picks plans that differ from expectations, so run `analyze` on the critical tables before go-live and verify the statistics.
+* Do not write to the same table through both `1521` and `5432`, because empty-string semantics differ between the two ports.

@@ -1,0 +1,237 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= 生产上线检查清单与最佳实践
+
+本页把 IvorySQL 上线前需要逐条确认的检查项，和三个最容易在上线后才暴露的兼容性案例整理在一起。文中的命令与输出都来自实测记录，执行环境是同一台主机上 `/opt/ivory56/bin` 下的 IvorySQL 5.6（`PostgreSQL 18.6 (IvorySQL 5.6)`），实例同时监听 `127.0.0.1:1521`（Oracle 兼容）和 `127.0.0.1:5432`（PG 兼容）。容器镜像把容器内的 `5432` 暴露到宿主机时常用 `-p 1521:1521 -p 5433:5432` 的映射，此时 PG 端口在宿主机上是 `5433`；把本页的 `5432` 换成 `5433`，命令与结论不变。
+
+== 上线检查清单
+
+"命令"一列都在数据库所在主机上执行，"期望结果"给的是实测样例值，实际部署要按机器规格调整；"不通过的影响"描述的是不做调整时真实会发生的事。
+
+|===
+|检查项|命令|期望结果|不通过的影响
+|两个监听器都在服务，且端口不冲突|`pg_isready -h 127.0.0.1 -p 1521`、`pg_isready -h 127.0.0.1 -p 5432`；再核对 `show port` 与 `show ivorysql.port`|两条都返回 `accepting connections`；`port` 为 `5432`、`ivorysql.port` 为 `1521`|两个值相同时进程启动即失败，日志里是 `FATAL:  could not create any Oracle TCP/IP sockets`，Oracle 客户端全量连不上
+|当前连接落在哪种兼容模式|`select current_setting('ivorysql.compatible_mode'), current_setting('ivorysql.database_mode');`，两个端口各跑一次|1521 上为 `oracle / oracle`，5432 上为 `pg / oracle`|连错端口不报任何错，只有大小写、空串、内置函数等行为悄悄漂移
+|集群的初始化模式|`pg_controldata $PGDATA` 后看 `database mode`|`-m oracle` 初始化为 `1`，`-m pg` 初始化为 `0`|模式是集群级属性，选错只能重新 initdb，无法用参数补救
+|Oracle 端口上 uuid 函数可用|1521 上 `select uuid_generate_v4();`|返回一个 UUID，例如 `930959e6-86dd-4b6b-ba1e-0b2d5c08df61`|用到 UUID 默认值或函数的建表语句直接失败，迁移脚本在这里断掉
+|PG 端口上 uuid 函数的可见性|5432 上 `select sys.uuid_generate_v4();` 与 `select uuid_generate_v4();`|带 `sys.` 前缀成功；不带前缀报 `ERROR:  function uuid_generate_v4() does not exist`，因为 `current_schemas(true)` 只有 `{pg_catalog,public}`|同一套 SQL 从 Oracle 端口搬到 PG 端口后全部报函数不存在
+|安装扩展时标识符的写法|1521 上先 `create extension "uuid-ossp";`，再 `set ivorysql.identifier_case_switch = normal;` 后重试|默认取值下报 `ERROR:  extension "UUID-OSSP" is not available`；改成 `normal` 后报 `ERROR:  extension "uuid-ossp" already exists`，说明名字已被正确解析|被 `not available` 误导去重装或重编译 uuid 库，实际问题只是标识符大小写被折叠
+|空串是否被转成 NULL|`show ivorysql.enable_emptystring_to_NULL;`，再 `insert into t(code) values ('')` 后查 `select code is null from t;`|1521 上取值为 `on` 且插入后为 NULL（`t`）；5432 上同样为 `on`，但插入后仍是空串（`f`）|唯一约束在 Oracle 侧被 NULL 绕过，同一张表从两个端口写入会得到两种语义
+|标识符大小写开关|`show ivorysql.identifier_case_switch;` 与 `select 1 as "ABC";`|1521 上默认 `interchange`，列名输出为 `abc`；PG 端口上恒为 `ABC`|结果集列名随模式漂移，ORM 或结果映射取到错误的列
+|WAL 级别与归档（PITR 前提）|`select name, setting from pg_settings where name in ('wal_level','archive_mode','archive_command');`|上线应为 `wal_level=replica`、`archive_mode=on`、`archive_command` 不是 `(disabled)`（实测样例为 `off` / `(disabled)`）|没有归档就只能回到最近一次基础备份，无法按时间点恢复
+|内存基线|同样从 `pg_settings` 读 `shared_buffers` 与 `work_mem`|实测默认 `shared_buffers=16384`（8kB 单位，即 128MB）、`work_mem=4096 kB`，上线按机器规格重设|大表扫描和排序溢出到磁盘，延迟抖动且难以复现
+|连接数上限|`show max_connections;`|与连接池上限之和匹配，实测样例为 `100`（来源 `configuration file`）|超出上限的新连接被拒，连接池整体超时，故障表现为全站不可用
+|pg_hba.conf 里没有 trust 规则|`select count(*) from pg_hba_file_rules where auth_method = 'trust';`|`0`（实测样例为 `6`，local 与 host、含 replication 全部 trust）|任何能连到端口的进程都能冒充任意用户，复制连接同样敞开
+|口令加密算法|`show password_encryption;`|`scram-sha-256`|沿用旧算法时口令强度与 trust 规则叠加，等于没有认证
+|autovacuum 开启|`show autovacuum;`|`on`|表膨胀与事务 ID 老化无人回收，最终只能停机人工清理
+|慢 SQL 记录阈值|`show log_min_duration_statement;`|正数毫秒值（实测样例为 `-1`，即关闭）|线上慢查询没有任何记录，性能问题只能靠猜
+|提升或切换后的同步复制配置|`show synchronous_standby_names;`，再 `select wait_event_type, wait_event from pg_stat_activity where state = 'active';`|没有备库时应为空；非空且无备库时会看到 `IPC / SyncRep`|提交全部卡住，`statement_timeout='8s'` 也打不断，业务侧表现为写请求无限挂起
+|逻辑备份演练|`pg_dump -h 127.0.0.1 -p 5432 -U ivy -d d3bp -Fc -f /tmp/d3bak/d3bp.dump`，随后 `pg_restore -l /tmp/d3bak/d3bp.dump`|`pg_dump` 返回 0，实测产物 9285 字节，归档头显示 `Format: CUSTOM`、`TOC Entries: 29`|备份文件从未被读到过，真出事时才发现不可恢复
+|物理备份演练|`pg_basebackup -h 127.0.0.1 -p 5432 -U ivy -D /tmp/d3bak/base -Fp -X stream -c fast -P`|返回 0，`backup_label` 里 `BACKUP METHOD: streamed`、`BACKUP FROM: primary`，`PG_VERSION` 为 `18`|没有可用的基础备份，PITR 的第一步就断了
+|===
+
+新建数据库会继承 `template1` 里的扩展，实测 `template1` 与新建库的 `pg_extension` 都是五行（`gb18030_2022`、`ivorysql_ora`、`plisql`、`plpgsql`、`uuid-ossp`），所以 `create extension` 报 `already exists` 只说明模板里已有，并不代表这次真的装过。`uuid-ossp` 装在 `sys` 模式下，`uuid_generate_v1`、`uuid_generate_v1mc`、`uuid_generate_v3`、`uuid_generate_v4`、`uuid_generate_v5` 五个函数都在 `sys` 里；Oracle 端口上 `sys` 会进入有效搜索路径，PG 端口上不会，这一步必须按端口分别验证。
+
+== 兼容性最佳实践案例
+
+=== 案例一：同一个库、两个端口、两种兼容模式
+
+==== 场景
+
+应用只改了端口，其他配置一字未动，结果行为跟测试环境不一致。原因是 IvorySQL 用"连哪个监听器"决定会话的兼容模式，而这一点从 `port` 或 `ivorysql.port` 看不出来。
+
+==== 复现 SQL
+
+[source,sql]
+----
+-- 两个端口各执行一次，库名与账号完全相同
+select current_setting('ivorysql.compatible_mode') as mode,
+       current_setting('ivorysql.database_mode') as db_mode,
+       current_setting('ivorysql.port')                as ora_port,
+       current_setting('port')                         as pg_port;
+
+show port;
+show ivorysql.port;
+----
+
+==== 实测输出
+
+----
+-- psql -h 127.0.0.1 -p 1521 -d d3bp
+ compatible_mode | database_mode | ora_port | pg_port
+-----------------+---------------+----------+---------
+ oracle          | oracle        | 1521     | 5432
+(1 row)
+
+-- psql -h 127.0.0.1 -p 5432 -d d3bp
+ compatible_mode | database_mode | ora_port | pg_port
+-----------------+---------------+----------+---------
+ pg              | oracle        | 1521     | 5432
+(1 row)
+----
+
+两个端口上 `show port` 都返回 `5432`，`show ivorysql.port` 都返回 `1521`，输出逐字节相同。
+
+==== 结论与建议
+
+* 判断当前会话模式只能看 `current_setting('ivorysql.compatible_mode')`，`port`、`ivorysql.port`、`ivorysql.database_mode` 都不具备区分能力，其中 `database_mode` 是集群级属性，两个端口上恒为 `oracle`。
+* 应用侧按"角色到端口"做固定映射：Oracle 兼容业务连 `1521`，PG 业务连 `5432`，不要用同一个连接池混连两个端口。
+* 上线前把上面的 SQL 在两个端口各跑一次，把输出贴进变更记录；容器部署时 PG 端口若是宿主侧 `5433`，就换成 `5433` 再测一遍。
+
+=== 案例二：标识符大小写开关改变了结果列名
+
+==== 场景
+
+同一条查询在 Oracle 端口上返回的列名会随 `ivorysql.identifier_case_switch` 变化，带引号的别名会被翻转；PG 端口上该开关不生效。应用按列名取值时，就会出现"列找不到"或取到别的列。
+
+==== 复现 SQL
+
+[source,sql]
+----
+show ivorysql.identifier_case_switch;
+
+set ivorysql.identifier_case_switch = normal;
+select 1 as "ABC", 2 as "abc", 3 as MiXeD;
+
+set ivorysql.identifier_case_switch = interchange;
+select 1 as "ABC", 2 as "abc", 3 as MiXeD;
+
+set ivorysql.identifier_case_switch = lowercase;
+select 1 as "ABC", 2 as "abc", 3 as MiXeD;
+----
+
+==== 实测输出
+
+1521 端口（Oracle 兼容）：
+
+----
+ ivorysql.identifier_case_switch
+---------------------------------
+ interchange
+(1 row)
+
+-- normal
+ ABC | abc | mixed
+-----+-----+-------
+   1 |   2 |     3
+(1 row)
+
+-- interchange
+ abc | ABC | mixed
+-----+-----+-------
+   1 |   2 |     3
+(1 row)
+
+-- lowercase
+ abc | abc | mixed
+-----+-----+-------
+   1 |   2 |     3
+(1 row)
+----
+
+5432 端口（PG 兼容）上三种取值输出完全一致，均为 `ABC | abc | mixed`，该开关不生效。
+
+再检查表结构和访问路径：在 `normal` 下建表 `create table d3_case ("UserId" int, payload text);` 并建索引 `create index d3_case_userid_idx on d3_case ("UserId");`，切到 `interchange` 后同一条 `select * from d3_case where "UserId" = 42;` 的执行计划仍然是：
+
+----
+ Index Scan using d3_case_userid_idx on d3_case
+   Index Cond: ("UserId" = 42)
+(2 rows)
+----
+
+==== 结论与建议
+
+* 三种取值下列的存储名都保持 `UserId`，索引 `d3_case_userid_idx` 依旧命中 `Index Scan`，所以漂移不发生在存取路径上，只发生在引号别名的输出列名上。
+* 排查"列不存在"类故障时，先看是不是带引号的别名被折叠，而不是先怀疑表结构或索引。
+* 需要稳定列名的场景把 `ivorysql.identifier_case_switch` 固定为 `normal`，或统一使用不加引号的全小写别名；PG 端口不需要设置该参数。
+
+=== 案例三：空串转 NULL 让唯一约束失效
+
+==== 场景
+
+Oracle 语义下空串等同于 NULL，IvorySQL 用 `ivorysql.enable_emptystring_to_NULL` 控制这一转换。开启后 `''` 落库变 NULL，唯一约束对 NULL 不生效，同一列可以插入任意多个"空值"；而 NOT NULL 列插入 `''` 会以 not-null 违规失败，报错里显示的是 `null`，很容易被误判成应用传了空对象。
+
+==== 复现 SQL
+
+[source,sql]
+----
+show ivorysql.enable_emptystring_to_NULL;
+
+create table d3_empty (id serial primary key, code text);
+insert into d3_empty (code) values ('');
+select id, code, code is null as is_null, length(code) as len from d3_empty;
+
+create unique index d3_empty_code_uq on d3_empty (code);
+insert into d3_empty (code) values ('');
+insert into d3_empty (code) values ('');
+select count(*) as total_rows, count(*) filter (where code is null) as null_rows from d3_empty;
+
+create table d3_notnull (id int primary key, code text not null);
+insert into d3_notnull (id, code) values (1, '');
+
+analyze d3_empty;
+select attname, null_frac, n_distinct from pg_stats where tablename = 'd3_empty' order by attname;
+----
+
+==== 实测输出
+
+开关为默认值 `on` 时（1521 端口）：
+
+----
+ id | code | is_null | len
+----+------+---------+-----
+  1 |      | t       |
+(1 row)
+
+ rows_matching_empty
+---------------------
+                   0
+(1 row)
+
+ total_rows | null_rows
+------------+-----------
+          3 |         3
+(1 row)
+
+ERROR:  null value in column "code" of relation "d3_notnull" violates not-null constraint
+DETAIL:  Failing row contains (1, null).
+
+ attname | null_frac | n_distinct
+---------+-----------+------------
+ code    |         1 |          0
+ id      |         0 |         -1
+(2 rows)
+----
+
+三次插入（一次单行、两次带唯一索引）全部成功，`code = ''` 反而查不到任何行，统计信息里 `null_frac` 为 `1`、`n_distinct` 为 `0`。
+
+同一套语句在开关为 `off` 时：
+
+----
+ id | code | is_null | len
+----+------+---------+-----
+  1 |      | f       |   0
+(1 row)
+
+ERROR:  duplicate key value violates unique constraint "d3_empty_off_code_uq"
+DETAIL:  Key (code)=() already exists.
+
+ attname | null_frac | n_distinct
+---------+-----------+------------
+ code    |         0 |         -1
+ id      |         0 |         -1
+(2 rows)
+----
+
+此时空串保持为空串，第二个空串被唯一约束挡下；同一个 `not null` 列插入 `''` 也能成功，`length(code)` 为 `0`。
+
+还要注意端口差异：在 5432（PG 兼容）上 `show ivorysql.enable_emptystring_to_NULL` 同样返回 `on`，但插入 `''` 后 `code is null` 为 `f`，空串仍是空串。
+
+==== 结论与建议
+
+* 依赖"空串等于 NULL"的应用，在 Oracle 端口上必须把唯一性检查改成能覆盖 NULL 的写法，否则 `code = ''` 既查不到行、唯一索引也挡不住重复写入。
+* NOT NULL 列遇到 `''` 时的报错信息显示为 `null`，排障时不要把它当成应用传了 NULL。
+* 优化器看到 `null_frac = 1`、`n_distinct = 0` 会按"整列皆空"估算选择率，执行计划因此偏离预期，上线前对关键表跑一次 `analyze` 并核对统计。
+* 同一张表不要同时从 `1521` 和 `5432` 写入，空串语义在两个端口上不一样。
