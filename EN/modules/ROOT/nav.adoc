@@ -119,6 +119,7 @@
 ** xref:master/migration_guide.adoc[Migration]
 * IvorySQL Developers
 ** xref:master/contribution/contribution_guide.adoc[Contribution Guide]
+** xref:master/contribution/developer_workflow.adoc[Local Development and Testing]
 ** xref:master/developer_guide.adoc[Developer]
 * IvorySQL Architecture Design
 ** Query Processing

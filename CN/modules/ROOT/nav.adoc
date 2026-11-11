@@ -120,6 +120,7 @@
 ** xref:master/migration_guide.adoc[迁移指南]
 * IvorySQL开发者
 ** xref:master/contribution/contribution_guide.adoc[贡献指南]
+** xref:master/contribution/developer_workflow.adoc[本地开发与测试]
 ** xref:master/developer_guide.adoc[开发者指南]
 ** IvorySQL架构设计
 *** 查询处理
