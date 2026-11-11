@@ -1,0 +1,163 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= DBMS_SESSION.RESET_PACKAGE包重置接口
+
+== 目的
+
+IvorySQL提供了兼容Oracle的 `DBMS_SESSION.RESET_PACKAGE` 过程，用于丢弃当前会话中PL/iSQL包的运行时状态。调用该过程后，包变量、复合类型值和包游标等会话级状态被清理；下次访问包时，IvorySQL重新计算包变量的默认表达式并再次执行包初始化代码。
+
+本文档介绍该接口的调用方法、状态重置语义、作用范围和当前兼容边界。
+
+== 功能说明
+
+=== 调用方法
+
+在Oracle兼容模式中使用以下语句重置包状态：
+
+```sql
+SET ivorysql.compatible_mode = oracle;
+
+CALL DBMS_SESSION.RESET_PACKAGE();
+```
+
+`RESET_PACKAGE` 没有参数，也不返回被重置的包数量。它一次处理当前数据库会话中已经装载并具有可重置运行时状态的全部PL/iSQL包。
+
+如果当前会话还没有初始化任何用户包，调用仍可正常完成。该过程不删除包对象，也不重新编译包。
+
+=== 会话作用范围
+
+包状态属于数据库会话。`RESET_PACKAGE` 只影响执行该语句的当前会话，不影响其他连接中的同名包实例。
+
+该过程处理的是当前会话包缓存中已经装载的包，而不是扫描系统目录并预先实例化数据库中的所有包。尚未在当前会话使用的包没有运行时状态，不需要重置。
+
+`RESET_PACKAGE` 只重置PL/iSQL包状态，不等同于 `DISCARD ALL`。例如，通过 `DBMS_SESSION.SET_CONTEXT` 设置的应用上下文不属于包变量，调用后仍然保留。
+
+=== 被重置的包状态
+
+对于已初始化的包，调用 `RESET_PACKAGE` 后具有以下效果：
+
+[cols="1,2"]
+|===
+|状态 |重置后的行为
+
+|具有默认值的可变包变量
+|下次访问包时重新计算声明中的默认表达式
+
+|没有默认值的可变包变量
+|下次访问包时重新初始化为 `NULL`
+
+|数组、记录等复合类型变量
+|释放当前运行时值，下次访问包时按声明重新初始化
+
+|包级 `REF CURSOR` 变量
+|关闭仍然打开的游标，并清除游标变量的当前值
+
+|包初始化部分
+|下次访问包时再次执行
+
+|常量
+|不作为可变包状态清除
+|===
+
+因此，在重置前从包变量取得的 `REF CURSOR` 不能在重置后继续读取。应用程序如果仍需游标结果，应在调用前完成读取。
+
+=== 延迟重新初始化
+
+`RESET_PACKAGE` 本身只清理运行时值，并把包标记为未初始化；它不在调用过程中立即执行变量默认表达式或包初始化部分。
+
+当前会话下一次调用该包的函数或过程、或者读取包变量时，才执行完整的包初始化流程。这种延迟重新初始化有以下结果：
+
+* 使用常量默认表达式的可变包变量恢复为声明值；
+* `SYSDATE`、序列 `NEXTVAL` 等动态默认表达式在下次访问时重新求值；
+* 默认表达式中对其他包函数的调用也会在下次访问时执行；
+* 包体的初始化部分在下次访问时再次执行。
+
+如果依次访问多个已重置的包，每个包都在第一次被访问时独立完成重新初始化。
+
+=== 重置全部包与单包接口
+
+公开的兼容接口 `DBMS_SESSION.RESET_PACKAGE` 按Oracle语义重置当前会话中的全部可重置包。它不接受包名或包OID参数，也不提供只重置指定包的SQL重载。
+
+IvorySQL内部具有按包OID重置的基础接口，Oracle测试模块也使用该接口验证单包行为，但它们不是面向普通应用程序的 `DBMS_SESSION` 公共接口。应用程序不应依赖测试扩展中的函数。
+
+=== 使用注意事项
+
+* 重置会丢弃当前会话中所有已初始化包的可变状态。调用方不能选择让某个已初始化包保持原值。
+* 包状态直到下一次访问才重新建立，因此具有副作用的默认表达式和初始化代码不会在 `CALL` 语句执行期间运行。
+* 包的编译定义和系统目录对象保持不变，重置不是包的删除或重新编译操作。
+* 如果包定义已经发生变化并处于需要重建的失效状态，重置会报告包现有状态已被丢弃的错误，而不会绕过失效检查执行旧代码。
+* 应用上下文等非包会话状态不在重置范围内。
+
+== 测试用例
+
+=== 创建测试包
+
+```sql
+SET ivorysql.compatible_mode = oracle;
+
+CREATE OR REPLACE PACKAGE reset_doc_pkg IS
+    g_value NUMBER := 10;
+    FUNCTION get_value RETURN NUMBER;
+    FUNCTION set_value(n NUMBER) RETURN NUMBER;
+END reset_doc_pkg;
+/
+
+CREATE OR REPLACE PACKAGE BODY reset_doc_pkg IS
+    FUNCTION get_value RETURN NUMBER AS
+    BEGIN
+        RETURN g_value;
+    END;
+
+    FUNCTION set_value(n NUMBER) RETURN NUMBER AS
+    BEGIN
+        g_value := n;
+        RETURN n;
+    END;
+END reset_doc_pkg;
+/
+```
+
+=== 验证包变量恢复默认值
+
+先修改并读取包变量：
+
+```sql
+SELECT reset_doc_pkg.set_value(42);
+SELECT reset_doc_pkg.get_value;
+```
+
+第二条语句返回 `42`。重置当前会话中的包状态后再次读取：
+
+```sql
+CALL DBMS_SESSION.RESET_PACKAGE();
+SELECT reset_doc_pkg.get_value;
+```
+
+第一次重新访问包时执行初始化，查询返回声明的默认值 `10`。
+
+=== 验证应用上下文不受影响
+
+```sql
+CALL DBMS_SESSION.SET_CONTEXT('reset_doc_ctx', 'key', 'preserved');
+CALL DBMS_SESSION.RESET_PACKAGE();
+
+SELECT SYS_CONTEXT('reset_doc_ctx', 'key') AS context_value;
+```
+
+预期结果为：
+
+```
+ context_value
+---------------
+ preserved
+```
+
+测试结束后清理对象：
+
+```sql
+DROP PACKAGE reset_doc_pkg;
+CALL DBMS_SESSION.CLEAR_CONTEXT('reset_doc_ctx');
+```
