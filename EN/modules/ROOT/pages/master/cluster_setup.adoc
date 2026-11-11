@@ -176,3 +176,194 @@ ivorysql=# \l
  test      | ivorysql | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |            |           | 
 (4 rows)
 ```
+
+== Synchronous replication
+
+The cluster built above is asynchronous streaming replication: the primary does not wait for a standby to confirm a commit. If you need stronger durability, enable synchronous replication. The cost is that **every commit waits until a standby has flushed the WAL to disk**, so transaction latency on the primary includes the standby's disk write and the network round trip. Append the following to `postgresql.conf` on the primary node (the ports follow the examples in this chapter: `port = 5532` and `ivorysql.port = 1621` on the primary):
+
+[source,text]
+----
+port = 5532
+ivorysql.port = 1621
+synchronous_standby_names = 'FIRST 1 (walreceiver)'
+synchronous_commit = on
+----
+
+`synchronous_commit = on` is the default, so the parameter that actually decides whether replication is synchronous is `synchronous_standby_names`: leave it empty and the cluster stays asynchronous; set it and commits wait for the standbys in the list. There are two notations, and **the value a standby reports in `pg_stat_replication.sync_state` depends on which one you use**:
+
+. Named notation: write the standby's `application_name` (`'walreceiver'`), or the form with a priority, `FIRST 1 (walreceiver)`. The selected standby reports `sync_state = sync`.
+
++
+[source,text]
+----
+ application_name |   state   | sync_state | sync_priority | sent_lsn  | replay_lsn |    write_lag    |    flush_lag    |   replay_lag
+------------------+-----------+------------+---------------+-----------+------------+-----------------+-----------------+-----------------
+ walreceiver      | streaming | sync       |             1 | 0/3000000 | 0/3000000  | 00:00:00.000093 | 00:00:00.000093 | 00:00:00.000093
+(1 row)
+----
+
+. Quorum notation: write `'ANY 1 ({asterisk})'`, with no name list, so any one standby may confirm. The standby then reports `sync_state = quorum`.
+
++
+[source,text]
+----
+ application_name |   state   | sync_state | sync_priority | sent_lsn  | replay_lsn |    write_lag    |    flush_lag    |   replay_lag
+------------------+-----------+------------+---------------+-----------+------------+-----------------+-----------------+-----------------
+ walreceiver      | streaming | quorum     |             1 | 0/3000000 | 0/3000000  | 00:00:00.000133 | 00:00:00.000133 | 00:00:00.000133
+(1 row)
+----
+
+To verify it, check `sync_state` on the primary: `sync` or `quorum` means synchronous replication is in effect; if it is still `async`, the setting was most likely never loaded (a missing reload or restart), or the standby's `application_name` does not match the name list. When every standby in the list is disconnected, write transactions on the primary stay parked in the synchronous replication wait — deal with this parameter before any maintenance or switchover, see the next section.
+
+== Failover drill
+
+Promoting a standby turns it into a writable primary. Both ways below are equivalent:
+
+. From the command line:
+
++
+[source,bash]
+----
+$ pg_ctl -D /home/ivy/synctest/standby -w -t 60 promote
+waiting for server to promote.... done
+server promoted
+----
+
+. From SQL (run it on the standby as a superuser):
+
++
+[source,sql]
+----
+SELECT pg_is_in_recovery();
+SELECT pg_promote(wait => true, wait_seconds => 60);
+SELECT pg_is_in_recovery();
+----
+
++
+[source,text]
+----
+before=true
+ t
+after=false
+----
+
+`pg_promote` returns `t` once the promotion has been requested and waited for, and `pg_is_in_recovery()` going from `true` to `false` means the promotion succeeded. Before promotion the standby is read-only and writes are rejected:
+
+[source,text]
+----
+ERROR:  cannot execute CREATE TABLE in a read-only transaction
+----
+
+[CAUTION]
+A standby built with `pg_basebackup -R` **inherits** the primary's `synchronous_standby_names` and `synchronous_commit`. After promotion it is the primary, but it usually has no standby attached, so commits park in the synchronous replication wait. Measured with `statement_timeout` set to `8s`, the transaction was still waiting when sampled at the 5 second mark:
+
+[source,text]
+----
+ pid  | state  | wait_event_type | wait_event | backend_xmin |                            query
+------+--------+-----------------+------------+--------------+--------------------------------------------------------------
+ 1132 | active | IPC             | SyncRep    |          773 | set statement_timeout='8s'; insert into sync_probe(id,note)
+----
+
+So the first thing to do after promotion is to clear the setting (or rewrite it with this node's real standby list) on the new primary:
+
+[source,sql]
+----
+ALTER SYSTEM SET synchronous_standby_names = '';
+SELECT pg_reload_conf();
+----
+
+Run the two statements separately; combining them in one `-c` with a semicolon fails with `ERROR:  ALTER SYSTEM cannot run inside a transaction block`. After clearing it `sync_names=[]`, and the same `INSERT` returned `INSERT 0 1` immediately.
+
+The old primary has no idea it is no longer the primary. Measured after the promotion it was still running as a primary, with no standby attached to it:
+
+[source,text]
+----
+old_primary_in_recovery=false replicas=0 slot_active=false
+----
+
+Two writable nodes is split brain. Stop the old primary first, then pull its data directory back onto the new primary's timeline with `pg_rewind`:
+
+[source,bash]
+----
+$ pg_rewind -D <old_primary_data_dir> \
+    --source-server="host=<new_primary_ip> port=<new_primary_port> user=ivorysql dbname=postgres"
+----
+
+[CAUTION]
+The old primary must already be shut down — it is still a writable primary right now, and rewinding while it runs leaves you with two primaries accepting writes. `pg_rewind` only moves the data page differences back, so after the rewind still re-check this node's `port`, `ivorysql.port` and `primary_conninfo` as described earlier in this chapter.
+
+== Oracle-compatible port consistency across primary and standby
+
+A single IvorySQL instance listens on two TCP ports at once: the PostgreSQL port `port` and the Oracle-compatible port `ivorysql.port`. The startup log shows both listener pairs:
+
+[source,text]
+----
+LOG:  listening on IPv4 address "127.0.0.1", port 5532
+LOG:  listening on IPv4 address "127.0.0.1", port 1621
+LOG:  listening on Unix socket "/tmp/.s.PGSQL.5532"
+LOG:  listening on Unix socket "/tmp/.s.PGSQL.1621"
+----
+
+**The listener a session connects to decides the compatibility mode it sees.** Query it directly on one instance:
+
+[source,sql]
+----
+SHOW port;
+SHOW ivorysql.port;
+SHOW ivorysql.compatible_mode;
+----
+
+Measured values (same instance, same data, only the connection port differs):
+
+[cols="1,1,1,1,1"]
+|===
+| Node | port | ivorysql.port | Connected to | compatible_mode
+| Primary | 5532 | 1621 | 5532 | pg
+| Standby | 5533 | 1622 | 5533 | pg
+| Standby | 5533 | 1622 | 1622 | oracle
+|===
+
+In other words `ivorysql.port` is not an alias of `port` but a separate listener: connecting to 5533 gives `pg`, connecting to 1622 gives `oracle`. That is why **`ivorysql.port` must be configured on every node**: when you edit `postgresql.conf` on the standby as described earlier, change `port` and `ivorysql.port` together. Change only `port` and leave `ivorysql.port` at 1521, and an application that connects to the standby on 1521 either lands on whichever other instance already owns that port or the node simply refuses to start:
+
+[source,text]
+----
+LOG:  listening on IPv4 address "127.0.0.1", port 5534
+LOG:  could not bind IPv4 address "127.0.0.1": Address already in use
+HINT:  Is another postmaster already running on port 1621? If not, wait a few seconds and retry.
+WARNING:  could not create listen socket for "localhost"
+FATAL:  could not create any Oracle TCP/IP sockets
+LOG:  database system is shut down
+----
+
+(`pg_ctl` also reports `pg_ctl: could not start server`.) You can reproduce this on a single machine: while the primary still owns 1621, start a second instance from another data directory with `-p 5534 -c ivorysql.port=1621`. The same applies on the application side: an application that needs Oracle-compatible semantics has to connect to `ivorysql.port`, and the value of that port comes from the configuration of **the node it actually connects to**, so the `ivorysql.port` on a standby must be the port that standby really listens on.
+
+== Replication monitoring
+
+`pg_stat_replication` on the primary has one row per standby. Day-to-day monitoring only needs these columns:
+
+[source,sql]
+----
+SELECT application_name, state, sync_state, sync_priority,
+       sent_lsn, write_lsn, flush_lsn, replay_lsn,
+       write_lag, flush_lag, replay_lag, reply_time
+FROM pg_stat_replication;
+----
+
+[cols="1,3"]
+|===
+| Column | Meaning
+| `application_name` | The name the standby reports, `walreceiver` by default; named synchronous replication picks the synchronous standby by it
+| `state` | `streaming` means WAL is being streamed in real time
+| `sync_state` | `async` (asynchronous), `sync` (synchronous standby under named notation), `quorum` (synchronous standby under quorum notation)
+| `sync_priority` | Priority within the name list, lower numbers first
+| `sent_lsn` | WAL position the primary has sent to this standby
+| `write_lsn` | WAL position this standby has written to disk
+| `flush_lsn` | WAL position this standby has flushed, which is what synchronous replication waits for
+| `replay_lsn` | WAL position this standby has replayed; reads on the standby see data up to here
+| `write_lag` / `flush_lag` / `replay_lag` | How far behind `sent_lsn` those three positions are, as time intervals
+| `reply_time` | When this standby last reported its status
+|===
+
+How to read it: `replay_lsn` behind `sent_lsn` means WAL is still waiting to be replayed, so reads on the standby may return old data; `write_lag`, `flush_lag` or `replay_lag` empty means no new WAL needed processing during the last status interval; `sync_state` only `async` means replication is still asynchronous and commits on the primary do not wait for a standby.
+
+A standby is read-only because `transaction_read_only = on`, and every write is rejected (see the read-only example in the previous section for the exact error). When you need to write, promote it as described in "Failover drill" instead of trying to turn read-only off on the standby.

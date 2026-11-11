@@ -174,3 +174,194 @@ ivorysql=# \l
  test      | ivorysql | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |            |           | 
 (4 rows)
 ```
+
+== 同步复制
+
+前文搭建的是异步流复制：主库提交后不必等待备库确认。对可靠性要求更高的场景可以打开同步复制，代价是**每次提交都要等备库把 WAL 刷到磁盘**，主库的事务延迟会叠加备库的写盘延迟与网络往返。在主节点 `postgresql.conf` 中追加（端口沿用本文示例的主库 `port = 5532`、`ivorysql.port = 1621`）：
+
+[source,text]
+----
+port = 5532
+ivorysql.port = 1621
+synchronous_standby_names = 'FIRST 1 (walreceiver)'
+synchronous_commit = on
+----
+
+其中 `synchronous_commit = on` 是默认值，真正决定同步与否的是 `synchronous_standby_names`：为空即异步，非空则按名单等待备库确认。该参数有两种用法，**备库在 `pg_stat_replication.sync_state` 里的取值随写法不同**：
+
+. 命名制：直接写备库的 `application_name`（`'walreceiver'`），或写成带优先级的 `FIRST 1 (walreceiver)`。被选中的备库 `sync_state` 为 `sync`。
+
++
+[source,text]
+----
+ application_name |   state   | sync_state | sync_priority | sent_lsn  | replay_lsn |    write_lag    |    flush_lag    |   replay_lag
+------------------+-----------+------------+---------------+-----------+------------+-----------------+-----------------+-----------------
+ walreceiver      | streaming | sync       |             1 | 0/3000000 | 0/3000000  | 00:00:00.000093 | 00:00:00.000093 | 00:00:00.000093
+(1 row)
+----
+
+. 法定人数制：写 `'ANY 1 ({asterisk})'`，不点名，任意 1 个备库确认即可。此时备库 `sync_state` 为 `quorum`。
+
++
+[source,text]
+----
+ application_name |   state   | sync_state | sync_priority | sent_lsn  | replay_lsn |    write_lag    |    flush_lag    |   replay_lag
+------------------+-----------+------------+---------------+-----------+------------+-----------------+-----------------+-----------------
+ walreceiver      | streaming | quorum     |             1 | 0/3000000 | 0/3000000  | 00:00:00.000133 | 00:00:00.000133 | 00:00:00.000133
+(1 row)
+----
+
+验收方式是在主库上看 `sync_state`：出现 `sync` 或 `quorum` 说明同步复制已经生效；仍是 `async`，通常是参数没被加载（漏了 reload 或重启），或备库的 `application_name` 与名单不匹配。名单里的备库全部断开时，主库的写事务会一直停在同步复制的等待上——维护与切换之前必须先处理这个参数，见下一节。
+
+== 主备切换演练
+
+切换（promote）是把备库提升为可写的主库。两种方式等价：
+
+. 命令行：
+
++
+[source,bash]
+----
+$ pg_ctl -D /home/ivy/synctest/standby -w -t 60 promote
+waiting for server to promote.... done
+server promoted
+----
+
+. SQL（在备库上以超级用户连接后执行）：
+
++
+[source,sql]
+----
+SELECT pg_is_in_recovery();
+SELECT pg_promote(wait => true, wait_seconds => 60);
+SELECT pg_is_in_recovery();
+----
+
++
+[source,text]
+----
+before=true
+ t
+after=false
+----
+
+`pg_promote` 返回 `t` 表示提升请求已发出并等待完成；`pg_is_in_recovery()` 由 `true` 变 `false` 即提升成功。提升之前备库是只读的，写操作会被拒绝：
+
+[source,text]
+----
+ERROR:  cannot execute CREATE TABLE in a read-only transaction
+----
+
+[CAUTION]
+用 `pg_basebackup -R` 搭出来的备库**继承**了主库的 `synchronous_standby_names` 与 `synchronous_commit`。提升之后它成为主库，但通常没有任何备库连着，此时提交会停在同步复制等待上——实测把 `statement_timeout` 设为 `8s`，第 5 秒采样该事务仍在等待：
+
+[source,text]
+----
+ pid  | state  | wait_event_type | wait_event | backend_xmin |                            query
+------+--------+-----------------+------------+--------------+--------------------------------------------------------------
+ 1132 | active | IPC             | SyncRep    |          773 | set statement_timeout='8s'; insert into sync_probe(id,note)
+----
+
+所以提升后的第一件事，是在新主库上清空（或改写成本节点真实的备库名单）：
+
+[source,sql]
+----
+ALTER SYSTEM SET synchronous_standby_names = '';
+SELECT pg_reload_conf();
+----
+
+两条语句要分开执行；写进同一个 `-c` 用分号连写会报 `ERROR:  ALTER SYSTEM cannot run inside a transaction block`。清空后 `sync_names=[]`，同一条 `INSERT` 立即返回 `INSERT 0 1`。
+
+旧主库并不知道自己已经不是主库，实测它仍在以主库身份运行，且没有任何备库连它：
+
+[source,text]
+----
+old_primary_in_recovery=false replicas=0 slot_active=false
+----
+
+两台节点都能写就是双主，必须先停掉旧主库，再用 `pg_rewind` 把它的数据目录拉回新主的时间线：
+
+[source,bash]
+----
+$ pg_rewind -D <old_primary_data_dir> \
+    --source-server="host=<new_primary_ip> port=<new_primary_port> user=ivorysql dbname=postgres"
+----
+
+[CAUTION]
+执行前旧主必须已经停库——它此刻仍是可写主库，不停就重演会得到两个各写各的主库。`pg_rewind` 只负责把数据页差异搬回去，回退完成后仍要按前文重新核对本节点的 `port`、`ivorysql.port` 与 `primary_conninfo`。
+
+== Oracle 兼容端口在主备上的一致性
+
+IvorySQL 的一个实例同时监听两个 TCP 端口：PostgreSQL 端口 `port` 与 Oracle 兼容端口 `ivorysql.port`。启动日志里能看到两组监听地址与 socket：
+
+[source,text]
+----
+LOG:  listening on IPv4 address "127.0.0.1", port 5532
+LOG:  listening on IPv4 address "127.0.0.1", port 1621
+LOG:  listening on Unix socket "/tmp/.s.PGSQL.5532"
+LOG:  listening on Unix socket "/tmp/.s.PGSQL.1621"
+----
+
+**连哪个监听，决定这个会话看到的兼容模式。** 在单个实例上直接查：
+
+[source,sql]
+----
+SHOW port;
+SHOW ivorysql.port;
+SHOW ivorysql.compatible_mode;
+----
+
+实测值（同一个实例、同一份数据，只有连接端口不同）：
+
+[cols="1,1,1,1,1"]
+|===
+| 节点 | port | ivorysql.port | 连接端口 | compatible_mode
+| 主库 | 5532 | 1621 | 5532 | pg
+| 备库 | 5533 | 1622 | 5533 | pg
+| 备库 | 5533 | 1622 | 1622 | oracle
+|===
+
+也就是说 `ivorysql.port` 不是 `port` 的别名，而是一个独立的监听：连 5533 得到 `pg`，连 1622 得到 `oracle`。因此**主备必须逐节点配置 `ivorysql.port`**：备库照前文改 `postgresql.conf` 时，`port` 与 `ivorysql.port` 要一起改。只改 `port`、把 `ivorysql.port` 留在 1521，应用走 1521 连备库时要么落到占用该端口的另一台实例上，要么在本机直接起不来：
+
+[source,text]
+----
+LOG:  listening on IPv4 address "127.0.0.1", port 5534
+LOG:  could not bind IPv4 address "127.0.0.1": Address already in use
+HINT:  Is another postmaster already running on port 1621? If not, wait a few seconds and retry.
+WARNING:  could not create listen socket for "localhost"
+FATAL:  could not create any Oracle TCP/IP sockets
+LOG:  database system is shut down
+----
+
+（`pg_ctl` 侧同时给出 `pg_ctl: could not start server`。）同一台机器上即可复现：主库仍占用 1621 时，用另一份数据目录以 `-p 5534 -c ivorysql.port=1621` 启动第二个实例。应用侧同理：应用要的是 Oracle 兼容语义，就必须连 `ivorysql.port`；而连到的那个端口值取自**所连节点自己**的配置，所以备库上的 `ivorysql.port` 必须是该备库真实监听的端口。
+
+== 复制状态监控
+
+主库的 `pg_stat_replication` 每个备库一行。日常监控只需要下列几列：
+
+[source,sql]
+----
+SELECT application_name, state, sync_state, sync_priority,
+       sent_lsn, write_lsn, flush_lsn, replay_lsn,
+       write_lag, flush_lag, replay_lag, reply_time
+FROM pg_stat_replication;
+----
+
+[cols="1,3"]
+|===
+| 列 | 含义
+| `application_name` | 备库自报的名字，默认 `walreceiver`；命名制同步复制按它挑选同步备库
+| `state` | `streaming` 表示 WAL 正在实时流式传输
+| `sync_state` | `async`（异步）、`sync`（命名制下的同步备库）、`quorum`（法定人数制下的同步备库）
+| `sync_priority` | 命名制名单里的优先级，数字越小越优先
+| `sent_lsn` | 主库已发送到该备库的 WAL 位置
+| `write_lsn` | 备库已写入磁盘的 WAL 位置
+| `flush_lsn` | 备库已刷盘的 WAL 位置，同步复制等的就是它
+| `replay_lsn` | 备库已回放的位置，备库上的读能看到这里
+| `write_lag` / `flush_lag` / `replay_lag` | 上面三个位置落后于 `sent_lsn` 的时间间隔
+| `reply_time` | 该备库最近一次状态回报的时间
+|===
+
+判读：`replay_lsn` 落后 `sent_lsn` 说明还有 WAL 没回放完，备库上的读可能是旧数据；`write_lag`、`flush_lag`、`replay_lag` 为空说明最近一次状态回报周期内没有新的 WAL 需要处理；`sync_state` 只有 `async` 则仍是异步复制，主库提交不等备库。
+
+备库只读由 `transaction_read_only = on` 保证，写操作一律被拒绝（报错原文见上一节的只读示例）。需要写入时按「主备切换演练」提升，不要尝试在备库上关掉只读。
