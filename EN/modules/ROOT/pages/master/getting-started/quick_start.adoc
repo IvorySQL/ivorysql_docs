@@ -141,7 +141,22 @@ ivorysql=#
   For more options, refer to psql --help.
 ....
 
-TIP: When running IvorySQL in Docker, additional parameters need to be added, like: psql -d ivorysql -U ivorysql -h 127.0.0.1 -p 5434
+=== Connect to each compatibility mode
+
+A cluster initialized with `initdb -m oracle` has two listeners. By default, port 5432 starts sessions in PostgreSQL compatibility mode and port 1521 starts sessions in Oracle compatibility mode. Use the Oracle port for Oracle SQL or PL/iSQL examples.
+
+[source,shell]
+----
+# Expected mode is pg
+psql -X -p 5432 -d ivorysql -c 'SHOW ivorysql.compatible_mode'
+
+# Expected mode is oracle
+psql -X -p 1521 -d ivorysql -c 'SHOW ivorysql.compatible_mode'
+----
+
+Use the configured `port` and `ivorysql.port` values if the server uses custom ports. A cluster initialized with `initdb -m pg` provides only the PostgreSQL listener.
+
+TIP: The Docker example above maps the PostgreSQL listener to host port 5434. Connect with `psql -d ivorysql -U ivorysql -h 127.0.0.1 -p 5434`. To reach an Oracle-mode container's Oracle listener from the host, publish the Oracle port as well.
 
 Now you can start your journey of IvorySQL! Enjoy! 
 

@@ -146,7 +146,22 @@ ivorysql=#
   更多参数使用方法，请使用psql --help命令获取。
 ....
 
-TIP: Docker运行IvorySQL时，需要添加额外参数，如 psql -d ivorysql -U ivorysql -h 127.0.0.1 -p 5434
+=== 连接不同兼容模式
+
+通过 `initdb -m oracle` 初始化的集群提供两个监听端口。默认情况下，5432 端口的会话以 PostgreSQL 兼容模式启动，1521 端口的会话以 Oracle 兼容模式启动。运行 Oracle SQL 或 PL/iSQL 示例时，请连接 Oracle 端口。
+
+[source,shell]
+----
+# 预期模式为 pg
+psql -X -p 5432 -d ivorysql -c 'SHOW ivorysql.compatible_mode'
+
+# 预期模式为 oracle
+psql -X -p 1521 -d ivorysql -c 'SHOW ivorysql.compatible_mode'
+----
+
+如果服务器使用自定义端口，请以 `port` 和 `ivorysql.port` 的配置值为准。通过 `initdb -m pg` 初始化的集群只提供 PostgreSQL 监听端口。
+
+TIP: 上面的 Docker 示例将 PostgreSQL 监听端口映射到主机的 5434 端口。使用 `psql -d ivorysql -U ivorysql -h 127.0.0.1 -p 5434` 连接。如需从主机连接 Oracle 模式容器的 Oracle 监听端口，还需映射该端口。
 
 现在可以开始使用IvorySQL啦！就是这么简单！
 
