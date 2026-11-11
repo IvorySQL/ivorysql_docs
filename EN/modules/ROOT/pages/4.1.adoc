@@ -227,6 +227,32 @@ ivorysql  130433  130427  0 02:45 ?        00:00:00 postgres: logical replicatio
 ivorysql  130445  130274  0 02:45 pts/1    00:00:00 grep --color=auto postgres
 ```
 
+== Configuration Files and Parameters
+
+In Oracle mode, `initdb` creates `ivorysql.conf` in the data directory. Its content comes from `ivorysql.conf.sample` in the share directory of the installation (only the Oracle port and `shared_preload_libraries` are replaced with the actual installation values), and the file is pulled in by `include_if_exists = 'ivorysql.conf'` in `postgresql.conf`. In PostgreSQL mode that include line is commented out and the file is not used.
+
+`ivorysql.conf.sample` (IvorySQL 5.6) covers only 4 of the 15 `ivorysql.{asterisk}` parameters, which are registered in `src/backend/utils/misc/ivy_guc.c`: `ivorysql.listen_addresses`, `ivorysql.port`, `ivorysql.identifier_case_switch` and `ivorysql.enable_emptystring_to_NULL`. The first three are given as commented-out examples, and only `ivorysql.enable_emptystring_to_NULL` is an active, uncommented line. The other active setting in the sample is `shared_preload_libraries`, which is not an `ivorysql.{asterisk}` parameter.
+
+The remaining 11 `ivorysql.{asterisk}` parameters are not missing from the sample by accident: IvorySQL registers them with the `GUC_NOT_IN_SAMPLE` flag (defined in `src/include/utils/guc.h`), and the test `src/test/modules/test_misc/t/003_check_guc.pl` asserts that the set of parameters in the sample file equals the set of parameters without that flag. Adding these 11 parameters to `ivorysql.conf.sample` by hand would therefore make that test fail; set them only when they are actually needed.
+
+From a usage point of view the 11 parameters fall into two groups:
+
+* User-facing parameters: read with `SHOW` and changed for the current session with `SET`, for example `ivorysql.compatible_mode`, `ivorysql.database_mode`, `ivorysql.datetime_ignore_nls_mask` and `ivorysql.enable_case_switch`. Note that `ivorysql.compatible_mode` and `ivorysql.database_mode` cannot be set in a configuration file at all.
+* Developer and diagnostic parameters: besides `GUC_NOT_IN_SAMPLE` they also carry `GUC_NO_SHOW_ALL`, so they do not appear in `SHOW ALL` or in the `pg_settings` view by default; they are switched on as needed when diagnosing a problem or during development.
+
+For this reason the following statement, executed in a superuser session, returns 8 rows by default instead of 15, which is expected:
+
+```
+SELECT name, pg_settings_get_flags(name) AS flags
+FROM pg_settings
+WHERE name LIKE 'ivorysql.%'
+ORDER BY name;
+```
+
+The rows without `NOT_IN_SAMPLE` are exactly the four parameters present in the sample file; parameters that carry `NOT_IN_SAMPLE` are meant to be used with `SHOW` / `SET` and need not be written into the configuration file.
+
+Descriptions and accepted values of these parameters, including the four present in the sample, are listed in the "New variables(currently)" table of 7.2 "GUC Framework"; for developer parameters that are not listed there, use the statement above together with `src/backend/utils/misc/ivy_guc.c`.
+
 == Connecting to IvorySQL
 
 Connect to IovrySQL via psql:

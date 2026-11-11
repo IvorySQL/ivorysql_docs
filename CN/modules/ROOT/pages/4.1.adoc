@@ -223,6 +223,32 @@ ivorysql  130433  130427  0 02:45 ?        00:00:00 postgres: logical replicatio
 ivorysql  130445  130274  0 02:45 pts/1    00:00:00 grep --color=auto postgres
 ```
 
+== 配置文件与参数说明
+
+Oracle 模式下，`initdb` 会在数据目录中生成 `ivorysql.conf`，内容取自安装目录 share 下的 `ivorysql.conf.sample`（仅 Oracle 端口与 `shared_preload_libraries` 会按实际安装值替换），并由同目录 `postgresql.conf` 中的 `include_if_exists = 'ivorysql.conf'` 引入；PostgreSQL 模式下该引入行被注释，也不会使用该文件。
+
+`ivorysql.conf.sample`（IvorySQL 5.6）只涉及 15 个 `ivorysql.{asterisk}` 参数中的 4 个，这 15 个参数在 `src/backend/utils/misc/ivy_guc.c` 中注册。出现在样例中的 4 个是 `ivorysql.listen_addresses`、`ivorysql.port`、`ivorysql.identifier_case_switch` 与 `ivorysql.enable_emptystring_to_NULL`：前 3 个以注释形式给出示例，只有 `ivorysql.enable_emptystring_to_NULL` 是未注释的生效行。样例中另一个生效赋值是 `shared_preload_libraries`，它不属于 `ivorysql.{asterisk}` 参数。
+
+其余 11 个 `ivorysql.{asterisk}` 参数不出现在样例中并非遗漏：IvorySQL 在注册这些参数时带上了 `GUC_NOT_IN_SAMPLE` 标记（定义见 `src/include/utils/guc.h`），测试用例 `src/test/modules/test_misc/t/003_check_guc.pl` 会断言「样例文件中的参数集合」等于「不带该标记的参数集合」。因此把这 11 个参数手工写进 `ivorysql.conf.sample` 会令该测试失败，它们应在使用时按需设置。
+
+按使用方式，这 11 个参数可分为两类：
+
+* 面向用户的参数：用 `SHOW` 查看、用 `SET` 在当前会话中修改，例如 `ivorysql.compatible_mode`、`ivorysql.database_mode`、`ivorysql.datetime_ignore_nls_mask` 与 `ivorysql.enable_case_switch`。其中 `ivorysql.compatible_mode` 与 `ivorysql.database_mode` 本身不允许在配置文件中设置。
+* 开发者/诊断参数：除 `GUC_NOT_IN_SAMPLE` 外还带 `GUC_NO_SHOW_ALL`，默认不出现在 `SHOW ALL` 与 `pg_settings` 视图中，供排查问题或开发调试时按需打开。
+
+因此以超级用户连接后执行以下语句，默认返回 8 条而非 15 条，属于正常现象：
+
+```
+SELECT name, pg_settings_get_flags(name) AS flags
+FROM pg_settings
+WHERE name LIKE 'ivorysql.%'
+ORDER BY name;
+```
+
+结果中不带 `NOT_IN_SAMPLE` 的正是样例文件里的那 4 个参数；带 `NOT_IN_SAMPLE` 的参数应通过 `SHOW` / `SET` 使用，无需写进配置文件。
+
+上述参数的说明与取值见 7.2「GUC框架」中的「新增变量（目前）」参数表（样例中的 4 个均在该表内）；该表未列出的开发者参数，可结合上面的查询与源码 `src/backend/utils/misc/ivy_guc.c` 确认。
+
 == 数据库连接
 
 psql连接数据库：
