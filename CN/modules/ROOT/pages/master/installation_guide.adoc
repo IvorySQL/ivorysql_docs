@@ -184,6 +184,16 @@ $ initdb -D /usr/ivory-5/data
 ....
   其中-D参数用来指定数据库的数据目录。更多参数使用方法，请使用initdb --help命令获取。
 ....
+[NOTE]
+====
+`initdb` 默认按 Oracle 兼容模式初始化（等价于 `-m oracle`），该模式会在初始化阶段安装 `uuid-ossp` 扩展。若系统上找不到该扩展，`initdb` 会因 `FATAL:  extension "uuid-ossp" is not available` 失败，并删除刚创建的数据目录。
+
+- 用社区发布的 rpm 或 deb 包安装时通常无需额外操作；如不确定，先用下面的语句自检。
+- 从源码构建时，必须在配置阶段显式指定 UUID 库，例如 `./configure --prefix=/usr/local/ivorysql/ivorysql-5 --with-uuid=e2fs`。漏掉该参数时 `configure` 不会报错，但 `make` 会在 `contrib/uuid-ossp` 处因 `#error "please use configure's --with-uuid switch to select a UUID library"` 中断。
+- 自检语句：`SELECT name, default_version, installed_version FROM pg_available_extensions WHERE name = 'uuid-ossp';`，正常结果应包含 `uuid-ossp | 1.1 | 1.1`。
+- 如确实需要在不带该扩展的情况下初始化，可显式使用 PG 模式：`initdb -D /usr/ivory-5/data -m pg`（PG 模式不安装该扩展）。
+====
+
 
 ** 启动数据库服务
 

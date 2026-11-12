@@ -186,6 +186,16 @@ $ initdb -D /usr/ivory-5/data
 
   For more options, refer to initdb --help.
 ....
+[NOTE]
+====
+By default `initdb` initializes the cluster in Oracle-compatible mode (the same as `-m oracle`), and that mode installs the `uuid-ossp` extension during initialization. If the extension is not available on the system, `initdb` fails with `FATAL:  extension "uuid-ossp" is not available` and removes the data directory it has just created.
+
+- Installing from the community rpm or deb package usually requires no extra step; if you are unsure, run the check below first.
+- When IvorySQL is built from source, the UUID library must be selected at configuration time, for example `./configure --prefix=/usr/local/ivorysql/ivorysql-5 --with-uuid=e2fs`. Without that option `configure` still succeeds, but `make` stops in `contrib/uuid-ossp` with `#error "please use configure's --with-uuid switch to select a UUID library"`.
+- Check: `SELECT name, default_version, installed_version FROM pg_available_extensions WHERE name = 'uuid-ossp';` should report `uuid-ossp | 1.1 | 1.1`.
+- If initialization really has to run without the extension, request PG mode explicitly: `initdb -D /usr/ivory-5/data -m pg`, which does not install it.
+====
+
 
 ** Starting IvorySQL service
 
