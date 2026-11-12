@@ -1,0 +1,217 @@
+:sectnums:
+:sectnumlevels: 5
+
+
+= **功能概述**
+
+IvorySQL提供了兼容Oracle的 `PRAGMA AUTONOMOUS_TRANSACTION` 语法。PL/iSQL存储过程、函数和包体子程序可以在声明区使用该指令，将例程标记为自治事务例程。调用时，例程通过 `dblink` 在当前数据库的新连接中执行；成功产生的修改独立于调用者事务提交，函数返回值再传回原连接。
+
+基本用法如下：
+
+```sql
+CREATE EXTENSION dblink;
+
+CREATE OR REPLACE PROCEDURE write_audit(p_action TEXT) AS
+  PRAGMA AUTONOMOUS_TRANSACTION;
+BEGIN
+  INSERT INTO audit_log(action, created_at)
+  VALUES (p_action, CURRENT_TIMESTAMP);
+END;
+/
+```
+
+== 实现原理
+
+=== 总体设计
+
+本功能没有在PostgreSQL事务管理器内部增加新的事务类型，而是复用 `contrib/dblink`，通过第二个数据库会话模拟自治事务。调用路径如下：
+
+1. 编译PL/iSQL例程时识别 `PRAGMA AUTONOMOUS_TRANSACTION`，在 `PLiSQL_function` 中保存自治标记；
+2. 执行器发现该标记后，不在当前会话执行例程主体，而是生成对原例程的模式限定 `SELECT` 或 `CALL`；
+3. `dblink` 使用当前数据库名、端口和本地地址建立新连接，在新会话中执行生成的SQL；
+4. 过程调用只返回执行状态，函数调用通过SPI读取远端结果并转换成声明的返回类型；
+5. 远端执行成功后修改独立持久化，外层事务随后回滚也不会撤销这些修改。
+
+这是一种基于独立会话的实现。它天然隔离调用者未提交的数据和事务状态，但也引入连接开销、可见性边界以及锁等待风险。
+
+=== 语法解析与编译标记
+
+`pl_unreserved_kwlist.h` 增加非保留关键字 `autonomous_transaction`，`pl_gram.y` 增加 `K_AUTONOMOUS_TRANSACTION` token及声明语法：
+
+```
+K_PRAGMA K_AUTONOMOUS_TRANSACTION ';'
+```
+
+该产生式位于 `decl_statement`，因此指令只能作为例程声明区的一部分出现。解析后调用：
+
+```
+plisql_mark_autonomous_transaction(plisql_curr_compile,
+                                   location,
+                                   yyscanner);
+```
+
+`PLiSQL_function` 结构体增加 `fn_is_autonomous` 字段：
+
+```
+bool fn_is_autonomous; /* PRAGMA AUTONOMOUS_TRANSACTION? */
+```
+
+`plisql_mark_autonomous_transaction` 检查当前是否正在编译函数或过程，并拒绝同一编译单元中的重复指令，然后将 `fn_is_autonomous` 设置为 `true`。编译阶段不检查 `dblink` 是否已安装，扩展检查延迟到首次执行，避免创建例程时对扩展可见性产生依赖。
+
+PRAGMA本身不生成运行期语句，也不创建PL/iSQL datum。
+
+=== 执行器入口
+
+`pl_exec.c` 在 `plisql_exec_function` 完成执行状态和插件入口初始化后检查自治标记：
+
+```
+if (func->fn_is_autonomous &&
+    !plisql_inside_autonomous_transaction &&
+    fcinfo != NULL &&
+    fcinfo->flinfo != NULL &&
+    fcinfo->flinfo->fn_oid == func->fn_oid)
+{
+    result = plisql_exec_autonomous_function(...);
+    ...
+    return result;
+}
+```
+
+最后一个OID条件用于区分真实调用与编译、校验等内部路径。只有真实执行最外层自治例程时才转入 `plisql_exec_autonomous_function`；普通PL/iSQL例程仍沿用原执行流程。
+
+自治调用返回后，执行器仍调用插件的 `func_end` 回调，并销毁表达式上下文、清理求值状态和恢复错误上下文栈。
+
+=== 远端调用SQL生成
+
+`build_autonomous_call` 根据 `pg_proc` 元数据取得例程名称、命名空间、参数类型和返回类型。名称通过 `quote_identifier` 处理并生成模式限定形式，避免受远端 `search_path` 影响：
+
+```
+schema_name.procedure_name
+```
+
+如果取名过程中发现命名空间已被并发删除，实现直接报告错误，不回退到其他模式，避免误调用同名例程。
+
+参数使用各自类型的输出函数转换为文本。数值类型直接写入SQL，布尔值转换为 `true` 或 `false`，其他类型使用 `quote_literal_cstr` 生成字符串字面量，空值写为 `NULL`。在访问 `proargtypes` 前会检查实际参数个数，避免越界。
+
+有返回值的例程生成 `SELECT`，返回类型为 `void` 的过程生成 `CALL`。完整SQL还会先设置Oracle兼容模式和防重入标记：
+
+```
+SET ivorysql.compatible_mode = oracle;
+SET plisql.inside_autonomous_transaction = true;
+SELECT schema_name.function_name(arguments);
+```
+
+或者：
+
+```
+SET ivorysql.compatible_mode = oracle;
+SET plisql.inside_autonomous_transaction = true;
+CALL schema_name.procedure_name(arguments);
+```
+
+=== 独立连接建立
+
+`get_current_database` 从后端的 `MyProcPort` 取得当前数据库名。后台进程没有 `MyProcPort`，或者连接信息中没有数据库名时，自治调用会报错。
+
+`plisql_exec_autonomous_function` 使用数据库名、`port` GUC和 `listen_addresses` GUC构造libpq连接串。数据库名中的单引号和反斜线按照libpq连接串规则转义，而不是使用SQL标识符转义。
+
+当 `listen_addresses` 是非空且不为 `*` 时，连接串加入 `host=localhost`；否则不指定host，由libpq使用默认本地连接方式。该连接仍受实例监听地址和 `pg_hba.conf` 等认证规则约束。
+
+每次最外层自治调用都使用临时dblink连接。执行是同步的，原会话会等待远端调用结束。
+
+=== 自治过程执行
+
+返回类型为 `void` 的例程按过程处理。实现查找签名为 `(text, text)` 的 `dblink_exec`，然后通过 `OidFunctionCall2` 传入连接串和远端SQL：
+
+```
+dblink_exec(connection_string, generated_call_sql)
+```
+
+远端 `CALL` 正常结束后，临时连接中的修改独立提交。`dblink_exec` 返回的状态字符串不向PL/iSQL调用者暴露，过程调用在原会话中返回空Datum并设置 `fcinfo->isnull = true`。
+
+=== 自治函数执行与返回值
+
+有返回值的例程使用 `dblink` 而不是 `dblink_exec`，因为需要取得远端结果。实现动态构造查询：
+
+```
+SELECT *
+FROM dblink(connection_string, generated_select_sql)
+     AS t(result declared_return_type)
+```
+
+查询通过SPI执行，并要求恰好返回一行。第一列使用 `SPI_getbinval` 取出，并通过 `fcinfo->isnull` 向调用者传递NULL状态。
+
+对于按引用传递的返回类型，例如 `TEXT` 和 `NUMERIC`，SPI结束后其原内存可能失效。因此实现切换到函数调用内存上下文，通过 `datumCopy` 复制结果，再调用 `SPI_finish`。按值传递的类型可以直接返回。
+
+SPI连接和查询执行包在 `PG_TRY/PG_CATCH` 中。只有 `SPI_connect` 成功后才在异常路径调用 `SPI_finish`，同时释放动态查询字符串并重新抛出错误。
+
+=== 防止自治调用递归建立连接
+
+`pl_handler.c` 定义全局变量 `plisql_inside_autonomous_transaction`，并在 `_PG_init` 中注册同名布尔GUC：
+
+```
+plisql.inside_autonomous_transaction
+```
+
+该GUC必须使用 `PGC_USERSET`，因为远端SQL需要通过 `SET` 修改它。如果使用 `PGC_INTERNAL`，dblink新会话不能设置标记，自治例程再次进入执行器时会重新建立连接，导致递归连接直至耗尽连接数。
+
+GUC使用 `GUC_NOT_IN_SAMPLE`、`GUC_NO_SHOW_ALL` 和 `GUC_NO_RESET_ALL` 隐藏于常规配置展示并避免被 `RESET ALL` 重置。
+
+远端连接把该标记设置为 `true` 后，当前例程在远端会话中按普通PL/iSQL例程执行。它调用的其他自治例程也因标记为真而跳过dblink分派，直接在同一远端事务上下文中运行。因此，嵌套自治例程不会各自获得独立连接或独立提交点。
+
+=== dblink函数OID缓存失效
+
+实现缓存 `dblink` 和 `dblink_exec` 的函数OID，减少重复查找。`plisql_autonomous_init` 在PL/iSQL模块加载时为 `PROCOID` syscache注册失效回调：
+
+```
+CacheRegisterSyscacheCallback(PROCOID,
+                              dblink_oid_invalidation_callback,
+                              (Datum) 0);
+```
+
+`pg_proc` 发生相关目录失效时，回调将两个缓存OID重置为 `InvalidOid`。下一次自治调用重新执行 `LookupFuncName`。这使 `dblink` 扩展被删除并重新创建、函数OID变化后，自治调用不会继续使用陈旧OID。
+
+如果运行期找不到所需函数，实现报告 `dblink function not found` 或 `dblink_exec function not found`，并给出 `CREATE EXTENSION dblink` 提示。
+
+=== 事务可见性与错误传播
+
+dblink连接是独立数据库会话，不能访问调用者未提交的目录或数据修改。反过来，远端调用成功提交的修改不会加入调用者事务的回滚集合。调用者是否在后续语句中看到该提交，仍遵循其隔离级别与快照规则。
+
+远端例程发生错误时，错误通过dblink和SPI传回原会话。异常路径清理本地动态内存和SPI状态后重新抛出；调用者可以使用PL/iSQL异常处理机制捕获。未捕获错误仍会使原调用语句失败。
+
+本PR依赖PL/iSQL已有事务控制能力。其回归文件明确将自治例程内显式 `COMMIT`、`ROLLBACK` 和条件事务控制标记为不支持，执行时会得到 `invalid transaction termination`。在本实现中，成功或失败的边界由整个远端调用决定。
+
+=== 构建与回归测试
+
+新增实现文件为：
+
+```
+src/pl/plisql/src/pl_autonomous.c
+src/pl/plisql/src/pl_autonomous.h
+```
+
+Makefile和 `meson.build` 均加入 `pl_autonomous` 编译单元。Makefile通过 `EXTRA_INSTALL = contrib/dblink` 为回归环境安装dblink，并将 `plisql_autonomous` 加入Oracle兼容回归测试列表。
+
+测试输入和预期输出分别位于：
+
+```
+src/pl/plisql/src/sql/plisql_autonomous.sql
+src/pl/plisql/src/expected/plisql_autonomous.out
+```
+
+回归测试覆盖基本过程调用、多类型参数、NULL参数、连续调用、外层回滚后的持久化、dblink删除重建后的OID失效、函数NULL及多种标量返回类型、错误传播、嵌套自治函数调用和包体过程调用。
+
+=== 当前实现边界
+
+当前实现是独立连接方案，不是PostgreSQL事务管理器中的原生自治事务：
+
+* 每次最外层调用存在建立本地连接及SQL文本转换开销；
+* 远端会话无法看到调用者未提交的数据或新建对象；
+* 调用者持有的锁不会与远端共享，访问相同资源可能等待或形成死锁；
+* 嵌套自治例程复用最外层自治连接，不形成新的自治层级；
+* 显式 `COMMIT` 和 `ROLLBACK` 不在本PR支持范围内；
+* 函数执行路径要求远端查询恰好返回一行，集合返回场景不适用；
+* 参数通过类型输出文本再组成SQL，语义还会受到远端会话类型输入、区域设置和可见对象的影响；
+* 过程OUT结果、集合返回及后台进程调用没有纳入本PR回归测试。
+
+这些边界来自dblink分派模型。该方案优先复用PostgreSQL已有稳定组件，以较小的核心改动提供日志、审计等典型自治写入能力。

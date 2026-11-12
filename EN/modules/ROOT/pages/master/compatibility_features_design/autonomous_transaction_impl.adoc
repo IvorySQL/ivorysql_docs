@@ -1,0 +1,217 @@
+:sectnums:
+:sectnumlevels: 5
+
+
+= **Feature Overview**
+
+IvorySQL provides Oracle-compatible `PRAGMA AUTONOMOUS_TRANSACTION` syntax. PL/iSQL stored procedures, functions, and package-body subprograms can use this directive in their declaration sections to mark the routines as autonomous transaction routines. When invoked, the routine is executed through `dblink` in a new connection to the current database. Changes made successfully are committed independently of the caller's transaction, and a function's return value is passed back to the original connection.
+
+Basic usage is as follows:
+
+```sql
+CREATE EXTENSION dblink;
+
+CREATE OR REPLACE PROCEDURE write_audit(p_action TEXT) AS
+  PRAGMA AUTONOMOUS_TRANSACTION;
+BEGIN
+  INSERT INTO audit_log(action, created_at)
+  VALUES (p_action, CURRENT_TIMESTAMP);
+END;
+/
+```
+
+== Implementation
+
+=== Overall Design
+
+This feature does not add a new transaction type to the PostgreSQL transaction manager. Instead, it reuses `contrib/dblink` to simulate an autonomous transaction through a second database session. The call flow is as follows:
+
+1. When a PL/iSQL routine is compiled, `PRAGMA AUTONOMOUS_TRANSACTION` is recognized and an autonomous flag is stored in `PLiSQL_function`;
+2. When the executor detects this flag, it does not execute the routine body in the current session. Instead, it generates a schema-qualified `SELECT` or `CALL` for the original routine;
+3. `dblink` establishes a new connection using the current database name, port, and local address, and executes the generated SQL in the new session;
+4. A procedure call returns only its execution status, while a function call reads the remote result through SPI and converts it to the declared return type;
+5. Changes made by a successful remote execution are persisted independently and are not undone if the outer transaction is subsequently rolled back.
+
+This implementation is based on an independent session. It naturally isolates the caller's uncommitted data and transaction state, but it also introduces connection overhead, visibility boundaries, and the risk of lock waits.
+
+=== Syntax Parsing and Compilation Flag
+
+`pl_unreserved_kwlist.h` adds the unreserved keyword `autonomous_transaction`, and `pl_gram.y` adds the `K_AUTONOMOUS_TRANSACTION` token and declaration syntax:
+
+```
+K_PRAGMA K_AUTONOMOUS_TRANSACTION ';'
+```
+
+This production is part of `decl_statement`, so the directive can appear only in a routine's declaration section. After parsing, the following function is called:
+
+```
+plisql_mark_autonomous_transaction(plisql_curr_compile,
+                                   location,
+                                   yyscanner);
+```
+
+The `PLiSQL_function` structure gains the `fn_is_autonomous` field:
+
+```
+bool fn_is_autonomous; /* PRAGMA AUTONOMOUS_TRANSACTION? */
+```
+
+`plisql_mark_autonomous_transaction` checks that a function or procedure is currently being compiled, rejects duplicate directives in the same compilation unit, and then sets `fn_is_autonomous` to `true`. The compilation phase does not check whether `dblink` is installed. That extension check is deferred until the first execution, avoiding a dependency on extension visibility when the routine is created.
+
+The PRAGMA itself does not generate a runtime statement or create a PL/iSQL datum.
+
+=== Executor Entry Point
+
+After `pl_exec.c` initializes the execution state and plugin entry point in `plisql_exec_function`, it checks the autonomous flag:
+
+```
+if (func->fn_is_autonomous &&
+    !plisql_inside_autonomous_transaction &&
+    fcinfo != NULL &&
+    fcinfo->flinfo != NULL &&
+    fcinfo->flinfo->fn_oid == func->fn_oid)
+{
+    result = plisql_exec_autonomous_function(...);
+    ...
+    return result;
+}
+```
+
+The final OID condition distinguishes a real invocation from internal paths such as compilation and validation. Only an actual execution of the outermost autonomous routine is redirected to `plisql_exec_autonomous_function`; ordinary PL/iSQL routines continue to use the original execution path.
+
+After an autonomous call returns, the executor still invokes the plugin's `func_end` callback, destroys the expression context, cleans up the evaluation state, and restores the error context stack.
+
+=== Remote Call SQL Generation
+
+`build_autonomous_call` obtains the routine name, namespace, argument types, and return type from `pg_proc` metadata. Names are processed with `quote_identifier` and emitted in schema-qualified form so that the remote `search_path` does not affect resolution:
+
+```
+schema_name.procedure_name
+```
+
+If the namespace is found to have been concurrently deleted while resolving the name, the implementation reports an error directly rather than falling back to another schema, thereby avoiding an unintended call to a same-named routine.
+
+Each argument is converted to text using its type's output function. Numeric values are written directly into the SQL, Boolean values are converted to `true` or `false`, other types are emitted as string literals with `quote_literal_cstr`, and null values are written as `NULL`. Before accessing `proargtypes`, the implementation checks the number of actual arguments to avoid an out-of-bounds access.
+
+A routine with a return value generates `SELECT`, while a procedure whose return type is `void` generates `CALL`. The complete SQL first enables Oracle compatibility mode and sets the reentry-prevention flag:
+
+```
+SET ivorysql.compatible_mode = oracle;
+SET plisql.inside_autonomous_transaction = true;
+SELECT schema_name.function_name(arguments);
+```
+
+or:
+
+```
+SET ivorysql.compatible_mode = oracle;
+SET plisql.inside_autonomous_transaction = true;
+CALL schema_name.procedure_name(arguments);
+```
+
+=== Establishing an Independent Connection
+
+`get_current_database` obtains the current database name from the backend's `MyProcPort`. An autonomous call reports an error if a background process has no `MyProcPort`, or if the connection information contains no database name.
+
+`plisql_exec_autonomous_function` constructs a libpq connection string from the database name, the `port` GUC, and the `listen_addresses` GUC. Single quotes and backslashes in the database name are escaped according to libpq connection-string rules rather than SQL identifier-escaping rules.
+
+When `listen_addresses` is nonempty and not `*`, the connection string includes `host=localhost`; otherwise, no host is specified and libpq uses its default local connection method. The connection remains subject to the server's listening addresses, `pg_hba.conf`, and other authentication rules.
+
+Every outermost autonomous call uses a temporary dblink connection. Execution is synchronous, so the original session waits for the remote call to finish.
+
+=== Autonomous Procedure Execution
+
+A routine whose return type is `void` is handled as a procedure. The implementation locates `dblink_exec` with the `(text, text)` signature and passes the connection string and remote SQL through `OidFunctionCall2`:
+
+```
+dblink_exec(connection_string, generated_call_sql)
+```
+
+After the remote `CALL` completes normally, changes in the temporary connection are committed independently. The status string returned by `dblink_exec` is not exposed to the PL/iSQL caller. The procedure call returns an empty Datum in the original session and sets `fcinfo->isnull = true`.
+
+=== Autonomous Function Execution and Return Values
+
+A routine with a return value uses `dblink` rather than `dblink_exec`, because the remote result must be retrieved. The implementation dynamically constructs the following query:
+
+```
+SELECT *
+FROM dblink(connection_string, generated_select_sql)
+     AS t(result declared_return_type)
+```
+
+The query is executed through SPI and must return exactly one row. Its first column is obtained with `SPI_getbinval`, and the NULL state is passed to the caller through `fcinfo->isnull`.
+
+For pass-by-reference return types such as `TEXT` and `NUMERIC`, the original memory may become invalid after SPI ends. The implementation therefore switches to the function-call memory context and copies the result with `datumCopy` before calling `SPI_finish`. Pass-by-value types can be returned directly.
+
+SPI connection and query execution are wrapped in `PG_TRY/PG_CATCH`. The exception path calls `SPI_finish` only if `SPI_connect` succeeded, frees the dynamic query string, and rethrows the error.
+
+=== Preventing Recursive Connections for Autonomous Calls
+
+`pl_handler.c` defines the global variable `plisql_inside_autonomous_transaction` and registers a Boolean GUC of the same name in `_PG_init`:
+
+```
+plisql.inside_autonomous_transaction
+```
+
+This GUC must use `PGC_USERSET`, because the remote SQL needs to modify it with `SET`. If `PGC_INTERNAL` were used, the new dblink session could not set the flag. The autonomous routine would then reenter the executor and establish another connection, recursively consuming connections until they were exhausted.
+
+The GUC uses `GUC_NOT_IN_SAMPLE`, `GUC_NO_SHOW_ALL`, and `GUC_NO_RESET_ALL` to hide it from normal configuration displays and prevent `RESET ALL` from resetting it.
+
+After the remote connection sets this flag to `true`, the current routine executes as an ordinary PL/iSQL routine in the remote session. Any other autonomous routines it invokes also skip dblink dispatch because the flag is true, and they run directly in the same remote transaction context. Consequently, nested autonomous routines do not each receive a separate connection or commit point.
+
+=== dblink Function OID Cache Invalidation
+
+The implementation caches the function OIDs for `dblink` and `dblink_exec` to reduce repeated lookups. When the PL/iSQL module is loaded, `plisql_autonomous_init` registers a syscache invalidation callback for `PROCOID`:
+
+```
+CacheRegisterSyscacheCallback(PROCOID,
+                              dblink_oid_invalidation_callback,
+                              (Datum) 0);
+```
+
+When a relevant catalog invalidation occurs in `pg_proc`, the callback resets both cached OIDs to `InvalidOid`. The next autonomous call runs `LookupFuncName` again. Thus, if the `dblink` extension is dropped and recreated and its function OIDs change, autonomous calls do not continue to use stale OIDs.
+
+If a required function cannot be found at runtime, the implementation reports `dblink function not found` or `dblink_exec function not found` and provides a hint to run `CREATE EXTENSION dblink`.
+
+=== Transaction Visibility and Error Propagation
+
+The dblink connection is an independent database session and cannot access the caller's uncommitted catalog or data changes. Conversely, changes successfully committed by the remote call are not part of the caller transaction's rollback set. Whether the caller sees that commit in subsequent statements still follows its isolation level and snapshot rules.
+
+When the remote routine raises an error, the error is returned to the original session through dblink and SPI. The exception path cleans up local dynamic memory and SPI state before rethrowing the error; the caller can catch it using PL/iSQL exception handling. An uncaught error still causes the original call statement to fail.
+
+This PR relies on PL/iSQL's existing transaction-control capabilities. Its regression tests explicitly mark `COMMIT`, `ROLLBACK`, and conditional transaction control within autonomous routines as unsupported; executing them produces `invalid transaction termination`. In this implementation, the entire remote call determines the success or failure boundary.
+
+=== Build and Regression Tests
+
+The new implementation files are:
+
+```
+src/pl/plisql/src/pl_autonomous.c
+src/pl/plisql/src/pl_autonomous.h
+```
+
+Both Makefile and `meson.build` add the `pl_autonomous` compilation unit. The Makefile installs dblink in the regression environment through `EXTRA_INSTALL = contrib/dblink` and adds `plisql_autonomous` to the Oracle-compatible regression test list.
+
+The test input and expected output are located at:
+
+```
+src/pl/plisql/src/sql/plisql_autonomous.sql
+src/pl/plisql/src/expected/plisql_autonomous.out
+```
+
+The regression tests cover basic procedure calls, multiple argument types, NULL arguments, consecutive calls, persistence after an outer rollback, OID invalidation after dropping and recreating dblink, NULL and various scalar function return types, error propagation, nested autonomous function calls, and package-body procedure calls.
+
+=== Current Implementation Boundaries
+
+The current implementation uses an independent connection; it is not a native autonomous transaction in the PostgreSQL transaction manager:
+
+* Every outermost call incurs the overhead of establishing a local connection and converting values to SQL text;
+* The remote session cannot see the caller's uncommitted data or newly created objects;
+* Locks held by the caller are not shared with the remote session, so access to the same resources may wait or deadlock;
+* Nested autonomous routines reuse the outermost autonomous connection and do not create additional autonomous levels;
+* Explicit `COMMIT` and `ROLLBACK` are outside the scope of this PR;
+* The function execution path requires the remote query to return exactly one row and does not apply to set-returning cases;
+* Arguments are converted to text with their type output functions and then incorporated into SQL, so semantics can also be affected by the remote session's type input behavior, locale settings, and visible objects;
+* Procedure OUT results, set-returning routines, and calls from background processes are not covered by this PR's regression tests.
+
+These boundaries follow from the dblink dispatch model. By reusing stable PostgreSQL components, this approach provides typical autonomous-write capabilities for logging, auditing, and similar use cases with relatively small changes to the core.
