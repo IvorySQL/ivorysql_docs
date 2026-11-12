@@ -1,0 +1,14 @@
+:sectnums:
+:sectnumlevels: 5
+
+= UTL_MATCH Implementation
+
+== Package entry points
+
+The PL/iSQL wrappers in `contrib/ivorysql_ora/src/builtin_packages/utl_match/utl_match--1.0.sql` expose Oracle-compatible argument and return types. They call the corresponding C implementations in `utl_match.c`.
+
+== Distance and similarity
+
+The edit-distance functions compute a Levenshtein distance. The similarity form scales the distance by string length to produce a score. The Jaro–Winkler functions compare matching characters within a window, account for their ordering, and adjust the score for a common prefix. The package exposes both the fractional and integer score forms.
+
+For runnable comparisons, see xref:master/oracle_compatibility/compat_utl_match.adoc[UTL_MATCH package].

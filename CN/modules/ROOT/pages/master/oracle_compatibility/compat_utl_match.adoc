@@ -1,0 +1,33 @@
+:sectnums:
+:sectnumlevels: 5
+
+= UTL_MATCH 包
+
+== 选择比较方式
+
+请用具有包执行权限的角色连接 Oracle 兼容模式。以下函数都接受两个字符串。
+
+[cols="2,3",options="header"]
+|===
+| 函数 | 结果
+| `EDIT_DISTANCE` | 插入、删除和替换字符所需的最少操作数。
+| `EDIT_DISTANCE_SIMILARITY` | 基于编辑距离的相似度，范围为 0 到 100。
+| `JARO_WINKLER` | 范围为 0 到 1 的相似度，共同前缀会提高得分。
+| `JARO_WINKLER_SIMILARITY` | 整数形式的 Jaro–Winkler 相似度，范围为 0 到 100。
+|===
+
+相似度越高，字符串越接近。需要知道修改次数时，请使用编辑距离。比较姓名时，可以用 Jaro–Winkler 对可能的拼写变体排序。比较区分大小写，如需忽略大小写，请先统一两个输入的大小写。
+
+== 比较示例字符串
+
+[source,sql]
+----
+SELECT utl_match.edit_distance('kitten', 'sitting') AS edits,
+       utl_match.edit_distance_similarity('cat', 'cat') AS exact_score;
+SELECT utl_match.jaro_winkler('MARTHA', 'MARHTA') > 0.9 AS close_match,
+       utl_match.jaro_winkler_similarity('cat', 'cat') AS exact_score;
+----
+
+第一条查询返回 3 次编辑和 100 分的完全匹配。第二条查询对相近姓名返回真，对相同字符串返回 100 分。
+
+实现细节见 xref:master/compatibility_features_design/utl_match_impl.adoc[UTL_MATCH 实现]。
