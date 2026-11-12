@@ -1,0 +1,177 @@
+:sectnums:
+:sectnumlevels: 5
+
+
+= **功能概述**
+
+IvorySQL在 `ivorysql_ora` 扩展中提供兼容Oracle的内置包 `DBMS_LOCK`，用于创建应用锁、申请和释放共享锁或排他锁，以及暂停当前会话。当前实现提供 `ALLOCATE_UNIQUE`、`REQUEST`、`RELEASE` 和 `SLEEP` 四个子程序。
+
+基本用法如下：
+
+```sql
+DECLARE
+  v_handle text;
+  v_result integer;
+BEGIN
+  dbms_lock.allocate_unique('order_batch', v_handle);
+  v_result := dbms_lock.request(v_handle, dbms_lock.x_mode, 10);
+
+  IF v_result = dbms_lock.success THEN
+    -- 执行需要串行化的业务操作
+    v_result := dbms_lock.release(v_handle);
+  END IF;
+END;
+/
+```
+
+== 实现原理
+
+=== 总体结构
+
+`DBMS_LOCK`由C函数和PL/iSQL包包装器两层组成。
+
+C实现位于：
+
+```
+contrib/ivorysql_ora/src/builtin_packages/dbms_lock/dbms_lock.c
+```
+
+SQL定义位于：
+
+```
+contrib/ivorysql_ora/src/builtin_packages/dbms_lock/dbms_lock--1.0.sql
+```
+
+SQL文件首先在 `sys` 模式注册四个 `STRICT` C函数：
+
+```sql
+sys.dbms_lock_allocate_unique(text) RETURNS text
+sys.dbms_lock_request(text, int, int) RETURNS int
+sys.dbms_lock_release(text) RETURNS int
+sys.dbms_lock_sleep(float8) RETURNS void
+```
+
+随后创建 `DBMS_LOCK` 包。包体中的子程序只负责调用上述C函数，使用户可以按Oracle包的形式访问功能。构建系统在 `contrib/ivorysql_ora/Makefile` 和 `contrib/ivorysql_ora/meson.build` 中编译 `dbms_lock.c`，扩展安装脚本 `ivorysql_ora--1.0.sql` 中也包含相同的包定义。
+
+=== 锁模式与返回码
+
+C代码定义并实现两种锁模式：
+
+[cols="2,1,4"]
+|====
+|*包常量*|*值*|*内部实现*
+|`S_MODE`|4|PostgreSQL会话级共享advisory lock
+|`X_MODE`|6|PostgreSQL会话级排他advisory lock
+|====
+
+包声明公开以下返回码常量：
+
+[cols="2,1,4"]
+|====
+|*包常量*|*值*|*含义*
+|`SUCCESS`|0|操作成功
+|`TIMEOUT`|1|在指定时间内没有获得锁
+|`DEADLOCK`|2|死锁
+|`PARAMETER_ERROR`|3|参数错误
+|`ALREADY_OWNED`|4|当前会话已持有该锁
+|`ILLEGAL_HANDLE`|5|锁句柄无效
+|====
+
+当前C实现会返回 `SUCCESS`、`TIMEOUT` 和 `PARAMETER_ERROR`。`DEADLOCK`、`ALREADY_OWNED` 和 `ILLEGAL_HANDLE` 已作为兼容常量公开，但当前代码没有返回这些值。传入除4和6以外的锁模式时，`is_exclusive_mode` 直接报告 `invalid DBMS_LOCK mode` 错误，而不是返回状态码。
+
+=== ALLOCATE_UNIQUE句柄生成
+
+`ivorysql_dbms_lock_allocate_unique` 将锁名称转换为C字符串，使用种子为0的 `hash_any_extended` 计算64位哈希值，再把无符号哈希值格式化为十进制文本。缓冲区最大长度为64字节，因此足以容纳生成的十进制句柄。
+
+```text
+lock name -> hash_any_extended(name, seed 0) -> uint64 -> decimal text handle
+```
+
+该实现不创建系统表记录，也不在数据库目录中持久化“名称到句柄”的映射。相同输入由同一算法生成相同句柄；调用方应把返回的句柄传给 `REQUEST` 和 `RELEASE`，不应依赖句柄的具体文本形式。
+
+=== 锁句柄到advisory lock键的映射
+
+`REQUEST` 和 `RELEASE` 通过 `lockname_to_key` 把句柄文本转换为PostgreSQL advisory lock使用的64位有符号键。函数分别计算两个32位哈希值：
+
+* 高32位使用 `hash_any`；
+* 低32位使用种子为 `0x9e3779b9` 的 `hash_any_extended`；
+* 将两部分拼接为一个 `int64` 锁键。
+
+因此，`ALLOCATE_UNIQUE` 返回的是公开句柄，advisory lock键则是该句柄再次哈希后的内部值。哈希映射理论上存在碰撞可能，当前实现没有额外的名称目录用于检测或消除碰撞。
+
+=== 后端私有锁记录表
+
+每个数据库后端按需创建一个名为 `pg_dbms_lock table` 的私有哈希表，初始容量为128。哈希表以内部64位锁键为键，记录最近一次成功申请的锁模式：
+
+```c
+typedef struct
+{
+    int64 key;
+    int8  mode;
+} lock_entry;
+```
+
+`dbms_lock_record_acquire` 在申请成功后写入记录，`dbms_lock_check` 在释放前检查当前后端记录的模式，`dbms_lock_record_release` 在释放成功后删除记录。该表只存在于当前后端内存中，不在会话之间共享；实际的跨会话互斥由PostgreSQL锁管理器中的advisory lock完成。
+
+=== REQUEST锁申请流程
+
+`ivorysql_dbms_lock_request` 接受句柄、模式和以秒为单位的整数超时时间，其执行流程如下：
+
+1. 将句柄映射为64位advisory lock键；
+2. 将 `X_MODE` 映射到 `pg_try_advisory_lock_int8`，将 `S_MODE` 映射到 `pg_try_advisory_lock_shared_int8`；
+3. 尝试获取会话级advisory lock；
+4. 成功时把键和模式写入后端私有哈希表并返回0；
+5. 失败且 `timeout = 0` 时立即返回1；
+6. 失败且尚未超时时，每100毫秒重试一次，并调用 `CHECK_FOR_INTERRUPTS()` 响应取消、中断等事件。
+
+`timeout < 0` 时返回3。超时计算使用 `GetCurrentTimestamp()`，将已经过的微秒换算成整数秒后与传入值比较。
+
+这里调用的是会话级advisory lock接口，所以锁不会随当前事务的提交或回滚自动释放。正常使用时必须调用 `DBMS_LOCK.RELEASE`，或者通过结束数据库会话让PostgreSQL清理该会话持有的锁。
+
+=== RELEASE锁释放流程
+
+`ivorysql_dbms_lock_release` 首先把句柄转换为内部锁键，然后查询当前后端的私有哈希表：
+
+* 记录为 `S_MODE` 时，调用 `pg_advisory_unlock_shared_int8`；
+* 记录为 `X_MODE` 时，调用 `pg_advisory_unlock_int8`；
+* PostgreSQL确认释放成功后，从私有哈希表删除记录并返回0；
+* 找不到本后端的记录或底层释放失败时返回3。
+
+私有哈希表使 `RELEASE` 能选择正确的共享或排他解锁函数，但目前每个锁键只保存一个模式和一条记录。PostgreSQL会话级advisory lock允许同一会话重复申请并维护引用计数，而该私有表不维护申请次数。因此，同一会话不应在未释放前对同一句柄重复申请，也不应依赖锁模式转换行为。
+
+=== SLEEP等待实现
+
+`ivorysql_dbms_lock_sleep` 接受双精度秒数，将其换算为微秒，并按每段最多一秒调用 `pg_usleep`。每段等待之后执行 `CHECK_FOR_INTERRUPTS()`，因此长时间等待仍可响应查询取消和服务器中断。
+
+负数会报告 `DBMS_LOCK.SLEEP: seconds must be non-negative`；大于100000000秒会报告参数过大。参数是 `float8`，因此支持小数秒。C函数声明为 `STRICT`，传入NULL时不会执行函数体。
+
+=== 构建与回归测试
+
+Oracle兼容回归测试输入和预期输出分别位于：
+
+```
+contrib/ivorysql_ora/sql/dbms_lock.sql
+contrib/ivorysql_ora/expected/dbms_lock.out
+```
+
+测试由 `contrib/ivorysql_ora/Makefile` 注册，覆盖以下行为：
+
+* 调用 `DBMS_LOCK.SLEEP(1)`；
+* 分配句柄并成功申请 `S_MODE`，在 `pg_locks` 中确认模式为 `ShareLock`；
+* 释放共享锁，并确认 `pg_locks` 中不再存在该锁；
+* 分配句柄并成功申请 `X_MODE`，在 `pg_locks` 中确认模式为 `ExclusiveLock`；
+* 释放排他锁，并确认 `pg_locks` 中不再存在该锁。
+
+可在已构建并安装的环境中通过 `make oracle-check` 执行Oracle兼容回归测试。
+
+=== 当前实现边界
+
+当前实现与完整Oracle `DBMS_LOCK` 接口相比存在以下边界：
+
+* 只支持 `S_MODE` 和 `X_MODE`，不支持其他Oracle锁模式；
+* `REQUEST` 只提供句柄、模式和超时三个参数，没有 `release_on_commit` 参数；
+* 使用会话级锁，事务结束不会自动释放；
+* 没有持久化锁名称，也不校验任意文本是否为 `ALLOCATE_UNIQUE` 生成的合法句柄；
+* `DEADLOCK`、`ALREADY_OWNED` 和 `ILLEGAL_HANDLE` 仅定义为包常量，当前路径不会返回；
+* 同一会话重复申请同一个锁可能导致PostgreSQL锁引用计数与私有哈希表记录不一致；
+* 当前回归测试验证单会话申请、锁模式和释放，尚未覆盖多会话竞争、超时及重复申请。

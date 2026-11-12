@@ -1,0 +1,298 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= DBMS_LOCK
+
+== Purpose
+
+IvorySQL provides the Oracle-compatible built-in package `DBMS_LOCK`. Applications can use named handles to coordinate multiple database sessions and protect business resources in shared or exclusive mode. The package also provides an interruptible session sleep function.
+
+This document describes the `DBMS_LOCK` constants, subprograms, return values, and usage restrictions currently supported by IvorySQL.
+
+== Features
+
+The package currently provides the following interfaces:
+
+[cols="2,4"]
+|====
+|*Interface*|*Purpose*
+|`ALLOCATE_UNIQUE`|Generates a lock handle from a lock name
+|`REQUEST`|Requests a shared or exclusive lock
+|`RELEASE`|Releases a lock acquired by the current session through this package
+|`SLEEP`|Pauses the current session for the specified number of seconds
+|====
+
+`DBMS_LOCK` is installed with the `ivorysql_ora` extension. The following examples must be run in Oracle-compatible mode in a database where this extension has been installed.
+
+=== Lock Mode Constants
+
+IvorySQL currently supports two lock modes:
+
+[cols="2,1,4"]
+|====
+|*Constant*|*Value*|*Description*
+|`dbms_lock.s_mode`|4|Shared lock; multiple sessions can hold a shared lock on the same resource concurrently, but it conflicts with an exclusive lock
+|`dbms_lock.x_mode`|6|Exclusive lock; only one session can hold the resource exclusively at a time, and it conflicts with shared locks
+|====
+
+Other values are not currently supported lock modes and result in an `invalid DBMS_LOCK mode` error.
+
+=== Return Code Constants
+
+[cols="2,1,4"]
+|====
+|*Constant*|*Value*|*Description*
+|`dbms_lock.success`|0|The operation succeeded
+|`dbms_lock.timeout`|1|The wait timed out
+|`dbms_lock.deadlock`|2|Deadlock; the current implementation does not return this value
+|`dbms_lock.parameter_error`|3|Invalid parameter, or the lock cannot be released according to the current session's records
+|`dbms_lock.already_owned`|4|Already owned; the current implementation does not return this value
+|`dbms_lock.illegal_handle`|5|Invalid handle; the current implementation does not return this value
+|====
+
+Calling programs should always check the return values of `REQUEST` and `RELEASE` and should not interpret all nonzero values as the same error.
+
+=== ALLOCATE_UNIQUE
+
+`ALLOCATE_UNIQUE` generates a text lock handle from a name.
+
+Syntax:
+
+```sql
+dbms_lock.allocate_unique(
+  lockname        IN  text,
+  lockname_handle OUT text
+);
+```
+
+Parameters:
+
+* `lockname`: An application-defined lock name;
+* `lockname_handle`: The output text handle, which is subsequently passed to `REQUEST` and `RELEASE`.
+
+Example:
+
+```sql
+DECLARE
+  v_handle text;
+BEGIN
+  dbms_lock.allocate_unique('monthly_report', v_handle);
+  RAISE NOTICE 'handle=%', v_handle;
+END;
+/
+```
+
+The current implementation generates the handle directly with a hash algorithm and does not store the name in the database. The same name generates the same handle. Applications should use stable lock names that identify business resources, such as `invoice:2026-10`, and should not rely on the specific numeric contents of a handle.
+
+=== REQUEST
+
+`REQUEST` attempts to acquire a lock for a handle.
+
+Syntax:
+
+```sql
+dbms_lock.request(
+  lockname_handle IN text,
+  mode            IN integer,
+  timeout         IN integer
+) RETURN integer;
+```
+
+Parameters:
+
+* `lockname_handle`: A handle returned by `ALLOCATE_UNIQUE`;
+* `mode`: `dbms_lock.s_mode` or `dbms_lock.x_mode`;
+* `timeout`: The maximum wait time in seconds. A value of 0 means to try only once, a positive integer means to retry until the timeout expires, and a negative value returns `dbms_lock.parameter_error`.
+
+The function returns `dbms_lock.success` on success and `dbms_lock.timeout` if the lock is not acquired within the specified time.
+
+```sql
+DECLARE
+  v_handle text;
+  v_result integer;
+BEGIN
+  dbms_lock.allocate_unique('monthly_report', v_handle);
+  v_result := dbms_lock.request(v_handle, dbms_lock.x_mode, 5);
+
+  CASE v_result
+    WHEN dbms_lock.success THEN
+      RAISE NOTICE 'lock acquired';
+    WHEN dbms_lock.timeout THEN
+      RAISE NOTICE 'lock request timed out';
+    ELSE
+      RAISE EXCEPTION 'DBMS_LOCK.REQUEST failed: %', v_result;
+  END CASE;
+END;
+/
+```
+
+The acquired lock is session-level and is not released automatically by `COMMIT` or `ROLLBACK`. The application must retain the handle and explicitly call `RELEASE`, normally on both the success and exception-handling paths.
+
+=== RELEASE
+
+`RELEASE` releases a lock acquired by the current session through this package.
+
+Syntax:
+
+```sql
+dbms_lock.release(lockname_handle IN text) RETURN integer;
+```
+
+The function returns `dbms_lock.success` when the lock is released successfully. It returns `dbms_lock.parameter_error` if the current session has no package record for the handle or if the underlying lock cannot be released.
+
+```sql
+DECLARE
+  v_handle text;
+  v_result integer;
+BEGIN
+  dbms_lock.allocate_unique('monthly_report', v_handle);
+  v_result := dbms_lock.request(v_handle, dbms_lock.x_mode, 5);
+
+  IF v_result = dbms_lock.success THEN
+    -- Perform operations protected by the lock
+    v_result := dbms_lock.release(v_handle);
+    IF v_result <> dbms_lock.success THEN
+      RAISE EXCEPTION 'DBMS_LOCK.RELEASE failed: %', v_result;
+    END IF;
+  END IF;
+END;
+/
+```
+
+Do not successfully call `REQUEST` multiple times in succession for the same handle in one session and then call `RELEASE` only once. The current package stores only one local mode record, while the underlying PostgreSQL implementation counts repeated acquisitions. This usage can leave a lock held by the session.
+
+=== SLEEP
+
+`SLEEP` pauses the current session. Its argument is specified in seconds and can include a fractional part.
+
+Syntax:
+
+```sql
+dbms_lock.sleep(seconds IN double precision);
+```
+
+Example:
+
+```sql
+CALL dbms_lock.sleep(0.5);
+```
+
+The sleep can be interrupted by query cancellation. The number of seconds cannot be negative or greater than 100000000; a value outside this range causes an error.
+
+=== Shared Lock Example
+
+```sql
+DECLARE
+  v_handle text;
+  v_result integer;
+BEGIN
+  dbms_lock.allocate_unique('configuration_snapshot', v_handle);
+  v_result := dbms_lock.request(v_handle, dbms_lock.s_mode, 0);
+  IF v_result = dbms_lock.success THEN
+    RAISE NOTICE 'shared lock acquired';
+  ELSE
+    RAISE NOTICE 'shared lock not acquired, rc=%', v_result;
+  END IF;
+END;
+/
+```
+
+After the lock is acquired successfully, query `pg_locks` in the current session. The corresponding mode is `ShareLock`:
+
+```sql
+SELECT mode
+FROM pg_locks
+WHERE pid = pg_backend_pid()
+  AND locktype = 'advisory';
+```
+
+=== Exclusive Lock and Exception Cleanup Example
+
+The following example attempts to release the lock in an exception handler, preventing a session-level lock from remaining in the session after a business statement fails:
+
+```sql
+DECLARE
+  v_handle  text;
+  v_result  integer;
+  v_acquired boolean := false;
+BEGIN
+  dbms_lock.allocate_unique('settlement_job', v_handle);
+  v_result := dbms_lock.request(v_handle, dbms_lock.x_mode, 10);
+
+  IF v_result <> dbms_lock.success THEN
+    RAISE EXCEPTION 'cannot acquire settlement lock, rc=%', v_result;
+  END IF;
+
+  v_acquired := true;
+  -- Perform business operations that require exclusive protection
+
+  v_result := dbms_lock.release(v_handle);
+  v_acquired := false;
+  IF v_result <> dbms_lock.success THEN
+    RAISE EXCEPTION 'cannot release settlement lock, rc=%', v_result;
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN
+    IF v_acquired THEN
+      v_result := dbms_lock.release(v_handle);
+    END IF;
+    RAISE;
+END;
+/
+```
+
+An exclusive lock appears as `ExclusiveLock` in `pg_locks`.
+
+=== Usage Notes
+
+* Only shared and exclusive modes are currently supported;
+* Locks are session-level and are not released automatically when a transaction commits or rolls back;
+* `REQUEST` currently has no `release_on_commit` parameter;
+* Any text can be passed to `REQUEST` as a handle. The current implementation does not verify that the handle was generated by `ALLOCATE_UNIQUE`;
+* Names and handles are ultimately mapped to 64-bit lock keys by hashing, so hash collisions are theoretically possible;
+* Do not acquire the same handle repeatedly in one session or attempt to convert the lock mode through repeated calls to `REQUEST`;
+* PostgreSQL cleans up advisory locks held by a session if the session terminates abnormally. A normal long-lived connection should still release them explicitly;
+* Some Oracle-compatible return codes in the package declaration are currently reserved constants and are not returned by the implementation.
+
+== Test Cases
+
+IvorySQL regression tests verify shared- and exclusive-lock acquisition, the modes reported in `pg_locks`, and the release results. The following abbreviated test case can be used to verify an exclusive lock:
+
+```sql
+CREATE TABLE dbms_lock_handle(handle text);
+
+DECLARE
+  v_handle text;
+  v_result integer;
+BEGIN
+  dbms_lock.allocate_unique('LOCKX', v_handle);
+  v_result := dbms_lock.request(v_handle, dbms_lock.x_mode, 0);
+  ASSERT v_result = dbms_lock.success,
+         format('DBMS_LOCK.REQUEST failed: rc=%s', v_result);
+  INSERT INTO dbms_lock_handle VALUES (v_handle);
+END;
+/
+
+SELECT mode
+FROM pg_locks
+WHERE pid = pg_backend_pid()
+  AND locktype = 'advisory'
+  AND mode = 'ExclusiveLock';
+
+DECLARE
+  v_handle text;
+  v_result integer;
+BEGIN
+  SELECT handle INTO v_handle FROM dbms_lock_handle;
+  v_result := dbms_lock.release(v_handle);
+  ASSERT v_result = dbms_lock.success,
+         format('DBMS_LOCK.RELEASE failed: rc=%s', v_result);
+END;
+/
+
+DROP TABLE dbms_lock_handle;
+```
+
+After the lock is acquired successfully, the query should return `ExclusiveLock`. After `RELEASE` is called, the corresponding advisory lock should disappear from the current session.

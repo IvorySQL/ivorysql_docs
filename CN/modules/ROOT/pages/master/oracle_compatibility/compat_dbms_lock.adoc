@@ -1,0 +1,298 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= DBMS_LOCK
+
+== 目的
+
+IvorySQL提供兼容Oracle的内置包 `DBMS_LOCK`。应用可以使用命名句柄协调多个数据库会话，以共享方式或排他方式保护业务资源；包还提供可响应中断的会话等待功能。
+
+本文档介绍IvorySQL当前支持的 `DBMS_LOCK` 常量、子程序、返回值和使用限制。
+
+== 功能说明
+
+当前包提供以下接口：
+
+[cols="2,4"]
+|====
+|*接口*|*用途*
+|`ALLOCATE_UNIQUE`|根据锁名称生成锁句柄
+|`REQUEST`|申请共享锁或排他锁
+|`RELEASE`|释放当前会话通过本包申请的锁
+|`SLEEP`|暂停当前会话指定的秒数
+|====
+
+`DBMS_LOCK` 随 `ivorysql_ora` 扩展安装，以下示例应在Oracle兼容模式以及已经安装该扩展的数据库中执行。
+
+=== 锁模式常量
+
+IvorySQL当前支持两种锁模式：
+
+[cols="2,1,4"]
+|====
+|*常量*|*值*|*说明*
+|`dbms_lock.s_mode`|4|共享锁；多个会话可以同时持有同一资源的共享锁，但与排他锁冲突
+|`dbms_lock.x_mode`|6|排他锁；同一时刻只允许一个会话以排他方式持有资源，并与共享锁冲突
+|====
+
+其他数值不是当前支持的锁模式，传入后会报告 `invalid DBMS_LOCK mode` 错误。
+
+=== 返回码常量
+
+[cols="2,1,4"]
+|====
+|*常量*|*值*|*说明*
+|`dbms_lock.success`|0|操作成功
+|`dbms_lock.timeout`|1|等待超时
+|`dbms_lock.deadlock`|2|死锁；当前实现不会返回此值
+|`dbms_lock.parameter_error`|3|参数错误，或者无法按当前会话记录释放锁
+|`dbms_lock.already_owned`|4|已经持有；当前实现不会返回此值
+|`dbms_lock.illegal_handle`|5|非法句柄；当前实现不会返回此值
+|====
+
+调用程序应始终检查 `REQUEST` 和 `RELEASE` 的返回值，不应把所有非0值都解释成同一种错误。
+
+=== ALLOCATE_UNIQUE
+
+`ALLOCATE_UNIQUE` 根据名称生成一个文本锁句柄。
+
+语法如下：
+
+```sql
+dbms_lock.allocate_unique(
+  lockname        IN  text,
+  lockname_handle OUT text
+);
+```
+
+参数说明：
+
+* `lockname`：应用定义的锁名称；
+* `lockname_handle`：输出的文本句柄，后续传给 `REQUEST` 和 `RELEASE`。
+
+示例：
+
+```sql
+DECLARE
+  v_handle text;
+BEGIN
+  dbms_lock.allocate_unique('monthly_report', v_handle);
+  RAISE NOTICE 'handle=%', v_handle;
+END;
+/
+```
+
+当前实现通过哈希算法直接生成句柄，不在数据库中保存名称。相同名称会生成相同句柄。应用应把锁名称设计为稳定且能够表示业务资源的字符串，例如 `invoice:2026-10`，并避免依赖句柄的具体数字内容。
+
+=== REQUEST
+
+`REQUEST` 尝试为句柄申请锁。
+
+语法如下：
+
+```sql
+dbms_lock.request(
+  lockname_handle IN text,
+  mode            IN integer,
+  timeout         IN integer
+) RETURN integer;
+```
+
+参数说明：
+
+* `lockname_handle`：由 `ALLOCATE_UNIQUE` 返回的句柄；
+* `mode`：`dbms_lock.s_mode` 或 `dbms_lock.x_mode`；
+* `timeout`：等待的最长秒数。0表示只尝试一次，正整数表示在超时前循环尝试，负数返回 `dbms_lock.parameter_error`。
+
+成功时返回 `dbms_lock.success`，指定时间内未获得锁时返回 `dbms_lock.timeout`。
+
+```sql
+DECLARE
+  v_handle text;
+  v_result integer;
+BEGIN
+  dbms_lock.allocate_unique('monthly_report', v_handle);
+  v_result := dbms_lock.request(v_handle, dbms_lock.x_mode, 5);
+
+  CASE v_result
+    WHEN dbms_lock.success THEN
+      RAISE NOTICE 'lock acquired';
+    WHEN dbms_lock.timeout THEN
+      RAISE NOTICE 'lock request timed out';
+    ELSE
+      RAISE EXCEPTION 'DBMS_LOCK.REQUEST failed: %', v_result;
+  END CASE;
+END;
+/
+```
+
+申请得到的是会话级锁，不会在 `COMMIT` 或 `ROLLBACK` 时自动释放。应用必须保存句柄并显式调用 `RELEASE`，通常应在正常路径和异常处理路径中都执行释放。
+
+=== RELEASE
+
+`RELEASE` 释放当前会话使用本包申请的锁。
+
+语法如下：
+
+```sql
+dbms_lock.release(lockname_handle IN text) RETURN integer;
+```
+
+释放成功返回 `dbms_lock.success`。当前会话没有通过本包记录该句柄、或者底层锁没有成功释放时，返回 `dbms_lock.parameter_error`。
+
+```sql
+DECLARE
+  v_handle text;
+  v_result integer;
+BEGIN
+  dbms_lock.allocate_unique('monthly_report', v_handle);
+  v_result := dbms_lock.request(v_handle, dbms_lock.x_mode, 5);
+
+  IF v_result = dbms_lock.success THEN
+    -- 受锁保护的操作
+    v_result := dbms_lock.release(v_handle);
+    IF v_result <> dbms_lock.success THEN
+      RAISE EXCEPTION 'DBMS_LOCK.RELEASE failed: %', v_result;
+    END IF;
+  END IF;
+END;
+/
+```
+
+不要在同一会话中对同一句柄连续多次成功调用 `REQUEST` 后只调用一次 `RELEASE`。当前包只保存一条本地模式记录，而PostgreSQL底层会对重复申请进行计数，这种用法可能留下仍被会话持有的锁。
+
+=== SLEEP
+
+`SLEEP` 暂停当前会话，参数单位为秒并支持小数。
+
+语法如下：
+
+```sql
+dbms_lock.sleep(seconds IN double precision);
+```
+
+示例：
+
+```sql
+CALL dbms_lock.sleep(0.5);
+```
+
+等待期间可以响应查询取消。秒数不能为负数，也不能大于100000000；超出范围会报告错误。
+
+=== 共享锁示例
+
+```sql
+DECLARE
+  v_handle text;
+  v_result integer;
+BEGIN
+  dbms_lock.allocate_unique('configuration_snapshot', v_handle);
+  v_result := dbms_lock.request(v_handle, dbms_lock.s_mode, 0);
+  IF v_result = dbms_lock.success THEN
+    RAISE NOTICE 'shared lock acquired';
+  ELSE
+    RAISE NOTICE 'shared lock not acquired, rc=%', v_result;
+  END IF;
+END;
+/
+```
+
+成功申请后，可以在当前会话查询 `pg_locks`，对应模式为 `ShareLock`：
+
+```sql
+SELECT mode
+FROM pg_locks
+WHERE pid = pg_backend_pid()
+  AND locktype = 'advisory';
+```
+
+=== 排他锁与异常清理示例
+
+以下示例在异常处理器中尝试释放锁，避免业务语句失败后把会话级锁保留到后续操作中：
+
+```sql
+DECLARE
+  v_handle  text;
+  v_result  integer;
+  v_acquired boolean := false;
+BEGIN
+  dbms_lock.allocate_unique('settlement_job', v_handle);
+  v_result := dbms_lock.request(v_handle, dbms_lock.x_mode, 10);
+
+  IF v_result <> dbms_lock.success THEN
+    RAISE EXCEPTION 'cannot acquire settlement lock, rc=%', v_result;
+  END IF;
+
+  v_acquired := true;
+  -- 执行需要排他保护的业务操作
+
+  v_result := dbms_lock.release(v_handle);
+  v_acquired := false;
+  IF v_result <> dbms_lock.success THEN
+    RAISE EXCEPTION 'cannot release settlement lock, rc=%', v_result;
+  END IF;
+EXCEPTION
+  WHEN OTHERS THEN
+    IF v_acquired THEN
+      v_result := dbms_lock.release(v_handle);
+    END IF;
+    RAISE;
+END;
+/
+```
+
+排他锁在 `pg_locks` 中显示为 `ExclusiveLock`。
+
+=== 使用注意事项
+
+* 当前只支持共享模式和排他模式；
+* 锁是会话级的，事务提交或回滚不会自动释放；
+* 当前 `REQUEST` 没有 `release_on_commit` 参数；
+* 任意文本都可以作为 `REQUEST` 的句柄参数，当前实现不校验句柄是否来自 `ALLOCATE_UNIQUE`；
+* 名称和句柄最终通过哈希映射到64位锁键，理论上存在哈希碰撞可能；
+* 同一会话不要重复申请同一句柄，也不要尝试通过重复 `REQUEST` 转换锁模式；
+* 会话异常退出时，PostgreSQL会清理该会话持有的advisory lock；正常长连接中仍应显式释放；
+* 包声明中的部分Oracle兼容返回码目前只是预留常量，实际实现不会返回这些状态。
+
+== 测试用例
+
+IvorySQL回归测试分别验证共享锁和排他锁的申请、`pg_locks` 中的模式以及释放结果。可使用下面的精简用例验证排他锁：
+
+```sql
+CREATE TABLE dbms_lock_handle(handle text);
+
+DECLARE
+  v_handle text;
+  v_result integer;
+BEGIN
+  dbms_lock.allocate_unique('LOCKX', v_handle);
+  v_result := dbms_lock.request(v_handle, dbms_lock.x_mode, 0);
+  ASSERT v_result = dbms_lock.success,
+         format('DBMS_LOCK.REQUEST failed: rc=%s', v_result);
+  INSERT INTO dbms_lock_handle VALUES (v_handle);
+END;
+/
+
+SELECT mode
+FROM pg_locks
+WHERE pid = pg_backend_pid()
+  AND locktype = 'advisory'
+  AND mode = 'ExclusiveLock';
+
+DECLARE
+  v_handle text;
+  v_result integer;
+BEGIN
+  SELECT handle INTO v_handle FROM dbms_lock_handle;
+  v_result := dbms_lock.release(v_handle);
+  ASSERT v_result = dbms_lock.success,
+         format('DBMS_LOCK.RELEASE failed: rc=%s', v_result);
+END;
+/
+
+DROP TABLE dbms_lock_handle;
+```
+
+申请成功后查询应返回 `ExclusiveLock`；调用 `RELEASE` 后，当前会话中对应的advisory lock应消失。
