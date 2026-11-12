@@ -99,6 +99,7 @@
 *** xref:master/ecosystem_components/pg_textsearch.adoc[pg_textsearch]
 *** xref:master/ecosystem_components/pg_hint_plan.adoc[pg_hint_plan]
 *** xref:master/ecosystem_components/redis_fdw.adoc[redis_fdw]
+*** xref:master/ecosystem_components/oracle_fdw.adoc[oracle_fdw]
 *** xref:master/ecosystem_components/pg_show_plans.adoc[pg_show_plans]
 *** xref:master/ecosystem_components/pg_bulkload.adoc[pg_bulkload]
 *** xref:master/ecosystem_components/pg_bigm.adoc[pg_bigm]

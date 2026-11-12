@@ -1,0 +1,96 @@
+:sectnums:
+:sectnumlevels: 5
+
+= oracle_fdw
+
+== 概述
+
+link:https://github.com/laurenz/oracle_fdw[oracle_fdw] 是独立维护的外部数据包装器，可让 IvorySQL 通过外部表读取和修改远端 Oracle 数据库中的表。它不随 IvorySQL 或 Oracle 客户端一同发布，必须单独安装。
+
+本适配验证使用 IvorySQL `master`（基于 PostgreSQL 19beta1，提交 `069766efa8ca`）、oracle_fdw 2.9.0（`ORACLE_FDW_2_9_0`，提交 `3ea9a4522c44`）、Oracle AI Database 26ai Free 23.26.3.0.0、Oracle 客户端 23.26.3.0.0，以及 Debian Bookworm x86_64。以下结论限于这个组合；其他 IvorySQL 发行版本和 Oracle 版本需要单独验证。
+
+== 兼容性验证
+
+同一套连接、建表和读写测试分别通过了三个入口：原生 PostgreSQL 模式集群、Oracle 模式集群的 PostgreSQL 端口（会话模式为 `pg`），以及该集群的 Oracle 端口 `ivorysql.port`（会话模式为 `oracle`）。在 *未修改的 IvorySQL 基线* 上，这三个入口的 24 组 TAP 子测试全部通过。因此，所测版本无需修改 IvorySQL 内核，也无需将 oracle_fdw 加入 `PgDialectExtensions` 才能执行 `CREATE EXTENSION oracle_fdw`。
+
+[cols="2,3"]
+|===
+|验证项 |结果
+
+|安装与会话状态
+|三个入口均可创建扩展；同一连接中的 `ivorysql.compatible_mode` 和 `search_path` 在安装后保持不变
+
+|查询与类型
+|`NUMBER`、中文 `VARCHAR2`、`DATE`、`TIMESTAMP(6)`、`RAW`、`CLOB` 和 `NULL` 往返；条件、投影和连接下推由 `EXPLAIN VERBOSE` 中的远端 SQL 确认
+
+|写入与事务
+|`INSERT`、`UPDATE`、`DELETE`、`RETURNING`、回滚和保存点均经独立 Oracle 连接核对
+
+|权限与连接
+|用户映射和表权限边界、会话隔离、断开连接后重连均通过
+|===
+
+== 安装前提
+
+* 安装与 IvorySQL 服务端版本匹配的开发头文件、`pg_config`、C 编译器和 GNU make。
+* 安装 Oracle Call Interface（OCI）头文件和共享库，设置 `ORACLE_HOME`；IvorySQL 服务进程也必须能在运行时加载 OCI 库。
+* 准备可从 IvorySQL 服务器访问的 Oracle 实例，以及只有目标表所需权限的 Oracle 账户。测试使用的字符集为 `AL32UTF8`。
+
+安装 oracle_fdw 2.9.0 时，始终指定 *IvorySQL 的* `pg_config`，不要误用系统 PostgreSQL 的路径：
+
+[source,shell]
+----
+git clone --branch ORACLE_FDW_2_9_0 \
+  https://github.com/laurenz/oracle_fdw.git
+cd oracle_fdw
+export ORACLE_HOME=/path/to/oci-home
+make PG_CONFIG=/path/to/ivorysql/bin/pg_config
+sudo make PG_CONFIG=/path/to/ivorysql/bin/pg_config install
+----
+
+启动 IvorySQL 的环境也要能找到 `$ORACLE_HOME/lib`；可通过操作系统动态链接器配置或服务环境中的 `LD_LIBRARY_PATH` 设置。确认 `pg_config --version` 与所运行的 IvorySQL 实例一致后，在需要访问 Oracle 的每个 IvorySQL 数据库中执行：
+
+[source,sql]
+----
+CREATE EXTENSION oracle_fdw;
+SELECT oracle_diag();
+----
+
+== 配置与使用
+
+以下示例假定远端 Oracle 账户 `APP_USER` 已拥有 `APP_DATA` 模式中 `REMOTE_ITEMS` 表的相应权限；该表至少包含 `ID NUMBER(10)`、`NAME VARCHAR2(100 CHAR)` 和 `UPDATED_AT TIMESTAMP(6)`。连接地址、账号和密码均需替换为实际值。
+
+[source,sql]
+----
+CREATE SERVER oracle_server
+  FOREIGN DATA WRAPPER oracle_fdw
+  OPTIONS (dbserver '//oracle.example:1521/FREEPDB1');
+
+CREATE USER MAPPING FOR CURRENT_USER SERVER oracle_server
+  OPTIONS (user 'APP_USER', password 'replace-me');
+
+CREATE FOREIGN TABLE remote_items (
+  id pg_catalog.int4 OPTIONS (key 'true') NOT NULL,
+  name pg_catalog.text,
+  updated_at pg_catalog.timestamp
+)
+SERVER oracle_server
+OPTIONS (schema 'APP_DATA', table 'REMOTE_ITEMS');
+
+SELECT id, name FROM remote_items WHERE id > 10;
+EXPLAIN VERBOSE SELECT id, name FROM remote_items WHERE id > 10;
+
+BEGIN;
+INSERT INTO remote_items (id, name) VALUES (1001, 'example');
+UPDATE remote_items SET name = 'updated' WHERE id = 1001;
+DELETE FROM remote_items WHERE id = 1001;
+ROLLBACK;
+----
+
+在远端有主键的列上使用 `OPTIONS (key 'true')`，以便 oracle_fdw 正确定位 `UPDATE` 和 `DELETE` 的行。只有获得外部服务器 `USAGE`、外部表所需权限且具有自己用户映射的 IvorySQL 角色才能访问远端数据；不要将 Oracle 凭据或这些权限授予 `PUBLIC`。
+
+== Oracle 兼容模式与限制
+
+在 Oracle 端口执行同样的 SQL 时，外部表列应使用 oracle_fdw 支持的 *PostgreSQL 标准类型*，必要时写出 `pg_catalog` 限定名。验证发现裸写 `timestamp` 会在 Oracle 模式下解析为 `sys.oratimestamp`（OID 9510），oracle_fdw 2.9.0 无法转换它；改为 `pg_catalog.timestamp` 后查询成功。该限制影响外部表的本地列类型，远端 Oracle 表仍可使用 `TIMESTAMP(6)`。
+
+Oracle 将空字符串视作 `NULL`；经 oracle_fdw 写入空字符串，在远端也会得到 `NULL`。`EXPLAIN VERBOSE` 若要显示 Oracle 执行计划，远端账户还需要查询 `V$SQL` 和 `V$SQL_PLAN` 的权限；普通读写不依赖这两项权限。OCI 和远端 Oracle 服务不可用时，外部表查询会失败。升级 oracle_fdw 时，按上游说明重新安装扩展并在每个使用它的数据库中执行相应的 `ALTER EXTENSION ... UPDATE`。
