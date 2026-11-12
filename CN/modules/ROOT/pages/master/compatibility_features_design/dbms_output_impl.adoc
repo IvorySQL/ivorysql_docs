@@ -1,0 +1,14 @@
+:sectnums:
+:sectnumlevels: 5
+
+= DBMS_OUTPUT 实现
+
+== 会话输出
+
+`contrib/ivorysql_ora/src/builtin_packages/dbms_output/dbms_output--1.0.sql` 中的 PL/iSQL 包调用对应的 C 函数存取消息。缓冲区保存在当前会话的后端中。写入操作先将文本追加到待完成的行，再在结束该行时将它放入可读缓冲区。
+
+== 读取完整行
+
+C 读取函数返回复合结果。包将行和状态复制到 `GET_LINE` 的输出参数中，或将数组和行数复制到 `GET_LINES` 的参数中。读取完整行后，读取位置向前推进。应用可自行选择如何显示或处理返回的文本。
+
+可运行的示例见 xref:master/oracle_compatibility/compat_dbms_output.adoc[DBMS_OUTPUT 包]。
