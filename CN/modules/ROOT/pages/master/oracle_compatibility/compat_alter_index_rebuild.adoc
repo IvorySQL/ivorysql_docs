@@ -1,0 +1,269 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= 索引重建
+
+== 目的
+
+IvorySQL在Oracle兼容模式中支持 `ALTER INDEX ... REBUILD` 语法，用于重新生成索引的物理存储，并支持在线重建、迁移表空间、重建指定分区以及控制并行度。
+
+本文档介绍索引重建的语法、各选项的行为、组合规则、权限与事务要求，以及当前实现的兼容边界。
+
+== 功能说明
+
+=== 基本语法
+
+语法如下：
+
+```sql
+ALTER INDEX [schema_name.]index_name REBUILD
+  [ONLINE]
+  [TABLESPACE tablespace_name]
+  [PARTITION partition_name]
+  [PARALLEL [degree] | NOPARALLEL];
+```
+
+`ONLINE`、`TABLESPACE`、`PARTITION` 和 `PARALLEL`/`NOPARALLEL` 可以组合使用，选项顺序不受限制。例如：
+
+```sql
+ALTER INDEX sales_idx
+  REBUILD PARTITION sales_p1 TABLESPACE fast_tbs ONLINE;
+```
+
+该语法由Oracle解析器提供，应在Oracle兼容模式中使用：
+
+```sql
+SET ivorysql.compatible_mode = oracle;
+```
+
+=== 普通索引重建
+
+不指定选项时，IvorySQL重新生成目标索引的物理文件。索引定义、名称、约束关系和逻辑内容保持不变。
+
+```sql
+ALTER INDEX employee_name_idx REBUILD;
+```
+
+普通索引、唯一索引和主键索引均可重建。对分区索引的根索引执行该语句时，会重建其所有叶子索引分区：
+
+```sql
+ALTER INDEX sales_id_idx REBUILD;
+```
+
+普通重建复用 `REINDEX INDEX` 的执行路径。操作期间会锁定索引及其所属表；与并发访问冲突较小的维护窗口通常更适合执行大索引的普通重建。
+
+=== ONLINE在线重建
+
+`ONLINE` 使用并发重建路径，作用相当于针对目标索引执行 `REINDEX ... CONCURRENTLY`：
+
+```sql
+ALTER INDEX employee_name_idx REBUILD ONLINE;
+```
+
+在线重建避免在整个构建期间持有普通重建所需的排他索引锁，允许其他会话在大部分重建期间继续执行常规DML。并发重建需要更多工作、可能持续更久，并且在若干阶段仍需取得短期锁。
+
+`REBUILD ONLINE` 不能在显式事务块中执行：
+
+```sql
+BEGIN;
+ALTER INDEX employee_name_idx REBUILD ONLINE;
+-- ERROR: ALTER INDEX ... REBUILD ONLINE cannot run inside a transaction block
+ROLLBACK;
+```
+
+临时表的索引不能使用跨事务的并发重建流程。为当前会话的临时索引指定 `ONLINE` 时，IvorySQL自动退化为普通重建。
+
+=== TABLESPACE迁移
+
+`TABLESPACE` 在重建索引的同时把索引移动到指定表空间：
+
+```sql
+ALTER INDEX employee_name_idx REBUILD TABLESPACE fast_tbs;
+```
+
+该选项也可以用于分区索引根索引，或者与 `PARTITION` 组合，只移动所重建的索引或索引分区：
+
+```sql
+ALTER INDEX sales_id_idx
+  REBUILD PARTITION sales_p1 TABLESPACE fast_tbs;
+```
+
+目标表空间必须存在。除数据库默认表空间外，执行用户需要目标表空间的 `CREATE` 权限。系统关系不能通过该选项移动。
+
+可通过 `pg_class.reltablespace` 检查重建后的表空间。位于数据库默认表空间中的关系通常记录为0：
+
+```sql
+SELECT c.relname, c.reltablespace, t.spcname
+FROM pg_class c
+LEFT JOIN pg_tablespace t ON t.oid = c.reltablespace
+WHERE c.relname = 'employee_name_idx';
+```
+
+=== PARTITION分区重建
+
+`PARTITION` 只重建分区索引中的一个叶子索引分区：
+
+```sql
+ALTER INDEX sales_id_idx REBUILD PARTITION sales_p1;
+```
+
+这里的 `sales_p1` 是表分区名，不是内部生成或显式指定的索引分区名。IvorySQL从分区索引根索引的直接子索引中，查找其所属表名称为 `sales_p1` 的叶子索引并进行重建。
+
+`PARTITION` 必须作用于分区索引的根索引。对普通索引或叶子索引使用该选项会报错：
+
+```sql
+ALTER INDEX employee_name_idx REBUILD PARTITION sales_p1;
+-- ERROR: "employee_name_idx" is not a partitioned index
+```
+
+指定的表分区不存在时也会报错。当前语法中的分区名是不带模式限定的单一名称。
+
+=== PARALLEL并行重建
+
+非在线重建可以使用 `PARALLEL` 请求并行构建：
+
+```sql
+ALTER INDEX employee_name_idx REBUILD PARALLEL;
+ALTER INDEX employee_name_idx REBUILD PARALLEL 4;
+```
+
+不同形式的含义如下：
+
+[cols="2,4"]
+|====
+|*形式*|*行为*
+|未指定并行选项|使用IvorySQL原有的索引构建并行度自动估算
+|`PARALLEL`|使用表的 `parallel_workers` 存储参数或自动估算并行工作进程数
+|`PARALLEL 1`|强制串行重建
+|`PARALLEL N`，`N >= 2`|请求总并行度N，内部转换为N-1个后台工作进程加当前leader进程
+|`NOPARALLEL`|强制串行重建，不进行自动并行度估算
+|====
+
+`degree` 必须至少为1，`PARALLEL 0` 会报错。`PARALLEL` 与 `NOPARALLEL` 互斥，不能在同一语句中同时指定；重复指定 `PARALLEL` 或 `NOPARALLEL` 也会报错。
+
+显式并行度表示请求值，不保证一定启动相同数量的工作进程。实际并行执行还受到以下因素影响：
+
+* `max_parallel_maintenance_workers` 的上限；
+* 可用的并行工作进程槽位；
+* 索引访问方法是否支持并行构建；
+* 临时表、索引表达式和索引谓词是否满足并行安全要求。
+
+当前索引构建框架支持B-tree、GIN和BRIN的并行构建。其他访问方法会按其能力退化为串行执行。
+
+`PARALLEL` 和 `NOPARALLEL` 可以与 `TABLESPACE`、`PARTITION` 组合：
+
+```sql
+ALTER INDEX sales_id_idx REBUILD PARALLEL 4 PARTITION sales_p1;
+ALTER INDEX employee_name_idx REBUILD NOPARALLEL TABLESPACE fast_tbs;
+```
+
+=== ONLINE与并行选项组合
+
+在线重建使用独立的并发重建路径，该路径不读取 `PARALLEL` 或 `NOPARALLEL` 指定的工作进程数。因此两类选项组合时，在线重建仍会执行，但并行提示被忽略并产生警告：
+
+```sql
+ALTER INDEX employee_name_idx REBUILD ONLINE PARALLEL 4;
+-- WARNING: PARALLEL/NOPARALLEL option is ignored when ONLINE is specified
+```
+
+如果需要精确控制本功能提供的重建并行度，不要同时指定 `ONLINE`。
+
+=== 权限、锁和事务
+
+执行用户需要索引所属表的 `MAINTAIN` 权限。使用 `TABLESPACE` 时，还需要满足目标表空间的权限要求。
+
+普通重建沿用 `REINDEX INDEX` 的锁策略：所属表取得 `ShareLock`，目标索引取得 `AccessExclusiveLock`。在线重建使用 `ShareUpdateExclusiveLock` 进入并发重建流程，以降低对常规DML的影响。
+
+普通 `REBUILD` 可以在显式事务块和只读事务中执行；`REBUILD ONLINE` 因内部需要切换事务，必须作为顶层语句执行。
+
+=== 使用注意事项
+
+* 重建会重写索引物理存储，应预留足够的磁盘空间、WAL容量和维护时间；
+* `ONLINE` 主要降低长时间锁对业务DML的影响，不表示整个操作完全不取锁；
+* 不带 `PARTITION` 重建分区索引根索引时，会处理所有叶子索引分区；带 `PARTITION` 时只处理指定的直接叶子分区；
+* `PARTITION` 接受表分区名，不接受索引分区名；
+* 当前 `PARTITION` 查找只检查分区索引根的直接子索引，多级分区树中的非叶子子索引不属于该选项支持的目标；
+* 当前分区匹配依据不带模式名的表分区名称；不同模式下存在同名直接分区时，应避免依赖其匹配顺序；
+* `PARALLEL N` 是并行度请求，服务器配置和安全检查可能使实际工作进程数更少或退化为串行；
+* `ONLINE` 与 `PARALLEL`/`NOPARALLEL` 组合时，并行选项被忽略；
+* 索引定义和约束语义不会因成功重建而改变，唯一索引在重建后仍执行唯一性检查。
+
+== 测试用例
+
+=== 准备数据
+
+```sql
+SET ivorysql.compatible_mode = oracle;
+
+CREATE TABLE index_rebuild_employee
+(
+  id   integer PRIMARY KEY,
+  name text
+);
+
+INSERT INTO index_rebuild_employee
+SELECT g, 'name_' || g
+FROM generate_series(1, 1000) AS g;
+
+CREATE INDEX index_rebuild_employee_name_idx
+  ON index_rebuild_employee(name);
+
+CREATE TABLE index_rebuild_sales
+(
+  id     integer,
+  region text
+) PARTITION BY RANGE (id);
+
+CREATE TABLE index_rebuild_sales_p1
+  PARTITION OF index_rebuild_sales FOR VALUES FROM (1) TO (1001);
+CREATE TABLE index_rebuild_sales_p2
+  PARTITION OF index_rebuild_sales FOR VALUES FROM (1001) TO (2001);
+
+INSERT INTO index_rebuild_sales
+SELECT g, CASE WHEN g <= 1000 THEN 'east' ELSE 'west' END
+FROM generate_series(1, 2000) AS g;
+
+CREATE INDEX index_rebuild_sales_id_idx ON index_rebuild_sales(id);
+```
+
+=== 普通与在线重建
+
+```sql
+ALTER INDEX index_rebuild_employee_name_idx REBUILD;
+ALTER INDEX index_rebuild_employee_name_idx REBUILD ONLINE;
+```
+
+查询数据验证索引重建没有改变逻辑内容：
+
+```sql
+SELECT count(*)
+FROM index_rebuild_employee
+WHERE name = 'name_100';
+```
+
+预期结果为1。
+
+=== 分区与并行重建
+
+```sql
+ALTER INDEX index_rebuild_sales_id_idx
+  REBUILD PARTITION index_rebuild_sales_p1;
+
+ALTER INDEX index_rebuild_sales_id_idx
+  REBUILD PARTITION index_rebuild_sales_p2 PARALLEL 2;
+```
+
+以下语句验证根索引可以一次重建所有叶子分区：
+
+```sql
+ALTER INDEX index_rebuild_sales_id_idx REBUILD NOPARALLEL;
+```
+
+=== 清理数据
+
+```sql
+DROP TABLE index_rebuild_employee CASCADE;
+DROP TABLE index_rebuild_sales CASCADE;
+```

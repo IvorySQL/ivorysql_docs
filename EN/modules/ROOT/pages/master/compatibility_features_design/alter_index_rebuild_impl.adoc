@@ -1,0 +1,259 @@
+:sectnums:
+:sectnumlevels: 5
+
+= **Feature Overview**
+
+IvorySQL implements `ALTER INDEX ... REBUILD` through an Oracle syntax extension, a new utility statement node, and reuse of the existing `REINDEX` execution path. The feature supports regular and online rebuilds, moving an index to another tablespace while rebuilding, selecting a leaf index partition by table-partition name, and explicit or automatic parallelism for non-online rebuilds.
+
+Basic usage is as follows:
+
+```sql
+SET ivorysql.compatible_mode = oracle;
+
+ALTER INDEX employee_name_idx REBUILD;
+ALTER INDEX employee_name_idx REBUILD ONLINE TABLESPACE fast_tbs;
+ALTER INDEX sales_id_idx REBUILD PARTITION sales_p1 PARALLEL 4;
+```
+
+== Implementation
+
+=== Overall Execution Flow
+
+The primary index-rebuild execution flow is:
+
+```text
+Oracle lexer/parser
+  -> OraAlterIndexRebuildStmt
+  -> ProcessUtilitySlow
+  -> ExecOraAlterIndexRebuild
+       -> parse DefElem options and construct ReindexParams
+       -> without PARTITION: ReindexIndex
+       -> with PARTITION: locate the leaf index
+            -> ONLINE: ReindexRelationConcurrently
+            -> non-ONLINE or temporary index: reindex_index
+  -> index_build / concurrent index-build process
+```
+
+The implementation reuses the existing PostgreSQL `REINDEX` infrastructure as much as possible. Object resolution, privilege checking, locking, event triggers, progress reporting, tablespace migration, and concurrent rebuilding therefore remain consistent with existing paths.
+
+=== Lexical and Syntax Analysis
+
+The Oracle keyword list in `src/include/oracle_parser/ora_kwlist.h` adds the following unreserved keywords:
+
+* `REBUILD`;
+* `ONLINE`;
+* `NOPARALLEL`.
+
+`src/backend/oracle_parser/ora_gram.y` adds the following production to the Oracle version of `ALTER INDEX`:
+
+```text
+ALTER INDEX qualified_name REBUILD rebuild_index_opt_list
+```
+
+`rebuild_index_opt_list` can be empty and allows multiple options in any order. Each option is converted into a `DefElem`:
+
+[cols="2,2,3"]
+|====
+|*Syntax*|*DefElem name and argument*|*Description*
+|`ONLINE`|`online = true`|Enter the concurrent rebuild path
+|`TABLESPACE name`|`tablespace = name`|Target tablespace name
+|`PARTITION name`|`partition = name`|Target table-partition name
+|`PARALLEL N`|`parallel = N`|Explicit Oracle parallel degree
+|`PARALLEL`|`parallel = 0`|Automatically select parallelism
+|`NOPARALLEL`|`noparallel = true`|Force serial execution
+|====
+
+The grammar action directly checks that N in `PARALLEL N` is greater than zero. Consequently, `PARALLEL 0` reports an invalid-parameter error during parsing.
+
+This production is added only to the Oracle parser. The PostgreSQL-compatible parser does not recognize `ALTER INDEX ... REBUILD` through this rule.
+
+=== OraAlterIndexRebuildStmt Statement Node
+
+`src/include/nodes/parsenodes.h` defines a new parse-tree node:
+
+```c
+typedef struct OraAlterIndexRebuildStmt
+{
+    NodeTag     type;
+    RangeVar   *relation;
+    List       *options;
+} OraAlterIndexRebuildStmt;
+```
+
+`relation` stores the qualified name of the target index, while `options` stores the list of `DefElem` nodes produced by the grammar. The node uses PostgreSQL's node-definition mechanism and can therefore travel through the standard utility parse-tree processing flow.
+
+`src/backend/tcop/utility.c` integrates the node into the following utility infrastructure:
+
+* `ClassifyUtilityCommandAsReadOnly`: like `REINDEX`, the command is allowed in a read-only transaction but not in a parallel worker or recovery mode;
+* `ProcessUtilitySlow`: calls `ExecOraAlterIndexRebuild`; event-trigger command collection is performed by the subsequent REINDEX path;
+* `CreateCommandTag`: returns `CMDTAG_ALTER_INDEX`, so the client completion tag is `ALTER INDEX`;
+* `GetCommandLogLevel`: classifies the command as `LOGSTMT_ALL`, like `REINDEX`.
+
+=== Option Parsing and ReindexParams Mapping
+
+The main entry point, `ExecOraAlterIndexRebuild`, is in `src/backend/commands/indexcmds.c`. It iterates over `OraAlterIndexRebuildStmt.options` and extracts `online`, `tablespacename`, `partitionname`, and the parallel-control arguments.
+
+To reuse existing interfaces, the function constructs a synthetic `ReindexStmt` of type `REINDEX_OBJECT_INDEX`. Lower layers mainly use this object for error context and event-trigger collection; actual parameters are passed through `ReindexParams`.
+
+`ReindexParams` in `src/include/catalog/index.h` adds an `nworkers` field:
+
+```c
+int nworkers;
+```
+
+Its internal convention is:
+
+[cols="1,4"]
+|====
+|*Value*|*Meaning*
+|`0`|Automatic selection; both plain `REBUILD` and `PARALLEL` without a number use this value
+|`-1`|Force serial execution; produced by `NOPARALLEL` or `PARALLEL 1`
+|`> 0`|Explicit number of PostgreSQL background workers to request
+|====
+
+Oracle parallel degree N represents N active data-processing participants. Because the PostgreSQL leader also participates in an index build, the entry point applies this mapping:
+
+```text
+PARALLEL 1      -> nworkers = -1
+PARALLEL N>=2   -> nworkers = N - 1
+```
+
+The execution stage explicitly rejects a combination of `PARALLEL` and `NOPARALLEL`, as well as repeated `PARALLEL` or repeated `NOPARALLEL` options.
+
+=== ONLINE and Transaction Control
+
+When `ONLINE` is specified, the entry point performs two mappings:
+
+1. It sets `REINDEXOPT_CONCURRENTLY` in `ReindexParams.options`.
+2. It calls `PreventInTransactionBlock`, requiring the command to run outside an explicit transaction block.
+
+For a non-partition target, `ReindexIndex` subsequently dispatches to `ReindexRelationConcurrently`. With `PARTITION`, the same concurrent rebuild function is called directly after locating the leaf index. This path uses a multi-transaction concurrent-rebuild mechanism and therefore cannot be enclosed in a user transaction block.
+
+Temporary indexes are an exception. When `ReindexIndex` detects temporary persistence, it switches to ordinary `reindex_index`; the PARTITION branch applies the same fallback. Other sessions cannot access the current session's temporary table, so a concurrent build is unnecessary.
+
+The concurrent rebuild function does not read the newly added `ReindexParams.nworkers`. If `ONLINE` appears with `PARALLEL` or `NOPARALLEL`, the entry point issues a WARNING, continues the online rebuild, and ignores the parallel hint.
+
+=== TABLESPACE Resolution and Privilege Checks
+
+The entry point converts the tablespace name to an OID with `get_tablespace_oid`. If the target is not the database default tablespace, `object_aclcheck` verifies that the current user has `ACL_CREATE` privilege.
+
+The resolved OID is stored in `ReindexParams.tablespaceOid`; `InvalidOid` is used when no tablespace is specified. Lower-level regular and concurrent rebuild paths continue to reuse the existing REINDEX tablespace-movement logic.
+
+For a regular rebuild, `reindex_index` uses `CheckRelationTableSpaceMove` to determine whether a move is necessary. It updates the tablespace information in `pg_class`, schedules deletion of the old storage at transaction commit, and creates new physical index storage. Existing checks reject attempts to move system relations.
+
+=== Locating a PARTITION Target
+
+When `PARTITION` is specified, the entry point does not call `ReindexIndex` for the root directly. Instead, it performs these steps:
+
+1. Resolve and lock the user-specified root index with `RangeVarGetRelidExtended`.
+2. Verify that the root object's `relkind` is `RELKIND_PARTITIONED_INDEX`.
+3. Obtain the root index's direct child indexes with `find_inheritance_children`.
+4. Call `IndexGetRelation` for each child index to obtain the OID of its underlying table partition.
+5. Obtain the table-partition name with `get_rel_name` and compare it with the statement's `partitionname`.
+6. Rebuild only the matching child index, or report that the partition does not exist if no match is found.
+
+Matching by table-partition name rather than index-partition name is intentional for Oracle syntax compatibility. For example, if the root index is `sales_id_idx` and the table partition is `sales_p1`, the statement uses `PARTITION sales_p1` regardless of the leaf index's internal name.
+
+The selected object must be a directly attached leaf index with physical storage. The current lookup does not recurse through a multi-level partition tree and compares only schema-unqualified relation names.
+
+The PARTITION path copies the existing parameters and sets `REINDEXOPT_REPORT_PROGRESS`. A non-temporary online target calls `ReindexRelationConcurrently`; all other targets call `reindex_index`.
+
+=== Dispatch for Regular Indexes and Partitioned-Index Roots
+
+When `PARTITION` is absent, the entry point passes the synthetic `ReindexStmt` and `ReindexParams` to the existing `ReindexIndex` function:
+
+* Regular index: select concurrent or regular rebuilding according to `ONLINE` and persistence.
+* Partitioned-index root: call the existing `ReindexPartitions` function to traverse and rebuild leaf index partitions.
+* Regular non-online index: set `REINDEXOPT_REPORT_PROGRESS` and call `reindex_index`.
+
+Regular indexes, unique indexes, constraint indexes, and partitioned indexes therefore continue to use the mature REINDEX checks and build machinery. `reindex_index` creates new physical storage, invokes the access method to rebuild the contents, and preserves the original index's catalog identity and constraint association.
+
+=== Lock and Privilege Handling
+
+Target resolution uses `RangeVarCallbackForReindexIndex`. The callback first verifies that the object is a regular or partitioned index, finds the underlying table through `IndexGetRelation`, and checks the current user's `ACL_MAINTAIN` privilege on that table.
+
+To avoid deadlocks between the table and index, the callback locks the underlying table before `RangeVarGetRelidExtended` locks the index. The principal lock modes are:
+
+[cols="2,2,2"]
+|====
+|*Path*|*Underlying table*|*Target index*
+|Regular rebuild|`ShareLock`|`AccessExclusiveLock`
+|Online rebuild|`ShareUpdateExclusiveLock`|`ShareUpdateExclusiveLock`
+|====
+
+After entering regular `reindex_index`, the physical leaf index is opened with `AccessExclusiveLock`. The online path uses the existing concurrent index-rebuild protocol to manage the old and new indexes across transaction stages.
+
+=== Passing Parallelism to the Index Build
+
+In `src/backend/catalog/index.c`, `reindex_index` determines how to call `index_build` from `ReindexParams.nworkers`:
+
+* `nworkers == -1`: set the `parallel` argument to false and skip parallel estimation entirely.
+* `nworkers == 0`: allow parallel execution and let `index_build` invoke the planner for automatic estimation.
+* `nworkers > 0`: first call `plan_create_index_workers` with the explicit override and store the result in `IndexInfo.ii_ParallelWorkers`.
+
+`index_build` adds an `ii_ParallelWorkers == 0` condition. If the explicit path has already populated the worker count, a second automatic estimate is not performed; the automatic path continues to behave as before.
+
+`plan_create_index_workers` in `src/backend/optimizer/plan/planner.c` adds an `override_workers` parameter. When its value is greater than zero, the function still performs these preliminary checks:
+
+* the server must be running under the postmaster and `max_parallel_maintenance_workers` must not be zero;
+* the target must not be a temporary table;
+* index expressions and partial-index predicates must be parallel-safe.
+
+After these checks, the explicit worker count is:
+
+```text
+Min(override_workers, max_parallel_maintenance_workers)
+```
+
+An explicit override skips the table-size and 32 MB memory-cap heuristics used by automatic estimation, consistently with the priority of an explicit `parallel_workers` storage parameter. Whether all requested processes can actually start still depends on the global parallel-worker resources available to the system.
+
+Only an access method declaring `amcanbuildparallel` enters explicit parallel planning. In the current framework, B-tree, GIN, and BRIN support parallel builds; unsupported access methods remain serial.
+
+=== Event Triggers, Command Tags, and Progress Reporting
+
+The synthetic `ReindexStmt` constructed by the entry point is passed down the rebuild call chain. Regular `reindex_index` uses it when calling `EventTriggerCollectSimpleCommand`, thereby reusing the event-trigger collection of the REINDEX path.
+
+The utility layer sets the external command tag to `ALTER INDEX`, not `REINDEX`. Client completion information therefore matches the syntax submitted by the user.
+
+The regular single-index path and the explicit PARTITION path set `REINDEXOPT_REPORT_PROGRESS`. Lower layers call `pgstat_progress_start_command(PROGRESS_COMMAND_CREATE_INDEX, ...)`, recording the command type as REINDEX and exposing its state through `pg_stat_progress_create_index`. A partitioned-index root uses the existing `ReindexPartitions` progress handling.
+
+=== Regression Tests
+
+The Oracle compatibility regression input and expected output are located at:
+
+```text
+src/oracle_test/regress/sql/alter_index.sql
+src/oracle_test/regress/expected/alter_index.out
+```
+
+The test is registered in `src/oracle_test/regress/parallel_schedule` and covers:
+
+* rebuilding regular, primary-key, unique, and partitioned-root indexes;
+* `ONLINE` rebuilds of regular and partitioned indexes;
+* rejection of `ONLINE` in an explicit transaction block and fallback for temporary indexes;
+* `TABLESPACE` migration, catalog state, and a nonexistent tablespace;
+* rebuilding a leaf index by table-partition name, and error paths for nonexistent partitions, regular indexes, and leaf indexes;
+* different orders and combinations of `ONLINE`, `TABLESPACE`, and `PARTITION`;
+* preservation of data integrity, primary-key scans, and uniqueness constraints after rebuilding;
+* `NOPARALLEL`, `PARALLEL 1`, explicit parallelism, automatic parallelism, and the GUC limit;
+* combinations of `PARALLEL`/`NOPARALLEL` with `ONLINE`, `TABLESPACE`, and `PARTITION`;
+* error paths for `PARALLEL 0` and mutually exclusive parallel options, plus data-integrity checks.
+
+Commit `2b1b5d550d434883bd5bbf264a54e16e7e32de94` disables `log_temp_files` output in the explicit-parallel test to avoid nondeterministic logs across environments. Commit `2d05e63d1e5b30eab3ebfce6425ec586bcc1e8c7` adds tablespace catalog assertions, stable index-scan plans, and additional partition and parallel-option combination tests.
+
+Run the Oracle compatibility regression tests with:
+
+```sh
+make oracle-check
+```
+
+=== Current Implementation Boundaries
+
+* The syntax is provided only by the Oracle parser.
+* `PARTITION` searches only direct child indexes of the root, and the target must be a leaf index with physical storage.
+* Partition matching compares the table partition's relation name only; it does not compare schema names or index-partition names.
+* `ONLINE` uses the existing concurrent rebuild path and cannot run inside an explicit transaction block.
+* The `ONLINE` path does not use `ReindexParams.nworkers`, so it ignores `PARALLEL` and `NOPARALLEL`.
+* `PARALLEL N` controls only the requested participation level. GUC limits, access-method capabilities, safety checks, and available worker resources can reduce actual parallelism.
+* Explicit parallelism skips the size and memory heuristics of automatic estimation, but does not bypass temporary-table or expression parallel-safety checks.
+* `nworkers` is carried through the reused `ReindexParams` structure. Existing callers that do not set it use zero initialization and retain the original automatic-parallelism behavior.
