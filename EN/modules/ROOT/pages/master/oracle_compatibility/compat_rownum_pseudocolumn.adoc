@@ -1,0 +1,235 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= ROWNUM Pseudocolumn
+
+== Purpose
+
+IvorySQL provides an Oracle-compatible `ROWNUM` pseudocolumn that indicates the order in which a row is selected at the current query level. The first row has a `ROWNUM` of 1, and subsequent rows are numbered sequentially.
+
+This document describes how to use `ROWNUM`, its evaluation order, common pagination patterns, and the current compatibility boundaries.
+
+== Feature Description
+
+=== Basic Usage
+
+In Oracle compatibility mode, an unqualified `ROWNUM` can be used in select lists, conditional expressions, and aggregate expressions. The name is case-insensitive, and its return type is `bigint` (the internal type is `int8`).
+
+```sql
+SET ivorysql.compatible_mode = oracle;
+
+SELECT ROWNUM, id, name
+FROM employee
+WHERE ROWNUM <= 3;
+```
+
+`ROWNUM` is not an actual column in a table. IvorySQL assigns a number when it retrieves a candidate row at the current query level. Only rows that satisfy the filter conditions at that level consume a number. Therefore, numbering starts at 1 for each query level and increases according to the row retrieval order at that level.
+
+`ROWNUM` has pseudocolumn semantics only in Oracle compatibility mode. In PostgreSQL compatibility mode, `rownum` is treated as an ordinary identifier.
+
+=== Limiting the Number of Rows with ROWNUM
+
+Common row-limiting conditions include:
+
+```sql
+SELECT id, name FROM employee WHERE ROWNUM <= 10;
+SELECT id, name FROM employee WHERE ROWNUM < 11;
+SELECT id, name FROM employee WHERE ROWNUM = 1;
+```
+
+IvorySQL implements Oracle's special comparison semantics. Because a candidate row that fails the condition does not advance the counter, the following conditions have fixed results:
+
+* `ROWNUM > 0` and `ROWNUM >= 1` are true for every candidate row;
+* `ROWNUM > N` when `N >= 1`, and `ROWNUM >= N` when `N > 1`, can never select the first row and therefore return an empty result;
+* `ROWNUM = 1` can return the first row, while `ROWNUM = N` when `N != 1` returns an empty result;
+* `ROWNUM <= 0` and `ROWNUM < 1` return an empty result.
+
+For simple queries, IvorySQL optimizes `ROWNUM <= N`, `ROWNUM < N`, and `ROWNUM = 1` into the equivalent `LIMIT N`, `LIMIT N - 1`, and `LIMIT 1`, respectively. This rewrite does not change the query result.
+
+=== ROWNUM and ORDER BY
+
+Within the same query level, `ROWNUM` is assigned before `ORDER BY` sorting. The following query first retains three rows from the table retrieval result and then sorts those three rows:
+
+```sql
+SELECT id, score
+FROM employee
+WHERE ROWNUM <= 3
+ORDER BY score DESC;
+```
+
+To sort first and then select the first N rows from the sorted result, place the sort in an inner query and use `ROWNUM` in the outer query:
+
+```sql
+SELECT id, score
+FROM (
+  SELECT id, score
+  FROM employee
+  ORDER BY score DESC
+)
+WHERE ROWNUM <= 3;
+```
+
+Without `ORDER BY`, the database does not guarantee row retrieval order. If a business result depends on which specific rows are among the first N, specify a deterministic sort order in the inner query.
+
+When `ROWNUM` appears in both the select list and a query containing `ORDER BY`, the displayed numbers remain those assigned before sorting; they are not recalculated after the sort.
+
+=== Nested Queries and Pagination
+
+Each query level maintains its own `ROWNUM` sequence. IvorySQL also restarts the counter for every execution of a correlated subquery and whenever a subquery is rescanned.
+
+The following common Oracle-style pagination pattern first obtains the first 12 rows from the sorted result and then selects rows 8 through 12 at the outermost level:
+
+```sql
+SELECT *
+FROM (
+  SELECT q.*, ROWNUM AS rn
+  FROM (
+    SELECT id, score
+    FROM employee
+    ORDER BY score
+  ) q
+  WHERE ROWNUM <= 12
+)
+WHERE rn >= 8;
+```
+
+The outer condition must reference the `rn` alias saved by the inner query. Using `ROWNUM >= 8` directly at the same query level cannot get past the first row and returns an empty result.
+
+=== Aggregation, Grouping, Joins, and DML
+
+`ROWNUM` can be used in arithmetic expressions, `CASE` expressions, function calls, and aggregate functions. For example:
+
+```sql
+SELECT MIN(ROWNUM), MAX(ROWNUM), SUM(ROWNUM)
+FROM employee;
+```
+
+Queries with `GROUP BY` follow the normal grouping rules: a `ROWNUM` in the select list must either appear in `GROUP BY` or be used inside an aggregate function. Otherwise, a grouping error is reported.
+
+`ROWNUM` can be used in join queries and in the `WHERE` conditions of `UPDATE` and `DELETE` statements to limit the first N affected rows:
+
+```sql
+UPDATE task_queue SET status = 'running' WHERE ROWNUM <= 2;
+DELETE FROM task_queue WHERE ROWNUM <= 2;
+```
+
+The affected rows are the first N rows retrieved by the execution plan that also satisfy the other conditions. If specific rows must be selected deterministically, restrict the target rows through a deterministically ordered subquery or a business key.
+
+Each branch of `UNION` and `UNION ALL` has an independent `ROWNUM` counter. A scrollable cursor preserves the numbers produced by its initial scan, so backward or positioned fetches do not generate new numbers.
+
+=== Naming and Usage Restrictions
+
+When used as a pseudocolumn, `ROWNUM` must be a single identifier without a table or schema qualifier. Oracle compatibility mode does not allow `ROWNUM` to be used explicitly as a column alias, table alias, or subquery alias. For example, the following statements report errors:
+
+```sql
+SELECT id AS rownum FROM employee;
+SELECT * FROM employee rownum;
+```
+
+In PL/iSQL, if a procedure parameter or local variable has already been declared as `rownum`, PL/iSQL variable resolution takes precedence over pseudocolumn resolution, and the name can continue to be used as a variable.
+
+The current implementation has the following compatibility boundaries:
+
+* The two sides of `INTERSECT` and `EXCEPT` currently share a counter instead of resetting it independently for each side as Oracle does;
+* A `LATERAL` subquery currently does not reset its counter for each outer row;
+* Only a top-level condition of the form `ROWNUM <comparison operator> integer constant` is eligible for `LIMIT` optimization. A constant on the left-hand side, a nested arithmetic expression, a non-integer constant, or a condition inside `OR` is not optimized this way, but it is still evaluated by the executor according to `ROWNUM` semantics;
+* When the same query level contains `ORDER BY`, `DISTINCT`, grouping, aggregation, window functions, set operations, or set-returning functions in the target list, the row-limiting condition is not rewritten as `LIMIT`, thereby preserving the correct evaluation order.
+
+== Test Cases
+
+=== Preparing Test Data
+
+```sql
+SET ivorysql.compatible_mode = oracle;
+
+CREATE TABLE rownum_doc_test
+(
+  id    INTEGER,
+  score INTEGER
+);
+
+INSERT INTO rownum_doc_test VALUES
+  (1, 40),
+  (2, 10),
+  (3, 30),
+  (4, 20),
+  (5, 50);
+```
+
+=== Basic Numbering and Row Limiting
+
+```sql
+SELECT ROWNUM, id
+FROM rownum_doc_test
+WHERE ROWNUM <= 3;
+```
+
+Expected result:
+
+```
+ rownum | id
+--------+----
+      1 |  1
+      2 |  2
+      3 |  3
+```
+
+The following cases verify conditions that cannot get past the first row:
+
+```sql
+SELECT COUNT(*) FROM rownum_doc_test WHERE ROWNUM = 2;
+SELECT COUNT(*) FROM rownum_doc_test WHERE ROWNUM > 1;
+```
+
+Both queries return 0.
+
+=== Limiting Rows Before and After Sorting
+
+When `ROWNUM` is used at the same query level, the first three rows are selected before they are sorted:
+
+```sql
+SELECT id, score
+FROM rownum_doc_test
+WHERE ROWNUM <= 3
+ORDER BY score;
+```
+
+Expected result:
+
+```
+ id | score
+----+-------
+  2 |    10
+  3 |    30
+  1 |    40
+```
+
+With a subquery, all rows are sorted before the first three rows are selected:
+
+```sql
+SELECT id, score
+FROM (
+  SELECT id, score
+  FROM rownum_doc_test
+  ORDER BY score DESC
+)
+WHERE ROWNUM <= 3;
+```
+
+Expected result:
+
+```
+ id | score
+----+-------
+  5 |    50
+  1 |    40
+  3 |    30
+```
+
+Clean up the test object after testing:
+
+```sql
+DROP TABLE rownum_doc_test;
+```

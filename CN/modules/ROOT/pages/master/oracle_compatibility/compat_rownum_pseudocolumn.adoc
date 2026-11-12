@@ -1,0 +1,235 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= ROWNUM伪列
+
+== 目的
+
+IvorySQL提供了兼容Oracle的 `ROWNUM` 伪列，用于表示当前查询层中一行被选中的先后次序。第一行的 `ROWNUM` 为1，后续行依次递增。
+
+本文档旨在介绍 `ROWNUM` 的使用方法、求值顺序、典型分页写法和当前兼容边界。
+
+== 功能说明
+
+=== 基本用法
+
+在Oracle兼容模式中，可以在查询的选择列表、条件表达式和聚合表达式中使用不带限定符的 `ROWNUM`。名称不区分大小写，返回类型为 `bigint`（内部类型 `int8`）。
+
+```sql
+SET ivorysql.compatible_mode = oracle;
+
+SELECT ROWNUM, id, name
+FROM employee
+WHERE ROWNUM <= 3;
+```
+
+`ROWNUM` 不是表中的实际列。IvorySQL在当前查询层取得候选行时为其分配编号；只有满足该层过滤条件的行才会占用一个编号。因此，每个查询层的编号从1开始，并按照该层的取行顺序递增。
+
+`ROWNUM` 仅在Oracle兼容模式中具有伪列含义。在PostgreSQL兼容模式中，`rownum` 按普通标识符处理。
+
+=== 使用ROWNUM限制返回行数
+
+常见的限制行数条件如下：
+
+```sql
+SELECT id, name FROM employee WHERE ROWNUM <= 10;
+SELECT id, name FROM employee WHERE ROWNUM < 11;
+SELECT id, name FROM employee WHERE ROWNUM = 1;
+```
+
+IvorySQL实现了Oracle的特殊比较语义。由于不满足条件的候选行不会使编号前进，下面的条件具有固定结果：
+
+* `ROWNUM > 0` 和 `ROWNUM >= 1` 对所有候选行都为真；
+* `ROWNUM > N`（`N >= 1`）和 `ROWNUM >= N`（`N > 1`）始终无法选中第一行，因此返回空集；
+* `ROWNUM = 1` 可以返回第一行，`ROWNUM = N`（`N != 1`）返回空集；
+* `ROWNUM <= 0` 和 `ROWNUM < 1` 返回空集。
+
+对于简单查询，IvorySQL会把 `ROWNUM <= N`、`ROWNUM < N` 和 `ROWNUM = 1` 分别优化成等价的 `LIMIT N`、`LIMIT N - 1` 和 `LIMIT 1`。该改写不改变查询结果。
+
+=== ROWNUM与ORDER BY
+
+同一查询层中，`ROWNUM` 在 `ORDER BY` 排序之前分配。下面的查询先从表的取行结果中保留3行，再对这3行排序：
+
+```sql
+SELECT id, score
+FROM employee
+WHERE ROWNUM <= 3
+ORDER BY score DESC;
+```
+
+如果需要先排序，再选出排序结果中的前N行，应把排序放入内层查询，并在外层使用 `ROWNUM`：
+
+```sql
+SELECT id, score
+FROM (
+  SELECT id, score
+  FROM employee
+  ORDER BY score DESC
+)
+WHERE ROWNUM <= 3;
+```
+
+没有 `ORDER BY` 时，数据库不保证行的访问顺序。如果业务结果依赖“前N行”的具体内容，应在内层查询中显式指定排序条件。
+
+当 `ROWNUM` 同时出现在选择列表和 `ORDER BY` 中时，显示的编号仍是排序前已经分配的编号，不会在排序后重新计算。
+
+=== 嵌套查询与分页
+
+不同查询层维护各自的 `ROWNUM` 序列。IvorySQL也会在相关子查询的每次执行和子查询重扫描时重新开始计数。
+
+下面是常见的Oracle风格分页写法，先取得排序结果的前12行，再由最外层选择第8至12行：
+
+```sql
+SELECT *
+FROM (
+  SELECT q.*, ROWNUM AS rn
+  FROM (
+    SELECT id, score
+    FROM employee
+    ORDER BY score
+  ) q
+  WHERE ROWNUM <= 12
+)
+WHERE rn >= 8;
+```
+
+外层条件必须引用内层保存的别名 `rn`。直接在同一查询层使用 `ROWNUM >= 8` 无法越过第一行，会返回空集。
+
+=== 聚合、分组、连接和DML
+
+`ROWNUM` 可以参与算术表达式、`CASE` 表达式、函数调用和聚合函数，例如：
+
+```sql
+SELECT MIN(ROWNUM), MAX(ROWNUM), SUM(ROWNUM)
+FROM employee;
+```
+
+带 `GROUP BY` 的查询遵循普通分组规则：选择列表中的 `ROWNUM` 必须出现在 `GROUP BY` 中，或者位于聚合函数内部，否则报告分组错误。
+
+`ROWNUM` 可以用于连接查询，也可以在 `UPDATE` 和 `DELETE` 的 `WHERE` 条件中限制受影响的前N行：
+
+```sql
+UPDATE task_queue SET status = 'running' WHERE ROWNUM <= 2;
+DELETE FROM task_queue WHERE ROWNUM <= 2;
+```
+
+受影响的是执行计划最先取得且满足其他条件的N行；如果需要稳定地选定具体记录，应通过具有确定排序的子查询或业务键限定目标记录。
+
+`UNION` 和 `UNION ALL` 的每个分支具有独立的 `ROWNUM` 计数。滚动游标会保存首次扫描得到的编号，因此反向或定位读取不会重新生成编号。
+
+=== 名称与使用限制
+
+`ROWNUM` 作为伪列时必须是不带表名或模式名限定的单一标识符。Oracle兼容模式不允许显式使用 `ROWNUM` 作为列别名、表别名或子查询别名。例如，以下语句会报错：
+
+```sql
+SELECT id AS rownum FROM employee;
+SELECT * FROM employee rownum;
+```
+
+在PL/iSQL中，如果过程参数或局部变量已经声明为 `rownum`，PL/iSQL变量解析优先于伪列解析，可以继续按变量使用该名称。
+
+当前实现存在以下兼容边界：
+
+* `INTERSECT` 和 `EXCEPT` 两侧当前共享计数器，没有像Oracle一样为两侧分别重置；
+* `LATERAL` 子查询当前不会针对每一条外层记录重置计数器；
+* 只有形如 `ROWNUM <比较运算符> 整数常量` 的顶层条件可以进行 `LIMIT` 优化。常量写在左侧、嵌套算术表达式、非整数常量和 `OR` 条件不会进行该优化，但仍由执行器按 `ROWNUM` 语义求值；
+* 同层存在 `ORDER BY`、`DISTINCT`、分组、聚合、窗口函数、集合操作或目标列表集合返回函数时，不把行数条件改写为 `LIMIT`，以避免改变求值顺序。
+
+== 测试用例
+
+=== 准备数据
+
+```sql
+SET ivorysql.compatible_mode = oracle;
+
+CREATE TABLE rownum_doc_test
+(
+  id    INTEGER,
+  score INTEGER
+);
+
+INSERT INTO rownum_doc_test VALUES
+  (1, 40),
+  (2, 10),
+  (3, 30),
+  (4, 20),
+  (5, 50);
+```
+
+=== 基本编号与限制行数
+
+```sql
+SELECT ROWNUM, id
+FROM rownum_doc_test
+WHERE ROWNUM <= 3;
+```
+
+预期结果为：
+
+```
+ rownum | id
+--------+----
+      1 |  1
+      2 |  2
+      3 |  3
+```
+
+以下用例验证不能越过第一行的条件：
+
+```sql
+SELECT COUNT(*) FROM rownum_doc_test WHERE ROWNUM = 2;
+SELECT COUNT(*) FROM rownum_doc_test WHERE ROWNUM > 1;
+```
+
+两个查询的结果都为0。
+
+=== 排序前后限制行数
+
+同层使用 `ROWNUM` 时，先取前3行再排序：
+
+```sql
+SELECT id, score
+FROM rownum_doc_test
+WHERE ROWNUM <= 3
+ORDER BY score;
+```
+
+预期结果为：
+
+```
+ id | score
+----+-------
+  2 |    10
+  3 |    30
+  1 |    40
+```
+
+使用子查询时，先对全部记录排序再取前3行：
+
+```sql
+SELECT id, score
+FROM (
+  SELECT id, score
+  FROM rownum_doc_test
+  ORDER BY score DESC
+)
+WHERE ROWNUM <= 3;
+```
+
+预期结果为：
+
+```
+ id | score
+----+-------
+  5 |    50
+  1 |    40
+  3 |    30
+```
+
+测试结束后清理对象：
+
+```sql
+DROP TABLE rownum_doc_test;
+```

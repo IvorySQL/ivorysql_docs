@@ -1,0 +1,165 @@
+:sectnums:
+:sectnumlevels: 5
+
+= **功能概述**
+
+IvorySQL通过新增表达式节点、计划期语义改写和执行器行号状态，实现Oracle兼容的 `ROWNUM` 伪列。`ROWNUM` 在当前查询层取得候选行时分配，从1开始递增，返回内部类型 `int8`。实现同时处理排序前求值、嵌套查询独立计数、相关子查询重置、集合操作分支重置、聚合表达式和滚动游标结果稳定性。
+
+基本用法如下：
+
+```sql
+SET ivorysql.compatible_mode = oracle;
+
+SELECT ROWNUM, id
+FROM employee
+WHERE ROWNUM <= 10;
+```
+
+== 实现原理
+
+=== RownumExpr表达式节点
+
+在 `primnodes.h` 中定义 `RownumExpr`：
+
+```
+typedef struct RownumExpr
+{
+    pg_node_attr(no_query_jumble)
+    Expr        xpr;
+    ParseLoc    location;
+} RownumExpr;
+```
+
+`RownumExpr` 不引用某个关系属性，也不保存计数值，只表示“读取当前执行状态中的行号”。`location` 用于错误定位。节点基础设施为它提供复制、相等比较、序列化、反序列化和反解析支持，规则反解析时输出 `ROWNUM`。
+
+`exprType` 把该表达式的结果类型定义为 `INT8OID`，表达式没有排序规则。`contain_mutable_functions` 和 `contain_volatile_functions` 都把它视为易变表达式，防止优化器折叠、复制或移动表达式后改变逐行求值语义。
+
+=== 词法分析与表达式转换
+
+Oracle词法表把 `rownum` 注册为不保留关键字和裸标签关键字。解析单字段 `ColumnRef` 时，`transformColumnRef` 在以下条件都满足时创建 `RownumExpr`：
+
+1. 当前会话使用Oracle解析器；
+2. 标识符与 `rownum` 大小写无关匹配；
+3. 标识符不带表名或模式名限定。
+
+因此 `ROWNUM` 不需要在系统目录中注册为函数或列。PostgreSQL兼容模式不会进入该分支，仍按普通列名解析。
+
+`parse_target.c` 和 `parse_relation.c` 在Oracle兼容模式下拒绝把 `ROWNUM` 显式用作列别名、关系别名或子查询别名。`parse_agg.c` 把 `RownumExpr` 纳入普通分组合法性检查：未出现在当前层 `GROUP BY` 中且不在聚合函数内部时报告分组错误。
+
+PL/iSQL的预解析钩子对 `ROWNUM` 和 `ROWID` 进行额外的变量查找。存在同名过程参数或局部变量时返回PL/iSQL变量节点，避免SQL解析器提前把它转换成伪列。
+
+=== 计划期ROWNUM条件改写
+
+`subquery_planner` 在常规表达式预处理之前调用 `transform_rownum_to_limit`。该函数递归处理范围表中的子查询，并从顶层 `AND` 条件中识别左操作数为 `RownumExpr`、右操作数为 `int2`、`int4` 或 `int8` 常量的比较表达式。
+
+比较条件按以下规则改写：
+
+[cols="1,1,2"]
+|===
+|条件 |常量范围 |改写结果
+
+|`ROWNUM <= N`
+|`N <= 0`
+|替换为常量 `false`
+
+|`ROWNUM <= N`
+|`N > 0`
+|简单查询改写为 `LIMIT N`
+
+|`ROWNUM < N`
+|`N <= 1`
+|替换为常量 `false`
+
+|`ROWNUM < N`
+|`N > 1`
+|简单查询改写为 `LIMIT N - 1`
+
+|`ROWNUM = N`
+|`N = 1`
+|简单查询改写为 `LIMIT 1`
+
+|`ROWNUM = N`
+|`N != 1`
+|替换为常量 `false`
+
+|`ROWNUM > N`
+|`N >= 1` / `N < 1`
+|分别替换为 `false` / 删除恒真条件
+
+|`ROWNUM >= N`
+|`N > 1` / `N <= 1`
+|分别替换为 `false` / 删除恒真条件
+|===
+
+只有当前查询层没有已有 `LIMIT`、分组、聚合、`DISTINCT`、排序、窗口函数、集合操作和目标列表集合返回函数时，才使用 `LIMIT` 改写。因为PostgreSQL的 `LIMIT` 位于这些上层操作之后，而Oracle的 `ROWNUM` 位于它们之前，在复杂查询中改写会改变语义。恒真和恒假规则不依赖查询复杂度，始终可以处理。
+
+当前改写不识别常量位于左侧、`ROWNUM` 嵌套在其他表达式中、非整数常量和 `OR` 内部条件。这些形式保留 `RownumExpr`，由执行器逐行求值。
+
+=== 执行器计数与条件求值
+
+`EState` 增加 `es_rownum` 字段，`CreateExecutorState` 将其初始化为0。表达式编译器把 `RownumExpr` 编译成 `EEOP_ROWNUM`，`ExecEvalRownum` 从当前计划状态关联的 `EState` 读取计数值并返回 `int8`；计数还未开始时默认返回1。
+
+核心计数逻辑位于 `ExecScanExtended`：
+
+1. 从访问方法取得候选元组；
+2. 在检查扫描条件之前递增 `es_rownum`；
+3. 使用递增后的值计算包括 `ROWNUM` 在内的过滤条件；
+4. 条件通过时保留计数并投影结果；
+5. 条件失败时撤销本次递增，再取得下一条候选元组。
+
+失败时撤销递增是 `ROWNUM > 1` 和 `ROWNUM = 2` 返回空集的关键。第一条候选行看到的值为1，条件失败后计数恢复为0，下一条候选行仍看到1，因而永远不能到达2。其他普通过滤条件失败时也不会消耗 `ROWNUM`。
+
+=== 排序前求值与投影物化
+
+Oracle要求 `ROWNUM` 在同层 `ORDER BY` 之前分配。创建计划时，如果目标列表含有 `RownumExpr` 且子计划是 `Sort`，`createplan.c` 将对应的 `RownumExpr` 加入排序节点下方扫描计划的目标列表，再在排序节点及上层目标列表中用引用这些附加列的 `Var` 替换原表达式。嵌套在算术、`CASE` 和函数调用中的多个 `ROWNUM` 也通过遍历、计数和逐一替换处理。
+
+投影信息 `ProjectionInfo` 增加 `pi_needsMaterialization`。目标列表含有 `ROWNUM` 时，扫描节点和 `Result` 节点会物化结果槽，把已经求出的行号保存成普通值，避免外层查询、排序或重复读取时再次执行 `RownumExpr`。
+
+当聚合函数参数包含 `ROWNUM` 时，计划创建逻辑把一个 `RownumExpr` 加入聚合节点的子计划目标列表，使 `setrefs` 可以把聚合参数关联到扫描阶段生成的值。这样 `SUM(ROWNUM)`、`MIN(ROWNUM)` 以及多层聚合都在输入行阶段取得正确编号。
+
+=== 查询层隔离与计数器重置
+
+顶层执行状态只有一个 `es_rownum`，不同计划节点在进入独立语义范围时保存、切换或重置它：
+
+* `SubqueryScanState` 保存自己的 `sub_rownum`。`SubqueryNext` 执行子计划前把局部值换入 `EState`，执行后保存新值并恢复外层值；重扫描时局部值重置为0。
+* `ExecSubPlan` 执行相关子查询前保存外层扫描方向和行号，把计数重置为0，执行完成后恢复。这保证相关子查询的每次调用从1开始。初始化计划和子计划重扫描路径也执行相应重置。
+* `AppendPath`、`MergeAppendPath` 及对应计划节点增加 `is_union` 标记。`UNION` 或 `UNION ALL` 切换分支时，`Append` 和 `MergeAppend` 执行器把 `es_rownum` 重置为0，使每个分支独立编号。
+
+当前没有为 `INTERSECT`、`EXCEPT` 两侧建立同样的分支状态，它们仍共享计数器。参数化 `LATERAL` 子查询也没有在每条外层行开始时重置局部计数器。这两项是已知的Oracle兼容差异。
+
+=== 滚动游标
+
+滚动游标可能反向读取或重新定位。如果每次读取都重新执行 `RownumExpr`，同一结果行会得到不同编号。
+
+`pquery.c` 通过 `plan_contains_rownum` 遍历普通子计划以及 `SubqueryScan`、`Append` 和 `MergeAppend` 的附加子计划。对包含 `ROWNUM` 的 `SCROLL` 游标，首次执行时 `FillPortalStoreForSelect` 把全部结果写入portal的tuplestore。后续 `FETCH PRIOR`、`FETCH NEXT`、`FETCH ABSOLUTE` 和 `FETCH RELATIVE` 从物化结果读取，因此保持首次扫描生成的编号。
+
+=== 节点复制、反解析和计划支持
+
+`RownumExpr` 已接入节点复制、比较、输出和读取框架，能够随查询树和计划树安全传递。`ruleutils.c` 在视图和规则反解析时输出 `ROWNUM`。表达式遍历和类型、排序规则查询函数也包含对应节点分支。
+
+为保证集合操作分支标记能够传递到执行器，`is_union` 字段贯穿Append/MergeAppend的路径节点、计划节点和执行状态，并接入节点复制、序列化和反序列化代码。
+
+=== 回归测试
+
+Oracle SQL回归测试输入和预期输出位于：
+
+```
+src/oracle_test/regress/sql/rownum.sql
+src/oracle_test/regress/expected/rownum.out
+```
+
+测试覆盖基本比较语义、`LIMIT` 改写、同层排序、嵌套查询、连接、聚合与分组、相关子查询、`UNION`/`UNION ALL`、DML、Oracle分页写法、空表、滚动游标、别名限制，以及 `INTERSECT`、`EXCEPT` 和 `LATERAL` 的当前兼容边界。
+
+PL/iSQL回归测试位于：
+
+```
+src/pl/plisql/src/sql/plisql_rownum.sql
+src/pl/plisql/src/expected/plisql_rownum.out
+```
+
+PostgreSQL模式关键字行为测试位于：
+
+```
+src/test/regress/sql/ora_keywords_pg.sql
+src/test/regress/expected/ora_keywords_pg.out
+```
