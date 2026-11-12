@@ -54,3 +54,335 @@
 == 直接提交到存储库
 
 有时，您会看到核心团队成员直接提交到存储库，而无需执行pull请求工作流。这仅适用于小的更改，我们使用的经验法则是：如果更改涉及任何可能导致测试失败的功能，那么它必须通过pull请求工作流。另一方面，如果更改发生在代码库的非功能部分（例如在注释块中修复打字错误），则核心团队成员可以决定直接提交到存储库。
+
+== 安装与运行常见问题
+
+本节收录社区里反复出现的安装、监听、复制与容器问题。每条回答都给出可以直接执行的检查命令，示例输出来自 IvorySQL 5.6（PostgreSQL 18.6）的实测记录。
+
+=== 应该选 Oracle 兼容模式还是 PostgreSQL 模式？
+
+模式由 `initdb` 的 `-m` 参数决定，并在初始化时写入集群的 control file。初始化完成之后无法再通过修改配置文件切换：`ivorysql.database_mode` 是内部参数，不允许出现在配置文件里，只能由 control file 的值决定。
+
+`initdb --help` 对这一项的说明是 `-m, --dbmode=MODE  set database mode, default is oracle`，也就是不写 `-m` 时默认就是 Oracle 兼容模式；要 PG 模式则显式写 `-m pg`。取值非法时 initdb 直接拒绝：
+
+```
+$ initdb -D <data_dir> -m nosuchmode
+unrecognized database mode.
+```
+
+要确认一个已有集群属于哪种模式，用 `pg_controldata` 即可（`database mode` 为 `1` 是 Oracle 兼容模式，为 `0` 是 PostgreSQL 模式）：
+
+```
+$ pg_controldata -D <data_dir> | grep -i mode
+database mode:                        1
+case conversion mode:                 1
+```
+
+[TIP]
+====
+Oracle 兼容模式会在 initdb 的 post-bootstrap 阶段自动执行 `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";`。选模式之前请先确认构建产物里带 uuid-ossp，否则初始化会失败（见下文「initdb 报 extension "uuid-ossp" is not available 怎么办」）。
+====
+
+=== 1521 和 5432 是两个不同的数据库吗？
+
+不是。一个 postmaster 会同时打开两个监听器：`port`（默认 5432，PostgreSQL 协议）和 `ivorysql.port`（默认 1521，Oracle 兼容协议），两个端口指向同一份数据目录。`ss` 里能看到两行监听属于同一个 pid：
+
+```
+$ ss -ltnp | grep -E ':(1521|5432)'
+LISTEN 0      200         127.0.0.1:1521      0.0.0.0:*    users:(("postgres",pid=10566,fd=7))
+LISTEN 0      200         127.0.0.1:5432      0.0.0.0:*    users:(("postgres",pid=10566,fd=6))
+```
+
+启动日志里也是成对出现：
+
+```
+2026-11-11 16:15:19.039 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2026-11-11 16:15:19.039 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2026-11-11 16:15:19.042 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 1521
+2026-11-11 16:15:19.042 UTC [1] LOG:  listening on IPv6 address "::", port 1521
+```
+
+官方 Docker 镜像默认就是这种双监听形态，不需要额外配置参数。
+
+=== 为什么两个端口连进去 `ivorysql.compatible_mode` 不一样？
+
+因为兼容模式由「连进来的是哪个监听器」决定，不是由数据库决定。同一个库，从 `port` 连进去是 `pg`，从 `ivorysql.port` 连进去是 `oracle`：
+
+```
+---- 端口 5432 ----
+ conn_port | database_mode | compatible_mode | ora_listen_addrs | port_guc | ora_port_guc
+-----------+---------------+-----------------+------------------+----------+--------------
+      5432 | oracle        | pg              | localhost        | 5432     | 1521
+(1 row)
+
+---- 端口 1521 ----
+ conn_port | database_mode | compatible_mode | ora_listen_addrs | port_guc | ora_port_guc
+-----------+---------------+-----------------+------------------+----------+--------------
+      1521 | oracle        | oracle          | localhost        | 5432     | 1521
+(1 row)
+```
+
+注意两种连接下 `database_mode` 都是 `oracle`：它是集群级的（来自 control file），而 `compatible_mode` 是会话级的。`pg_settings` 里也能看出这个区别——`ivorysql.compatible_mode` 的 `source` 是 `override`（启动阶段被强制赋值）、`context` 是 `user`：
+
+```
+$ psql -p 5432 -c "select name, setting, source, context from pg_settings where name in ('port','ivorysql.port','ivorysql.listen_addresses','ivorysql.database_mode','ivorysql.compatible_mode') order by name"
+           name            |  setting  |  source  |  context
+---------------------------+-----------+----------+------------
+ ivorysql.compatible_mode  | pg        | override | user
+ ivorysql.database_mode    | oracle    | override | internal
+ ivorysql.listen_addresses | localhost | default  | postmaster
+ ivorysql.port             | 1521      | default  | postmaster
+ port                      | 5432      | default  | postmaster
+(5 rows)
+```
+
+同一条查询改连 1521，只有 `ivorysql.compatible_mode` 那一行变成 `oracle`，其余四行逐字相同。
+
+[NOTE]
+====
+`context = user` 意味着可以在会话里 `SET ivorysql.compatible_mode`，但那只影响当前会话，重连一次又会由端口重新决定。不要在应用里靠会话级 `SET` 来「固定模式」。
+====
+
+=== 主备两个节点应该怎么配端口？
+
+每个节点都要按「`port` + `ivorysql.port`」成对配置。原因见上一条：客户端连哪个监听器就得到哪种兼容模式。如果备库只改了 `port`、`ivorysql.port` 仍留在默认的 1521，只读应用从 1521 连过来拿到的是 Oracle 兼容模式，而它连主库时走的是 PG 模式，两边行为就会漂移。实测一对主备的设置：
+
+```
+port=5532 ivorysql.port=1621 mode=pg in_recovery=false sync_names=FIRST 1 (walreceiver) sync_commit=on
+port=5533 ivorysql.port=1622 mode=pg in_recovery=true ro=on
+connected_on_1622 mode=oracle in_recovery=true
+```
+
+两个监听端口只要不相等就能正常启动，默认的 5432 + 1521 本身已是正确配置，通常不必把这两行写进配置文件。若确实要改，只改 `ivorysql.port`，且不能与 `port` 相同：
+
+```
+## postgresql.conf
+port = 5432
+ivorysql.port = 1522
+
+$ pg_ctl -D <data_dir> -l <log_file> -w start
+waiting for server to start.... done
+server started
+```
+
+把两者配成同一个端口（例如 `port = 1521`，而 `ivorysql.port` 仍是默认的 1521）会让启动直接失败：
+
+```
+LOG:  listening on IPv4 address "127.0.0.1", port 1521
+LOG:  could not bind IPv4 address "127.0.0.1": Address already in use
+HINT:  Is another postmaster already running on port 1521? If not, wait a few seconds and retry.
+WARNING:  could not create listen socket for "localhost"
+FATAL:  could not create any Oracle TCP/IP sockets
+```
+
+[NOTE]
+====
+`pg_ctl` 只会在终端上说 `could not start server`，原因要去日志里看。这里先失败的实际是 Oracle 侧监听器（`could not create any Oracle TCP/IP sockets`），而 HINT 提示的「是不是已有 postmaster 在跑」在端口自撞场景下会把人带偏。
+====
+
+=== `sync_state` 有时是 `sync`、有时是 `quorum`？
+
+取决于 `synchronous_standby_names` 的写法。命名制（`FIRST n (...)`）下被点名的备库报 `sync`：
+
+```
+ application_name |   state   | sync_state | sync_priority | sent_lsn  | replay_lsn |    write_lag    |    flush_lag    |   replay_lag
+------------------+-----------+------------+---------------+-----------+------------+-----------------+-----------------+-----------------
+ walreceiver      | streaming | sync       |             1 | 0/3000000 | 0/3000000  | 00:00:00.000093 | 00:00:00.000093 | 00:00:00.000093
+(1 row)
+```
+
+quorum 制（`ANY n (*)`）下同一张表报 `quorum`：
+
+```
+ pid | usename  | application_name | client_addr |   state   | sync_state | sync_priority | sent_lsn  | replay_lsn |    write_lag    |    flush_lag    |   replay_lag
+-----+----------+------------------+-------------+-----------+------------+---------------+-----------+------------+-----------------+-----------------+-----------------
+ 542 | ivorysql | walreceiver      | 127.0.0.1   | streaming | quorum     |             1 | 0/3000000 | 0/3000000  | 00:00:00.000133 | 00:00:00.000133 | 00:00:00.000133
+(1 row)
+```
+
+所以看到 `sync_state` 与预期不符时，先看主库的 `synchronous_standby_names` 写的是命名制还是 quorum 制，再看 `pg_stat_replication`。
+
+=== 提升（promote）之后写入一直不返回，怎么排查？
+
+典型现象是：会话处于 `active` 状态，`wait_event_type` 是 `IPC`，`wait_event` 是 `SyncRep`，而且 `statement_timeout` 设了也不生效。先确认提升后的节点是不是还带着 `synchronous_standby_names`、却已经没有任何备库：
+
+```
+inherited_sync_names=[FIRST 1 (walreceiver)]
+```
+
+由 `pg_basebackup -R` 拉起的备库会继承原主库的 `synchronous_standby_names`。提升之后它自己成了主库，但没有任何备库能确认同步复制，于是任何提交都会永久等待：
+
+```
+ pid  | state  | wait_event_type | wait_event | backend_xmin |                            query
+------+--------+-----------------+------------+--------------+--------------------------------------------------------------
+ 1132 | active | IPC             | SyncRep    |          773 | set statement_timeout='8s'; insert into sync_probe(id,note)
+ 1134 | active |                 |            |          773 | select pid, state, wait_event_type, wait_event, backend_xmin
+(2 rows)
+```
+
+等过 8 秒（`statement_timeout` 本该触发的时长）再看，仍然卡在同一个等待事件上。处理办法是先确认确实没有备库，再清空同步复制配置：
+
+```
+ALTER SYSTEM SET synchronous_standby_names = '';
+SELECT pg_reload_conf();
+```
+
+清空后同一条 INSERT 立刻返回：
+
+```
+sync_names=[]
+INSERT 0 1
+```
+
+[NOTE]
+====
+`ALTER SYSTEM` 与 `SELECT pg_reload_conf();` 必须分开执行。写成一行用分号连起来会报 `ERROR:  ALTER SYSTEM cannot run inside a transaction block`。
+====
+
+=== `initdb` 报 `extension "uuid-ossp" is not available` 怎么办？
+
+Oracle 兼容模式在 initdb 的 post-bootstrap 阶段会执行 `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";`。如果这套二进制里没有 uuid-ossp 的扩展文件，初始化就会中断，并把刚建好的数据目录删掉：
+
+```
+performing post-bootstrap initialization ... FATAL:  extension "uuid-ossp" is not available
+HINT:  The extension must first be installed on the system where PostgreSQL is running.
+STATEMENT:  --
+	-- Plugin uuid-ossp
+	--
+	CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+child process exited with exit code 1
+initdb: removing data directory "<data_dir>"
+```
+
+先确认当前安装到底有没有这个扩展（`installed_version` 为空表示可安装但没装；整行都查不到表示扩展文件根本没进 `SHAREDIR`）：
+
+```
+$ psql -c "SELECT name, default_version, installed_version FROM pg_available_extensions WHERE name = 'uuid-ossp';"
+   name    | default_version | installed_version
+-----------+-----------------+-------------------
+ uuid-ossp | 1.1             | 1.1
+(1 row)
+```
+
+在 Oracle 兼容模式的集群里，`template1` 已经带着它，新建的库会自动继承：
+
+```
+   extname    | extversion
+--------------+------------
+ gb18030_2022 | 1.0
+ ivorysql_ora | 1.0
+ plisql       | 1.0
+ plpgsql      | 1.0
+ uuid-ossp    | 1.1
+(5 rows)
+```
+
+如果可用扩展列表里查不到 uuid-ossp，`CREATE EXTENSION` 会直接报 `ERROR:  0A000: extension "uuid-ossp" is not available`，附带的 HINT 与上面 initdb 里那条相同。修复方向有两条：一是使用发行版软件包或官方镜像（通常已带该扩展，装完先跑上面第一条 SQL 自检），二是在自行构建时给 `configure` 加上 `--with-uuid`（见下文）。用 `initdb -m pg` 初始化的集群不会自动安装这个扩展（template1 里只有 `gb18030_2022` 与 `plpgsql`），但这不影响之后在需要时再装。
+
+=== 源码构建时漏了 `--with-uuid` 会怎样？
+
+`configure` 不会报错，它只是把 uuid 支持关掉——一份不带 `--with-uuid` 的配置跑完只有这两行结果：
+
+```
+ configure rc=0
+config.log:6635: with_uuid='no'
+```
+
+`configure --help` 对这一项的原文是 `--with-uuid=LIB         build contrib/uuid-ossp using LIB (bsd,e2fs,ossp)`，可选值是 `bsd`、`e2fs`、`ossp`。不选任何一个时，`make` 在编译 `contrib/uuid-ossp` 时会直接撞上 `#error`：
+
+```
+/root/src56/contrib/uuid-ossp/uuid-ossp.c:40:2: error: #error "please use configure's --with-uuid switch to select a UUID library"
+```
+
+顶层 `GNUmakefile` 无条件把 `contrib/uuid-ossp` 放进 `all install`：
+
+```
+11:$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/uuid-ossp contrib/ora_btree_gist contrib/ora_btree_gin)
+```
+
+所以整条构建在 `make` 阶段就断了，根本走不到 `make install`。要在 Oracle 兼容模式的数据目录里使用 uuid-ossp（或让 `initdb -m oracle` 能完成初始化），构建时必须带上 `--with-uuid`。
+
+[TIP]
+====
+不要用 `make -C contrib/uuid-ossp` 单独验证这件事：在已有构建产物的源码树里它可能因为「已是最新」而返回 0，看起来像没问题。
+====
+
+=== 跑回归测试时用哪种模式？
+
+TAP 测试固定用 PostgreSQL 模式（`-m pg`）的模板集群，与服务器自身的模式无关。`make -C src/bin/initdb check` 会先建模板目录，再在固定端口上跑 `prove`（下面第二行为便于阅读省略了中间的环境变量赋值）：
+
+```
+initdb --auth trust --no-sync -m pg --no-instructions --lc-messages=C --no-clean '<tmp_install>/initdb-template'
+PGPORT='65432' ... prove -I ../../../src/test/perl/ -I .  t/*.pl
+```
+
+```
+t/001_initdb.pl ............. ok
+t/002_gb18030.pl ............ ok
+t/003_uuid_ossp_missing.pl .. ok
+All tests successful.
+Files=3, Tests=86, 19 wallclock secs ( 0.04 usr  0.01 sys +  7.25 cusr  9.03 csys = 16.33 CPU)
+Result: PASS
+```
+
+自己写 TAP 用例时，`initdb` 夹具照着这个形态写（`-m pg` + `--no-sync` + `--no-clean` + 独立 `PGPORT`）最省事，也不会与 Oracle 兼容模式的 post-bootstrap 行为耦合。
+
+=== 容器不设 `IVORYSQL_PASSWORD` 为什么直接退出？
+
+镜像的 entrypoint 在数据目录为空时会先做初始化，而超级用户密码必须显式给出。没给就会在初始化之前退出：
+
+```
+Error: Database is uninitialized and superuser password is not specified.
+       You must specify IVORYSQL_PASSWORD to a non-empty value for the
+       superuser. For example, "-e IVORYSQL_PASSWORD=password" on "docker run".
+
+       You may also use "POSTGRES_HOST_AUTH_METHOD=trust" to allow all
+       connections without a password. This is *not* recommended.
+```
+
+此时容器状态是 `exited exit=1`。按提示用 `-e IVORYSQL_PASSWORD=<password>` 传入即可。提示里提到的 `POSTGRES_HOST_AUTH_METHOD=trust` 虽然也能让它启动，但等于对所有连接免密，不建议使用。
+
+=== 容器默认监听哪些端口？`5866` 是什么？
+
+镜像默认同时监听 5432 与 1521，与裸机安装一致：
+
+```
+2026-11-11 16:15:19.039 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2026-11-11 16:15:19.039 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2026-11-11 16:15:19.042 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 1521
+2026-11-11 16:15:19.042 UTC [1] LOG:  listening on IPv6 address "::", port 1521
+```
+
+`docker inspect` 里还会看到一个 `5866/tcp`。它不是对外服务端口，而是 entrypoint 在初始化阶段临时使用的端口，并且此时只监听本机：
+
+```
+set -- "$@" -c listen_addresses='' -p "${PGPORT:-5866}"
+```
+
+初始化结束、正式启动之后，对外仍然是 5432 与 1521。做健康检查时让 `pg_isready` 指向真正的服务端口即可（镜像是 UBI 底座，没有 `ss`、`netstat`、`ps` 可用，所以容器内排查端口要靠这两个监听器自己的日志）：
+
+```
+--health-cmd "pg_isready -p 1521 -U ivorysql"
+```
+
+=== `ivorysql.conf.sample` 里只出现了 4 个 `ivorysql.*` 参数，是不是只有 4 个可配？
+
+不是。IvorySQL 一共注册了 15 个 `ivorysql.*` 参数，样例文件里出现的是 4 个，其中 3 个被注释掉、1 个是生效行：
+
+```
+#ivorysql.listen_addresses = 'localhost'        # what IP address(es) of Oracle mode to listen on;
+#ivorysql.port = 1521       # (change requires restart)
+ivorysql.enable_emptystring_to_NULL = 'on'
+#ivorysql.identifier_case_switch = interchange              # set the case conversion mode. range [normal,interchange,lowercase]
+```
+
+其余 11 个在注册时带了 `GUC_NOT_IN_SAMPLE` 标志（含义就是「不进 postgresql.conf.sample」），因此不会出现在样例里。这个「4 / 11」的划分是被 CI 强制住的，不是遗漏：`src/test/modules/test_misc/t/003_check_guc.pl` 里有三条断言，既要求该出现的必须出现（`no parameters missing from postgresql.conf.sample`），也要求带了该标志的参数不能出现（`no parameters marked as NOT_IN_SAMPLE in postgresql.conf.sample`）。因此往样例里补齐那 11 个反而会让测试变红。
+
+想知道某个参数为什么不在样例里，可以直接查运行时标志，凡是结果里带 `NOT_IN_SAMPLE` 的就是不会写进样例的参数：
+
+```
+SELECT name, pg_settings_get_flags(name) AS flags
+FROM pg_settings
+WHERE name LIKE 'ivorysql.%'
+ORDER BY name;
+```

@@ -56,3 +56,335 @@ At any time during the patch review, you may experience delays based on the avai
 ## Direct commits to the repository
 
 On occasion, you will see core team members committing directly to the repository without going through the pull request workflow. This is reserved for small changes only and the rule of thumb we use is this: if the change touches any functionality that may result in a test failure, then it has to go through a pull request workflow. If, on the other hand, the change is in the non-functional part of the codebase (such as fixing a typo inside of a comment block) core team members can decide to just commit to the repository directly.
+
+== Installation and Runtime FAQ
+
+This section collects the installation, listener, replication and container questions that come up repeatedly in the community. Every answer gives a command you can run as-is; the sample outputs were captured on IvorySQL 5.6 (PostgreSQL 18.6).
+
+=== Should I choose Oracle compatible mode or PostgreSQL mode?
+
+The mode is selected by `initdb -m` and written into the cluster's control file at initialization time. It cannot be switched afterwards by editing configuration files: `ivorysql.database_mode` is an internal parameter, it is not allowed in the configuration file, and only the control file value decides it.
+
+`initdb --help` documents the option as `-m, --dbmode=MODE  set database mode, default is oracle`, so Oracle compatible mode is the default when `-m` is omitted; use `-m pg` for PostgreSQL mode. An invalid value is rejected outright:
+
+```
+$ initdb -D <data_dir> -m nosuchmode
+unrecognized database mode.
+```
+
+To check which mode an existing cluster uses, read it back with `pg_controldata` (`database mode` is `1` for Oracle compatible mode and `0` for PostgreSQL mode):
+
+```
+$ pg_controldata -D <data_dir> | grep -i mode
+database mode:                        1
+case conversion mode:                 1
+```
+
+[TIP]
+====
+Oracle compatible mode runs `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";` during the initdb post-bootstrap phase. Before choosing the mode, make sure your build ships uuid-ossp, otherwise initialization fails (see "What should I do when initdb reports extension "uuid-ossp" is not available" below).
+====
+
+=== Are 1521 and 5432 two different databases?
+
+No. A single postmaster opens two listeners: `port` (5432 by default, PostgreSQL protocol) and `ivorysql.port` (1521 by default, Oracle compatible protocol). Both ports point at the same data directory. In `ss` you can see both listening sockets belong to the same pid:
+
+```
+$ ss -ltnp | grep -E ':(1521|5432)'
+LISTEN 0      200         127.0.0.1:1521      0.0.0.0:*    users:(("postgres",pid=10566,fd=7))
+LISTEN 0      200         127.0.0.1:5432      0.0.0.0:*    users:(("postgres",pid=10566,fd=6))
+```
+
+The startup log shows them as a pair as well:
+
+```
+2026-11-11 16:15:19.039 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2026-11-11 16:15:19.039 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2026-11-11 16:15:19.042 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 1521
+2026-11-11 16:15:19.042 UTC [1] LOG:  listening on IPv6 address "::", port 1521
+```
+
+The official Docker image ships with exactly this dual-listener setup, no extra parameters required.
+
+=== Why is `ivorysql.compatible_mode` different on the two ports?
+
+Because the compatible mode is decided by the listener the client connected to, not by the database. Connecting to `port` gives `pg`; connecting to `ivorysql.port` gives `oracle`, on the same database:
+
+```
+---- port 5432 ----
+ conn_port | database_mode | compatible_mode | ora_listen_addrs | port_guc | ora_port_guc
+-----------+---------------+-----------------+------------------+----------+--------------
+      5432 | oracle        | pg              | localhost        | 5432     | 1521
+(1 row)
+
+---- port 1521 ----
+ conn_port | database_mode | compatible_mode | ora_listen_addrs | port_guc | ora_port_guc
+-----------+---------------+-----------------+------------------+----------+--------------
+      1521 | oracle        | oracle          | localhost        | 5432     | 1521
+(1 row)
+```
+
+Note that `database_mode` stays `oracle` on both connections: it is cluster-wide (it comes from the control file), while `compatible_mode` is per session. `pg_settings` shows the same split — `ivorysql.compatible_mode` has `source = override` (forced during startup) and `context = user`:
+
+```
+$ psql -p 5432 -c "select name, setting, source, context from pg_settings where name in ('port','ivorysql.port','ivorysql.listen_addresses','ivorysql.database_mode','ivorysql.compatible_mode') order by name"
+           name            |  setting  |  source  |  context
+---------------------------+-----------+----------+------------
+ ivorysql.compatible_mode  | pg        | override | user
+ ivorysql.database_mode    | oracle    | override | internal
+ ivorysql.listen_addresses | localhost | default  | postmaster
+ ivorysql.port             | 1521      | default  | postmaster
+ port                      | 5432      | default  | postmaster
+(5 rows)
+```
+
+Run the same query against 1521 and only the `ivorysql.compatible_mode` row changes to `oracle`; the other four rows are identical.
+
+[NOTE]
+====
+`context = user` means you can `SET ivorysql.compatible_mode` for the current session, but that only affects the current session: after a reconnect the port decides again. Do not pin the mode with a session-level `SET` in your application.
+====
+
+=== How should the ports be configured on primary and standby nodes?
+
+Every node needs both `port` and `ivorysql.port`. The reason is above: the listener a client picks decides the compatible mode. If a standby only changes `port` and leaves `ivorysql.port` at the default 1521, a read-only application connecting to 1521 gets Oracle compatible mode while the same application sees PostgreSQL mode on the primary, and behavior drifts between the two. Measured settings of a primary/standby pair:
+
+```
+port=5532 ivorysql.port=1621 mode=pg in_recovery=false sync_names=FIRST 1 (walreceiver) sync_commit=on
+port=5533 ivorysql.port=1622 mode=pg in_recovery=true ro=on
+connected_on_1622 mode=oracle in_recovery=true
+```
+
+As long as the two listener ports differ, startup succeeds; the default 5432 + 1521 is already a correct configuration and you normally do not need either line in the configuration file. If you do change it, change only `ivorysql.port`, and it must not equal `port`:
+
+```
+## postgresql.conf
+port = 5432
+ivorysql.port = 1522
+
+$ pg_ctl -D <data_dir> -l <log_file> -w start
+waiting for server to start.... done
+server started
+```
+
+Setting both to the same port (for example `port = 1521` while `ivorysql.port` is still the default 1521) makes startup fail:
+
+```
+LOG:  listening on IPv4 address "127.0.0.1", port 1521
+LOG:  could not bind IPv4 address "127.0.0.1": Address already in use
+HINT:  Is another postmaster already running on port 1521? If not, wait a few seconds and retry.
+WARNING:  could not create listen socket for "localhost"
+FATAL:  could not create any Oracle TCP/IP sockets
+```
+
+[NOTE]
+====
+`pg_ctl` only prints `could not start server`; the reason is in the log. Here the listener that fails first is the Oracle one (`could not create any Oracle TCP/IP sockets`), and the HINT about "another postmaster already running" sends you in the wrong direction for this self-collision case.
+====
+
+=== Why is `sync_state` sometimes `sync` and sometimes `quorum`?
+
+It depends on how `synchronous_standby_names` is written. With the named method (`FIRST n (...)`) the named standby reports `sync`:
+
+```
+ application_name |   state   | sync_state | sync_priority | sent_lsn  | replay_lsn |    write_lag    |    flush_lag    |   replay_lag
+------------------+-----------+------------+---------------+-----------+------------+-----------------+-----------------+-----------------
+ walreceiver      | streaming | sync       |             1 | 0/3000000 | 0/3000000  | 00:00:00.000093 | 00:00:00.000093 | 00:00:00.000093
+(1 row)
+```
+
+With the quorum method (`ANY n (*)`) the same view reports `quorum`:
+
+```
+ pid | usename  | application_name | client_addr |   state   | sync_state | sync_priority | sent_lsn  | replay_lsn |    write_lag    |    flush_lag    |   replay_lag
+-----+----------+------------------+-------------+-----------+------------+---------------+-----------+------------+-----------------+-----------------+-----------------
+ 542 | ivorysql | walreceiver      | 127.0.0.1   | streaming | quorum     |             1 | 0/3000000 | 0/3000000  | 00:00:00.000133 | 00:00:00.000133 | 00:00:00.000133
+(1 row)
+```
+
+So when `sync_state` is not what you expect, first check whether the primary's `synchronous_standby_names` uses the named or the quorum method, then look at `pg_stat_replication`.
+
+=== Writes hang after a promote. How do I troubleshoot that?
+
+The classic symptom: the session is `active`, `wait_event_type` is `IPC`, `wait_event` is `SyncRep`, and `statement_timeout` does not help. First check whether the promoted node still carries `synchronous_standby_names` while having no standby at all:
+
+```
+inherited_sync_names=[FIRST 1 (walreceiver)]
+```
+
+A standby created with `pg_basebackup -R` inherits the primary's `synchronous_standby_names`. After promotion that node is the primary, but there is no standby to acknowledge synchronous replication, so every commit waits forever:
+
+```
+ pid  | state  | wait_event_type | wait_event | backend_xmin |                            query
+------+--------+-----------------+------------+--------------+--------------------------------------------------------------
+ 1132 | active | IPC             | SyncRep    |          773 | set statement_timeout='8s'; insert into sync_probe(id,note)
+ 1134 | active |                 |            |          773 | select pid, state, wait_event_type, wait_event, backend_xmin
+(2 rows)
+```
+
+Looking again after 8 seconds (the timeout should have fired) shows the same wait event. The fix is to confirm there really is no standby, then clear the synchronous replication setting:
+
+```
+ALTER SYSTEM SET synchronous_standby_names = '';
+SELECT pg_reload_conf();
+```
+
+Once cleared, the same INSERT returns immediately:
+
+```
+sync_names=[]
+INSERT 0 1
+```
+
+[NOTE]
+====
+`ALTER SYSTEM` and `SELECT pg_reload_conf();` must run as separate statements. Sending both on one line separated by a semicolon fails with `ERROR:  ALTER SYSTEM cannot run inside a transaction block`.
+====
+
+=== What should I do when `initdb` reports `extension "uuid-ossp" is not available`?
+
+Oracle compatible mode runs `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";` during the initdb post-bootstrap phase. If the binaries do not ship the uuid-ossp extension files, initialization aborts and removes the data directory it just created:
+
+```
+performing post-bootstrap initialization ... FATAL:  extension "uuid-ossp" is not available
+HINT:  The extension must first be installed on the system where PostgreSQL is running.
+STATEMENT:  --
+	-- Plugin uuid-ossp
+	--
+	CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+child process exited with exit code 1
+initdb: removing data directory "<data_dir>"
+```
+
+First check whether the installation actually has the extension (`installed_version` empty means available but not installed; no row at all means the extension files never reached `SHAREDIR`):
+
+```
+$ psql -c "SELECT name, default_version, installed_version FROM pg_available_extensions WHERE name = 'uuid-ossp';"
+   name    | default_version | installed_version
+-----------+-----------------+-------------------
+ uuid-ossp | 1.1             | 1.1
+(1 row)
+```
+
+In an Oracle compatible cluster `template1` already carries it, and new databases inherit it:
+
+```
+   extname    | extversion
+--------------+------------
+ gb18030_2022 | 1.0
+ ivorysql_ora | 1.0
+ plisql       | 1.0
+ plpgsql      | 1.0
+ uuid-ossp    | 1.1
+(5 rows)
+```
+
+If uuid-ossp does not appear in the available-extensions list, `CREATE EXTENSION` fails with `ERROR:  0A000: extension "uuid-ossp" is not available` and the same HINT as above. There are two ways out: use a distribution package or the official image (usually already built with the extension — run the first query above to confirm), or add `--with-uuid` when building from source (see below). A cluster initialized with `initdb -m pg` does not install this extension automatically (template1 only has `gb18030_2022` and `plpgsql`), which does not prevent installing it later when needed.
+
+=== What happens if a source build is missing `--with-uuid`?
+
+`configure` does not fail; it just turns the uuid support off. A configure run without `--with-uuid` produces exactly this:
+
+```
+ configure rc=0
+config.log:6635: with_uuid='no'
+```
+
+`configure --help` documents the option as `--with-uuid=LIB         build contrib/uuid-ossp using LIB (bsd,e2fs,ossp)`; the accepted values are `bsd`, `e2fs` and `ossp`. With none selected, `make` dies while compiling `contrib/uuid-ossp`:
+
+```
+/root/src56/contrib/uuid-ossp/uuid-ossp.c:40:2: error: #error "please use configure's --with-uuid switch to select a UUID library"
+```
+
+The top-level `GNUmakefile` unconditionally includes `contrib/uuid-ossp` in `all install`:
+
+```
+11:$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/uuid-ossp contrib/ora_btree_gist contrib/ora_btree_gin)
+```
+
+So the whole build stops at the `make` stage and never reaches `make install`. To use uuid-ossp in an Oracle compatible data directory (or to let `initdb -m oracle` finish), the build must include `--with-uuid`.
+
+[TIP]
+====
+Do not try to verify this with `make -C contrib/uuid-ossp` alone: in a source tree that already has build artifacts it may report everything up to date and return 0, which looks like success.
+====
+
+=== Which mode do the regression tests run in?
+
+The TAP tests always use a PostgreSQL mode (`-m pg`) template cluster, regardless of the server's own mode. `make -C src/bin/initdb check` first builds the template directory, then runs `prove` on a fixed port (the second line below omits the intermediate environment assignments for readability):
+
+```
+initdb --auth trust --no-sync -m pg --no-instructions --lc-messages=C --no-clean '<tmp_install>/initdb-template'
+PGPORT='65432' ... prove -I ../../../src/test/perl/ -I .  t/*.pl
+```
+
+```
+t/001_initdb.pl ............. ok
+t/002_gb18030.pl ............ ok
+t/003_uuid_ossp_missing.pl .. ok
+All tests successful.
+Files=3, Tests=86, 19 wallclock secs ( 0.04 usr  0.01 sys +  7.25 cusr  9.03 csys = 16.33 CPU)
+Result: PASS
+```
+
+When writing your own TAP test, follow the same shape for the `initdb` fixture (`-m pg` + `--no-sync` + `--no-clean` + a dedicated `PGPORT`); it is the least surprising setup and does not couple your test to the Oracle compatible post-bootstrap behavior.
+
+=== Why does the container exit immediately when `IVORYSQL_PASSWORD` is not set?
+
+When the data directory is empty the image's entrypoint initializes it first, and a superuser password must be supplied explicitly. Without it the container exits before initialization:
+
+```
+Error: Database is uninitialized and superuser password is not specified.
+       You must specify IVORYSQL_PASSWORD to a non-empty value for the
+       superuser. For example, "-e IVORYSQL_PASSWORD=password" on "docker run".
+
+       You may also use "POSTGRES_HOST_AUTH_METHOD=trust" to allow all
+       connections without a password. This is *not* recommended.
+```
+
+The container state is then `exited exit=1`. Pass the password as the message suggests, with `-e IVORYSQL_PASSWORD=<password>`. The suggested `POSTGRES_HOST_AUTH_METHOD=trust` does make it start, but it allows every connection without a password and is not recommended.
+
+=== Which ports does the container listen on, and what is `5866`?
+
+The image listens on both 5432 and 1521 by default, just like a native installation:
+
+```
+2026-11-11 16:15:19.039 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2026-11-11 16:15:19.039 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2026-11-11 16:15:19.042 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 1521
+2026-11-11 16:15:19.042 UTC [1] LOG:  listening on IPv6 address "::", port 1521
+```
+
+`docker inspect` also reports a `5866/tcp`. That is not a service port: the entrypoint uses it temporarily during initialization, and at that point it only listens locally:
+
+```
+set -- "$@" -c listen_addresses='' -p "${PGPORT:-5866}"
+```
+
+Once initialization finishes and the server starts for real, the exposed ports are still 5432 and 1521. For a health check, point `pg_isready` at the real service port (the image is UBI based and has no `ss`, `netstat` or `ps`, so inside the container you rely on the listener log lines above):
+
+```
+--health-cmd "pg_isready -p 1521 -U ivorysql"
+```
+
+=== `ivorysql.conf.sample` only mentions 4 `ivorysql.*` parameters. Does that mean only 4 are configurable?
+
+No. IvorySQL registers 15 `ivorysql.*` parameters. Four of them appear in the sample file — three commented out, one an active setting:
+
+```
+#ivorysql.listen_addresses = 'localhost'        # what IP address(es) of Oracle mode to listen on;
+#ivorysql.port = 1521       # (change requires restart)
+ivorysql.enable_emptystring_to_NULL = 'on'
+#ivorysql.identifier_case_switch = interchange              # set the case conversion mode. range [normal,interchange,lowercase]
+```
+
+The other 11 are registered with the `GUC_NOT_IN_SAMPLE` flag (which means "do not include in postgresql.conf.sample"), so they do not show up there. This 4/11 split is enforced by CI, not an oversight: `src/test/modules/test_misc/t/003_check_guc.pl` has three assertions — the parameters that should be there must be there (`no parameters missing from postgresql.conf.sample`), and parameters carrying the flag must not be (`no parameters marked as NOT_IN_SAMPLE in postgresql.conf.sample`). Adding those 11 to the sample would therefore turn the tests red.
+
+To find out why a given parameter is absent from the sample, query the runtime flag directly; anything reported with `NOT_IN_SAMPLE` is a parameter that is never written to the sample:
+
+```
+SELECT name, pg_settings_get_flags(name) AS flags
+FROM pg_settings
+WHERE name LIKE 'ivorysql.%'
+ORDER BY name;
+```
