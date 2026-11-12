@@ -1,0 +1,107 @@
+:sectnums:
+:sectnumlevels: 5
+
+= timescaledb_toolkit
+
+== 概述
+
+TimescaleDB Toolkit 为 PostgreSQL 提供统计分析、近似百分位数、近似去重计数、计数器和时间加权计算等聚合函数。Toolkit 也可运行在普通 PostgreSQL 兼容数据库上，本文示例不强制依赖 TimescaleDB。
+
+本文在 x86_64 Linux 上使用 IvorySQL 5.4（PostgreSQL 18.4）、TimescaleDB Toolkit 1.26.0、Rust 1.98.1 和 `cargo-pgrx` 0.18.1 完成验证。Toolkit Rust 工作区测试全部通过，发布版扩展无需修改源码即可编译，代表性超函数在 PostgreSQL 和 Oracle 兼容会话中均通过验证。
+
+== 准备环境
+
+安装 C 编译工具链、Rust，以及与运行扩展的 IvorySQL 实例完全匹配的开发文件。Toolkit 1.26.0 要求 Rust 1.96 或更高版本。
+
+[source,bash]
+----
+cargo install cargo-pgrx --version 0.18.1 --locked
+cargo pgrx init --pg18 /path-to/ivorysql/bin/pg_config
+----
+
+== 编译安装
+
+[source,bash]
+----
+git clone --branch 1.26.0 --depth 1 \
+  https://github.com/timescale/timescaledb-toolkit.git
+cd timescaledb-toolkit
+
+./tools/build \
+  -pg18 \
+  -pgconfig /path-to/ivorysql/bin/pg_config \
+  -profile release \
+  install
+----
+
+部署前运行上游测试：
+
+[source,bash]
+----
+cargo test --workspace --exclude timescaledb_toolkit
+----
+
+== 创建扩展
+
+通过 IvorySQL PostgreSQL 兼容端口连接，并在每个目标数据库中创建扩展：
+
+[source,sql]
+----
+CREATE EXTENSION timescaledb_toolkit;
+SELECT extversion
+FROM pg_extension
+WHERE extname = 'timescaledb_toolkit';
+----
+
+== 功能验证
+
+[source,sql]
+----
+CREATE TABLE metrics (
+    ts timestamptz NOT NULL,
+    device text NOT NULL,
+    value double precision NOT NULL
+);
+
+INSERT INTO metrics VALUES
+  ('2026-01-01 00:00:00+00', 'sensor-a', 10),
+  ('2026-01-01 00:01:00+00', 'sensor-a', 20),
+  ('2026-01-01 00:02:00+00', 'sensor-b', 30),
+  ('2026-01-01 00:03:00+00', 'sensor-c', 40);
+
+SELECT round(average(stats_agg(value))::numeric, 2) AS average_value,
+       round(approx_percentile(0.5, percentile_agg(value))::numeric, 2)
+         AS approximate_median
+FROM metrics;
+
+SELECT distinct_count(hyperloglog(32, device)) AS approximate_devices
+FROM metrics;
+
+SELECT round(delta(counter_agg(ts, value))::numeric, 2) AS counter_delta,
+       round(average(time_weight('Linear', ts, value))::numeric, 2)
+         AS time_weighted_average
+FROM metrics;
+----
+
+验证结果分别为：平均值 `25.00`、近似中位数 `29.99`、设备数 3、计数器增量 `30.00`、时间加权平均值 `25.00`。
+
+== Oracle 兼容模式
+
+通过 PostgreSQL 兼容端口创建扩展后，可在 Oracle 兼容会话中调用已验证的函数：
+
+[source,sql]
+----
+SET ivorysql.compatible_mode=oracle;
+SELECT 1 FROM dual;
+
+SELECT round(average(stats_agg(value))::numeric, 2) AS oracle_average,
+       distinct_count(hyperloglog(32, device)) AS oracle_devices
+FROM metrics;
+----
+
+[IMPORTANT]
+====
+在 IvorySQL 5.4 中，直接通过 Oracle 兼容连接执行 `CREATE EXTENSION timescaledb_toolkit` 会失败，因为上游安装脚本使用 PostgreSQL 语法。请先通过 PostgreSQL 兼容端口创建扩展。该限制不影响切换到 Oracle 兼容模式后调用本文验证的 Toolkit 函数。
+====
+
+Toolkit 本身不提供 hypertable 或后台任务；如需这些功能，应另行安装 TimescaleDB。完整函数说明请参阅 https://github.com/timescale/timescaledb-toolkit[上游项目]。
