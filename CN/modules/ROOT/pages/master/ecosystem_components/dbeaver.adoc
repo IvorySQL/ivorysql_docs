@@ -1,0 +1,110 @@
+:sectnums:
+:sectnumlevels: 5
+
+= DBeaver
+
+== 概述
+
+DBeaver Community 是跨平台图形化数据库客户端。IvorySQL 使用 PostgreSQL 传输协议，因此无需安装 IvorySQL 专用插件，使用 DBeaver 的 PostgreSQL 驱动即可连接。
+
+本文在 Windows 11 上使用 DBeaver Community 26.2.0、PostgreSQL JDBC 42.7.13 和 IvorySQL 5.4（PostgreSQL 18.4）完成验证。通过 PostgreSQL 兼容端口实际测试了 Database Navigator 元数据会话、SQL 编辑器、DDL、DML、UTF-8 数据、事务回滚和执行计划；通过 Oracle 兼容端口测试了 Oracle 数据类型 DDL/DML、`dual` 和事务回滚。
+
+== 创建 PostgreSQL 兼容连接
+
+. 在 DBeaver 中选择 *数据库* > *新建数据库连接*。
+. 选择 *PostgreSQL* 数据库驱动。
+. 填写连接参数：
+
+[cols="1,2"]
+|====
+|设置 |值
+
+|主机
+|IvorySQL 服务器地址，例如 `127.0.0.1`
+
+|端口
+|PostgreSQL 兼容端口，默认为 `5432`
+
+|数据库
+|目标数据库，例如 `ivorysql`
+
+|用户名
+|IvorySQL 登录角色
+
+|密码
+|角色密码
+|====
+
+. 如有提示，允许 DBeaver 下载 PostgreSQL JDBC 驱动。
+. 单击 *测试连接*，成功后单击 *完成*。
+
+对应的 JDBC URL 为：
+
+[source,text]
+----
+jdbc:postgresql://127.0.0.1:5432/ivorysql
+----
+
+== 验证连接
+
+打开该连接的 SQL 编辑器并执行：
+
+[source,sql]
+----
+SELECT version();
+
+CREATE TABLE dbeaver_validation (
+    id integer PRIMARY KEY,
+    label text NOT NULL
+);
+INSERT INTO dbeaver_validation VALUES (1, 'IvorySQL'), (2, '北京');
+SELECT * FROM dbeaver_validation ORDER BY id;
+
+EXPLAIN SELECT * FROM dbeaver_validation WHERE id = 1;
+----
+
+在 Database Navigator 中刷新 `public` schema，应能看到该表及其两列。使用 *数据* > *查看数据* 可浏览或编辑数据行。
+
+如需验证事务控制，可关闭自动提交、插入一行后单击 *回滚*，并确认该行不存在。
+
+== 连接 Oracle 兼容端口
+
+使用相同的 PostgreSQL 驱动和数据库参数创建第二个连接，但将端口改为 IvorySQL Oracle 兼容端口（默认为 `1521`）。该连接仍使用 PostgreSQL JDBC 协议，不同端口用于选择 IvorySQL Oracle 兼容 SQL 模式。
+
+[source,text]
+----
+jdbc:postgresql://127.0.0.1:1521/ivorysql
+----
+
+在 SQL 编辑器中验证 Oracle 兼容语法：
+
+[source,sql]
+----
+SELECT 1 FROM dual;
+
+CREATE TABLE dbeaver_ora_validation (
+    id NUMBER PRIMARY KEY,
+    label VARCHAR2(40)
+);
+INSERT INTO dbeaver_ora_validation VALUES (1, 'IvorySQL');
+SELECT * FROM dbeaver_ora_validation;
+DROP TABLE dbeaver_ora_validation;
+----
+
+也可以使用 PostgreSQL 兼容连接，只切换当前会话：
+
+[source,sql]
+----
+SET ivorysql.compatible_mode=oracle;
+SELECT 1 FROM dual;
+----
+
+== 注意事项与限制
+
+* DBeaver 会将 IvorySQL 识别为 PostgreSQL，可使用 PostgreSQL 导航、元数据、数据编辑和执行计划功能，但不提供面向 Oracle 数据库的专用管理面板。
+* `SET ivorysql.compatible_mode` 只影响当前数据库会话。DBeaver 会建立额外的元数据和编辑器会话，因此使用独立的 Oracle 端口连接可避免各会话模式不一致。
+* 使用带双引号的 Oracle 兼容标识符时应保留大小写；两种兼容模式对未加引号标识符的大小写折叠规则不同。
+* 不要在共享工作站保存生产密码；应使用 TLS 和部署环境要求的认证方式。
+* 对生产连接可启用 DBeaver 的只读和 SQL 执行限制，降低误操作风险。
+
+SSL、SSH、代理及高级驱动设置请参阅 https://dbeaver.com/docs/dbeaver/Database-driver-PostgreSQL/[DBeaver PostgreSQL 驱动文档]。

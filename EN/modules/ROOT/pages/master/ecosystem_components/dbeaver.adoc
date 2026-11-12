@@ -1,0 +1,110 @@
+:sectnums:
+:sectnumlevels: 5
+
+= DBeaver
+
+== Overview
+
+DBeaver Community is a cross-platform graphical database client. IvorySQL uses the PostgreSQL wire protocol, so DBeaver can connect with its PostgreSQL driver without an IvorySQL-specific plugin.
+
+This guide was validated on Windows 11 with DBeaver Community 26.2.0, PostgreSQL JDBC 42.7.13, and IvorySQL 5.4 (PostgreSQL 18.4). Database Navigator metadata sessions, the SQL editor, DDL, DML, UTF-8 data, transaction rollback, and execution plans were tested through the PostgreSQL-compatible port. Oracle-compatible DDL, DML, `dual`, and transaction rollback were also tested through the Oracle-compatible port.
+
+== Create a PostgreSQL-compatible connection
+
+. In DBeaver, select *Database* > *New Database Connection*.
+. Select *PostgreSQL* as the database driver.
+. Enter the connection settings:
+
+[cols="1,2"]
+|====
+|Setting |Value
+
+|Host
+|IvorySQL server address, for example `127.0.0.1`
+
+|Port
+|The PostgreSQL-compatible port, `5432` by default
+
+|Database
+|Target database, for example `ivorysql`
+
+|Username
+|An IvorySQL login role
+
+|Password
+|The role password
+|====
+
+. If prompted, allow DBeaver to download the PostgreSQL JDBC driver.
+. Select *Test Connection*, then *Finish*.
+
+The equivalent JDBC URL is:
+
+[source,text]
+----
+jdbc:postgresql://127.0.0.1:5432/ivorysql
+----
+
+== Validate the connection
+
+Open an SQL editor for the connection and run:
+
+[source,sql]
+----
+SELECT version();
+
+CREATE TABLE dbeaver_validation (
+    id integer PRIMARY KEY,
+    label text NOT NULL
+);
+INSERT INTO dbeaver_validation VALUES (1, 'IvorySQL'), (2, '北京');
+SELECT * FROM dbeaver_validation ORDER BY id;
+
+EXPLAIN SELECT * FROM dbeaver_validation WHERE id = 1;
+----
+
+Refresh the `public` schema in Database Navigator. The table and its two columns should appear. Use *Data* > *View Data* to inspect or edit rows.
+
+To verify transaction control, disable auto-commit, insert a row, select *Rollback*, and confirm that the row is absent.
+
+== Connect to the Oracle-compatible port
+
+Create a second connection with the same PostgreSQL driver and database settings, but use the IvorySQL Oracle-compatible port (`1521` by default). This remains a PostgreSQL JDBC connection; the different port selects IvorySQL's Oracle-compatible SQL mode.
+
+[source,text]
+----
+jdbc:postgresql://127.0.0.1:1521/ivorysql
+----
+
+Validate Oracle-compatible syntax in the SQL editor:
+
+[source,sql]
+----
+SELECT 1 FROM dual;
+
+CREATE TABLE dbeaver_ora_validation (
+    id NUMBER PRIMARY KEY,
+    label VARCHAR2(40)
+);
+INSERT INTO dbeaver_ora_validation VALUES (1, 'IvorySQL');
+SELECT * FROM dbeaver_ora_validation;
+DROP TABLE dbeaver_ora_validation;
+----
+
+Alternatively, use the PostgreSQL-compatible connection and switch only the current session:
+
+[source,sql]
+----
+SET ivorysql.compatible_mode=oracle;
+SELECT 1 FROM dual;
+----
+
+== Notes and limitations
+
+* DBeaver identifies IvorySQL as PostgreSQL. PostgreSQL navigation, metadata, editing, and plan features are available; Oracle-specific DBeaver administration panels are not expected.
+* A `SET ivorysql.compatible_mode` command applies only to its current database session. A dedicated Oracle-port connection avoids mode changes when DBeaver opens additional metadata or editor sessions.
+* Preserve the case of quoted Oracle-compatible identifiers. Unquoted identifier folding differs between compatibility modes.
+* Do not save production passwords on shared workstations. Prefer TLS and the authentication method required by your deployment.
+* For production connections, consider enabling DBeaver's read-only and SQL execution restrictions to reduce accidental changes.
+
+See the https://dbeaver.com/docs/dbeaver/Database-driver-PostgreSQL/[DBeaver PostgreSQL driver documentation] for advanced SSL, SSH, proxy, and driver settings.
