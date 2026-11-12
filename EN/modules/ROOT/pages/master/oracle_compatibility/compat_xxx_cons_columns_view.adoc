@@ -1,0 +1,37 @@
+:sectnums:
+:sectnumlevels: 5
+
+= Constraint Column Views
+
+== Choose a view
+
+The Oracle-compatible `SYS.USER_CONS_COLUMNS`, `SYS.ALL_CONS_COLUMNS` and `SYS.DBA_CONS_COLUMNS` views list the columns used by constraints. Each row identifies the table, constraint, column and its one-based position within the constraint.
+
+- Use `USER_CONS_COLUMNS` for tables owned by the current user.
+- Use `ALL_CONS_COLUMNS` for tables for which the current user has `SELECT` and schema `USAGE` privileges.
+- Use `DBA_CONS_COLUMNS` for a database-wide inventory of regular tables. Access to the view is controlled by its grants.
+
+== Inspect a composite key
+
+Run the following in an Oracle-mode session in a scratch schema where you can create a table.
+
+[source,sql]
+----
+CREATE TABLE cons_columns_demo (
+    tenant_id integer,
+    invoice_id integer,
+    CONSTRAINT cons_columns_demo_pk PRIMARY KEY (invoice_id, tenant_id)
+);
+
+SELECT lower(column_name) AS column_name, position
+FROM sys.user_cons_columns
+WHERE lower(table_name) = 'cons_columns_demo'
+  AND lower(constraint_name) = 'cons_columns_demo_pk'
+ORDER BY position;
+
+DROP TABLE cons_columns_demo;
+----
+
+The result lists `invoice_id` at position 1 and `tenant_id` at position 2. Order by `position` to recover the constraint order, which can differ from the table's column order.
+
+See xref:master/compatibility_features_design/xxx_cons_columns_view_impl.adoc[constraint column view implementation].

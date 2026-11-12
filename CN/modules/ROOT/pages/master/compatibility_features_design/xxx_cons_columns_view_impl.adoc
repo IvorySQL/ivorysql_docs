@@ -1,0 +1,14 @@
+:sectnums:
+:sectnumlevels: 5
+
+= 约束列视图实现
+
+== 将约束映射到列
+
+`contrib/ivorysql_ora/src/sysview/sysview--1.0.sql` 中的定义通过约束的关系和列编号关联 `pg_class` 与 `pg_attribute`。列位置来自它在 `pg_constraint.conkey` 数组中的序号。`ALL_CONS_COLUMNS` 展开数组并保留序号，另外两个视图在数组中查找对应列的位置。
+
+== 应用可见性规则
+
+`USER_CONS_COLUMNS` 按表所有者过滤。`ALL_CONS_COLUMNS` 检查模式使用权限和表查询权限，并单独列出主键之外的列级 `NOT NULL` 属性。`DBA_CONS_COLUMNS` 列出普通表上的约束及单独查询得到的 `NOT NULL` 属性。各视图都对名称应用 Oracle 标识符大小写转换。
+
+使用列序号的查询示例见 xref:master/oracle_compatibility/compat_xxx_cons_columns_view.adoc[约束列视图]。

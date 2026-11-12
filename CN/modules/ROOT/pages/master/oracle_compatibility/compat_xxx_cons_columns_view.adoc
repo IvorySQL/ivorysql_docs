@@ -1,0 +1,37 @@
+:sectnums:
+:sectnumlevels: 5
+
+= 约束列视图
+
+== 选择视图
+
+Oracle 兼容视图 `SYS.USER_CONS_COLUMNS`、`SYS.ALL_CONS_COLUMNS` 和 `SYS.DBA_CONS_COLUMNS` 列出约束所用的列。每行包含表、约束、列及该列在约束中的位置。位置从 1 开始。
+
+- 查询当前用户拥有的表时，使用 `USER_CONS_COLUMNS`。
+- 查询当前用户拥有表 `SELECT` 权限且对其模式具有 `USAGE` 权限的表时，使用 `ALL_CONS_COLUMNS`。
+- 查看整个数据库的普通表时，使用 `DBA_CONS_COLUMNS`。视图访问由其授权控制。
+
+== 查看组合主键
+
+在 Oracle 兼容会话中，选择可创建表的临时测试模式并执行以下语句。
+
+[source,sql]
+----
+CREATE TABLE cons_columns_demo (
+    tenant_id integer,
+    invoice_id integer,
+    CONSTRAINT cons_columns_demo_pk PRIMARY KEY (invoice_id, tenant_id)
+);
+
+SELECT lower(column_name) AS column_name, position
+FROM sys.user_cons_columns
+WHERE lower(table_name) = 'cons_columns_demo'
+  AND lower(constraint_name) = 'cons_columns_demo_pk'
+ORDER BY position;
+
+DROP TABLE cons_columns_demo;
+----
+
+结果显示 `invoice_id` 位于第 1 位，`tenant_id` 位于第 2 位。按 `position` 排序可还原约束中的列顺序，它可能与表中的列顺序不同。
+
+实现细节见 xref:master/compatibility_features_design/xxx_cons_columns_view_impl.adoc[约束列视图实现]。
