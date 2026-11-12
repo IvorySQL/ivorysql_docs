@@ -1,0 +1,105 @@
+:sectnums:
+:sectnumlevels: 5
+
+= MODIFY 列兼容设计
+
+== 目的
+
+支持 Oracle 风格的 `ALTER TABLE ... MODIFY` 列定义，将类型与可空性修改转换为已有的 ALTER TABLE 内部命令。使用示例见 xref:master/oracle_compatibility/compat_modify_column_compatibility.adoc[MODIFY 列兼容]。
+
+列定义中的类型与 NOT NULL 是两个独立操作。只把约束放进类型修改命令的 `ColumnDef.constraints` 中，现有类型修改路径不会应用该约束，因此解析阶段必须显式生成独立子命令。
+
+== 实现说明
+
+=== 代码组织
+
+Oracle 语法位于 `src/backend/oracle_parser/`，解析转换和执行代码分别位于 `src/backend/parser/`、`src/backend/commands/`，节点定义位于 `src/include/nodes/`。回归 SQL 和期望输出位于 `src/oracle_test/regress/sql/`、`expected/`。下表只列文件名。
+
+[cols="2,4",options="header"]
+|===
+|文件 |职责
+|`ora_gram.y` |定义 MODIFY 语法，构造并合并内部命令列表
+|`parsenodes.h` |提供已有的 AlterTableStmt、AlterTableCmd 和 ColumnDef 节点
+|`parse_utilcmd.c` |复用 transformAlterTableStmt() 的列类型等解析转换
+|`tablecmds.c` |复用 ALTER TABLE 的权限检查、阶段调度、目录更新及数据验证
+|`alter_table.sql` |MODIFY 类型、可空性和多列修改回归用例
+|`alter_table.out` |对应的错误、表结构和数据期望结果
+|===
+
+本功能的变更集中于 Oracle 语法和回归测试，不新增专用执行节点或系统目录字段。
+
+=== 语法入口与列表展开
+
+`alter_table_cmds` 通过 `MODIFY modify_clause` 接入该功能，也允许将 MODIFY 与其他 ALTER TABLE 子命令以逗号组合。
+
+* `modify_clause` 接受带括号的 `modify_column_list` 或单个 `modify_column_item`。
+* `modify_column_list` 用 `list_concat()` 合并多列产生的命令列表。
+* 每个 `modify_column_item` 返回列表，即使只有一个动作，也保持统一的数据结构。
+* `modify_column_null` 将 NOT NULL 和 NULL 分别表示为 true、false，供选择命令类型使用。
+
+最终 `AlterTableStmt.cmds` 是扁平的 `AlterTableCmd` 列表，不是按列嵌套的列表。
+
+[source,text]
+----
+ALTER TABLE t MODIFY (a VARCHAR2(20) NOT NULL, b NULL)
+    → AlterTableStmt.cmds
+        → AT_AlterColumnType(a, VARCHAR2(20))
+        → AT_SetNotNull(a)
+        → AT_DropNotNull(b)
+    → transformAlterTableStmt()
+    → ALTER TABLE 执行流程
+----
+
+=== 列定义与内部命令
+
+[cols="3,4",options="header"]
+|===
+|列定义 |生成的命令
+|`列名 类型` |`AT_AlterColumnType`
+|`列名 类型 NOT NULL` |`AT_AlterColumnType` 和 `AT_SetNotNull`
+|`列名 类型 NULL` |`AT_AlterColumnType` 和 `AT_DropNotNull`
+|`列名 NOT NULL` / `列名 NULL` |`AT_SetNotNull` / `AT_DropNotNull`
+|`列名 INVISIBLE` / `列名 VISIBLE` |`AT_SetInvisible` / `AT_DropInvisible`
+|`列名 [类型] GENERATED ... AS IDENTITY` |可选的 `AT_AlterColumnType`，以及 `AT_SetIdentity`
+|`列名 DROP IDENTITY` |`AT_DropIdentity`
+|===
+
+类型修改命令通过 `name` 保存列名，`def` 指向 `ColumnDef`，其中设置目标 `typeName` 和错误位置 `location`。可空性命令独立保存同一列名，避免依赖类型修改路径处理列约束。
+
+仅指定类型时不生成可空性命令，因此保留已有 NULL/NOT NULL 状态。identity 分支沿用已有属性修改逻辑，并将生成方式转换为 Oracle identity 对应的内部标记。
+
+=== 类型与可见性歧义处理
+
+VISIBLE、INVISIBLE 是非保留关键字，可以被 `Typename` 接受。`makeModifyColumnTypeOrVisibilityCmd()` 在 `列名 类型` 分支中统一处理这一歧义，避免为裸类型修改和可见性修改设置冲突的语法规则。
+
+仅当类型名未限定、只有一个名称、无类型修饰和数组维度，且未使用 SETOF、%TYPE 或行类型标记时，辅助函数才将名称 `visible`、`invisible` 解释为可见性命令。带模式、类型修饰或数组维度的同名类型仍走正常类型修改路径。
+
+=== 复用执行流程
+
+`transformAlterTableStmt()` 处理类型相关转换，随后 `tablecmds.c` 中的 `ATController()` 组织准备、目录修改和数据验证阶段。权限、依赖、类型转换及约束有效性检查均沿用已有逻辑。
+
+内部命令不按语法列表顺序简单逐条执行。`ATPrepCmd()` 根据命令类型分配执行阶段：移除非空约束进入 `AT_PASS_DROP`，类型修改进入 `AT_PASS_ALTER_TYPE`，设置非空进入 `AT_PASS_COL_ATTRS`。因此类型加 NULL 的写法虽然先生成类型命令，移除非空仍在较早阶段处理。
+
+设置 NOT NULL 时，现有验证流程确保数据符合非空要求；需要扫描或重写时由 `ATRewriteTables()`、`ATRewriteTable()` 完成。列已有 NULL 会产生错误，整条语句按事务规则回滚，不会留下部分类型修改。
+
+== 测试验证
+
+`alter_table` 回归组中的 MODIFY 用例覆盖：
+
+* 带括号和不带括号的类型加 NOT NULL 修改。
+* 已有 NULL 导致修改失败，以及更新数据后重试成功。
+* 单独移除非空要求、多列类型与可空性修改。
+* 保留已有行、扩容后插入较长字符串。
+* 仅修改类型时保留原有可空性，并通过 psql 的 `\d` 检查列定义。
+
+语法中的类型加 NULL 分支，以及保留的 identity、可见性分支，也应在修改相关规则时验证，避免只覆盖类型加 NOT NULL 的路径。
+
+在已配置、编译并安装对应版本的源码目录中，针对运行中的 Oracle 兼容实例执行：
+
+[source,bash]
+----
+make -C src/oracle_test/regress oracle-installcheck-tests \
+    TESTS=alter_table EXTRA_REGRESS_OPTS='--port=1521'
+----
+
+按实际实例修改端口。该命令运行整个 `alter_table` 回归组。
