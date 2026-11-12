@@ -1,0 +1,340 @@
+:sectnums:
+:sectnumlevels: 5
+
+= Upgrading from PostgreSQL to IvorySQL
+
+== Overview
+
+IvorySQL is built on the latest PostgreSQL kernel and adds Oracle compatibility on top of it. If you are already running PostgreSQL, this guide helps you upgrade your data to IvorySQL smoothly and enable Oracle-compatible mode as needed.
+
+This guide describes three logical migration paths and provides pre/post-migration checklists:
+
+[cols="2,2,3,2"]
+|===
+|Path |Use case |Advantages |Limitations
+
+|pg_dump / pg_restore logical migration
+|Cross-version, cross-platform migration with small to medium data volumes
+|Safest, best compatibility, supports large version gaps
+|Downtime depends on export/import duration
+
+|pg_dumpall full-cluster migration
+|Moving an entire instance (including global objects) at once
+|Preserves roles, tablespaces, and other global objects
+|Also requires a downtime window
+
+|Logical replication
+|Online migration with minimal downtime
+|Source stays available; switch at any time
+|Requires PostgreSQL 10+, more complex configuration
+|===
+
+[NOTE]
+If you prefer a physical (in-place) upgrade with a shorter downtime window, IvorySQL also supports upgrading a native PostgreSQL cluster to IvorySQL with `pg_upgrade`. This path requires the `pg_upgrade` binary shipped with the **target IvorySQL version** and the `-g` (`--using-ora-pg`) option to indicate that the source is a native PostgreSQL cluster. Run the compatibility check (`-c`) before upgrading, and validate the result afterwards as required by your workload (statistics, extensions, Oracle-compatible behavior, and so on). For the detailed steps, options, and caveats, see xref:master/operation_guide.adoc[Operation and Maintenance Guide].
+
+This guide focuses on the three logical migration paths above, which suit cross-version, cross-platform migrations and scenarios that need fine-grained control over the objects being migrated. For the physical upgrade path, refer to the operation guide.
+
+== Pre-upgrade preparation
+
+=== Confirm IvorySQL and PostgreSQL versions
+
+IvorySQL 5.x is based on PostgreSQL 18. Confirm both versions:
+
+[source,shell]
+----
+# Source PostgreSQL
+psql -U postgres -c "SELECT version();"
+
+# Target IvorySQL
+psql -U postgres -p 5432 -c "SELECT version();"
+----
+
+=== Install IvorySQL
+
+Install IvorySQL by following the xref:master/installation_guide.adoc[installation guide]. When initializing the instance, choose the compatibility mode and case-insensitive (CI) options according to your business needs:
+
+[source,shell]
+----
+/usr/local/ivorysql/ivorysql-5/bin/initdb -D /data/ivorysql -U postgres
+----
+
+After initialization, verify the dual-port listeners and their compatibility modes:
+
+[source,shell]
+----
+psql -U postgres -p 5432 -c "SHOW ivorysql.compatible_mode;"
+psql -U postgres -p 1521 -c "SHOW ivorysql.compatible_mode;"
+----
+
+IvorySQL listens on both the PostgreSQL-mode port (5432) and the Oracle-compatible-mode port (1521) in a single instance. Compatibility behavior is determined by the **connection port**: `ivorysql.compatible_mode` is set automatically by the system according to the port and cannot be configured manually in `ivorysql.conf`. During the upgrade you can verify PostgreSQL behavior through port 5432 first, then switch to port 1521 to use Oracle compatibility features after cutover.
+
+=== Source-side checklist
+
+* Record the source version, `encoding`, and `lc_collate`/`lc_ctype`, and keep them consistent when running initdb on the target.
+* Rehearse table creation in advance with `pg_dump --schema-only` and flag any objects that require Oracle compatibility features.
+* Check whether your data relies on the difference between empty strings and `NULL`: in PostgreSQL, `''` and `NULL` are distinct, while IvorySQL's Oracle-compatible mode follows Oracle semantics and treats empty strings as `NULL`. Query results that depend on this semantic change and need business-side evaluation.
+* Capture row counts of large tables as the baseline for post-migration validation.
+
+== Path 1: pg_dump / pg_restore logical migration
+
+=== Migrate global objects and tablespaces (before data restore)
+
+`pg_dump` does not include roles or tablespaces. The target must have these global objects ready **before** restoring data: tables that use custom tablespaces fail during restore unless the corresponding tablespaces already exist.
+
+[source,shell]
+----
+# Export globals from the source
+pg_dumpall -U postgres --globals-only -f globals.sql
+
+# Before importing on the target, edit globals.sql:
+# 1) Remove superuser-related statements
+# 2) Verify the directory paths in CREATE TABLESPACE statements
+#    and create these directories on the IvorySQL host in advance
+# 3) To skip conflicts such as pre-existing roles, remove the corresponding
+#    CREATE ROLE statements (-v ON_ERROR_STOP=1 stops at the first error,
+#    ensuring critical objects like tablespaces are created successfully)
+psql -U postgres -p 5432 -v ON_ERROR_STOP=1 -f globals.sql
+----
+
+[NOTE]
+By default, `psql -f` does not stop on SQL errors: it continues with subsequent statements and may return exit code 0. If a tablespace directory is missing, `CREATE TABLESPACE` fails but the script keeps running, and affected tables may end up in the default tablespace instead of the intended one. Adding `-v ON_ERROR_STOP=1` stops at the first error so problems are surfaced immediately.
+
+If you plan to restore all tables into the default tablespace (without preserving the source tablespace layout), you can skip the tablespace checks and use `--no-tablespaces` in the restore step below.
+
+=== Export the source database
+
+[IMPORTANT]
+Logical dumps are based on a consistent snapshot taken at a point in time. You must **stop writes on the source** before the final export and keep them stopped until validation completes and the business switches to IvorySQL; otherwise writes made after the snapshot are lost.
+
+Dump the database on the source PostgreSQL (prefer a `pg_dump` of the same major version as the source):
+
+[source,shell]
+----
+pg_dump -U postgres -Fc -d appdb -f appdb.dump
+----
+
+Use the `-N`/`-n` and `-T`/`-t` options to exclude specific schemas or tables.
+
+=== Restore into IvorySQL
+
+Restore the dump into the IvorySQL instance (via port 5432 to keep PostgreSQL behavior):
+
+[source,shell]
+----
+# Create the target database first
+psql -U postgres -p 5432 -c "CREATE DATABASE appdb;"
+
+# Restore the data (all objects go into the default tablespace)
+pg_restore -U postgres -p 5432 -d appdb --no-owner --no-privileges --no-tablespaces appdb.dump
+----
+
+`--no-owner` and `--no-privileges` skip source-side ownership and grants. If you recreated the same roles on the target, you can drop these options. `--no-tablespaces` ignores tablespace settings in the dump and places all objects in the default tablespace; to preserve the source tablespace layout, confirm the tablespaces were created in the preparation step and omit this option.
+
+== Path 2: pg_dumpall full-cluster migration
+
+If the source instance is small, or you want to move global objects together with the data, use `pg_dumpall` directly:
+
+[source,shell]
+----
+# Full-cluster export as plain SQL
+pg_dumpall -U postgres -f full_cluster.sql
+----
+
+[IMPORTANT]
+Stop writes on the source before the final export and keep them stopped until cutover completes; writes made after the snapshot are not included in the dump.
+
+=== Resolve role conflicts before import
+
+The beginning of a `pg_dumpall` dump contains global object definitions, and every role produces a `CREATE ROLE` statement, including the source `postgres` role. The IvorySQL target already has a `postgres` role created by `initdb`, so importing directly fails at this statement:
+
+[literal]
+----
+ERROR:  role "postgres" already exists
+----
+
+With `-v ON_ERROR_STOP=1`, `psql` exits immediately at this error (exit code 3), and neither the application database nor the data is restored. Inspect the dump and remove or comment out `CREATE ROLE` statements for roles that already exist on the target before importing:
+
+[source,shell]
+----
+# 1. List all role creation statements in the dump
+#    (they are in the global objects section at the top of the file)
+grep -n '^CREATE ROLE' full_cluster.sql
+
+# 2. List roles that already exist on the target
+psql -U postgres -p 5432 -c '\du'
+
+# 3. Compare the two lists and delete or comment out the CREATE ROLE lines
+#    for roles that already exist; the postgres role always exists:
+sed -i 's/^CREATE ROLE postgres;/-- CREATE ROLE postgres;/' full_cluster.sql
+----
+
+Only the conflicting `CREATE ROLE` statements need to be removed: the following `ALTER ROLE` statement still runs and aligns role attributes, so keep it. Repeat the same approach for any other source roles that already exist on the target.
+
+=== Import
+
+[source,shell]
+----
+# Import on the target (-v ON_ERROR_STOP=1 stops at the first error so
+# failures are not silently skipped)
+psql -U postgres -p 5432 -v ON_ERROR_STOP=1 -f full_cluster.sql
+----
+
+[NOTE]
+`pg_dumpall` produces plain-text SQL and does not support parallel restore. Prefer Path 1 for large instances. If the source uses custom tablespaces, create the corresponding directories on the IvorySQL host first. Note that `psql -f` does not stop on errors by default: a failed `CREATE TABLESPACE` is followed by remaining statements, and affected tables may end up in the default tablespace. `-v ON_ERROR_STOP=1` surfaces such errors immediately, so keep this option after resolving the role conflicts described above.
+
+== Path 3: logical replication online migration
+
+For businesses that cannot tolerate long downtime, use logical replication to keep the source and IvorySQL in sync, then cut over within a short window.
+
+=== Configure the source
+
+Adjust `postgresql.conf` on the source PostgreSQL and restart:
+
+[source,ini]
+----
+wal_level = logical
+max_replication_slots = 10
+max_wal_senders = 10
+----
+
+Make sure `pg_hba.conf` allows the IvorySQL host to connect for replication.
+
+=== Pre-create the structure on the target
+
+Create the same table structures on IvorySQL in advance (you can generate them with `pg_dump --schema-only`). It is recommended that target tables keep the same replica identity settings as the source to improve incremental apply performance.
+
+=== Set replica identity on the source
+
+Logical replication locates rows to publish on the publisher side using the table's replica identity: tables without a primary key have no replica identity by default, and their UPDATE/DELETE operations cannot be published. Set the replica identity on the source for every primary-key-less table you plan to replicate:
+
+[source,sql]
+----
+-- Tables with primary keys need no extra step (the primary key is the replica identity)
+-- Tables without primary keys: set REPLICA IDENTITY FULL on the source
+ALTER TABLE app_table REPLICA IDENTITY FULL;
+
+-- Check user tables on the source that lack a replica identity
+-- (relreplident = 'd' and no primary key)
+SELECT n.nspname AS schema_name, c.relname AS table_name
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind = 'r'
+  AND c.relreplident = 'd'
+  AND NOT EXISTS (
+    SELECT 1 FROM pg_index i
+    WHERE i.indrelid = c.oid AND i.indisprimary
+  )
+  AND n.nspname NOT IN ('pg_catalog', 'information_schema');
+----
+
+=== Create publication and subscription
+
+[source,sql]
+----
+-- Create a publication on the source
+CREATE PUBLICATION app_pub FOR ALL TABLES;
+
+-- Create a subscription on IvorySQL
+CREATE SUBSCRIPTION app_sub
+  CONNECTION 'host=src_host port=5432 dbname=appdb user=replica password=***'
+  PUBLICATION app_pub;
+----
+
+After the subscription is created, IvorySQL performs the initial sync and then continuously applies incremental changes.
+
+=== Cutover
+
+1. Stop writes on the source; the source now produces no further changes.
+
+2. Confirm the initial sync is complete. On IvorySQL, verify that every subscribed table has state `r` (normal replication):
+
+[source,sql]
+----
+-- Run on IvorySQL
+SELECT s.subname AS subscription,
+       r.srrelid::regclass AS table_name,
+       r.srsubstate
+FROM pg_subscription_rel r
+JOIN pg_subscription s ON s.oid = r.srsubid
+ORDER BY 1, 2;
+
+-- srsubstate: 'd' data copy in progress; 's' data synchronized;
+-- 'r' copy finished and in normal replication (all tables must be 'r' before cutover)
+----
+
+3. Confirm all final changes after the write stop have been applied: after writes stop, the source produces no new transactions, but internal operations such as CHECKPOINT still advance the WAL position. Therefore exact equality of LSNs should not be required; instead, confirm the subscriber has caught up to the write-stop position and no longer advances.
+
+[source,sql]
+----
+-- Source: run CHECKPOINT after stopping writes to flush all committed transactions to WAL
+CHECKPOINT;
+
+-- Source: record the current WAL position L1
+SELECT pg_current_wal_lsn() AS source_lsn;
+
+-- IvorySQL: wait until latest_end_lsn >= L1 (caught up or beyond)
+-- and observe that latest_end_lsn no longer advances for a while,
+-- which confirms all incremental changes have been applied
+SELECT subname, received_lsn, latest_end_lsn, latest_end_time
+FROM pg_stat_subscription;
+----
+
+4. Validate key tables with row counts and sampling checks (see "Post-upgrade validation").
+
+5. Once validation passes, disable the subscription on IvorySQL: `ALTER SUBSCRIPTION app_sub DISABLE;`
+
+6. Point the application connection string to IvorySQL, using port 1521 if Oracle-compatible behavior is desired.
+
+7. After a stability observation period, drop the subscription and decommission the source.
+
+== Post-upgrade validation
+
+=== Basic checks
+
+[source,sql]
+----
+-- Compare row counts of key tables (run on both source and target)
+SELECT count(*) FROM app_table;
+
+-- Check sequence values to avoid primary-key conflicts after cutover
+SELECT last_value FROM app_id_seq;
+----
+
+Logical replication does not replicate sequence values. Synchronize sequences manually before cutover:
+
+[source,shell]
+----
+# Export sequence state from the source
+# (covers all non-system schemas with schema-qualified sequence names)
+psql -U postgres -d appdb -Atc \
+  "SELECT 'SELECT setval(' || quote_literal(format('%I.%I', schemaname, sequencename)) || ',' || last_value || ');' \
+   FROM pg_sequences \
+   WHERE last_value IS NOT NULL \
+     AND schemaname NOT IN ('pg_catalog', 'information_schema')" > sync_sequences.sql
+
+# Execute on IvorySQL
+psql -U postgres -p 5432 -d appdb -f sync_sequences.sql
+----
+
+Script notes: `format('%I.%I', ...)` produces fully qualified, quoted sequence names that work in multi-schema scenarios; `last_value IS NOT NULL` excludes sequences that have never been used (their current value equals the start value, so no sync is needed).
+
+=== Enable Oracle-compatible mode
+
+After validation, connect through port 1521 and verify Oracle-compatible behavior:
+
+[source,sql]
+----
+-- Confirm the compatibility mode
+SHOW ivorysql.compatible_mode;
+
+-- Verify Oracle-style objects
+SELECT SYSDATE FROM DUAL;
+SELECT NVL(NULL, 'N/A') FROM DUAL;
+----
+
+== FAQ
+
+* **Empty-string semantics**: in Oracle-compatible mode `''` equals `NULL`. If your business depends on the PostgreSQL distinction between empty strings and NULL, adjust the related queries or data.
+* **Identifier casing**: Oracle-compatible mode follows Oracle's case-folding rules; unquoted identifiers are treated as uppercase. Lowercase object names migrated from PostgreSQL remain accessible with double quotes, but review naming conventions before switching.
+* **Extension compatibility**: confirm that PostgreSQL extensions used on the source are adapted for IvorySQL. See the xref:master/ecosystem_components/ecosystem_overview.adoc[ecosystem component list].
+* **Ownership**: after restoring with `--no-owner`, objects belong to the user who ran the restore. Create the roles on the target in advance to preserve the original permission model.

@@ -117,6 +117,7 @@
 ** xref:master/operation_guide.adoc[Operation Management]
 * Data Migration
 ** xref:master/migration_guide.adoc[Migration]
+** xref:master/pg_upgrade_guide.adoc[Upgrading from PostgreSQL]
 * IvorySQL Developers
 ** xref:master/contribution/contribution_guide.adoc[Contribution Guide]
 ** xref:master/developer_guide.adoc[Developer]
