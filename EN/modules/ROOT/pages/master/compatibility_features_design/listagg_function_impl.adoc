@@ -1,0 +1,105 @@
+:sectnums:
+:sectnumlevels: 5
+
+= LISTAGG Aggregate Function Design
+
+== Purpose
+
+The Oracle parser translates ordered concatenation with `LISTAGG` into an existing `string_agg` expression, wrapped in a 4000-byte result check. The implementation reuses ordinary aggregate sorting, grouping, and NULL handling without registering separate LISTAGG aggregate state or transition functions.
+
+See xref:master/oracle_compatibility/compat_listagg_function.adoc[LISTAGG Aggregate Function] for usage.
+
+== Implementation
+
+=== Code organization
+
+Keyword and grammar files are in `src/include/oracle_parser/` and `src/backend/oracle_parser/`, respectively. Function registration and implementation files are in `contrib/ivorysql_ora/src/builtin_functions/`.
+
+Regression files are under `src/oracle_test/regress/`: test SQL and expected output are in the `sql/` and `expected/` subdirectories, and the schedule is at the directory root. The table lists filenames only.
+
+[cols="3,4",options="header"]
+|===
+|File |Responsibility
+|`ora_kwlist.h` |Registers `LISTAGG` as an Oracle parser keyword
+|`ora_gram.y` |Parses `LISTAGG` and constructs the aggregate and outer check calls
+|`builtin_functions--1.0.sql` |Registers `sys.ora_listagg_check(text)`
+|`character_datatype_functions.c` |Implements NULL handling and aggregate result byte-length validation
+|`ora_listagg.sql` |Tests aggregation, delimiters, NULLs, filtering, and invalid syntax
+|`ora_listagg.out` |Expected query results and errors
+|`parallel_schedule` |Schedules `ora_listagg` in the Oracle regression suite
+|===
+
+=== Syntax transformation
+
+The Oracle parser has a dedicated `func_expr` production for `LISTAGG`. It constructs two nested `FuncCall` nodes: an inner call to the system aggregate `string_agg`, and an outer call to the extension function `sys.ora_listagg_check`.
+
+[source,text]
+----
+LISTAGG(ename, ',') WITHIN GROUP (ORDER BY sal DESC)
+    → sys.ora_listagg_check(
+          pg_catalog.string_agg(ename, ',' ORDER BY sal DESC)
+      )
+----
+
+The transformation proceeds as follows:
+
+. Check that `within_group_clause` exists. If missing, raise the syntax error `LISTAGG requires WITHIN GROUP (ORDER BY ...)`.
+. For a single argument, append an empty-string delimiter so the inner aggregate receives two arguments.
+. Create the inner call with `SystemFuncName("string_agg")`, assigning the `WITHIN GROUP` sort list to `agg_order` and the `FILTER` condition to `agg_filter`.
+. Create the outer call with `OracleSystemFuncName("ora_listagg_check")`, passing the aggregate expression as its only argument.
+
+Ordinary aggregate execution handles the sort list, rather than preserving `WITHIN GROUP` as an ordered-set aggregate marker. The query's `GROUP BY` still determines groups. Sort expressions can differ from the concatenated expression, and multicolumn sorting and sort directions follow the underlying aggregate mechanism.
+
+The argument production is `func_arg_list`, so ordering belongs in `WITHIN GROUP`. An `ORDER BY` inside the argument list is outside this production.
+
+=== Aggregate state and result type
+
+The inner aggregate reuses `string_agg` state management and result construction. Non-NULL values enter the buffer in aggregate sort order, while NULL values are skipped. Delimiters appear only between participating values; a NULL delimiter adds no content. With no valid input values, the aggregate returns `NULL`.
+
+Length validation runs after the aggregate result is constructed. The 4000-byte limit is not checked separately for each input value, and aggregation does not stop early when the buffer reaches the limit. Grouped queries validate each group's final result separately.
+
+The outer function returns `text`, so the LISTAGG expression also returns `text`. Without an explicit alias, the result column can appear under the outer function name `ora_listagg_check`. An alias provides a stable column name for applications.
+
+=== Byte-length validation
+
+`sys.ora_listagg_check(text)` is registered as `IMMUTABLE`, `PARALLEL SAFE`, and `CALLED ON NULL INPUT`. The C function explicitly handles NULL, retrieves text with `PG_GETARG_TEXT_PP(0)`, and uses `VARSIZE_ANY_EXHDR()` to measure payload bytes without the variable-length header.
+
+[source,c]
+----
+if (PG_ARGISNULL(0))
+    PG_RETURN_NULL();
+
+text *value = PG_GETARG_TEXT_PP(0);
+int len = VARSIZE_ANY_EXHDR(value);
+
+if (len <= 4000)
+    PG_RETURN_TEXT_P(value);
+
+elog(ERROR, "result of aggregation exceeds 4000 bytes");
+----
+
+This excerpt shows the core decision logic. The length includes delimiters between values, without adding a nonexistent trailing delimiter. Multibyte characters count according to their encoded byte length.
+
+[cols="3,4",options="header"]
+|===
+|Result passed to the check function |Behavior
+|`NULL` |Returns `NULL`
+|Payload length of at most 4000 bytes |Returns the text unchanged
+|Payload length above 4000 bytes |Raises `result of aggregation exceeds 4000 bytes`
+|===
+
+== Verification
+
+The `ora_listagg` regression cases cover sorting by the value, descending sorting by another column, grouped aggregation, the default delimiter, NULL values, multicolumn sorting, empty inputs, `FILTER`, length checks, and invalid argument-list ordering syntax.
+
+Length boundary cases call the check function directly to verify that 4000 bytes succeeds and 4001 bytes raises `result of aggregation exceeds 4000 bytes`.
+
+These cases are in the Oracle core regression directory. From a configured, built, and installed source tree, run:
+
+[source,shell]
+----
+make -C src/oracle_test/regress oracle-installcheck-tests \
+    TESTS=ora_listagg EXTRA_REGRESS_OPTS='--port=1521'
+----
+
+The target instance needs the matching version of `ivorysql_ora`. Adjust the port for the environment.

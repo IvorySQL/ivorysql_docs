@@ -1,0 +1,149 @@
+:sectnums:
+:sectnumlevels: 5
+
+= LISTAGG Aggregate Function
+
+== Purpose
+
+`LISTAGG` concatenates non-NULL strings from multiple rows in a specified order, for uses such as grouped name or tag lists. IvorySQL provides the `LISTAGG(...) WITHIN GROUP (ORDER BY ...)` syntax in Oracle compatibility mode.
+
+== Functionality
+
+* Without `GROUP BY`, matching input rows produce one aggregate result. With `GROUP BY`, each group produces a result.
+* `WITHIN GROUP (ORDER BY ...)` specifies the concatenation order and is required. Multiple sort columns and ascending or descending order are supported.
+* The delimiter is optional. An omitted or NULL delimiter joins strings directly; a specified delimiter appears only between participating values.
+* NULL values are skipped without adding delimiters. No input rows, or only NULL input values, produce `NULL`.
+* `FILTER (WHERE ...)` includes only rows satisfying its condition.
+* The return type is `text`. Results can contain up to 4000 bytes: exactly 4000 bytes is accepted, and longer results raise an error.
+
+== Syntax
+
+[source,sql]
+----
+LISTAGG(measure_expr [, delimiter])
+    WITHIN GROUP (ORDER BY sort_expr [ASC | DESC] [, ...])
+    [FILTER (WHERE condition)]
+----
+
+[cols="2,4",options="header"]
+|===
+|Argument |Description
+|`measure_expr` |Character expression to concatenate. Other data types can be explicitly cast to `text` first
+|`delimiter` |Optional separator string, such as `','` or `', '`
+|`sort_expr` |Sort expression within each group; it can differ from the concatenated expression
+|`condition` |Filter condition for aggregate input rows
+|===
+
+`WITHIN GROUP` determines the concatenation order. A query-level `ORDER BY` only orders the output rows. If sort keys tie for different strings, add columns that distinguish those rows to obtain a deterministic concatenation order. Assigning an alias to the result column is recommended.
+
+== Examples
+
+=== Prepare data
+
+[source,sql]
+----
+CREATE TABLE listagg_test (
+    deptno integer,
+    ename varchar2(20),
+    sal numeric
+);
+
+INSERT INTO listagg_test VALUES
+    (10, 'CLARK', 2450),
+    (10, 'KING', 5000),
+    (10, 'MILLER', 1300),
+    (20, 'ADAMS', 1100),
+    (20, 'FORD', 3000),
+    (20, 'JONES', 2975),
+    (30, 'ALLEN', 1600),
+    (30, 'BLAKE', 2850),
+    (30, 'MARTIN', 1250);
+----
+
+=== Single-set aggregation and different sort columns
+
+[source,sql]
+----
+SELECT LISTAGG(ename, ',') WITHIN GROUP (ORDER BY ename) AS employees
+FROM listagg_test WHERE deptno = 10;
+-- CLARK,KING,MILLER
+
+SELECT LISTAGG(ename, ', ') WITHIN GROUP (ORDER BY sal DESC) AS employees
+FROM listagg_test WHERE deptno = 10;
+-- KING, CLARK, MILLER
+----
+
+=== Grouped aggregation
+
+[source,sql]
+----
+SELECT deptno,
+    LISTAGG(ename, '|') WITHIN GROUP (ORDER BY ename) AS employees
+FROM listagg_test
+GROUP BY deptno
+ORDER BY deptno;
+----
+
+[source,text]
+----
+10  CLARK|KING|MILLER
+20  ADAMS|FORD|JONES
+30  ALLEN|BLAKE|MARTIN
+----
+
+=== Omitted delimiters, NULLs, and empty inputs
+
+[source,sql]
+----
+SELECT LISTAGG(ename) WITHIN GROUP (ORDER BY ename) AS employees
+FROM listagg_test WHERE deptno = 10;
+-- CLARKKINGMILLER
+
+INSERT INTO listagg_test VALUES (10, NULL, 999);
+
+SELECT LISTAGG(ename, ',') WITHIN GROUP (ORDER BY ename) AS employees
+FROM listagg_test WHERE deptno = 10;
+-- CLARK,KING,MILLER
+
+SELECT LISTAGG(ename, ',') WITHIN GROUP (ORDER BY ename) AS employees
+FROM listagg_test WHERE ename IS NULL;
+-- NULL
+
+SELECT LISTAGG(ename, ',') WITHIN GROUP (ORDER BY ename) AS employees
+FROM listagg_test WHERE deptno = 99;
+-- NULL
+----
+
+=== Filter aggregate inputs
+
+[source,sql]
+----
+SELECT LISTAGG(ename, ',') WITHIN GROUP (ORDER BY ename)
+    FILTER (WHERE sal > 1500) AS employees
+FROM listagg_test;
+-- ALLEN,BLAKE,CLARK,FORD,JONES,KING
+
+DROP TABLE listagg_test;
+----
+
+== Length limit and syntax considerations
+
+The 4000-byte limit applies to the final payload, including delimiters between values. Multibyte characters count according to their byte length in the database encoding. Character counts cannot replace byte counts when checking the limit.
+
+[source,sql]
+----
+SELECT octet_length(
+    LISTAGG(repeat('x', 1000)) WITHIN GROUP (ORDER BY n)
+) AS result_bytes
+FROM generate_series(1, 4) AS t(n);
+-- 4000
+
+SELECT LISTAGG(repeat('x', 1000), ',')
+    WITHIN GROUP (ORDER BY n) AS result_text
+FROM generate_series(1, 4) AS t(n);
+-- ERROR: result of aggregation exceeds 4000 bytes
+----
+
+The second query includes three commas, giving a 4003-byte result and raising an error.
+
+Place sorting in `WITHIN GROUP`, outside the `LISTAGG` argument list. Omitting `WITHIN GROUP` raises `LISTAGG requires WITHIN GROUP (ORDER BY ...)`. An argument-list ordering clause, such as `LISTAGG(ename, ',' ORDER BY ename)`, produces a syntax error.

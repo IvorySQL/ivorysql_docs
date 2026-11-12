@@ -1,0 +1,105 @@
+:sectnums:
+:sectnumlevels: 5
+
+= LISTAGG 聚合函数设计
+
+== 目的
+
+通过 Oracle 解析器将 `LISTAGG` 的排序拼接语法转换为已有的 `string_agg` 聚合表达式，并在结果外层增加 4000 字节检查。实现复用普通聚合的排序、分组和 NULL 处理，不单独注册新的 LISTAGG 聚合状态或转换函数。
+
+使用方式见 xref:master/oracle_compatibility/compat_listagg_function.adoc[LISTAGG 聚合函数]。
+
+== 实现说明
+
+=== 代码组织
+
+关键字和语法文件分别位于 `src/include/oracle_parser/` 和 `src/backend/oracle_parser/`。函数注册及实现文件位于 `contrib/ivorysql_ora/src/builtin_functions/`。
+
+回归文件位于 `src/oracle_test/regress/`：测试 SQL 和期望结果分别在 `sql/`、`expected/` 子目录，调度文件在该目录根部。下表只列文件名。
+
+[cols="3,4",options="header"]
+|===
+|文件 |职责
+|`ora_kwlist.h` |将 `LISTAGG` 注册为 Oracle 解析器关键字
+|`ora_gram.y` |解析 `LISTAGG`，生成聚合及外层校验函数调用
+|`builtin_functions--1.0.sql` |注册 `sys.ora_listagg_check(text)`
+|`character_datatype_functions.c` |实现 NULL 处理及聚合结果字节长度检查
+|`ora_listagg.sql` |聚合、分隔符、NULL、过滤和异常语法的测试
+|`ora_listagg.out` |对应查询结果及错误信息
+|`parallel_schedule` |将 `ora_listagg` 加入 Oracle 回归调度
+|===
+
+=== 语法转换
+
+Oracle 解析器为 `LISTAGG` 设置专门的 `func_expr` 产生式。解析完成后创建两个嵌套的 `FuncCall` 节点：内层为系统聚合 `string_agg`，外层为扩展校验函数 `sys.ora_listagg_check`。
+
+[source,text]
+----
+LISTAGG(ename, ',') WITHIN GROUP (ORDER BY sal DESC)
+    → sys.ora_listagg_check(
+          pg_catalog.string_agg(ename, ',' ORDER BY sal DESC)
+      )
+----
+
+转换过程中：
+
+. 检查 `within_group_clause` 是否存在；缺少时抛出语法错误 `LISTAGG requires WITHIN GROUP (ORDER BY ...)`。
+. 单参数调用补入空字符串作为分隔符，使内层聚合具有两个参数。
+. 使用 `SystemFuncName("string_agg")` 创建内层函数调用，把 `WITHIN GROUP` 排序列表放入 `agg_order`，把 `FILTER` 条件放入 `agg_filter`。
+. 使用 `OracleSystemFuncName("ora_listagg_check")` 创建外层调用，并将聚合表达式作为它的唯一参数。
+
+排序列表由普通聚合执行路径处理，而不是将 `WITHIN GROUP` 标记保留为有序集聚合。分组仍由查询的 `GROUP BY` 决定。排序表达式可以与拼接表达式不同，多列及升降序规则沿用底层聚合机制。
+
+`LISTAGG` 的参数部分采用 `func_arg_list`，因此组内排序必须写在 `WITHIN GROUP` 中；参数列表内部的 `ORDER BY` 不属于该产生式。
+
+=== 聚合状态与结果类型
+
+内层聚合复用 `string_agg` 的状态管理及结果构造。非 NULL 值按聚合排序顺序加入缓冲区，NULL 值跳过；分隔符只出现在参与聚合的值之间，NULL 分隔符不追加内容。没有有效输入值时，聚合返回 `NULL`。
+
+长度校验在聚合结果生成后执行。因此 4000 字节限制不是对每个输入值单独校验，也不会在拼接过程中达到上限时提前停止。分组查询对每个分组的最终结果分别校验。
+
+外层函数声明返回 `text`，因此 LISTAGG 表达式的结果类型为 `text`。未指定列别名时，结果列名可能显示为外层函数名 `ora_listagg_check`；使用别名可为应用提供稳定的列名。
+
+=== 字节长度校验
+
+`sys.ora_listagg_check(text)` 注册为 `IMMUTABLE`、`PARALLEL SAFE` 和 `CALLED ON NULL INPUT`。C 函数显式处理 NULL，并通过 `PG_GETARG_TEXT_PP(0)` 取得文本，再用 `VARSIZE_ANY_EXHDR()` 计算不含变长头的有效字节长度。
+
+[source,c]
+----
+if (PG_ARGISNULL(0))
+    PG_RETURN_NULL();
+
+text *value = PG_GETARG_TEXT_PP(0);
+int len = VARSIZE_ANY_EXHDR(value);
+
+if (len <= 4000)
+    PG_RETURN_TEXT_P(value);
+
+elog(ERROR, "result of aggregation exceeds 4000 bytes");
+----
+
+上述代码展示核心判断逻辑。检查结果包括值之间的分隔符，不额外计算不存在的尾部分隔符；多字节字符按编码后的字节数计入。
+
+[cols="3,4",options="header"]
+|===
+|输入到校验函数的结果 |行为
+|`NULL` |返回 `NULL`
+|有效字节长度不超过 4000 |原样返回文本
+|有效字节长度超过 4000 |报 `result of aggregation exceeds 4000 bytes`
+|===
+
+== 测试验证
+
+`ora_listagg` 回归用例覆盖按值排序、按其他列降序排序、分组聚合、默认分隔符、NULL 值、多列排序、空集、`FILTER`、长度检查和参数内排序语法错误。
+
+长度边界用例直接调用校验函数，验证 4000 字节成功、4001 字节报错，期望错误文本为 `result of aggregation exceeds 4000 bytes`。
+
+这些用例位于 Oracle 核心回归目录。在已配置、编译并安装的源码目录中，可运行：
+
+[source,shell]
+----
+make -C src/oracle_test/regress oracle-installcheck-tests \
+    TESTS=ora_listagg EXTRA_REGRESS_OPTS='--port=1521'
+----
+
+目标实例需安装对应版本的 `ivorysql_ora`。端口应按实际环境调整。
