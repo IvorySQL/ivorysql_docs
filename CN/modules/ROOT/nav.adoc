@@ -192,6 +192,8 @@
 ** xref:master/contribution/asciidoc_syntax_reference.adoc[asciidoc语法快速参考]
 ** xref:master/pg_reference/pg_parameters_reference.adoc[PG参数参考手册]
 ** xref:master/pg_reference/pg_functions_reference.adoc[PG函数参考手册]
+* 安全与权限
+** xref:master/security/authentication_and_privileges.adoc[安全认证与权限管理]
 * 常见问题解答
 ** xref:master/contribution/faq.adoc[FAQ]
 

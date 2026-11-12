@@ -189,5 +189,7 @@
 * Reference
 ** xref:master/tools_reference.adoc[Tool Reference]
 ** xref:master/contribution/asciidoc_syntax_reference.adoc[asciidoc grammar quick reference]
+* Security and Privileges
+** xref:master/security/authentication_and_privileges.adoc[Authentication and Privilege Management]
 * FAQ
 ** xref:master/contribution/faq.adoc[FAQ]
