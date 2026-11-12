@@ -1,0 +1,140 @@
+:sectnums:
+:sectnumlevels: 5
+
+= DBMS_UTILITY Package
+
+== Purpose
+
+`DBMS_UTILITY` formats error messages, exception locations, and the current call stack to help PL/iSQL programs record diagnostics and locate failures.
+
+== Functionality
+
+All three functions take no arguments and return `text`:
+
+[cols="3,4",options="header"]
+|===
+|Function |Purpose
+|`FORMAT_ERROR_BACKTRACE` |Returns the origin and propagation path of the exception being handled, formatted as `ORA-06512` lines
+|`FORMAT_ERROR_STACK` |Returns a mapped `ORA-XXXXX` error number and the original error message
+|`FORMAT_CALL_STACK` |Returns the PL/iSQL call stack that is still executing at the time of the call; no exception is required
+|===
+
+In PL/iSQL, assign the function results directly to variables:
+
+[source,sql]
+----
+v_backtrace := DBMS_UTILITY.FORMAT_ERROR_BACKTRACE;
+v_error_stack := DBMS_UTILITY.FORMAT_ERROR_STACK;
+v_call_stack := DBMS_UTILITY.FORMAT_CALL_STACK;
+----
+
+=== Exception locations and error messages
+
+`FORMAT_ERROR_BACKTRACE` describes the call path at the exception's origin. `FORMAT_ERROR_STACK` describes the current exception's error number and message; the current implementation does not automatically append a location backtrace to that message. Capture both when logging an exception.
+
+Without an exception being handled, both error diagnostic functions return `NULL`. If an outer handler calls a subprogram with its own exception handler, the outer exception context is restored when that subprogram returns normally, allowing the original diagnostics to be read again.
+
+=== Current call stack
+
+`FORMAT_CALL_STACK` returns the PL/iSQL stack at the time of the call, including a fixed header, object handles, line numbers, and names. When called after an error, it shows the stack still executing, rather than the exception's path through routines that have already exited. Use `FORMAT_ERROR_BACKTRACE` for the exception path.
+
+Object handles are runtime addresses and vary by environment. The current output labels all frames as `function`, including procedures. The result is `NULL` if there are no caller frames to display.
+
+== Examples
+
+Run these examples in Oracle compatibility mode with package execution privileges. To make displayed names easier to compare, the examples enable the following case settings and reset them to defaults at the end.
+
+[source,sql]
+----
+SET ivorysql.enable_case_switch = true;
+SET ivorysql.identifier_case_switch = interchange;
+----
+
+=== Record the error message and exception location
+
+[source,sql]
+----
+CREATE OR REPLACE PROCEDURE public.utility_error_demo AS
+    v_error_stack text;
+    v_backtrace text;
+BEGIN
+    RAISE EXCEPTION 'demo error';
+EXCEPTION
+    WHEN OTHERS THEN
+        v_error_stack := DBMS_UTILITY.FORMAT_ERROR_STACK;
+        v_backtrace := DBMS_UTILITY.FORMAT_ERROR_BACKTRACE;
+        RAISE INFO 'Error stack: %', v_error_stack;
+        RAISE INFO 'Backtrace: %', v_backtrace;
+END;
+/
+
+CALL public.utility_error_demo();
+----
+
+The main output is shown below. Line numbers depend on statement positions in the procedure body:
+
+[source,text]
+----
+INFO:  Error stack: ORA-06510: demo error
+INFO:  Backtrace: ORA-06512: at "PUBLIC.UTILITY_ERROR_DEMO", line 4
+----
+
+The functions return diagnostic text without automatically rethrowing the caught exception. To propagate it, execute `RAISE;` after recording the diagnostics.
+
+=== Inspect nested calls
+
+[source,sql]
+----
+CREATE OR REPLACE PROCEDURE public.utility_stack_inner AS
+    v_stack text;
+BEGIN
+    v_stack := DBMS_UTILITY.FORMAT_CALL_STACK;
+    RAISE INFO 'Call stack: %', v_stack;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE public.utility_stack_outer AS
+BEGIN
+    public.utility_stack_inner();
+END;
+/
+
+CALL public.utility_stack_outer();
+----
+
+The result includes the `----- PL/SQL Call Stack -----` header and caller frames for `UTILITY_STACK_INNER` and `UTILITY_STACK_OUTER`. The diagnostic function's own first frame is omitted.
+
+=== No exception being handled
+
+[source,sql]
+----
+DO $$
+DECLARE
+    v_backtrace text;
+    v_error_stack text;
+BEGIN
+    v_backtrace := DBMS_UTILITY.FORMAT_ERROR_BACKTRACE;
+    v_error_stack := DBMS_UTILITY.FORMAT_ERROR_STACK;
+    RAISE INFO 'Backtrace: [%], error stack: [%]', v_backtrace, v_error_stack;
+END;
+$$;
+----
+
+Both results are `NULL`, displayed as `<NULL>` in psql's INFO output.
+
+[source,sql]
+----
+DROP PROCEDURE public.utility_error_demo;
+DROP PROCEDURE public.utility_stack_outer;
+DROP PROCEDURE public.utility_stack_inner;
+RESET ivorysql.identifier_case_switch;
+RESET ivorysql.enable_case_switch;
+----
+
+== Output considerations
+
+* Error numbers use a partial SQLSTATE mapping. Division by zero maps to `ORA-01476`, and `RAISE EXCEPTION` maps to `ORA-06510`. Other errors can use the generic `ORA-06502`; examine the original message and location backtrace as well.
+* Displayed object names depend on `ivorysql.enable_case_switch` and `ivorysql.identifier_case_switch`. Do not assume they are always uppercase.
+* Package frames include the schema, package, and subprogram. Already schema-qualified names do not acquire an extra `PUBLIC` prefix. Unqualified standalone routines can still receive a `public` backtrace prefix, which alone does not establish the actual owning schema.
+* `FORMAT_CALL_STACK` collects PL/iSQL frames. In mixed-language calls, it does not represent the complete runtime stack for every language.
+* Results can span multiple lines. Use `text` to retain complete diagnostics without an undersized receiving variable. Functions can also return `NULL` when the PL/iSQL context APIs are unavailable.

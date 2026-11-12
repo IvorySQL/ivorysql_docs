@@ -1,0 +1,107 @@
+:sectnums:
+:sectnumlevels: 5
+
+= DBMS_UTILITY Package Design
+
+== Purpose
+
+Three package functions in `ivorysql_ora` read the current PL/iSQL exception and call context to produce Oracle-style diagnostic text: `FORMAT_ERROR_BACKTRACE`, `FORMAT_ERROR_STACK`, and `FORMAT_CALL_STACK`.
+
+The implementation combines a package interface, C formatting, and PL/iSQL context APIs. See xref:master/oracle_compatibility/compat_dbms_utility.adoc[DBMS_UTILITY Package] for usage.
+
+== Implementation
+
+=== Code organization
+
+The package definition and C implementation are under `contrib/ivorysql_ora/src/builtin_packages/dbms_utility/`. PL/iSQL files are under `src/pl/plisql/src/`. Regression SQL and expected output are in the extension's `sql/` and `expected/` directories. The table lists filenames only.
+
+[cols="3,4",options="header"]
+|===
+|File |Responsibility
+|`dbms_utility--1.0.sql` |Registers C entry points and defines the package specification and body
+|`dbms_utility.c` |Looks up context APIs and formats exception locations, messages, and call stacks
+|`pl_exec.c` |Maintains exception context, exports diagnostic APIs, and constructs qualified package member names
+|`plisql.h` |Declares and exports PL/iSQL diagnostic APIs
+|`dbms_utility.sql` |Tests exceptions, call stacks, context restoration, and displayed names
+|`dbms_utility.out` |Expected diagnostics and verification results
+|===
+
+The extension's `Makefile`, `meson.build`, and `ivorysql_ora_merge_sqls` integrate the C module, SQL script, and regression tests into build and installation.
+
+[source,text]
+----
+DBMS_UTILITY.FORMAT_ERROR_BACKTRACE
+    → sys.ora_format_error_backtrace()
+    → PL/iSQL exception context API
+    → ORA-06512 location text
+
+FORMAT_ERROR_STACK → Exception message and SQLSTATE APIs → Error number and message
+FORMAT_CALL_STACK  → Current PL/iSQL stack API           → Stack header and frames
+----
+
+=== Package interface and dynamic lookup
+
+The three package functions take no arguments and return `text`. Their bodies call the corresponding `sys.ora_format_*` C functions. The C entry points are `VOLATILE` because results depend on the current execution and exception context.
+
+The C module uses `dlsym(RTLD_DEFAULT, ...)` to find symbols exported by the loaded PL/iSQL module, avoiding a link-time dependency on `plisql.so`. The first lookup results are cached in backend-static function pointers for subsequent calls. The current implementation attempts lookup only once.
+
+The four PL/iSQL APIs provide:
+
+* `plisql_get_current_exception_context()`: the current exception's context text.
+* `plisql_get_current_exception_message()`: its original message.
+* `plisql_get_current_exception_sqlerrcode()`: its internal SQLSTATE encoding, or 0 without an exception.
+* `plisql_get_call_stack()`: current PL/iSQL frames containing handles, line numbers, and signatures.
+
+If an API cannot be obtained, the corresponding package function returns `NULL`. PL/iSQL owns the exception message and context. The call-stack API returns a newly allocated string that the consumer frees after use.
+
+=== Saving and restoring exception context
+
+`pl_exec.c` uses `exception_handling_estate` to identify the execution state handling an exception. On entry to a matching handler, it saves the previous pointer and switches to the current state. It restores the previous value when the handler completes normally.
+
+Although a diagnostic runs in another package function invocation, this pointer lets it read the handler's `cur_error` rather than its own execution state. After a nested exception is handled and the subprogram returns normally, the outer context is restored, so repeated reads of the outer backtrace agree.
+
+=== FORMAT_ERROR_BACKTRACE
+
+The function reads exception context and transforms it line by line. `transform_and_append_line()` recognizes `PL/iSQL function` and `PL/pgSQL function` lines, extracting names and `line N`. It skips `SQL statement` lines and other unrecognized formats.
+
+Named routines produce `ORA-06512: at "object name", line N`; anonymous blocks produce `ORA-06512: at line N`. Lines retain the original exception context order, from the exception origin toward outer callers.
+
+PL/iSQL constructs schema, package, and subprogram names for package members using package catalog information. Formatting detects already qualified names to avoid adding another schema. Unqualified standalone routines still fall back to `public`; this conversion function does not look up their actual owning schema.
+
+=== FORMAT_ERROR_STACK
+
+The function reads the exception message and SQLSTATE, selects a number with `sqlstate_to_ora_errnum()`, and produces `ORA-XXXXX: original message` followed by a newline. It does not automatically append a location backtrace or translate the original message.
+
+[cols="3,2",options="header"]
+|===
+|Exception category |Output error number
+|Division by zero |`ORA-01476`
+|No data or no data found |`ORA-01403`
+|Too many rows |`ORA-01422`
+|NULL not allowed |`ORA-06502`
+|Invalid cursor state |`ORA-01001`
+|`RAISE EXCEPTION` |`ORA-06510`
+|Other SQLSTATEs |`ORA-06502`
+|===
+
+The mapping preserves common categories, but the generic number cannot distinguish every underlying exception. A missing message or SQLSTATE of 0 returns `NULL`.
+
+=== FORMAT_CALL_STACK
+
+`plisql_get_call_stack()` walks `error_context_stack`, collecting only frames whose callback is `plisql_exec_error_callback`. Each frame contains the execution object's address, current line number, and signature, with qualified names for package members.
+
+C formatting skips the diagnostic function's own first frame, places the remaining frames after the fixed `PL/SQL Call Stack` header, and labels all of them `function`. No caller frames to display produces `NULL`. This path reads the current execution stack, separately from the exception path saved in `cur_error->context`.
+
+=== Displayed identifiers
+
+Backtraces and call stacks pass names through `apply_identifier_case_switch()`. With case switching disabled, or mode `normal`, the text is unchanged. `lowercase` downcases all-uppercase text. `interchange` swaps all-uppercase and all-lowercase text, leaving mixed-case text unchanged.
+
+This processing applies to the retrieved name text, so displayed results depend on session configuration. Call-stack handles are runtime addresses rather than persistent object identifiers.
+
+== Verification
+
+The `dbms_utility` regression group covers basic exceptions, nested calls, functions and anonymous blocks, rethrowing, package members and schema-qualified names, nested exception context restoration, error-number mapping, no-exception results, call-stack structure, and combined use of all three functions.
+
+Current master cases also verify qualified package member names in a non-`public` schema, checking for a missing package name or duplicate `PUBLIC` prefix. Because stack addresses vary, tests check headers, names, and frame counts rather than fixed addresses.
+
+From a configured, built, and installed current master source tree, run `make -C contrib/ivorysql_ora oracle-installcheck ORA_REGRESS=dbms_utility`. The target instance needs matching versions of PL/iSQL and `ivorysql_ora`.
