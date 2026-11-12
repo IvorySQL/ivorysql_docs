@@ -1,0 +1,90 @@
+:sectnums:
+:sectnumlevels: 5
+
+= 标识符支持 +#+ 字符设计
+
+== 目的
+
+在 Oracle 兼容模式下支持包含 `+#+` 的未加引号标识符，并保留以 +#+ 开头的运算符语义。使用示例见 xref:master/oracle_compatibility/compat_identifier_hash_support.adoc[标识符支持 +#+ 字符]。
+
+实现包含两部分：扩展 Oracle 词法分析器的标识符字符集，通过前瞻区分标识符与 JSON 运算符；同步调整标识符引用函数，使合法名称不会仅因包含 +#+ 而被添加双引号。
+
+== 实现说明
+
+=== 代码组织
+
+解析器文件位于 `src/backend/oracle_parser/`。回归 SQL、期望输出和调度文件位于 `src/oracle_test/regress/` 的 `sql/`、`expected/` 及根目录。下表只列文件名。
+
+[cols="2,4",options="header"]
+|===
+|文件 |职责
+|`ora_scan.l` |扩展标识符字符集，处理末尾 +#+ 与运算符之间的边界
+|`liboracle_parser.c` |更新 oracle_quote_identifier() 的安全字符判断
+|`ora_identifiers.sql` |包含特殊字符名称、异或和 JSON 运算符的回归用例
+|`ora_identifiers.out` |对应表结构操作、查询及运算结果
+|`parallel_schedule` |将 ora_identifiers 纳入 Oracle 并行回归调度
+|===
+
+扩展回归目录 `contrib/ivorysql_ora/expected/` 中的 `ora_misc_functions.out` 还调整了非法输入的预期诊断，以匹配 +#+ 进入标识符后变化的词法边界。
+
+=== 标识符字符集
+
+`ora_scan.l` 保持首字符集合不变，仅在后续字符集合 `ident_cont` 中增加 +#+：
+
+[source,text]
+----
+ident_start     [A-Za-z\200-\377_]
+ident_cont      [A-Za-z\200-\377_0-9\$#]
+identifier      {ident_start}{ident_cont}*
+----
+
+因此 `+statistic#+`、`+col#1+` 和 `+test#table+` 可以作为单个标识符被识别，但 +#+ 不会成为合法的未加引号首字符。已有的 $、下划线、数字及高位字节规则保持原样。
+
+识别完成后继续执行关键字查找。非关键字调用 `downcase_truncate_identifier()`，将名称写入语义值并返回 `IDENT`，沿用已有的大小写和长度处理。
+
+=== 前瞻与运算符边界
+
+直接扩展字符集会使最长匹配把 `+json#>'{a}'+` 中的 `+json#+` 识别为一个标识符，留下孤立的 >，改变原有表达式的含义。处理逻辑放在标识符动作中，在关键字查找之前执行：
+
+. 当匹配长度至少为 2 且最后一个字符为 +#+ 时，调用 `input(yyscanner)` 查看后一个字符。
+. 若后一个字符为 > 或 -，先通过 `unput()` 放回该字符，再调用 `yyless(len - 1)` 将末尾 +#+ 退回输入流。
+. 后续扫描从 +#+ 开始，交给已有运算符规则识别 `+#>+`、`+#>>+` 或 `+#-+`。
+. 其他情况下保留 +#+ 作为名称的一部分，并在读到普通字符时将前瞻字符放回。
+
+为使用 Flex 的输入和退回接口，扫描器移除了 `%option noinput` 和 `%option nounput`。
+
+[source,text]
+----
+statistic#          → IDENT(statistic#)
+col#1              → IDENT(col#1)
+jsonb#>>'{b}'      → IDENT(jsonb) + #>> + string literal
+statistic# > 0     → IDENT(statistic#) + > + integer
+a#b                → IDENT(a#b)
+a # b              → IDENT(a) + # + IDENT(b)
+----
+
+该方案复用现有运算符规则，不新增 JSON 运算符或专用语法节点。前瞻仅针对以 +#+ 结尾的候选标识符；实际名称末尾的 +#+ 与 >、- 之间需要用空格分隔，避免触发运算符识别。
+
+=== 标识符引用输出
+
+`liboracle_parser.c` 中的 `oracle_quote_identifier()` 由解析器初始化时注册到 `quote_identifier_hook`。函数将 +#+ 和 $ 纳入可不加引号的后续字符集合，和词法规则保持一致。
+
+可直接输出的名称仍需以 ASCII 小写字母或下划线开头，其余字符仅由 ASCII 小写字母、数字、下划线、+#+、$ 组成。函数仍检查关键字分类：非保留关键字可不加引号，其他关键字需要引用；启用 `quote_all_identifiers` 时也会添加双引号。
+
+因此，该调整不会让所有含 +#+ 的名称都免于引用；大写、混合大小写或包含其他字符的名称仍根据已有规则处理。需要引用时，函数沿用原有的双引号转义逻辑。
+
+== 测试验证
+
+`ora_identifiers` 回归组覆盖末尾和中间含 +#+ 的列名、含 +#+ 的表名、原有 $ 支持、混合特殊字符、整数和位串异或，以及无空格的 `+#>+`、`+#>>+`、`+#-+` 运算。
+
+修改此处规则时，还应检查以 +#+ 结尾的列名与比较、减法之间的空格边界，以及标识符引用输出，避免只验证建表成功。
+
+在已配置、编译并安装对应版本的源码目录中，针对运行中的 Oracle 兼容实例执行：
+
+[source,bash]
+----
+make -C src/oracle_test/regress oracle-installcheck-tests \
+    TESTS=ora_identifiers EXTRA_REGRESS_OPTS='--port=1521'
+----
+
+按实际实例修改端口。该测试组已加入 Oracle 的并行回归调度。
