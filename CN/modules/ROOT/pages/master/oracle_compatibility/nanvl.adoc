@@ -1,0 +1,177 @@
+:sectnums:
+:sectnumlevels: 5
+
+= NANVL 函数
+
+== 概述
+
+`NANVL` 是 Oracle 兼容函数，用于替换浮点数中的 NaN（Not a Number）值。当输入为 NaN 时返回指定的替代值，否则返回输入值本身。
+
+== 语法
+
+[source,sql]
+----
+NANVL(n, m)
+----
+
+=== 参数
+
+[cols="1,4",options="header"]
+|===
+|参数 |说明
+|`n` |待检测的数值表达式（`binary_float`、`binary_double`）
+|`m` |替代值，类型需与 `n` 兼容
+|===
+
+=== 返回值
+
+* 若 `n` 为 NaN，返回 `m`。
+* 若 `n` 不是 NaN，返回 `n`。
+
+== 使用示例
+
+=== 基本用法
+
+[source,sql]
+----
+-- 正常值：返回原值
+SELECT NANVL(CAST(1.5 AS BINARY_FLOAT), CAST(99.0 AS BINARY_FLOAT));
+-- 结果：1.5
+
+-- NaN 值：返回替代值
+SELECT NANVL(CAST('NaN' AS BINARY_FLOAT), CAST(99.0 AS BINARY_FLOAT));
+-- 结果：99
+
+-- 负数正常值：返回原值
+SELECT NANVL(CAST(-3.14 AS BINARY_DOUBLE), CAST(0.0 AS BINARY_DOUBLE));
+-- 结果：-3.14
+----
+
+=== 数据清洗
+
+将表中的 NaN 值替换为 0：
+
+[source,sql]
+----
+CREATE TABLE measurements (
+    id int,
+    temperature binary_double,
+    pressure binary_double
+);
+
+INSERT INTO measurements VALUES
+    (1, 25.5, 1013.25),
+    (2, 'NaN', 1015.0),      -- 传感器故障，温度 NaN
+    (3, 26.1, 'NaN'),        -- 传感器故障，气压 NaN
+    (4, 'NaN', 'NaN');       -- 两个传感器都故障
+
+-- 将 NaN 替换为 0
+SELECT id,
+       NANVL(temperature, 0.0) AS temp_clean,
+       NANVL(pressure, 0.0) AS press_clean
+FROM measurements
+ORDER BY id;
+
+-- 结果：
+--  id | temp_clean | press_clean
+-- ----+------------+-------------
+--   1 |       25.5 |     1013.25
+--   2 |          0 |      1015.0
+--   3 |       26.1 |           0
+--   4 |          0 |           0
+----
+
+=== 使用表达式作为替代值
+
+替代值可以是任意表达式：
+
+[source,sql]
+----
+-- 用列的平均值替代 NaN
+SELECT NANVL(temperature,
+             (SELECT AVG(temperature) FROM measurements))
+FROM measurements;
+
+-- 用计算结果替代 NaN
+SELECT NANVL('NaN'::binary_float, 1.0 + 2.0::binary_float);
+-- 结果：3
+----
+
+=== 配合聚合使用
+
+[source,sql]
+----
+-- 计算温度时，先将 NaN 替换为 0 再求平均
+SELECT AVG(NANVL(temperature, 0.0)) AS avg_temp
+FROM measurements;
+----
+
+=== 在 WHERE 子句中使用
+
+[source,sql]
+----
+-- 筛选出“原始值为 NaN 或小于阈值”的行
+SELECT *
+FROM measurements
+WHERE NANVL(temperature, -999.0) < 0;
+----
+
+== 边界行为
+
+=== NULL 处理
+
+`NANVL` 根据 `n` 决定返回值。当 `n` 不是 NaN 时直接返回 `n`，`m` 的值不影响结果。只有 `n` 为 NaN 时才会使用 `m`；此时若 `m` 为 NULL，则返回 NULL。
+
+[source,sql]
+----
+SELECT NANVL(CAST(NULL AS BINARY_FLOAT), CAST(99.0 AS BINARY_FLOAT));
+-- n 为 NULL，直接返回 NULL
+
+SELECT NANVL(CAST(1.5 AS BINARY_FLOAT), CAST(NULL AS BINARY_FLOAT));
+-- 返回 1.5；n 不是 NaN，m 是否为 NULL 不影响结果
+
+SELECT NANVL(CAST(NULL AS BINARY_FLOAT), CAST(NULL AS BINARY_FLOAT));
+-- n 为 NULL，返回 NULL
+
+SELECT NANVL(CAST('NaN' AS BINARY_FLOAT), CAST(NULL AS BINARY_FLOAT));
+-- n 是 NaN，返回 m；m 为 NULL，因此返回 NULL
+----
+
+=== Infinity 不被替换
+
+Infinity（无穷大）不是 NaN，不会被替换：
+
+[source,sql]
+----
+SELECT NANVL(CAST('Infinity' AS BINARY_FLOAT), CAST(99.0 AS BINARY_FLOAT));
+-- 结果：Inf
+
+SELECT NANVL(CAST('-Infinity' AS BINARY_DOUBLE), CAST(0.0 AS BINARY_DOUBLE));
+-- 结果：-Inf
+----
+
+=== 负零不被替换
+
+负零（`-0.0`）是有效的浮点数值，不是 NaN：
+
+[source,sql]
+----
+SELECT NANVL(CAST(-0.0 AS BINARY_FLOAT), CAST(99.0 AS BINARY_FLOAT));
+-- 结果：0
+
+SELECT NANVL(CAST(-0.0 AS NUMBER), CAST(99.0 AS NUMBER));
+-- 结果：0.0
+----
+
+=== NaN 作为替代值
+
+替代值本身也可以是 NaN：
+
+[source,sql]
+----
+SELECT NANVL(
+    CAST('NaN' AS BINARY_FLOAT),
+    CAST('NaN' AS BINARY_FLOAT)
+);
+-- 结果：NaN
+----
