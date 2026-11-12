@@ -28,7 +28,9 @@ IvorySQL版本号由主要版本和次要版本组成。例如，IvorySQL 3.2 �
 
 === 通过pg_dumpall升级数据
 
-传统的跨版本升级方法利用pg_dump/pg_dumpall逻辑备份导出数据库，然后在新版本中通过pg_restore进行还原。导出旧版本数据库时推荐使用新版本的pg_dump/pg_dumpall工具，可以利用最新的并行导出和还原功能，同时可以减少数据库膨胀问题。
+`pg_dumpall` 默认输出纯 SQL 脚本，其中包含集群中的数据库及角色、表空间等全局对象。请在目标集群用 `psql` 执行该脚本。使用 `pg_dump -Fc` 等归档格式备份单个数据库时，用 `pg_restore` 读取归档。
+
+导出旧版集群时，使用目标版本的 `pg_dumpall` 程序。
 
 ​逻辑备份与还原非常简单但速度比较慢，停机时间取决于数据库的大小，因此适合中小型数据库的升级。
 
@@ -37,10 +39,8 @@ IvorySQL版本号由主要版本和次要版本组成。例如，IvorySQL 3.2 �
 1. 执行逻辑备份之前停止应用程序，确保没有数据更新，因为备份开始后的更新不会被导出。如有必要，可以修改/usr/local/pgsql/data/pg_hba.conf文件禁止其他人访问数据库。然后备份数据库：
 
 ```
-pg_dumpall > outputfile
+pg_dumpall --file=outputfile
 ```
-
-> 如果已经安装了新版本的IvorySQL，可以使用新版本的pg_dumpall命令备份旧版本数据库。
 
 2.停止旧版本的后台服务：
 
@@ -72,16 +72,17 @@ mv /usr/local/pgsql /usr/local/pgsql.old
 /usr/local/pgsql/bin/postgres -D /usr/local/pgsql/data
 ```
 
-8.最后利用新版本的psql命令还原数据：
+*8.* 使用目标版本的 `psql` 执行 SQL 文件。`-X` 选项会跳过本地 psql 启动文件。
 
 ```
-/usr/local/pgsql/bin/psql -d postgres -f outputfile
+/usr/local/pgsql/bin/psql -X -d postgres -f outputfile
 ```
 
-为了减少停机时间，可以将新版本的IvorySQL安装到另一个目录，同时使用不同的端口启动服务。然后同时执行数据库的导出和导入：
+需要同时运行新旧版本时，可将目标版本安装到其他目录，并使用独立端口启动。先保存源集群的转储，确认 `pg_dumpall` 成功后再在目标集群执行。
 
 ```
-pg_dumpall -p 5432 | psql -d postgres -p 5433
+pg_dumpall -p 5432 --file=outputfile
+psql -X -d postgres -p 5433 -f outputfile
 ```
 
 ​执行以上操作时，新旧版本的后台服务同时运行，新版本使用5433端口，旧版本使用5432端口。
