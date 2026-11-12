@@ -1,0 +1,245 @@
+:sectnums:
+:sectnumlevels: 5
+
+= UTL_ENCODE
+
+== Introduction
+
+`UTL_ENCODE` is a built-in package available in IvorySQL's Oracle-compatible mode. It provides Base64 encoding and decoding compatible with Oracle Database. The package converts arbitrary binary data (`RAW`) to printable Base64 ASCII bytes and converts Base64 bytes back to their original binary form.
+
+== Function reference
+
+=== BASE64_ENCODE
+
+Encodes binary data as a Base64 ASCII byte sequence.
+
+==== Syntax
+
+[source,sql]
+----
+UTL_ENCODE.BASE64_ENCODE(r IN RAW) RETURN RAW
+----
+
+==== Parameter
+
+[cols="1,1,3",options="header"]
+|===
+|Parameter |Type |Description
+|`r` |`RAW` |Binary data to encode
+|===
+
+==== Return value
+
+Returns the Base64-encoded ASCII byte sequence as `RAW`. The output follows the RFC 1521 MIME format: a newline (`\n`) is inserted after every 64 characters, including at the end of the final line.
+
+==== Special values
+
+[cols="2,3",options="header"]
+|===
+|Input |Return value
+|`NULL` |`NULL`
+|Empty `RAW` (0 bytes) |Empty `RAW` (0 bytes)
+|===
+
+=== BASE64_DECODE
+
+Decodes a Base64 ASCII byte sequence to its original binary data.
+
+==== Syntax
+
+[source,sql]
+----
+UTL_ENCODE.BASE64_DECODE(r IN RAW) RETURN RAW
+----
+
+==== Parameter
+
+[cols="1,1,3",options="header"]
+|===
+|Parameter |Type |Description
+|`r` |`RAW` |Base64-encoded byte sequence
+|===
+
+==== Return value
+
+Returns the decoded binary data as `RAW`.
+
+Before decoding, the function removes whitespace characters (`\n`, `\r`, `\t`, and spaces). It therefore accepts newline-containing output from `BASE64_ENCODE` directly.
+
+==== Special values
+
+[cols="2,3",options="header"]
+|===
+|Input |Return value
+|`NULL` |`NULL`
+|Empty `RAW` (0 bytes) |Empty `RAW` (0 bytes)
+|Whitespace only, such as `\n`, `\r`, or spaces |Empty `RAW` (0 bytes)
+|Invalid Base64 characters |Error: `invalid base64 input`
+|===
+
+== Examples
+
+=== Encoding a string
+
+Encode the hexadecimal bytes `\x48656c6c6f`, which represent `Hello`:
+
+[source,sql]
+----
+SELECT utl_encode.base64_encode('\x48656c6c6f');
+----
+
+The result is 9 `RAW` bytes containing `SGVsbG8=\n`:
+
+[source,text]
+----
+\x534756736247383d0a
+----
+
+=== Decoding a Base64 byte sequence
+
+Decode `\x534756736247383d0a`, the ASCII bytes for `SGVsbG8=\n`:
+
+[source,sql]
+----
+SELECT utl_encode.base64_decode('\x534756736247383d0a');
+----
+
+[source,text]
+----
+\x48656c6c6f
+----
+
+=== Encoding and immediately decoding
+
+[source,sql]
+----
+SELECT utl_encode.base64_decode(
+    utl_encode.base64_encode('\x48656c6c6f')
+) = '\x48656c6c6f'::bytea;
+----
+
+[source,text]
+----
+t
+----
+
+=== Using the package in a PL/iSQL block
+
+[source,sql]
+----
+DECLARE
+    v_src     RAW(100) := '\x48656c6c6f';
+    v_encoded RAW(200);
+    v_decoded RAW(200);
+BEGIN
+    v_encoded := utl_encode.base64_encode(v_src);
+    DBMS_OUTPUT.PUT_LINE('Encoded length: ' || pg_catalog.octet_length(v_encoded::bytea));
+
+    v_decoded := utl_encode.base64_decode(v_encoded);
+    DBMS_OUTPUT.PUT_LINE('Round trip matches: ' || CASE WHEN v_decoded = v_src THEN 'TRUE' ELSE 'FALSE' END);
+END;
+/
+----
+
+[source,text]
+----
+Encoded length: 9
+Round trip matches: TRUE
+----
+
+=== Encoding larger data
+
+Encoding 49 bytes produces two lines (64 characters + newline + 4 characters + newline = 70 bytes):
+
+[source,sql]
+----
+SELECT octet_length(
+    utl_encode.base64_encode(pg_catalog.decode(repeat('00', 49), 'hex'))
+);
+----
+
+[source,text]
+----
+70
+----
+
+Display the line-wrapped result:
+
+[source,sql]
+----
+SELECT convert_from(
+    utl_encode.base64_encode(pg_catalog.decode(repeat('00', 49), 'hex')),
+    'UTF8'
+);
+----
+
+[source,text]
+----
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAA
+----
+
+The first line has 64 characters and the second has 4. Both lines end with a newline.
+
+=== NULL input returns NULL
+
+[source,sql]
+----
+SELECT utl_encode.base64_encode(NULL::bytea) IS NULL;  -- t
+SELECT utl_encode.base64_decode(NULL::bytea) IS NULL;  -- t
+----
+
+=== Decoding Base64 text with CRLF line endings
+
+`BASE64_DECODE` automatically removes whitespace such as `\r\n`; no preprocessing is required:
+
+[source,sql]
+----
+SELECT utl_encode.base64_decode(
+    pg_catalog.encode(
+        regexp_replace(
+            convert_from(utl_encode.base64_encode('\x48656c6c6f'), 'UTF8'),
+            E'\n', E'\r\n'
+        )::bytea,
+        'escape'
+    )::bytea
+) = '\x48656c6c6f'::bytea;
+----
+
+[source,text]
+----
+t
+----
+
+=== Whitespace-only input returns an empty RAW
+
+[source,sql]
+----
+-- \x0a0d200a = LF CR SP LF
+SELECT octet_length(utl_encode.base64_decode('\x0a0d200a'));
+----
+
+[source,text]
+----
+0
+----
+
+== Output format
+
+`BASE64_ENCODE` follows the RFC 1521 MIME format and matches Oracle Database behavior:
+
+[cols="1,1,1,1",options="header"]
+|===
+|Input bytes |Base64 length |Lines |Total output bytes
+|1 |4 |1 |5
+|3 |4 |1 |5
+|48 |64 |1 |65
+|49 |68 |2 |70
+|96 |128 |2 |130
+|200 |268 |5 |273
+|===
+
+[NOTE]
+====
+PostgreSQL's `encode(data, 'base64')` follows RFC 2045, wraps lines after 76 characters, omits the final newline, and returns `text`. `UTL_ENCODE.BASE64_ENCODE` wraps lines after 64 characters, includes a final newline, and returns `RAW` (`bytea`).
+====

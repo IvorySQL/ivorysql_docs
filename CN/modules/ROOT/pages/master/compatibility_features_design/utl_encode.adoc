@@ -1,0 +1,245 @@
+:sectnums:
+:sectnumlevels: 5
+
+= UTL_ENCODE 包实现原理
+
+== 概述
+
+`UTL_ENCODE` 是 IvorySQL Oracle 兼容扩展（`ivorysql_ora`）中的内置包，提供与 Oracle 数据库兼容的 Base64 编码与解码功能。本文档描述 `BASE64_ENCODE` 和 `BASE64_DECODE` 两个函数的设计目标、实现原理及关键技术细节。
+
+== 文件结构
+
+[source,text]
+----
+contrib/ivorysql_ora/
+├── src/builtin_packages/utl_encode/
+│   ├── utl_encode.c          # C 函数实现
+│   └── utl_encode--1.0.sql   # SQL 注册和 PL/iSQL 包声明
+├── sql/utl_encode.sql        # 回归测试用例
+└── expected/utl_encode.out   # 回归测试期望输出
+----
+
+== Oracle 兼容目标
+
+Oracle 的 `UTL_ENCODE` 包定义以下接口：
+
+[source,sql]
+----
+-- 编码：将二进制 RAW 数据转换为 Base64 ASCII 字节序列
+UTL_ENCODE.BASE64_ENCODE(r IN RAW) RETURN RAW
+
+-- 解码：将 Base64 ASCII 字节序列还原为二进制 RAW 数据
+UTL_ENCODE.BASE64_DECODE(r IN RAW) RETURN RAW
+----
+
+在 IvorySQL 中，Oracle 的 `RAW` 类型映射为 PostgreSQL 的 `bytea`，因此两个函数的 C 签名均为 `bytea -> bytea`。
+
+== BASE64_ENCODE 实现原理
+
+=== 设计目标
+
+Oracle `BASE64_ENCODE` 采用 RFC 1521（MIME）格式：每 64 个 Base64 字符后插入一个换行符（`\n`，即 LF），包括最后一行。
+
+PostgreSQL 内置的 `encode(bytea, 'base64')` 遵循 RFC 2045，每 76 个字符换行，且末尾不保证有换行符。因此，需要自行实现换行逻辑。
+
+=== 编码流程
+
+[source,text]
+----
+输入 bytea（src_len 字节）
+        │
+        ▼
+pg_b64_encode()          ← PostgreSQL 内部函数，输出纯 Base64（无换行）
+        │
+        ▼
+raw_b64（b64_len 字节）  ← 长度 = ceil(src_len / 3) × 4
+        │
+        ▼
+按 64 字符分块，每块追加 '\n'
+        │
+        ▼
+输出 bytea（b64_len + num_lines 字节）
+----
+
+=== 输出长度计算
+
+[cols="2,3",options="header"]
+|===
+|参数 |公式
+|纯 Base64 长度 |`b64_len = pg_b64_enc_len(src_len) = ceil(src_len / 3) × 4`
+|行数 |`num_lines = ceil(b64_len / 64)`
+|最终输出长度 |`result_len = b64_len + num_lines`
+|===
+
+例如，编码 `Hello`（5 字节）时：
+
+* `b64_len` = 8（`SGVsbG8=`）
+* `num_lines` = 1（8 ≤ 64）
+* `result_len` = 8 + 1 = 9 字节（`SGVsbG8=\n`）
+
+边界情况如下：
+
+[cols="1,1,1,1",options="header"]
+|===
+|输入字节数 |`b64_len` |行数 |输出字节数
+|48 |64 |1 |65
+|49 |68 |2 |70
+|96 |128 |2 |130
+|===
+
+=== 关键代码
+
+[source,c]
+----
+/* 计算纯 Base64 长度，再计算行数 */
+b64_len = pg_b64_enc_len(src_len);
+num_lines = (b64_len + 63) / 64;
+result_len = b64_len + num_lines;
+
+/* 调用 PostgreSQL 内部编码函数（不含换行） */
+encoded_len = pg_b64_encode(src_data, src_len, raw_b64, b64_len);
+
+/* 按 64 字符切块，逐块写入并追加 LF */
+while (remaining > 0)
+{
+    chunk = (remaining >= 64) ? 64 : remaining;
+    memcpy(dst, p, chunk);
+    dst += chunk;
+    p += chunk;
+    remaining -= chunk;
+    *dst++ = '\n';
+}
+----
+
+=== 边界行为
+
+[cols="2,3",options="header"]
+|===
+|输入 |输出
+|`NULL` |`NULL`，由 SQL 层的 `STRICT` 修饰符处理
+|空 `bytea`（0 字节） |空 `bytea`（0 字节）
+|任意非空二进制 |Base64 文本，每 64 个字符一行，末行也有 `\n`
+|===
+
+== BASE64_DECODE 实现原理
+
+=== 设计目标
+
+`BASE64_DECODE` 接受 `BASE64_ENCODE` 产生的带换行 Base64 字节序列，并将其还原为原始二进制数据。PostgreSQL 内部的 `pg_b64_decode()` 拒绝所有空白字符，而 Oracle 编码输出中包含 `\n`，因此必须在解码前剥离空白。
+
+=== 解码流程
+
+[source,text]
+----
+输入 bytea（含 \n 的 Base64 字节序列）
+        │
+        ▼
+剥离空白字符
+过滤 '\n'、'\r'、'\t' 和空格
+        │
+        ▼
+clean_buf（无空白的纯 Base64 字符）
+        │
+        ▼
+clean_len == 0?  ── 是 ──▶ 返回空 bytea
+        │ 否
+        ▼
+pg_b64_decode()          ← PostgreSQL 内部函数
+        │
+        ▼
+decoded_len < 0?  ── 是 ──▶ ERROR: invalid base64 input
+        │ 否
+        ▼
+输出 bytea（decoded_len 字节）
+----
+
+=== 空白剥离策略
+
+接受的空白字符包括 `\n`（LF）、`\r`（CR）、`\t`（TAB）和空格。该设计同时兼容：
+
+* Oracle `BASE64_ENCODE` 输出的 `\n` 换行
+* Windows 风格的 `\r\n` 换行
+* 人工格式化时引入的 TAB 和空格
+
+[source,c]
+----
+for (i = 0; i < src_len; i++)
+{
+    unsigned char c = (unsigned char) src_data[i];
+
+    if (c != '\n' && c != '\r' && c != '\t' && c != ' ')
+        clean_buf[clean_len++] = src_data[i];
+}
+----
+
+=== 错误处理
+
+[cols="2,3",options="header"]
+|===
+|情形 |行为
+|`NULL` 输入 |返回 `NULL`，由 `STRICT` 修饰符处理
+|空 `bytea` 输入 |返回空 `bytea`
+|纯空白输入（如 `\x0a0d200a`） |返回空 `bytea`
+|无效 Base64 字符 |抛出 `ERROR: UTL_ENCODE.BASE64_DECODE: invalid base64 input`，错误码为 `ERRCODE_INVALID_PARAMETER_VALUE`
+|===
+
+== PL/iSQL 包封装
+
+C 函数注册在 `sys` 模式中，再由 PL/iSQL 包封装，对外提供 Oracle 风格的调用接口：
+
+[source,sql]
+----
+-- 在 sys 模式中注册 C 函数
+CREATE FUNCTION sys.utl_encode_base64_encode(bytea) RETURNS bytea
+  AS 'MODULE_PATHNAME', 'ivorysql_utl_encode_base64_encode'
+  LANGUAGE C IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE FUNCTION sys.utl_encode_base64_decode(bytea) RETURNS bytea
+  AS 'MODULE_PATHNAME', 'ivorysql_utl_encode_base64_decode'
+  LANGUAGE C IMMUTABLE PARALLEL SAFE STRICT;
+
+-- 对外提供接口的 PL/iSQL 包
+CREATE PACKAGE utl_encode AS
+    FUNCTION base64_encode(r IN RAW) RETURN RAW;
+    FUNCTION base64_decode(r IN RAW) RETURN RAW;
+END utl_encode;
+
+CREATE PACKAGE BODY utl_encode AS
+    FUNCTION base64_encode(r IN RAW) RETURN RAW IS
+    BEGIN RETURN utl_encode_base64_encode(r); END;
+
+    FUNCTION base64_decode(r IN RAW) RETURN RAW IS
+    BEGIN RETURN utl_encode_base64_decode(r); END;
+END utl_encode;
+----
+
+调用链路为：`utl_encode.base64_encode(r)` → PL/iSQL 包体 → `sys.utl_encode_base64_encode(bytea)` → C 函数。
+
+== 与 PostgreSQL 内置函数的差异
+
+[cols="2,2,2",options="header"]
+|===
+|特性 |PostgreSQL `encode(x, 'base64')` |Oracle `UTL_ENCODE.BASE64_ENCODE`
+|换行标准 |RFC 2045（76 字符/行） |RFC 1521（64 字符/行）
+|末行换行 |无 |有（`\n`）
+|输入和输出类型 |`bytea` → `text` |`RAW` → `RAW`（均为 `bytea`）
+|解码时空白处理 |`decode()` 接受换行 |`pg_b64_decode()` 不接受，需预处理
+|===
+
+== 回归测试覆盖
+
+测试文件为 `contrib/ivorysql_ora/sql/utl_encode.sql`。
+
+[cols="2,3",options="header"]
+|===
+|测试类型 |覆盖内容
+|NULL 边界 |NULL 输入返回 NULL
+|空输入边界 |0 字节 `bytea` 返回 0 字节 `bytea`
+|已知值验证 |`Hello` 编码结果为 `SGVsbG8=\n`（9 字节）
+|行断边界 |48 字节 → 1 行 65 字节；49 字节 → 2 行 70 字节
+|大输入 |200 字节数据的多行编解码
+|往返一致性 |`decode(encode(x)) = x`
+|CRLF 兼容 |正确剥离 `\r\n` 换行
+|纯空白输入 |`\x0a0d200a` 解码后返回空 `bytea`
+|PL/iSQL 接口 |通过包调用验证端到端路径
+|===

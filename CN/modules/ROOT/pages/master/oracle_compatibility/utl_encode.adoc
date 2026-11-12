@@ -1,0 +1,245 @@
+:sectnums:
+:sectnumlevels: 5
+
+= UTL_ENCODE
+
+== 简介
+
+`UTL_ENCODE` 是 IvorySQL Oracle 兼容模式下的内置包，提供与 Oracle 数据库行为一致的 Base64 编解码功能。它支持将任意二进制数据（`RAW` 类型）转换为可打印的 Base64 ASCII 字节序列，也可以将 Base64 字节序列还原为原始二进制数据。
+
+== 函数参考
+
+=== BASE64_ENCODE
+
+将二进制数据编码为 Base64 格式的 ASCII 字节序列。
+
+==== 语法
+
+[source,sql]
+----
+UTL_ENCODE.BASE64_ENCODE(r IN RAW) RETURN RAW
+----
+
+==== 参数
+
+[cols="1,1,3",options="header"]
+|===
+|参数 |类型 |说明
+|`r` |`RAW` |待编码的二进制数据
+|===
+
+==== 返回值
+
+返回 Base64 编码后的 ASCII 字节序列，类型为 `RAW`。输出格式遵循 RFC 1521（MIME）规范：每 64 个字符后插入一个换行符（`\n`），最后一行末尾同样有换行符。
+
+==== 特殊值行为
+
+[cols="2,3",options="header"]
+|===
+|输入 |返回值
+|`NULL` |`NULL`
+|空 `RAW`（0 字节） |空 `RAW`（0 字节）
+|===
+
+=== BASE64_DECODE
+
+将 Base64 编码的 ASCII 字节序列还原为原始二进制数据。
+
+==== 语法
+
+[source,sql]
+----
+UTL_ENCODE.BASE64_DECODE(r IN RAW) RETURN RAW
+----
+
+==== 参数
+
+[cols="1,1,3",options="header"]
+|===
+|参数 |类型 |说明
+|`r` |`RAW` |Base64 编码的字节序列
+|===
+
+==== 返回值
+
+返回解码后的原始二进制数据，类型为 `RAW`。
+
+解码前会自动剥离输入中的空白字符（`\n`、`\r`、`\t`、空格），因此可直接接受 `BASE64_ENCODE` 的输出（含换行）。
+
+==== 特殊值行为
+
+[cols="2,3",options="header"]
+|===
+|输入 |返回值
+|`NULL` |`NULL`
+|空 `RAW`（0 字节） |空 `RAW`（0 字节）
+|仅含空白字符（如 `\n`、`\r`、空格） |空 `RAW`（0 字节）
+|含无效 Base64 字符 |报错：`invalid base64 input`
+|===
+
+== 使用示例
+
+=== 编码字符串
+
+将文本 `Hello` 对应的十六进制字节 `\x48656c6c6f` 进行 Base64 编码：
+
+[source,sql]
+----
+SELECT utl_encode.base64_encode('\x48656c6c6f');
+----
+
+输出为 `SGVsbG8=\n` 的 `RAW` 字节，共 9 字节：
+
+[source,text]
+----
+\x534756736247383d0a
+----
+
+=== 解码 Base64 字节序列
+
+将已知的 Base64 字节序列 `\x534756736247383d0a`（即 ASCII 的 `SGVsbG8=\n`）解码回原始数据：
+
+[source,sql]
+----
+SELECT utl_encode.base64_decode('\x534756736247383d0a');
+----
+
+[source,text]
+----
+\x48656c6c6f
+----
+
+=== 编码后立即解码
+
+[source,sql]
+----
+SELECT utl_encode.base64_decode(
+    utl_encode.base64_encode('\x48656c6c6f')
+) = '\x48656c6c6f'::bytea;
+----
+
+[source,text]
+----
+t
+----
+
+=== 在 PL/iSQL 块中使用
+
+[source,sql]
+----
+DECLARE
+    v_src     RAW(100) := '\x48656c6c6f';
+    v_encoded RAW(200);
+    v_decoded RAW(200);
+BEGIN
+    v_encoded := utl_encode.base64_encode(v_src);
+    DBMS_OUTPUT.PUT_LINE('编码长度: ' || pg_catalog.octet_length(v_encoded::bytea));
+
+    v_decoded := utl_encode.base64_decode(v_encoded);
+    DBMS_OUTPUT.PUT_LINE('往返一致: ' || CASE WHEN v_decoded = v_src THEN 'TRUE' ELSE 'FALSE' END);
+END;
+/
+----
+
+[source,text]
+----
+编码长度: 9
+往返一致: TRUE
+----
+
+=== 编码较大数据
+
+编码 49 字节数据时，输出跨越两行（64 字符 + 换行 + 4 字符 + 换行 = 70 字节）：
+
+[source,sql]
+----
+SELECT octet_length(
+    utl_encode.base64_encode(pg_catalog.decode(repeat('00', 49), 'hex'))
+);
+----
+
+[source,text]
+----
+70
+----
+
+查看分行内容：
+
+[source,sql]
+----
+SELECT convert_from(
+    utl_encode.base64_encode(pg_catalog.decode(repeat('00', 49), 'hex')),
+    'UTF8'
+);
+----
+
+[source,text]
+----
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAA
+----
+
+第一行 64 个字符，第二行 4 个字符，每行末尾都有换行符。
+
+=== NULL 输入返回 NULL
+
+[source,sql]
+----
+SELECT utl_encode.base64_encode(NULL::bytea) IS NULL;  -- t
+SELECT utl_encode.base64_decode(NULL::bytea) IS NULL;  -- t
+----
+
+=== 解码含 CRLF 换行的 Base64 文本
+
+`BASE64_DECODE` 会自动剥离 `\r\n` 等空白字符，无需手动预处理：
+
+[source,sql]
+----
+SELECT utl_encode.base64_decode(
+    pg_catalog.encode(
+        regexp_replace(
+            convert_from(utl_encode.base64_encode('\x48656c6c6f'), 'UTF8'),
+            E'\n', E'\r\n'
+        )::bytea,
+        'escape'
+    )::bytea
+) = '\x48656c6c6f'::bytea;
+----
+
+[source,text]
+----
+t
+----
+
+=== 纯空白输入返回空 RAW
+
+[source,sql]
+----
+-- \x0a0d200a = LF CR SP LF
+SELECT octet_length(utl_encode.base64_decode('\x0a0d200a'));
+----
+
+[source,text]
+----
+0
+----
+
+== 输出格式
+
+`BASE64_ENCODE` 的输出格式遵循 RFC 1521 MIME 规范，与 Oracle 数据库行为一致：
+
+[cols="1,1,1,1",options="header"]
+|===
+|输入字节数 |纯 Base64 长度 |行数 |输出总字节数
+|1 |4 |1 |5
+|3 |4 |1 |5
+|48 |64 |1 |65
+|49 |68 |2 |70
+|96 |128 |2 |130
+|200 |268 |5 |273
+|===
+
+[NOTE]
+====
+PostgreSQL 的 `encode(data, 'base64')` 遵循 RFC 2045，每 76 个字符换行，末行无换行符，且返回 `text` 类型。`UTL_ENCODE.BASE64_ENCODE` 每 64 个字符换行，末行有换行符，返回 `RAW`（`bytea`）类型。
+====
