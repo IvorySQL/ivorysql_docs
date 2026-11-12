@@ -1,0 +1,163 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= DBMS_SESSION.RESET_PACKAGE Package Reset Interface
+
+== Purpose
+
+IvorySQL provides the Oracle-compatible `DBMS_SESSION.RESET_PACKAGE` procedure for discarding the runtime state of PL/iSQL packages in the current session. After the procedure is called, session-level state such as package variables, composite values, and package cursors is cleared. The next access to a package causes IvorySQL to reevaluate the default expressions of its variables and execute its initialization code again.
+
+This document describes how to call the interface, its state-reset semantics, its scope, and the current compatibility boundaries.
+
+== Feature Description
+
+=== Calling the Interface
+
+Use the following statement to reset package state in Oracle compatibility mode:
+
+```sql
+SET ivorysql.compatible_mode = oracle;
+
+CALL DBMS_SESSION.RESET_PACKAGE();
+```
+
+`RESET_PACKAGE` takes no arguments and does not return the number of packages reset. It processes all PL/iSQL packages in the current database session that have been loaded and have resettable runtime state.
+
+The call completes normally if the current session has not initialized any user-defined package state. The procedure neither drops package objects nor recompiles packages.
+
+=== Session Scope
+
+Package state belongs to a database session. `RESET_PACKAGE` affects only the session that executes the statement. Instances of the same packages in other connections are not affected.
+
+The procedure processes packages that have already been loaded into the current session's package cache. It does not scan the system catalogs or instantiate every package in the database in advance. A package that has not been used in the current session has no runtime state and does not need to be reset.
+
+`RESET_PACKAGE` resets only PL/iSQL package state and is not equivalent to `DISCARD ALL`. For example, application contexts set through `DBMS_SESSION.SET_CONTEXT` are not package variables and remain available after the call.
+
+=== Package State That Is Reset
+
+For an initialized package, calling `RESET_PACKAGE` has the following effects:
+
+[cols="1,2"]
+|===
+|State |Behavior After Reset
+
+|Mutable package variable with a default value
+|Its declared default expression is reevaluated the next time the package is accessed
+
+|Mutable package variable without a default value
+|It is reinitialized to `NULL` the next time the package is accessed
+
+|Composite variable, such as an array or record
+|Its current runtime value is released and the variable is reinitialized according to its declaration on the next package access
+
+|Package-level `REF CURSOR` variable
+|Any open cursor is closed and the current value of the cursor variable is cleared
+
+|Package initialization section
+|It is executed again the next time the package is accessed
+
+|Constant
+|It is not cleared as mutable package state
+|===
+
+Consequently, a `REF CURSOR` obtained from a package variable before the reset cannot continue to be fetched afterward. Applications that still require its results should finish fetching before calling the procedure.
+
+=== Lazy Reinitialization
+
+`RESET_PACKAGE` itself only clears runtime values and marks each package as uninitialized. It does not immediately evaluate variable default expressions or execute package initialization sections during the call.
+
+The complete package initialization sequence runs when the current session next calls a function or procedure in that package, or reads one of its variables. This lazy reinitialization has the following consequences:
+
+* Mutable package variables that use constant default expressions are restored to their declared values.
+* Dynamic default expressions such as `SYSDATE` and sequence `NEXTVAL` are reevaluated on the next access.
+* Calls to functions in other packages from default expressions are also performed on the next access.
+* The package body initialization section is executed again on the next access.
+
+If multiple reset packages are subsequently accessed, each package is reinitialized independently on its first access.
+
+=== Reset-All and Single-Package Interfaces
+
+The public compatibility interface `DBMS_SESSION.RESET_PACKAGE` follows Oracle semantics and resets all resettable packages in the current session. It accepts neither a package name nor a package OID, and it provides no SQL overload for resetting only a specified package.
+
+IvorySQL has an internal facility for resetting a package by OID, and the Oracle test module uses that facility to verify single-package behavior. These internal and test interfaces are not public `DBMS_SESSION` APIs for ordinary applications. Applications should not depend on functions provided by the test extension.
+
+=== Usage Notes
+
+* Resetting discards the mutable state of every initialized package in the current session. The caller cannot select an initialized package whose current state is to be retained.
+* Package state is not reconstructed until the next access. Default expressions and initialization code with side effects therefore do not run during the `CALL` statement.
+* Compiled package definitions and system catalog objects remain unchanged. Resetting is not a drop or recompile operation.
+* If a package definition has changed and the package is in a stale state that requires rebuilding, the reset reports that the existing package state has been discarded. It does not bypass the invalidation check and run stale code.
+* Non-package session state, including application contexts, is outside the scope of the reset.
+
+== Test Cases
+
+=== Creating a Test Package
+
+```sql
+SET ivorysql.compatible_mode = oracle;
+
+CREATE OR REPLACE PACKAGE reset_doc_pkg IS
+    g_value NUMBER := 10;
+    FUNCTION get_value RETURN NUMBER;
+    FUNCTION set_value(n NUMBER) RETURN NUMBER;
+END reset_doc_pkg;
+/
+
+CREATE OR REPLACE PACKAGE BODY reset_doc_pkg IS
+    FUNCTION get_value RETURN NUMBER AS
+    BEGIN
+        RETURN g_value;
+    END;
+
+    FUNCTION set_value(n NUMBER) RETURN NUMBER AS
+    BEGIN
+        g_value := n;
+        RETURN n;
+    END;
+END reset_doc_pkg;
+/
+```
+
+=== Verifying That a Package Variable Is Restored to Its Default
+
+First modify and read the package variable:
+
+```sql
+SELECT reset_doc_pkg.set_value(42);
+SELECT reset_doc_pkg.get_value;
+```
+
+The second statement returns `42`. Reset the package state in the current session and read the variable again:
+
+```sql
+CALL DBMS_SESSION.RESET_PACKAGE();
+SELECT reset_doc_pkg.get_value;
+```
+
+The package is initialized on its first subsequent access, and the query returns the declared default value `10`.
+
+=== Verifying That Application Context Is Preserved
+
+```sql
+CALL DBMS_SESSION.SET_CONTEXT('reset_doc_ctx', 'key', 'preserved');
+CALL DBMS_SESSION.RESET_PACKAGE();
+
+SELECT SYS_CONTEXT('reset_doc_ctx', 'key') AS context_value;
+```
+
+The expected result is:
+
+```
+ context_value
+---------------
+ preserved
+```
+
+Clean up the objects after the test:
+
+```sql
+DROP PACKAGE reset_doc_pkg;
+CALL DBMS_SESSION.CLEAR_CONTEXT('reset_doc_ctx');
+```

@@ -1,0 +1,191 @@
+:sectnums:
+:sectnumlevels: 5
+
+= **Feature Overview**
+
+IvorySQL implements Oracle-compatible package state reset through a `DBMS_SESSION` package procedure, core package-cache interfaces, and a PL/iSQL runtime cleanup function. The public call `CALL DBMS_SESSION.RESET_PACKAGE()` clears the mutable runtime state of all initialized packages in the current session and sets those packages to `PLISQL_PACKAGE_NO_INIT`. Their compiled representations are retained, and the complete initialization sequence is deferred until each package is accessed again.
+
+Basic usage is as follows:
+
+```sql
+SET ivorysql.compatible_mode = oracle;
+
+CALL DBMS_SESSION.RESET_PACKAGE();
+```
+
+This feature was introduced by commit `2bd694fe3a1a3c950b1b95f4412e516d7e42fc7e`. The implementation also provides an internal facility for resetting one package by OID, but the user-facing `DBMS_SESSION.RESET_PACKAGE` API exposes only the no-argument procedure that resets all packages.
+
+== Implementation
+
+=== SQL Package Interface and C Entry Point
+
+`contrib/ivorysql_ora/src/builtin_packages/dbms_session/dbms_session--1.0.sql` defines the following C function in the `SYS` schema:
+
+```sql
+CREATE FUNCTION sys.ora_dbms_session_reset_package()
+RETURNS VOID
+AS 'MODULE_PATHNAME', 'ora_dbms_session_reset_package'
+LANGUAGE C VOLATILE;
+```
+
+The same installation script adds the no-argument `RESET_PACKAGE` procedure to the `DBMS_SESSION` package specification. The package body invokes the internal C function as follows:
+
+```sql
+PROCEDURE reset_package IS
+BEGIN
+    PERFORM sys.ora_dbms_session_reset_package();
+END;
+```
+
+The `ora_dbms_session_reset_package` function in `contrib/ivorysql_ora/src/builtin_packages/dbms_session/dbms_session.c` calls the core function `ResetAllPackagesContext()` and then returns SQL `VOID`. The number of packages actually reset, as calculated by the core function, is not returned by the public procedure.
+
+The call chain is:
+
+```
+CALL DBMS_SESSION.RESET_PACKAGE()
+    -> DBMS_SESSION package-body procedure reset_package
+    -> sys.ora_dbms_session_reset_package()
+    -> ResetAllPackagesContext()
+    -> ResetPackageContext(pkg_oid)
+    -> plisql_package_reset_context(pkg_oid)
+```
+
+=== Core Package-Cache Interfaces
+
+`src/include/utils/packagecache.h` and `src/backend/utils/cache/packagecache.c` add two core interfaces:
+
+```c
+extern bool ResetPackageContext(Oid pkg_oid);
+extern int  ResetAllPackagesContext(void);
+```
+
+`ResetPackageContext` asks PL/iSQL to reset the package identified by the given OID. It returns `true` when a package with runtime state is successfully cleared, and `false` when the package has not reached a resettable initialization state. It also returns `false` immediately when the PL/iSQL plugin has not been loaded.
+
+`ResetAllPackagesContext` returns the number of packages actually reset. It returns `-1` when PL/iSQL is unavailable and `0` when the plugin is loaded but no package needs to be reset. The public `DBMS_SESSION` entry point ignores this internal return value, so these values are used only by core code and the test interface.
+
+=== Two-Phase Traversal of All Packages
+
+Package runtime objects are stored in the current backend process's `PackageCache` hash table. When all packages are reset, `PackageCacheListItems()` first scans the hash table and collects the existing `PackageCacheItem` pointers in a temporary list. `ResetAllPackagesContext()` then iterates over that list and calls `ResetPackageContext()` for every package.
+
+The operation has two phases:
+
+1. Read the package cache and collect the items to process.
+2. After leaving the hash-table iterator, modify package state and release runtime resources for each item.
+
+This design avoids performing operations that can affect package runtime state while a sequential hash-table scan is active. The temporary list is released with `list_free` after processing, while the package-cache items themselves remain in the cache.
+
+Because the cache belongs to a single database backend, the traversal naturally affects only the current session. It neither accesses nor modifies package instances in other sessions. Catalog objects that have not entered the current session's package cache are not loaded.
+
+=== Decoupling Core Code from PL/iSQL Through Rendezvous
+
+The core package-cache code cannot link directly to the PL/iSQL implementation. The `PLiSQL_funcs_call` function table in `src/include/funcapi.h` therefore gains the following callback:
+
+```c
+bool (*package_reset_context)(Oid pkg_oid);
+```
+
+When PL/iSQL is loaded, `src/pl/plisql/src/pl_subproc_function.c` registers `plisql_package_reset_context` as this callback. Core function `ResetPackageContext()` first checks `plisql_internal_funcs.isload` and then invokes PL/iSQL through the function table.
+
+This rendezvous mechanism preserves the boundary between the core package cache and the procedural-language module: the core layer selects one or all cache items, while PL/iSQL interprets the package's internal data structures and releases language runtime state.
+
+=== Single-Package State Checks
+
+`plisql_package_reset_context()` first looks up the `PackageCacheItem` for the package OID in the current session's package cache. If PL/iSQL has been loaded but the OID has no corresponding cache item, it reports:
+
+```
+could not find package with OID ...
+```
+
+After obtaining the `PLiSQL_package`, the function determines the next action from the package status:
+
+* For `PLISQL_PACKAGE_REBUILD` or `PLISQL_PACKAGE_REBUILD_INIT`, it reports `existing state of packages has been discarded`. This matches the invalidation check on the normal package access path and prevents a reset from bypassing stale state and continuing to use an old compiled representation.
+* If the status is not greater than `PLISQL_PACKAGE_NO_STATUS_INIT`, there is no runtime state to release, and the function returns `false`.
+* Other initialized states enter datum-by-datum cleanup, after which the function returns `true`.
+
+The public reset-all entry point applies this logic only to items in the current package cache. The invalid-OID and `NULL` behavior provided by the test extension belongs to internal interface testing and is not part of the argument semantics of public `DBMS_SESSION.RESET_PACKAGE`.
+
+=== Datum-by-Datum Runtime Cleanup
+
+Global PL/iSQL package datums are stored in the `source.datums` array. The reset function iterates from index 0 through `last_globaldno` and releases the current value according to the datum type:
+
+[cols="1,3"]
+|===
+|Datum Type |Cleanup
+
+|`PLISQL_DTYPE_VAR`
+|If the variable type is `REFCURSOROID` and the value is not null, `plisql_close_package_cursorvar()` first closes the cursor. Constants skip subsequent cleanup. For a mutable variable, any owned ordinary or expanded value is released; `value` is then cleared, `isnull` is set to true, and `freeval` is cleared.
+
+|`PLISQL_DTYPE_REC`
+|For a nonconstant record with an expanded record header `erh`, `DeleteExpandedObject()` releases the object and the pointer is set to null.
+
+|`PLISQL_DTYPE_ROW`
+|The row's actual values reside in the referenced `VAR` or `REC` datums, so no duplicate release is necessary.
+
+|`PLISQL_DTYPE_RECFIELD`, `PROMISE`, `PACKAGE_DATUM`, and `EXCEPTION`
+|These datums do not themselves contain heap allocations owned by the package, so no resource release is required.
+|===
+
+Ordinary arrays, variable-length values, and similar data can use PostgreSQL expanded-object representations. The implementation uses `DatumIsReadWriteExpandedObject()` to distinguish expanded objects from ordinary pointers and calls either `DeleteExpandedObject()` or `pfree()` as appropriate. This prevents memory leaks that would result from merely setting the variable to null.
+
+=== Retaining the Compiled Representation
+
+The implementation does not call `MemoryContextReset(item->ctxt)` directly. The current package memory context contains two classes of objects:
+
+* The compiled package representation, including the `PLiSQL_package`, datum array, parsed statements, and type information.
+* The runtime values currently held by package variables.
+
+Resetting the entire context would destroy the compiled representation together with the runtime values and force a complete package recompilation on the next access. Releasing values datum by datum discards only runtime state and allows the cached compiled representation to remain in use, reducing recovery work after a reset.
+
+The current code separates these object classes through explicit type-specific branches. If package state is given a separate runtime memory context in the future, cleanup could instead reset that independent context directly.
+
+=== NO_INIT State and Lazy Initialization
+
+After runtime values have been cleared, the function executes:
+
+```c
+psource->status = PLISQL_PACKAGE_NO_INIT;
+```
+
+`PLISQL_PACKAGE_NO_INIT` means that the compiled package representation remains valid, but the current session instance is not initialized. When a package datum is next resolved or a package subprogram is called, the existing package status-check path invokes `plisql_exec_package_init()` and performs the complete initialization sequence:
+
+1. Evaluate the declared default expressions of package variables.
+2. Establish null state for variables without default expressions.
+3. Execute the package body initialization section.
+4. Restore the package to an initialized status.
+
+The reset therefore uses lazy reinstantiation after cleanup rather than taking and restoring a snapshot of initial values at call time. Dynamic expressions such as `SYSDATE`, sequence `NEXTVAL`, and calls to functions in other packages are evaluated on the first subsequent access, and the package initialization section is executed at that time as well.
+
+Per-package lazy initialization also means that `ResetAllPackagesContext()` does not trigger initialization dependencies between packages during the reset. Reset packages are initialized separately in the order in which the application subsequently accesses them.
+
+=== Isolation from Non-Package Session State
+
+Application contexts created by `DBMS_SESSION.SET_CONTEXT` are stored as independent session state and do not reside in PL/iSQL package datums or package-cache runtime values. The reset path only traverses `PackageCache` and clears each package's global datums, so it does not remove application-context values visible through `SYS_CONTEXT`.
+
+This is also an important distinction between `RESET_PACKAGE` and `DISCARD ALL`: the former targets package instances, whereas the latter can clear a broader range of connection-level state.
+
+=== Test Coverage
+
+The public `DBMS_SESSION` regression tests are located in:
+
+```
+contrib/ivorysql_ora/sql/dbms_session.sql
+contrib/ivorysql_ora/expected/dbms_session.out
+```
+
+They cover a no-op call when no user-defined package state has been initialized, restoration of a modified package variable to its default value, and preservation of application context after a package reset.
+
+The dedicated internal test module is located in:
+
+```
+src/oracle_test/modules/test_package_reset/
+```
+
+Through the rendezvous interface, this module provides the test-only SQL wrappers `reset_package_by_oid(oid)` and `reset_all_packages()`. It covers the following implementation behavior:
+
+* Resetting one package by OID without affecting other packages in the same session.
+* Resetting all initialized packages and counting the packages actually reset.
+* Restoring numeric and text defaults, and restoring `NULL` for variables without defaults.
+* Releasing expanded objects such as arrays.
+* Internal return behavior for invalid OIDs, null arguments, and sessions in which PL/iSQL has not been loaded.
+
+The test extension exists only to validate the core interfaces and is not a public compatibility API for applications.
