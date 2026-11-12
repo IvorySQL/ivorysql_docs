@@ -112,6 +112,8 @@ Some of the information in the dynamic statistics views shown in Table 1  is sec
 | View Name | Description
 | `pg_stat_archiver` | One row only, showing statistics about the WAL archiver process's activity. See https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-ARCHIVER-VIEW[`pg_stat_archiver`] for details.
 | `pg_stat_bgwriter` | One row only, showing statistics about the background writer process's activity. See https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-BGWRITER-VIEW[`pg_stat_bgwriter`] for details.
+| `pg_stat_checkpointer` | One row showing checkpoint and restartpoint activity.
+| `pg_stat_io` | I/O statistics grouped by backend type, target object and context.
 | `pg_stat_wal` | One row only, showing statistics about WAL activity. See https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-WAL-VIEW[`pg_stat_wal`] for details.
 | `pg_stat_database` | One row per database, showing database-wide statistics. See https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-DATABASE-VIEW[`pg_stat_database`] for details.
 | `pg_stat_database_conflicts` | One row per database, showing database-wide statistics about query cancels due to conflict with recovery on standby servers. See https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-DATABASE-CONFLICTS-VIEW[`pg_stat_database_conflicts`] for details.
@@ -675,18 +677,33 @@ The `pg_stat_bgwriter` view will always have a single row, containing global dat
 .**`pg_stat_bgwriter` View**
 |====
 | Column | Type | Description
-| `checkpoints_timed` | `bigint` | Number of scheduled checkpoints that have been performed
-| `checkpoints_req` | `bigint` | Number of requested checkpoints that have been performed
-| `checkpoint_write_time` | `double precision` | Total amount of time that has been spent in the portion of checkpoint processing where files are written to disk, in milliseconds
-| `checkpoint_sync_time` | `double precision` | Total amount of time that has been spent in the portion of checkpoint processing where files are synchronized to disk, in milliseconds
-| `buffers_checkpoint` | `bigint` | Number of buffers written during checkpoints
 | `buffers_clean` | `bigint` | Number of buffers written by the background writer
 | `maxwritten_clean` | `bigint` | Number of times the background writer stopped a cleaning scan because it had written too many buffers
-| `buffers_backend` | `bigint` | Number of buffers written directly by a backend
-| `buffers_backend_fsync` | `bigint` | Number of times a backend had to execute its own `fsync` call (normally the background writer handles those even when the backend does its own write)
 | `buffers_alloc` | `bigint` | Number of buffers allocated
 | `stats_reset` | `timestamp with time zone` | Time at which these statistics were last reset
 |====
+
+==== `pg_stat_checkpointer`
+
+Use this view for scheduled and requested checkpoints, completed checkpoints, and checkpoint I/O. The view also includes restartpoint counters. Write and synchronization times are measured in milliseconds.
+
+[source,sql]
+----
+SELECT num_timed, num_requested, num_done, buffers_written,
+       write_time, sync_time, stats_reset
+FROM pg_stat_checkpointer;
+----
+
+==== `pg_stat_io`
+
+Use this view to inspect writes and synchronization calls made by backends. Keep `object` and `context` in the result to distinguish the type of I/O.
+
+[source,sql]
+----
+SELECT backend_type, object, context, writes, write_bytes, fsyncs
+FROM pg_stat_io
+WHERE backend_type = 'client backend';
+----
 
 ==== `pg_stat_wal`
 
