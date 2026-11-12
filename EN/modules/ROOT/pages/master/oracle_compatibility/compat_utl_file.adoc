@@ -1,0 +1,42 @@
+:sectnums:
+:sectnumlevels: 5
+
+= UTL_FILE Package
+
+== Register a server directory
+
+`UTL_FILE` reads and writes files on the database server. For this example, use a fresh directory writable by the server process. Replace the path below with the actual directory. Run the example in Oracle compatibility mode as a database administrator who can manage entries in `sys.utl_file_directory`.
+
+An entry maps a directory name to a filesystem path. Pass that name and the filename separately to `FOPEN`. The mode `w` starts a new file or truncates an existing file, so use a dedicated directory for the example.
+
+== Write and read one line
+
+[source,sql]
+----
+INSERT INTO sys.utl_file_directory(dirname, dir)
+VALUES ('utl_file_demo', '/srv/ivorysql/utl-file-demo');
+
+DECLARE
+    file_handle utl_file.file_type;
+    line_text text;
+BEGIN
+    file_handle := utl_file.fopen('utl_file_demo', 'invoice-demo.txt', 'w', 100);
+    utl_file.put_line(file_handle, 'invoice=42');
+    utl_file.fclose(file_handle);
+
+    file_handle := utl_file.fopen('utl_file_demo', 'invoice-demo.txt', 'r', 100);
+    utl_file.get_line(file_handle, line_text);
+    utl_file.fclose(file_handle);
+    RAISE NOTICE '%', line_text;
+END;
+/
+
+CALL utl_file.fremove('utl_file_demo', 'invoice-demo.txt');
+DELETE FROM sys.utl_file_directory WHERE dirname = 'utl_file_demo';
+----
+
+The block prints `NOTICE: invoice=42`. The final commands remove the example file and its directory mapping.
+
+`GET_LINE` reads the next line into an output variable. At the end of a file it raises the `no_data_found` condition, which a loop can handle to stop reading. Use `FCLOSE` when finished with each handle.
+
+See xref:master/compatibility_features_design/utl_file_impl.adoc[UTL_FILE implementation].

@@ -1,0 +1,42 @@
+:sectnums:
+:sectnumlevels: 5
+
+= UTL_FILE 包
+
+== 登记服务器目录
+
+`UTL_FILE` 读写的是数据库服务器上的文件。为本示例准备一个数据库服务进程可写的空目录，并替换下方路径。请用能够管理 `sys.utl_file_directory` 的数据库管理员角色连接 Oracle 兼容模式。
+
+目录记录将逻辑名称映射到文件系统路径。调用 `FOPEN` 时分别传入目录名和文件名。`w` 模式会创建新文件或截断已有文件，因此请为示例使用独立目录。
+
+== 写入并读取一行
+
+[source,sql]
+----
+INSERT INTO sys.utl_file_directory(dirname, dir)
+VALUES ('utl_file_demo', '/srv/ivorysql/utl-file-demo');
+
+DECLARE
+    file_handle utl_file.file_type;
+    line_text text;
+BEGIN
+    file_handle := utl_file.fopen('utl_file_demo', 'invoice-demo.txt', 'w', 100);
+    utl_file.put_line(file_handle, 'invoice=42');
+    utl_file.fclose(file_handle);
+
+    file_handle := utl_file.fopen('utl_file_demo', 'invoice-demo.txt', 'r', 100);
+    utl_file.get_line(file_handle, line_text);
+    utl_file.fclose(file_handle);
+    RAISE NOTICE '%', line_text;
+END;
+/
+
+CALL utl_file.fremove('utl_file_demo', 'invoice-demo.txt');
+DELETE FROM sys.utl_file_directory WHERE dirname = 'utl_file_demo';
+----
+
+代码块会显示 `NOTICE: invoice=42`。最后两条命令删除示例文件和目录映射。
+
+`GET_LINE` 将下一行写入输出变量。读到文件末尾时会抛出 `no_data_found`，可在循环中捕获该条件以结束读取。用完每个文件句柄后请调用 `FCLOSE`。
+
+实现细节见 xref:master/compatibility_features_design/utl_file_impl.adoc[UTL_FILE 实现]。
