@@ -759,6 +759,9 @@ select * from t_regexp_like where regexp_like(value,'ABC','i');
 ```
 
 === `to_number` function
+
+Without a format model, scientific notation and surrounding ordinary spaces are supported. See xref:master/oracle_compatibility/to_number_scientific_notation.adoc[TO_NUMBER Support for Scientific Notation].
+
 function: is to change some processed strings arranged in a certain format back to a numeric format, support parameters: text/text, text test cases are as follows:
 Convert the string '-34,338,492' to numeric format:
 

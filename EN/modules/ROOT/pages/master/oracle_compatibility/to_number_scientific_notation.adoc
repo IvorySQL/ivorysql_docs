@@ -1,0 +1,78 @@
+:sectnums:
+:sectnumlevels: 5
+
+= TO_NUMBER support for scientific notation
+
+== Overview
+
+Without a format model, the Oracle-compatible `TO_NUMBER` function converts scientific-notation strings to `NUMBER`. For example, `'1e3'` becomes `1000`, and `'-1.5e-2'` becomes `-0.015`. The conversion also accepts ordinary spaces around the string.
+
+This page covers the single-argument string conversion. See xref:master/oracle_compatibility/builtin_types_functions.adoc[Built-in Data Types and Functions] for calls with a format model; this feature does not extend format-model support.
+
+== Syntax
+
+[source,sql]
+----
+TO_NUMBER(str)
+----
+
+`str` is a string representing a number. The return type is `NUMBER`. In Oracle compatibility mode, call `TO_NUMBER` directly, or explicitly call `sys.to_number(str)`.
+
+Scientific notation consists of a mantissa and an exponent. Its value is the mantissa multiplied by 10 raised to the exponent:
+
+* The mantissa can have one leading `+` or `-` and at most one decimal point. It must contain at least one digit.
+* The exponent begins with `e` or `E`, optionally followed by one `+` or `-`, and must contain integer digits.
+* Leading zeros are allowed in the exponent. `e0`, `e+0`, and `e-0` all mean a zero exponent.
+* Ordinary spaces (ASCII spaces) are allowed at either end of the string. Internal spaces, tabs, and newlines are outside the accepted format.
+
+== Conversion examples
+
+[cols="3,2",options="header"]
+|===
+|Call |Result
+|`TO_NUMBER('1e3')` |`1000`
+|`TO_NUMBER('1E3')` |`1000`
+|`TO_NUMBER('-1.5e-2')` |`-0.015`
+|`TO_NUMBER('1.5e+3')` |`1500`
+|`TO_NUMBER('1E-3')` |`0.001`
+|`TO_NUMBER(' 1e3 ')` |`1000`
+|`TO_NUMBER('12 ')` |`12`
+|`TO_NUMBER('1e0000000010')` |`10000000000`
+|`TO_NUMBER('1e-0000000010')` |`0.0000000001`
+|`TO_NUMBER('123.')` |`123`
+|`TO_NUMBER('.5')` |`0.5`
+|===
+
+[source,sql]
+----
+SELECT TO_NUMBER('1e3') AS integer_value,
+       TO_NUMBER('-1.5e-2') AS decimal_value;
+----
+
+The results are `1000` and `-0.015`, respectively. No intermediate conversion to a floating-point type is needed.
+
+== Invalid input and boundaries
+
+Missing exponent digits, repeated signs or decimal points, internal spaces, and extra characters cause an `invalid number format model` error. For example:
+
+[source,sql]
+----
+SELECT TO_NUMBER('1e');       -- missing exponent digits
+SELECT TO_NUMBER('1e+');      -- no digits after the exponent sign
+SELECT TO_NUMBER('1 e3');     -- space between mantissa and exponent
+SELECT TO_NUMBER('1e 3');     -- space inside the exponent
+SELECT TO_NUMBER('1.2e3.4');  -- exponent is not an integer
+----
+
+All-space strings, a sign or decimal point alone, and `NaN`, `Infinity`, and `-Infinity` are also unsupported in this conversion path. A `NULL` argument returns `NULL`. Under Oracle empty-string semantics, `TO_NUMBER(''::varchar2)` also returns `NULL`, whereas an all-space string raises an error.
+
+Very large exponents are subject to IvorySQL's numeric limits. These behaviors do not imply that all numeric boundaries match Oracle's:
+
+[cols="3,2",options="header"]
+|===
+|Call |Behavior
+|`TO_NUMBER('1e2000')` |Raises `numeric field overflow`
+|`TO_NUMBER('1e2147483648')` |Raises `value overflows numeric format`
+|`TO_NUMBER('1e-2147483648')` |Underflows to `0`
+|`TO_NUMBER('0e2147483648')` |Returns `0`
+|===

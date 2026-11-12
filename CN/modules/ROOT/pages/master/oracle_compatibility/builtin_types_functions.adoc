@@ -758,6 +758,9 @@ select * from t_regexp_like where regexp_like(value,'ABC','i');
 ```
 
 === `to_number` 函数
+
+不指定格式模型时，支持科学计数法及首尾普通空格，详见 xref:master/oracle_compatibility/to_number_scientific_notation.adoc[TO_NUMBER 支持科学计数法]。
+
 功能：是将一些处理过的按一定格式编排过的字符串变回数值型的格式，支持参数：text/text,text测试用例如下：
 将字符串'-34,338,492'转换为数值型格式：
 
