@@ -1,0 +1,64 @@
+:sectnums:
+:sectnumlevels: 5
+
+= DBMS_RANDOM package design
+
+== Goals and scope
+
+`DBMS_RANDOM` provides Oracle-style random number and string interfaces in the `ivorysql_ora` extension: `INITIALIZE`, `SEED`, `TERMINATE`, `NORMAL`, `RANDOM`, `STRING`, and `VALUE`. The implementation aims to preserve the package interface and common behavior while allowing seeded sequences to be replayed within IvorySQL. Because the underlying generator differs from Oracle's, the sequences are not guaranteed to match across databases.
+
+== Code organization
+
+[cols="2,3",options="header"]
+|===
+|File |Responsibility
+|`src/builtin_packages/dbms_random/dbms_random.c` |Seed handling, value generation, and state reset
+|`src/builtin_packages/dbms_random/dbms_random--1.0.sql` |C function registration in `sys` and PL/iSQL package declaration and body
+|`sql/dbms_random.sql`, `expected/dbms_random.out` |Regression tests and expected output
+|`Makefile`, `meson.build`, `ivorysql_ora_merge_sqls` |Build and installation registration
+|`src/ivorysql_ora.c`, `src/include/ivorysql_ora.h` |Integration of package state reset with extension hooks
+|===
+
+These paths are relative to `contrib/ivorysql_ora/`.
+
+== Call path
+
+The SQL registration file creates `sys.ora_dbms_random_*` C functions and declares the Oracle-style interface with `CREATE OR REPLACE PACKAGE dbms_random AUTHID CURRENT_USER`. The package body calls the corresponding `sys` functions. `GRANT EXECUTE ON PACKAGE dbms_random TO PUBLIC` allows ordinary users to invoke the package.
+
+[source,text]
+----
+dbms_random.value(10, 20)
+    → PL/iSQL package body
+    → sys.ora_dbms_random_value_range(NUMBER, NUMBER)
+    → C implementation and session generator state
+----
+
+All registered C functions are marked `VOLATILE`. The numeric and text seed entry points are marked `STRICT`, so NULL seeds never reach the C conversion functions. `STRING` and the two-argument `VALUE` are not marked `STRICT`; their C implementations handle NULL arguments.
+
+== Generator state and seeding
+
+The C module stores a static `pg_prng_state` and a `state_seeded` flag, isolating the sequence within each backend session. On first use, `ensure_seeded()` combines the current timestamp and backend process ID to form a seed. Calling `INITIALIZE` or `SEED` explicitly replaces the current state.
+
+Numeric seeds are converted through `numeric_int8` to 64-bit integers and passed to `pg_prng_seed()`; `INITIALIZE` and numeric `SEED` share this logic. Text seeds are hashed to 64 bits with `hash_any_extended()` and passed to `pg_prng_seed()`. The same seed and call order replay a sequence within IvorySQL. The implementation does not promise a bit-for-bit match with Oracle's proprietary generator.
+
+`TERMINATE` is a no-op retained for compatibility with legacy calls. The extension hooks for `DISCARD ALL` and `DISCARD PACKAGES` call `ora_dbms_random_reset()` to clear the seeded flag. The next random call seeds the generator automatically again.
+
+== Subprogram implementation
+
+[cols="2,3",options="header"]
+|===
+|Subprogram |Implementation
+|`RANDOM` |Obtains a value from `pg_prng_uint32()`, interprets it as a signed 32-bit integer, and converts it to `NUMBER`
+|`NORMAL` |Uses `pg_prng_double_normal()` for a standard normal value and converts it to `NUMBER`
+|`VALUE` |Uses `pg_prng_double()` for a value in `[0, 1)` and converts it to `NUMBER`
+|`VALUE(low, high)` |Keeps the bounds as `NUMBER` and calculates `low + (high - low) × fraction` without first converting the bounds to `float8`
+|`STRING(opt, len)` |Selects a character set, generates an index for each character, and joins the characters
+|===
+
+When the two `VALUE` bounds are equal, the function returns the bound without consuming a random value. Reversed bounds produce a result in `(high, low]`. A NULL bound returns NULL. Regression tests cover these cases.
+
+`STRING` supports `U` (uppercase letters), `L` (lowercase letters), `A` (mixed-case letters), `X` (uppercase letters and digits), and `P` (printable characters), case-insensitively. NULL, empty, and unknown single-character options fall back to `U`; a multi-character option raises an error. The length is truncated to an integer: zero or less returns NULL, values above 4000 are capped at 4000, and a NULL length raises an error.
+
+== Regression coverage
+
+`sql/dbms_random.sql` covers numeric and text seeds, replayed sequences, the `RANDOM` range, `NORMAL`, `STRING` character classes and lengths, forward/reversed/equal `VALUE` bounds, large numeric bounds, `TERMINATE`, and state after `DISCARD ALL`. Seeded tests assert exact results; auto-seeded tests check only range or availability.

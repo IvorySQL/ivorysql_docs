@@ -1,0 +1,98 @@
+:sectnums:
+:sectnumlevels: 5
+
+= DBMS_RANDOM package
+
+== Overview
+
+`DBMS_RANDOM` provides functions for generating random numbers and strings. The package initializes automatically in a session. Calling `INITIALIZE` or `SEED` lets the same seed replay the same sequence within IvorySQL. IvorySQL does not guarantee a bit-for-bit match with Oracle's sequence.
+
+Use these values for test data and sampling, not for passwords, keys, or security tokens.
+
+== Package interface
+
+[cols="2,3",options="header"]
+|===
+|Subprogram |Behavior
+|`INITIALIZE(val IN NUMBER)` |Initializes the generator with a numeric seed; equivalent to numeric `SEED` in IvorySQL
+|`SEED(val IN NUMBER)` |Reseeds the generator with a number
+|`SEED(val IN VARCHAR2)` |Reseeds the generator with a string
+|`TERMINATE` |Compatibility entry point that does nothing in IvorySQL
+|`NORMAL` |Returns a `NUMBER` from a normal distribution with mean 0 and standard deviation 1
+|`RANDOM` |Returns an integer value from -2147483648 through 2147483647
+|`STRING(opt IN CHAR, len IN NUMBER)` |Returns a `VARCHAR2` of the requested length and character class
+|`VALUE` |Returns a `NUMBER` in `[0, 1)`
+|`VALUE(low IN NUMBER, high IN NUMBER)` |Returns a `NUMBER` within the specified bounds
+|===
+
+Oracle marks `INITIALIZE`, `RANDOM`, and `TERMINATE` as deprecated. New code can use `SEED` and `VALUE`; the deprecated entry points remain available for migrated applications.
+
+== Seeding the generator
+
+`INITIALIZE` and the numeric `SEED` overload accept a `NUMBER`. IvorySQL converts numeric seeds to 64-bit integers and hashes the bytes of text seeds. Reusing a seed and calling functions in the same order replays the sequence.
+
+[source,sql]
+----
+CALL dbms_random.seed(CAST(42 AS NUMBER));
+SELECT dbms_random.random() AS first_value;
+
+CALL dbms_random.seed(CAST(42 AS NUMBER));
+SELECT dbms_random.random() AS first_value_again;
+
+CALL dbms_random.seed('test-data');
+SELECT dbms_random.value() AS sample_value;
+----
+
+If no seed is supplied, the first use seeds the generator from the current time and backend process ID. Calls in one session share the generator state. `DISCARD ALL` or `DISCARD PACKAGES` clears that state; the next call seeds it automatically again. `TERMINATE` does not clear the state.
+
+== Generating numbers
+
+`VALUE` returns a value greater than or equal to 0 and less than 1. When `low < high`, `VALUE(low, high)` returns a value in `[low, high)`.
+
+[source,sql]
+----
+SELECT dbms_random.value() AS unit_value;
+SELECT dbms_random.value(10, 20) AS bounded_value;
+SELECT dbms_random.normal() AS standard_normal_value;
+SELECT dbms_random.random() AS integer_value;
+----
+
+IvorySQL also supports these boundary cases:
+
+* If `low = high`, the common bound is returned.
+* If `low > high`, the result is in `(high, low]`.
+* If either bound is `NULL`, the result is `NULL`.
+
+[source,sql]
+----
+SELECT dbms_random.value(10, 10) AS equal_bound;   -- 10
+SELECT dbms_random.value(11, 0) AS reverse_range;  -- greater than 0 and at most 11
+----
+
+Oracle's documented two-argument range is `[low, high)`. Equal and reversed bounds are additional behaviors of this implementation.
+
+== Generating strings
+
+The `opt` argument of `STRING(opt, len)` is case-insensitive:
+
+[cols="1,3",options="header"]
+|===
+|`opt` |Character class
+|`U` |Uppercase letters
+|`L` |Lowercase letters
+|`A` |Mixed-case letters
+|`X` |Uppercase letters and digits
+|`P` |Printable ASCII characters
+|===
+
+[source,sql]
+----
+SELECT dbms_random.string('U', 8) AS upper_text;
+SELECT dbms_random.string('X', 12) AS code_text;
+----
+
+If `opt` is `NULL`, empty, or an unrecognized single character, the function uses uppercase letters. A multi-character option raises an error. The fractional part of `len` is discarded: a resulting length of zero or less returns `NULL`, and a length above 4000 is capped at 4000 characters. A `NULL` length raises an error.
+
+== Differences from Oracle
+
+The same seed replays a sequence within IvorySQL, but the values are not guaranteed to match Oracle's. IvorySQL uses PostgreSQL's `pg_prng` generator, and `VALUE` does not promise the 38 decimal digits described in Oracle's documentation. Applications that depend on Oracle's exact sequence or precision should verify their results again.
