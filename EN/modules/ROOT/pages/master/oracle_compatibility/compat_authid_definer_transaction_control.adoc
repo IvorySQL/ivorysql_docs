@@ -1,0 +1,138 @@
+:sectnums:
+:sectnumlevels: 5
+
+= Transaction Control in AUTHID DEFINER Procedures
+
+== Purpose
+
+IvorySQL allows PL/iSQL `AUTHID DEFINER` procedures in Oracle compatibility mode to execute COMMIT and ROLLBACK when the calling context permits transaction control. The procedure retains its owner's execution privileges, and the caller's identity is restored on return.
+
+Procedures created with Oracle syntax default to `AUTHID DEFINER`. They do not need to be changed to `AUTHID CURRENT_USER` merely to use transaction control. For AUTHID syntax, see xref:master/oracle_compatibility/compat_function_procedure.adoc[Stored Function and Procedure Compatibility].
+
+== Function Description
+
+=== Transaction and Privilege Behavior
+
+* COMMIT commits the current transaction, and ROLLBACK rolls it back. A new transaction starts automatically, and execution continues.
+* After a transaction ends, subsequent statements in the procedure still execute with the procedure owner's effective identity.
+* On normal return, the caller's effective identity is restored. The caller still needs EXECUTE permission on the target procedure.
+* Nested procedures can be invoked with CALL or the PL/iSQL procedure-call form without CALL. The entire calling chain must still permit transaction control.
+
+Transaction control in an inner procedure affects the current session transaction, including changes made by an outer procedure in that transaction. It does not automatically create an autonomous transaction independent of the outer procedure.
+
+=== Calling Conditions
+
+[cols="2,4",options="header"]
+|===
+|Scenario |Behavior
+|Top-level CALL |An Oracle-mode PL/iSQL DEFINER procedure called outside an explicit transaction block can perform transaction control
+|Nested procedure calls |Inner procedures can commit or roll back when the calling context continues to permit transaction control
+|Explicit transaction block or function calling chain |Existing atomic execution restrictions remain, such as CALL in a transaction opened with START TRANSACTION or a procedure reached through a function invoked by SELECT
+|Procedure-level SET configuration |Procedures with attached SET configuration remain subject to transaction control restrictions
+|Active subtransaction |The top-level transaction cannot be ended inside an active subtransaction, such as one established by an exception block
+|===
+
+This change applies to Oracle-mode PL/iSQL procedures. It does not generally remove restrictions for other languages, PostgreSQL mode, or other security contexts.
+
+== Examples
+
+Run the following examples in order in an Oracle compatibility mode psql session, using an administrative account that can create roles and schemas and execute SET ROLE. Enable autocommit and do not explicitly open a transaction with START TRANSACTION around CALL.
+
+=== Commit, Rollback, and Identity Restoration
+
+Create a table and procedure owned by the current account. Grant the caller only schema usage and procedure execution permissions:
+
+[source,sql]
+----
+CREATE ROLE authid_tx_caller;
+CREATE SCHEMA authid_tx_demo;
+CREATE TABLE authid_tx_demo.events (event text, effective_user name);
+
+CREATE OR REPLACE PROCEDURE authid_tx_demo.record_events AUTHID DEFINER IS
+BEGIN
+    INSERT INTO authid_tx_demo.events VALUES ('before commit', current_user);
+    COMMIT;
+    INSERT INTO authid_tx_demo.events VALUES ('before rollback', current_user);
+    ROLLBACK;
+    INSERT INTO authid_tx_demo.events VALUES ('after rollback', current_user);
+END;
+/
+
+REVOKE EXECUTE ON PROCEDURE authid_tx_demo.record_events FROM PUBLIC;
+GRANT USAGE ON SCHEMA authid_tx_demo TO authid_tx_caller;
+GRANT EXECUTE ON PROCEDURE authid_tx_demo.record_events TO authid_tx_caller;
+
+SET ROLE authid_tx_caller;
+CALL authid_tx_demo.record_events();
+SELECT current_user = 'authid_tx_caller'::name AS caller_restored;
+RESET ROLE;
+
+SELECT event, effective_user = current_user AS ran_as_owner
+FROM authid_tx_demo.events ORDER BY event;
+----
+
+`caller_restored` is t, confirming that the caller's identity is restored after the call. After returning to the account that created the objects, the event query returns:
+
+[source,text]
+----
+     event      | ran_as_owner
+----------------+--------------
+ after rollback | t
+ before commit  | t
+(2 rows)
+----
+
+`before commit` is committed, `before rollback` is rolled back, and `after rollback` is inserted in the new transaction. Both retained events execute as the procedure owner, showing that transaction boundaries preserve definer privileges.
+
+=== Nested Rollback with Default DEFINER Procedures
+
+The following procedures omit AUTHID and use the Oracle-syntax DEFINER default. Continue using the account that created the objects:
+
+[source,sql]
+----
+CREATE TABLE authid_tx_demo.nested_events (id int);
+
+CREATE OR REPLACE PROCEDURE authid_tx_demo.inner_rollback IS
+BEGIN
+    INSERT INTO authid_tx_demo.nested_events VALUES (201);
+    ROLLBACK;
+    INSERT INTO authid_tx_demo.nested_events VALUES (202);
+END;
+/
+
+CREATE OR REPLACE PROCEDURE authid_tx_demo.outer_rollback IS
+BEGIN
+    INSERT INTO authid_tx_demo.nested_events VALUES (200);
+    CALL authid_tx_demo.inner_rollback();
+    INSERT INTO authid_tx_demo.nested_events VALUES (203);
+END;
+/
+
+CALL authid_tx_demo.outer_rollback();
+SELECT id FROM authid_tx_demo.nested_events ORDER BY id;
+----
+
+Only 202 and 203 remain. The inner ROLLBACK removes both 200 inserted by the outer procedure and 201 inserted by the inner procedure. Both procedures continue after the rollback.
+
+=== Restriction Inside an Explicit Transaction Block
+
+[source,sql]
+----
+START TRANSACTION;
+CALL authid_tx_demo.record_events();
+ROLLBACK;
+----
+
+The procedure's COMMIT reports `invalid transaction termination` because the enclosing explicit transaction block keeps the call in an atomic execution context. The final ROLLBACK exits the aborted transaction.
+
+[source,sql]
+----
+DROP SCHEMA authid_tx_demo CASCADE;
+DROP ROLE authid_tx_caller;
+----
+
+== Usage Notes
+
+* Disabling autocommit in a driver may create a transaction around CALL. Check how the client manages transactions before using this feature.
+* Data already committed successfully inside the procedure is not undone by a later error or rollback. Place transaction boundaries according to the application's requirements.
+* When transaction termination fails, inspect the complete calling chain, procedure-level configuration, and active subtransactions as well as the AUTHID attribute.

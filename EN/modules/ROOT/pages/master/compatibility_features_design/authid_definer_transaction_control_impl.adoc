@@ -1,0 +1,98 @@
+:sectnums:
+:sectnumlevels: 5
+
+= AUTHID DEFINER Procedure Transaction Control Design
+
+== Purpose
+
+Allow Oracle-mode PL/iSQL DEFINER procedures to perform transaction control in a non-atomic calling context while maintaining the effective user and security context across transaction boundaries. For examples, see xref:master/oracle_compatibility/compat_authid_definer_transaction_control.adoc[Transaction Control in AUTHID DEFINER Procedures].
+
+Previously, all security-definer procedures were forced into an atomic context, preventing COMMIT and ROLLBACK in procedures using the Oracle-syntax DEFINER default. Relaxing that check alone is insufficient: starting a new transaction requires an empty security context, so definer identity switching must also be handled.
+
+== Implementation
+
+=== Code Organization
+
+The CALL entry point resides in `src/backend/commands/`, and SPI resides in `src/backend/executor/`. The PL/iSQL executor and build file reside in `src/pl/plisql/src/`, with regression SQL and expected output in its `sql/` and `expected/` directories. The table lists filenames only.
+
+[cols="2,4",options="header"]
+|===
+|File |Responsibility
+|`functioncmds.c` |ExecuteCallStmt() decides whether a DEFINER call must use an atomic context
+|`pl_exec.c` |Executes COMMIT and ROLLBACK and preserves security context at transaction boundaries
+|`spi.c` |Reuses transaction termination, restart, atomicity, and subtransaction checks
+|`plisql_transaction.sql` |Regression cases for definer privileges, caller restoration, mode changes, and nested transactions
+|`plisql_transaction.out` |Expected transaction effects, identities, and errors
+|`plisql_call.out` |Updated expectations for CALL, nested calls, and output parameters
+|`Makefile` |Registers regression groups including plisql_transaction and plisql_call
+|===
+
+The feature changes CALL admission checks and PL/iSQL transaction execution, reusing existing catalog attributes and SPI interfaces without adding dedicated catalog fields.
+
+=== CALL Context Checks
+
+`ExecuteCallStmt()` checks procedure execution permissions and copies the incoming `atomic` value into `CallContext.atomic`. For a procedure with `pg_proc.prosecdef` set to true, it avoids additionally forcing atomic execution only when:
+
+* The current parser mode is Oracle compatibility mode.
+* The procedure language is PL/iSQL, with `prolang = LANG_PLISQL_OID`.
+* The current security context has no flags other than `SECURITY_LOCAL_USERID_CHANGE`.
+
+The third condition is checked with `sec_context & ~SECURITY_LOCAL_USERID_CHANGE`. It permits the existing local user-ID change without relaxing other security restrictions.
+
+This path preserves the incoming atomic value; it does not change true to false. A procedure with `proconfig` still forces atomic execution. Restrictions from explicit transaction blocks, function calling chains, and procedure-level SET configuration therefore remain effective.
+
+=== Identity Switching at Transaction Boundaries
+
+`exec_stmt_commit()` and `exec_stmt_rollback()` both call `exec_transaction(is_commit, chain)`. The helper performs these steps:
+
+. Save the effective user and security context with `GetUserIdAndSecContext()`.
+. If `SECURITY_LOCAL_USERID_CHANGE` is present, temporarily switch to the outer user and clear the security context with `SetUserIdAndSecContext(GetOuterUserId(), 0)`.
+. Call the corresponding SPI commit or rollback interface to end the current transaction and start the next one.
+. On success, restore the saved user and security context so subsequent statements retain the current procedure's definer privileges.
+. If SPI raises an error, restore the same context in `PG_CATCH()` before propagating the error with `PG_RE_THROW()`.
+
+[source,text]
+----
+CALL → execute procedure as definer
+    → exec_stmt_commit() / exec_stmt_rollback()
+        → save effective user and security context
+        → temporarily switch to outer user and clear security context
+        → SPI ends transaction and starts a new one
+        → restore current procedure's definer identity
+    → continue procedure execution
+    → restore caller identity on return
+----
+
+Using the outer user at the transaction boundary, rather than merely clearing the flags, avoids retaining the definer user without its security context. Nested calls save the current procedure's effective identity, allowing the correct definer to be restored afterward.
+
+=== Mode Changes and Context Restoration
+
+The decision to switch identity depends only on the security context flag, without rechecking the mutable `compatible_db`. A procedure body can dynamically change `ivorysql.compatible_mode`. Rechecking that configuration during transaction execution could skip restoration of an already established definer context.
+
+CALL admission decides whether non-atomic execution is permitted, while the transaction helper maintains the identity switching state already in effect. Their different conditions ensure that transaction-boundary context handling still runs if the procedure changes compatibility mode after entry.
+
+=== SPI and Expression Contexts
+
+`is_commit` and `chain` select `SPI_commit()`, `SPI_commit_and_chain()`, `SPI_rollback()`, or `SPI_rollback_and_chain()`. SPI still rejects transaction termination in atomic contexts and active subtransactions; the helper does not bypass these checks.
+
+After a transaction ends, the COMMIT and ROLLBACK execution functions clear `simple_eval_estate` and `simple_eval_resowner` and call `plisql_create_econtext()` to rebuild the simple-expression evaluation infrastructure, avoiding references to state released with the transaction.
+
+== Validation
+
+Related regression cases cover:
+
+* Access to the owner's table after commits and rollbacks in a DEFINER procedure, and caller identity restoration on return.
+* Committing after changing compatibility mode inside a procedure, checking that context restoration does not depend on mutable mode configuration.
+* Nested commits and rollbacks in default DEFINER and explicit CURRENT_USER procedures, including Oracle-style calls without CALL.
+* Output parameters, cursor loops, and transaction timestamp behavior.
+* Existing restrictions in explicit transaction blocks, function calls, procedure-level configuration, and active subtransactions.
+
+From a configured and built source checkout of the corresponding version with the PL/iSQL test dependencies available, run the following command to create a temporary test instance and execute both regression groups:
+
+[source,bash]
+----
+make -C src/pl/plisql/src oracle-check \
+    REGRESS='plisql_transaction plisql_call'
+----
+
+Expected results include successful transaction operations and intentional errors for restricted contexts. Evaluate success against the complete regression output.

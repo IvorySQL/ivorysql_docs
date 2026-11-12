@@ -1,0 +1,98 @@
+:sectnums:
+:sectnumlevels: 5
+
+= AUTHID DEFINER 过程事务控制设计
+
+== 目的
+
+允许 Oracle 兼容模式的 PL/iSQL DEFINER 过程在非原子调用上下文中执行事务控制，并在事务边界前后正确维护有效用户与安全上下文。使用示例见 xref:master/oracle_compatibility/compat_authid_definer_transaction_control.adoc[AUTHID DEFINER 过程中的事务控制]。
+
+原有实现对所有安全定义者过程强制使用原子执行上下文，导致 Oracle 语法默认的 DEFINER 过程无法执行 COMMIT 或 ROLLBACK。仅放开该检查仍不够：新事务要求安全上下文为空，必须同时处理定义者身份切换。
+
+== 实现说明
+
+=== 代码组织
+
+CALL 入口位于 `src/backend/commands/`，SPI 位于 `src/backend/executor/`。PL/iSQL 执行器和构建文件位于 `src/pl/plisql/src/`，其回归 SQL、期望输出分别位于该目录的 `sql/`、`expected/`。下表只列文件名。
+
+[cols="2,4",options="header"]
+|===
+|文件 |职责
+|`functioncmds.c` |ExecuteCallStmt() 判断 DEFINER 调用是否必须使用原子上下文
+|`pl_exec.c` |执行 COMMIT、ROLLBACK，保存并恢复事务边界处的安全上下文
+|`spi.c` |复用已有事务结束、重启及原子性、子事务检查
+|`plisql_transaction.sql` |定义者权限、调用者恢复、模式切换和嵌套事务回归用例
+|`plisql_transaction.out` |事务效果、身份及错误的期望结果
+|`plisql_call.out` |更新 CALL、嵌套调用及输出参数相关期望结果
+|`Makefile` |注册 plisql_transaction、plisql_call 等回归组
+|===
+
+本功能修改 CALL 的准入判断和 PL/iSQL 的事务执行路径，复用已有目录属性和 SPI 接口，不新增专用系统目录字段。
+
+=== CALL 上下文判断
+
+`ExecuteCallStmt()` 检查过程执行权限，并将传入的 `atomic` 值写入 `CallContext.atomic`。对于 `pg_proc.prosecdef` 为 true 的过程，仅在以下条件满足时不再额外强制原子执行：
+
+* 当前为 Oracle 兼容解析模式。
+* 过程语言为 PL/iSQL，即 `prolang = LANG_PLISQL_OID`。
+* 当前安全上下文除 `SECURITY_LOCAL_USERID_CHANGE` 外，没有其他安全标志。
+
+第三项通过 `sec_context & ~SECURITY_LOCAL_USERID_CHANGE` 判断，允许已有的本地用户身份切换，不放开其他安全限制。
+
+这条路径保留传入的 atomic 值，不会主动将 true 改成 false。过程带有 `proconfig` 时也仍强制原子执行，因此显式事务块、函数调用链和过程级 SET 配置的限制保持有效。
+
+=== 事务边界的身份切换
+
+`exec_stmt_commit()` 和 `exec_stmt_rollback()` 统一调用 `exec_transaction(is_commit, chain)`。辅助函数执行以下步骤：
+
+. 用 `GetUserIdAndSecContext()` 保存当前有效用户及安全上下文。
+. 若存在 `SECURITY_LOCAL_USERID_CHANGE`，暂时通过 `SetUserIdAndSecContext(GetOuterUserId(), 0)` 切换为外层用户并清空安全上下文。
+. 调用对应的 SPI 提交或回滚接口，结束当前事务并启动后续事务。
+. 正常返回后恢复保存的用户与安全上下文，使过程后续语句仍按当前过程的定义者权限运行。
+. 若 SPI 抛出错误，在 `PG_CATCH()` 中先恢复同一份上下文，再通过 `PG_RE_THROW()` 继续传播异常。
+
+[source,text]
+----
+CALL → 定义者身份执行过程
+    → exec_stmt_commit() / exec_stmt_rollback()
+        → 保存有效用户和安全上下文
+        → 临时切换外层用户，清空安全上下文
+        → SPI 结束事务并启动新事务
+        → 恢复当前过程的定义者身份
+    → 继续执行过程
+    → 返回时恢复调用者身份
+----
+
+事务边界使用外层用户而不是简单清除标志，避免保留定义者用户却丢失其安全上下文。嵌套调用保存的是当前过程的有效身份，因此事务结束后可恢复到正确的定义者。
+
+=== 模式变化与上下文恢复
+
+是否切换身份只根据安全上下文标志判断，不再次依赖可变的 `compatible_db`。过程体可以动态修改 `ivorysql.compatible_mode`；如果事务执行时再次用该配置决定是否恢复外层用户，就可能漏掉已建立的定义者上下文。
+
+CALL 入口负责决定是否允许非原子执行，事务辅助函数负责维护已经存在的身份切换状态。两者使用不同判断条件，保证过程进入后即使修改兼容模式，事务边界的上下文处理仍然执行。
+
+=== SPI 与表达式上下文
+
+`is_commit` 和 `chain` 选择 `SPI_commit()`、`SPI_commit_and_chain()`、`SPI_rollback()` 或 `SPI_rollback_and_chain()`。SPI 仍拒绝原子上下文及活动子事务中的事务结束操作；辅助函数不绕过这些检查。
+
+事务结束后，COMMIT、ROLLBACK 执行函数将 `simple_eval_estate`、`simple_eval_resowner` 置空，并调用 `plisql_create_econtext()` 重建简单表达式求值环境，避免继续引用已随事务释放的状态。
+
+== 测试验证
+
+相关回归用例覆盖：
+
+* DEFINER 过程提交和回滚后继续访问所有者的表，以及返回后的调用者身份恢复。
+* 过程内切换兼容模式后提交，验证上下文恢复不依赖可变的模式配置。
+* 默认 DEFINER 和显式 CURRENT_USER 过程的嵌套提交、回滚，以及省略 CALL 的 Oracle 调用形式。
+* 输出参数、游标循环及事务时间戳相关行为。
+* 显式事务块、函数调用、过程级配置和活动子事务中的原有限制。
+
+在已配置、编译并具备 PL/iSQL 测试依赖的对应版本源码目录中，可运行以下命令创建临时测试实例并执行两个回归组：
+
+[source,bash]
+----
+make -C src/pl/plisql/src oracle-check \
+    REGRESS='plisql_transaction plisql_call'
+----
+
+预期结果既包含成功的事务操作，也包含上述限制场景的预期错误，应按完整回归输出判断测试是否通过。
