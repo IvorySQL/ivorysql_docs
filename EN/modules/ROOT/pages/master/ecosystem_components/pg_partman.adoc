@@ -23,7 +23,7 @@ License: PostgreSQL License
 IvorySQL 5.0 is installed, and the pg_config command can be successfully executed from the command line.
 
 === Source Installation
-Get the source code from https://github.com/pgpartman/pg_partman:
+Get the source code from https://github.com/pgpartman/pg_partman[pg_partman source code]:
 [literal]
 ----
 git clone https://github.com/pgpartman/pg_partman.git

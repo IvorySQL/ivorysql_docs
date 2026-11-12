@@ -110,7 +110,7 @@ spec:
 
 还发生了什么？IVYO 从 `metadata.name` 读取值，为 Ivory 集群命名为 `hippo`。此外，IVYO 通过查看 `spec.image` 和 `spec.backups.pgbackrest.image` 的值，分别确定了 Ivory 和 pgBackRest 使用的容器镜像。`spec.postgresVersion` 的值也很重要，它帮助 IVYO 跟踪你使用的 Ivory 主版本。
 
-IVYO 通过清单中的 `spec.instances` 部分知道要创建多少个 Ivory 实例。虽然 `name` 是可选的，但我们选择将其命名为 `instance1`。我们也可以在集群初始化期间创建多个副本和实例，但稍后在我们讨论 https://github.com/IvonySQL/ivory-operator/blob/master/docs/content/tutorial/high-availability.md[如何扩展并创建高可用 Ivory 集群] 时会详细介绍。
+IVYO 通过清单中的 `spec.instances` 部分知道要创建多少个 Ivory 实例。虽然 `name` 是可选的，但我们选择将其命名为 `instance1`。我们也可以在集群初始化期间创建多个副本和实例，但稍后在我们讨论 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/high-availability.md[如何扩展并创建高可用 Ivory 集群] 时会详细介绍。
 
 `ivorycluster` 自定义资源中非常重要的一部分是 `dataVolumeClaimSpec` 部分。它描述了 Ivory 实例将使用的存储，建模自 https://kubernetes.io/docs/concepts/storage/persistent-volumes/[Persistent Volume Claim]。如果你没有提供 `spec.instances.dataVolumeClaimSpec.storageClassName`，则将使用 Kubernetes 环境中的默认存储类。
 
@@ -1632,7 +1632,7 @@ spec:
 ----
 
 == 监控
-虽然拥有 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/high-availability.md[高可用性] 和 https://github.com/Ivory-operator/blob/master/docs/content/tutorial/disaster-recovery.md[灾难恢复] 系统可以在您的 IvorySQL 集群出现问题时提供帮助，但监控可以帮助您预防问题的发生。此外，监控可以帮助您诊断和解决可能导致性能下降的问题，而不是停机。
+虽然拥有 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/high-availability.md[高可用性] 和 https://github.com/IvorySQL/ivory-operator/blob/master/docs/content/tutorial/disaster-recovery.md[灾难恢复] 系统可以在您的 IvorySQL 集群出现问题时提供帮助，但监控可以帮助您预防问题的发生。此外，监控可以帮助您诊断和解决可能导致性能下降的问题，而不是停机。
 
 让我们看看 IVYO 如何允许您在集群中启用监控。
 

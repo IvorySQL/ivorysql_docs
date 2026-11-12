@@ -258,7 +258,7 @@ pg_upgrade https://www.postgresql.org/docs/current/pgupgrade.html[文档]概述�
 
 == 管理IvorySQL版本
 
-IvorySQL基于PostgreSQL开发，版本更新频率与PostgreSQL版本更新频率保持一致，每年更新一个大版本，每季度更新一个小版本。IvorySQL目前发布的版本有1.0到5.0，分别基于PostgreSQL 14.0到18.0进行开发，最新版本为IvorySQL 5.0，基于PostgreSQL 18.0进行开发。IvorySQL 的所有版本全部都做到了向下兼容。相关版本特性可以查看 https://www.ivorysql.org/zh-CN/releases-page[官网]。
+IvorySQL基于PostgreSQL开发，版本更新频率与PostgreSQL版本更新频率保持一致，每年更新一个大版本，每季度更新一个小版本。IvorySQL目前发布的版本有1.0到5.0，分别基于PostgreSQL 14.0到18.0进行开发，最新版本为IvorySQL 5.0，基于PostgreSQL 18.0进行开发。IvorySQL 的所有版本全部都做到了向下兼容。相关版本特性可以查看 https://github.com/IvorySQL/IvorySQL/releases[官网]。
 
 
 == 管理IvorySQL数据库访问
