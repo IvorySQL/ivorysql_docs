@@ -1,0 +1,245 @@
+:sectnums:
+:sectnumlevels: 5
+
+= **功能概述**
+
+IvorySQL在 `ivorysql_ora` 扩展中定义 `SYS.USER_CONS_COLUMNS`、`SYS.ALL_CONS_COLUMNS`、`SYS.DBA_CONS_COLUMNS` 和 `SYS.ALL_TAB_COLUMNS` 四个Oracle兼容系统视图。前三个视图把PostgreSQL约束目录映射为约束列记录，第四个视图把关系、列、类型、默认值、权限和统计目录组合为Oracle风格的列元数据。
+
+四个视图统一在一份扩展SQL中创建，并向 `PUBLIC` 授予查询权限。它们共享标识符大小写转换规则，但采用不同的对象范围和权限过滤策略。
+
+== 实现原理
+
+=== 定义文件与安装方式
+
+视图定义位于：
+
+```
+contrib/ivorysql_ora/src/sysview/sysview--1.0.sql
+```
+
+构建时，`contrib/ivorysql_ora/gensql.pl` 把系统视图SQL与扩展的其他SQL片段合并为：
+
+```
+contrib/ivorysql_ora/ivorysql_ora--1.0.sql
+```
+
+Oracle模式数据库安装或预装 `ivorysql_ora` 扩展时执行这些 `CREATE OR REPLACE VIEW` 和 `GRANT SELECT ... TO PUBLIC` 语句。四个视图本身没有新增系统目录或专用缓存，查询时直接访问当前数据库的PostgreSQL系统目录。
+
+=== 标识符大小写转换
+
+约束名、表名、列名、模式名和角色名通过C函数 `SYS.ORA_CASE_TRANS` 转换。SQL函数定义映射到 `sysview_functions.c` 中的 `ora_case_trans`，后者调用核心函数 `identifier_case_transform`，按照IvorySQL标识符大小写配置转换文本。
+
+因此，视图不简单地对所有名称调用 `UPPER`。输出结果取决于 `ivorysql.identifier_case_switch` 以及对象创建时是否使用了带引号标识符。合成的非空约束名称包含固定后缀 `_NOT_NULL`，如果组合后的文本已经混合大小写，最终显示也可能是混合大小写。
+
+=== 约束列的公共目录映射
+
+三个约束列视图主要使用以下目录：
+
+[cols="1,3"]
+|===
+|系统目录 |用途
+
+|`PG_CONSTRAINT`
+|提供约束OID、约束名、约束类型、所属关系和约束列号数组 `CONKEY`
+
+|`PG_CLASS`
+|提供关系名、关系类型、命名空间和表所有者角色OID
+
+|`PG_ATTRIBUTE`
+|把 `CONKEY` 中的属性号映射为列名，并提供非空和删除标记
+
+|`PG_NAMESPACE`
+|提供模式名并用于排除系统模式或检查模式权限
+
+|`PG_AUTHID` / `PG_GET_USERBYID`
+|把关系所有者OID转换为角色名
+|===
+
+`CONKEY` 是按约束键顺序保存的属性号数组。实现需要在保持数组顺序的同时将属性号展开成多行，才能生成Oracle兼容的 `POSITION`。
+
+=== SYS.ALL_CONS_COLUMNS
+
+`SYS.ALL_CONS_COLUMNS` 的常规约束分支从 `PG_CONSTRAINT` 开始，连接关系、所有者、模式和属性目录。它只接受以下约束类型：
+
+```
+p: PRIMARY KEY
+u: UNIQUE
+f: FOREIGN KEY
+c: CHECK
+```
+
+实现使用：
+
+```sql
+CROSS JOIN LATERAL unnest(con.conkey)
+  WITH ORDINALITY AS pos(attnum, pos)
+```
+
+`unnest` 将复合约束的 `CONKEY` 展开为多行，`WITH ORDINALITY` 直接产生从1开始的 `POSITION`，随后通过 `ATTRELID` 和 `ATTNUM` 连接 `PG_ATTRIBUTE` 得到列名。
+
+对象过滤条件包括：
+
+* 模式不属于 `PG_CATALOG`、`INFORMATION_SCHEMA` 或 `PG_TOAST`；
+* 关系类型为普通表、视图、物化视图或分区表；
+* 属性号大于0且列未被删除；
+* 当前用户对模式具有 `USAGE`；
+* 当前用户对关系具有 `SELECT`。
+
+第二个 `UNION ALL` 分支扫描 `PG_ATTRIBUTE.ATTNOTNULL`，为非空列合成名称为 `关系名_列名_NOT_NULL` 的约束记录，位置固定为1。`NOT EXISTS` 子查询检查主键的 `CONKEY`，避免再次为主键列生成该合成记录。
+
+视图最后按 `OWNER`、`TABLE_NAME`、`CONSTRAINT_NAME` 和 `POSITION` 排序。
+
+=== SYS.USER_CONS_COLUMNS
+
+`SYS.USER_CONS_COLUMNS` 直接连接 `PG_CONSTRAINT`、`PG_CLASS` 和 `PG_ATTRIBUTE`。连接条件：
+
+```sql
+ATT.ATTRELID = C.OID
+AND ATT.ATTNUM = ANY(CON.CONKEY)
+```
+
+`ARRAY_POSITION(CON.CONKEY, ATT.ATTNUM)` 计算每个列号在约束数组中的位置。该视图不显式过滤 `CONTYPE`，只要约束具有关系和列号数组，就可能生成记录。在当前PostgreSQL 19基础上，非空约束也记录在 `PG_CONSTRAINT` 中，因此能够显示非空约束名称。
+
+用户范围通过以下条件实现：
+
+```sql
+C.RELOWNER::REGROLE = CURRENT_USER::REGROLE
+```
+
+该条件比较表所有者角色，不按 `CURRENT_SCHEMA` 过滤。实现还通过命名空间OID排除 `PG_CATALOG`、`PG_TOAST` 和 `INFORMATION_SCHEMA`。输出按表名、约束名和列名排序。
+
+与Oracle同名视图相比，当前实现额外输出 `OWNER`，列顺序为：
+
+```
+OWNER, TABLE_NAME, CONSTRAINT_NAME, COLUMN_NAME, POSITION
+```
+
+=== SYS.DBA_CONS_COLUMNS
+
+`SYS.DBA_CONS_COLUMNS` 由两个 `UNION ALL` 分支组成。
+
+第一个分支连接 `PG_CONSTRAINT`、`PG_CLASS`、`PG_NAMESPACE` 和 `PG_ATTRIBUTE`，使用 `ATTNUM = ANY(CONKEY)` 找出约束列，再通过 `ARRAY_POSITION` 计算 `POSITION`。它没有限制 `CONTYPE`，但只接受 `RELKIND = 'r'` 的普通表，并排除 `PG_CATALOG` 和 `INFORMATION_SCHEMA`。
+
+第二个分支扫描 `PG_ATTRIBUTE.ATTNOTNULL`，按照 `关系名_列名_NOT_NULL` 合成非空约束记录，位置固定为1。
+
+两个分支都没有调用 `HAS_TABLE_PRIVILEGE`、`HAS_SCHEMA_PRIVILEGE` 或管理员角色检查。因此，虽然视图使用 `DBA_` 前缀，但视图自身不构成权限隔离；再加上对 `PUBLIC` 的查询授权，任何能够连接数据库的角色都可以查询它返回的元数据。
+
+当前第二个分支没有 `ATTNUM > 0` 条件，也没有排除已经由 `PG_CONSTRAINT` 表示的非空约束。这会带来两类结果：
+
+* `TABLEOID`、`XMIN`、`CMIN`、`XMAX`、`CMAX`、`CTID` 等非空系统列可能被合成为约束记录；
+* 用户列的真实非空约束记录和合成记录可能同时出现，名称的大小写也可能不同。
+
+这是当前实现边界，调用方如需稳定结果，应按显式约束名称过滤，或增加 `COLUMN_NAME` 排除条件。
+
+=== SYS.ALL_TAB_COLUMNS的基础目录连接
+
+`SYS.ALL_TAB_COLUMNS` 以 `PG_CLASS` 为主表，连接：
+
+* `PG_NAMESPACE`：取得对象所在模式，即输出的 `OWNER`；
+* `PG_ATTRIBUTE`：取得列号、类型OID、类型修饰符、长度、非空、identity和删除标记；
+* `PG_TYPE`：取得内部类型名、类型命名空间和类型所有者；
+* `PG_STATS`：取得空值比例和平均列宽；
+* `PG_ATTRDEF`：通过LATERAL子查询反解析默认值表达式并计算其字节长度。
+
+`COLUMN_ID` 使用窗口函数计算：
+
+```sql
+ROW_NUMBER() OVER (
+  PARTITION BY pg_class.oid
+  ORDER BY pg_attribute.attnum
+)
+```
+
+视图只保留属性号大于0且未删除的用户列。关系类型限制为普通表、视图、物化视图、分区表和外部表，并排除 `PG_CATALOG`、`PG_TOAST`、`INFORMATION_SCHEMA` 以及 `RELISPARTITION` 为真的分区子表。
+
+权限条件调用：
+
+```sql
+has_table_privilege(
+  current_user,
+  pg_class.oid,
+  'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'
+)
+```
+
+底层ACL检查使用“任一权限”语义，因此拥有列表中至少一种表级权限即可看到对象的列。
+
+=== 类型、长度、精度和标度映射
+
+`DATA_TYPE` 通过 `CASE` 把PostgreSQL和IvorySQL内部类型映射为Oracle风格名称。主要映射如下：
+
+[cols="2,2"]
+|===
+|内部类型 |输出类型
+
+|`int2`, `int4`, `int8`, `numeric`
+|`NUMBER`
+
+|`float4`, `float8`
+|`FLOAT`
+
+|`varchar`, `oravarcharbyte`
+|`VARCHAR2`
+
+|`bpchar`, `oracharbyte`
+|`CHAR`
+
+|`text`, `clob`
+|`CLOB`
+
+|`bytea`, `blob`
+|`BLOB`
+
+|`date`, `oradate`
+|`DATE`
+
+|`timestamp`, `timestamptz`, `oratimestamp`, `oratimestamptz`
+|`TIMESTAMP`
+
+|`raw`, `rowid`
+|`RAW`, `ROWID`
+|===
+
+未命中映射的类型使用经过大小写转换的内部类型名。非 `PG_CATALOG` 和非 `SYS` 模式中的类型通过类型所有者角色填充 `DATA_TYPE_OWNER`。
+
+`DATA_LENGTH` 综合使用固定的Oracle类型长度、 `ATTTYPMOD - 4`、数据库编码最大字符宽度和 `ATTLEN` 计算。`NUMBER`/`NUMERIC` 的精度和标度从 `ATTTYPMOD` 位域中解码；整数类型使用固定精度5、10、19和标度0；浮点类型使用63或126的精度。
+
+=== 默认值、字符属性和统计信息
+
+默认值LATERAL子查询调用 `PG_GET_EXPR(ADBIN, ADRELID)` 生成 `DATA_DEFAULT`，并用 `OCTET_LENGTH` 生成 `DEFAULT_LENGTH`。
+
+字符类型的 `CHARACTER_SET_NAME` 固定为 `CHAR_CS`。`CHAR_COL_DECL_LENGTH` 和 `CHAR_LENGTH` 由类型修饰符计算，`CHAR_USED` 对字节语义类型返回 `B`，对字符语义类型返回 `C`。
+
+统计字段的当前实现分为三类：
+
+* `NUM_NULLS` 由 `PG_STATS.NULL_FRAC * PG_CLASS.RELTUPLES` 估算；
+* `AVG_COL_LEN` 来自 `PG_STATS.AVG_WIDTH`，`LAST_ANALYZED` 来自 `PG_STAT_GET_LAST_ANALYZE_TIME`；
+* `NUM_DISTINCT`、`LOW_VALUE`、`HIGH_VALUE`、`DENSITY`、`NUM_BUCKETS`、`SAMPLE_SIZE` 和 `HISTOGRAM` 当前为 `NULL`。
+
+`GLOBAL_STATS`、`USER_STATS`、`V80_FMT_IMAGE`、`DATA_UPGRADED` 和 `DEFAULT_ON_NULL` 使用固定字符串。`COLLATION` 当前为 `NULL`，视图没有名为 `COLLATION_NAME` 的列。`IDENTITY_COLUMN` 只检查 `PG_ATTRIBUTE.ATTIDENTITY` 是否为空。
+
+=== OWNER来源差异
+
+约束列视图通过 `PG_CLASS.RELOWNER` 取得表所有者角色，并使用 `PG_AUTHID.ROLNAME` 或 `PG_GET_USERBYID` 生成 `OWNER`。`ALL_TAB_COLUMNS` 则直接使用 `PG_NAMESPACE.NSPNAME` 作为 `OWNER`。
+
+PostgreSQL中模式和表所有者是独立概念，因此相同对象在这两类视图中的 `OWNER` 不一定相同。这是目录模型映射造成的当前行为。
+
+=== 回归测试
+
+四个视图的回归测试位于：
+
+```
+contrib/ivorysql_ora/sql/ora_sysview.sql
+contrib/ivorysql_ora/expected/ora_sysview.out
+```
+
+测试覆盖主键、复合主键、唯一约束、外键、检查约束、非空约束、约束列位置、视图存在性、主要数据类型映射、长度/精度/标度、可空性、默认值、统计字段、字符属性、identity标志，以及 `ALL_TAB_COLUMNS` 不存在 `COLLATION_NAME` 的负向检查。
+
+=== 当前实现边界
+
+* 四个视图的对象范围、系统模式过滤和权限条件分别实现，不能仅根据 `USER_`、`ALL_`、`DBA_` 前缀推断完全一致的Oracle权限语义。
+* `USER_CONS_COLUMNS` 的列顺序与另外两个约束列视图不同，并额外包含 `OWNER`。
+* `DBA_CONS_COLUMNS` 没有权限过滤，其非空分支还会包含系统列并可能产生重复记录。
+* `ALL_CONS_COLUMNS` 对非空列使用合成名称，并跳过主键列；它与直接读取 `PG_CONSTRAINT` 的两个视图可能返回不同的非空记录集合和名称。
+* `ALL_TAB_COLUMNS` 的统计兼容仍是部分实现，多个字段使用固定值或 `NULL`。
+* 约束列视图的 `OWNER` 是表所有者角色，而 `ALL_TAB_COLUMNS.OWNER` 是模式名。
