@@ -66,6 +66,7 @@
 ** xref:master/oracle_compatibility/compat_dbtimezone_function.adoc[数据库时区函数]
 ** xref:master/oracle_compatibility/compat_to_binary_float_function.adoc[二进制浮点转换函数]
 ** xref:master/oracle_compatibility/compat_to_binary_double_function.adoc[双精度浮点转换函数]
+** xref:master/oracle_compatibility/compat_create_type_as_object.adoc[类型对象]
 * 容器化与云服务
 ** 容器化指南
 *** xref:master/containerization/k8s_deployment.adoc[K8S部署]
@@ -171,6 +172,7 @@
 **** xref:master/compatibility_features_design/dbms_utility_impl.adoc[DBMS_UTILITY包]
 **** xref:master/compatibility_features_design/dbms_scheduler_impl.adoc[DBMS_SCHEDULER包]
 **** xref:master/compatibility_features_design/dbms_transaction_impl.adoc[DBMS_TRANSACTION包]
+**** xref:master/compatibility_features_design/create_type_as_object.adoc[类型对象]
 *** 内置函数
 **** xref:master/oracle_builtin_functions/sys_context.adoc[sys_context]
 **** xref:master/oracle_builtin_functions/userenv.adoc[userenv]
