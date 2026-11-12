@@ -111,6 +111,7 @@
 *** xref:master/ecosystem_components/set_user.adoc[set_user]
 *** xref:master/ecosystem_components/pg_jieba.adoc[pg_jieba]
 *** xref:master/ecosystem_components/pg_track_settings.adoc[pg_track_settings]
+*** xref:master/ecosystem_components/powa.adoc[PoWA]
 * Monitor and O&M
 ** xref:master/getting-started/daily_monitoring.adoc[Monitoring]
 ** xref:master/getting-started/daily_maintenance.adoc[Maintenance]
