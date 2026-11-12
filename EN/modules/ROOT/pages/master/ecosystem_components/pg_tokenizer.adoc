@@ -1,0 +1,154 @@
+:sectnums:
+:sectnumlevels: 5
+
+= pg_tokenizer
+
+== Overview
+
+pg_tokenizer is a Rust-based PostgreSQL extension that provides configurable tokenizers and text analyzers inside the database. Pipelines can combine pre-tokenizers, character filters, token filters, and models, and can populate token arrays automatically with table triggers.
+
+Project page: <https://github.com/tensorchord/pg_tokenizer>
+
+Tested version: 0.1.1
+
+License: Apache-2.0
+
+== Compatibility
+
+pg_tokenizer 0.1.1 was built from source and validated on the official IvorySQL 5.4 x86_64 Linux image (PostgreSQL 18.4). The tests covered Chinese Jieba analysis, English tokenization, custom-model triggers, extension lifecycle, and both IvorySQL compatibility modes.
+
+== Building and Installing
+
+Install Rust, Clang, CMake, and the IvorySQL development files. pg_tokenizer 0.1.1 uses pgrx 0.16.1.
+
+[source,bash]
+----
+git clone https://github.com/tensorchord/pg_tokenizer.git
+cd pg_tokenizer
+git checkout 0.1.1
+
+rustup default stable
+cargo install cargo-pgrx --version 0.16.1 --locked
+cargo pgrx init --pg18=/usr/ivory-5/bin/pg_config
+
+cargo build --lib --release --features pg18
+cargo pgrx schema --features pg18 --out target/schema.sql
+sed 's/@CARGO_VERSION@/0.1.1/g' pg_tokenizer.control \
+  > target/pg_tokenizer.control
+
+sudo install -m 755 target/release/libpg_tokenizer.so \
+  "$(/usr/ivory-5/bin/pg_config --pkglibdir)/pg_tokenizer.so"
+sudo install -m 644 target/pg_tokenizer.control \
+  "$(/usr/ivory-5/bin/pg_config --sharedir)/extension/pg_tokenizer.control"
+sudo install -m 644 target/schema.sql \
+  "$(/usr/ivory-5/bin/pg_config --sharedir)/extension/pg_tokenizer--0.1.1.sql"
+----
+
+[NOTE]
+Tag 0.1.1 retains a package-version placeholder in its control file. Replace it as shown above so that `CREATE EXTENSION` installs version 0.1.1 correctly.
+
+Add pg_tokenizer to the existing preload list and restart IvorySQL:
+
+[source,ini]
+----
+shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_tokenizer'
+----
+
+[source,sql]
+----
+CREATE EXTENSION pg_tokenizer CASCADE;
+SELECT extversion FROM pg_extension WHERE extname = 'pg_tokenizer';
+----
+
+== Text Analysis
+
+Create a Jieba search-mode analyzer and apply it to Chinese text:
+
+[source,sql]
+----
+SET search_path TO "$user", public, tokenizer_catalog;
+
+SELECT create_text_analyzer('jieba_search', $$
+[pre_tokenizer.jieba]
+mode = "search"
+$$);
+
+SELECT apply_text_analyzer('我们中出了一个叛徒', 'jieba_search');
+-- {我们,中出,了,一个,叛徒}
+----
+
+Tokenizers can combine a model and filters:
+
+[source,sql]
+----
+SELECT create_tokenizer('english_stem', $$
+model = "bert_base_uncased"
+pre_tokenizer.regex = '(?u)\b\w\w+\b'
+[[character_filters]]
+to_lowercase = {}
+[[token_filters]]
+stopwords = "nltk_english"
+[[token_filters]]
+stemmer = "english_porter2"
+$$);
+
+SELECT tokenize(
+  'PostgreSQL is a powerful open-source database system.',
+  'english_stem'
+);
+----
+
+== Automatic Tokenization with a Trigger
+
+[source,sql]
+----
+CREATE TABLE tokenizer_documents (
+  id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  passage text NOT NULL,
+  embedding integer[]
+);
+
+SELECT create_custom_model_tokenizer_and_trigger(
+  tokenizer_name => 'document_tokenizer',
+  model_name => 'document_model',
+  text_analyzer_name => 'jieba_search',
+  table_name => 'tokenizer_documents',
+  source_column => 'passage',
+  target_column => 'embedding'
+);
+
+INSERT INTO tokenizer_documents (passage)
+VALUES ('IvorySQL 支持 PostgreSQL 和 Oracle 双模式。');
+
+SELECT id, cardinality(embedding) > 0 AS tokens_created
+FROM tokenizer_documents;
+----
+
+== Oracle Compatibility Mode
+
+Text analyzers and tokenizers work directly in Oracle mode. For custom-model triggers, use normal identifier folding because the extension's generated SQL addresses lower-case internal catalog objects:
+
+[source,sql]
+----
+SET ivorysql.compatible_mode = oracle;
+SET ivorysql.identifier_case_switch = normal;
+
+SELECT 1 FROM dual;
+SELECT apply_text_analyzer('南京市长江大桥', 'jieba_search');
+
+INSERT INTO tokenizer_documents (passage)
+VALUES ('中文分词在 Oracle 兼容模式下正常工作。');
+
+SELECT id, cardinality(embedding) > 0 AS tokens_created
+FROM tokenizer_documents ORDER BY id;
+----
+
+[IMPORTANT]
+With Oracle mode's default `ivorysql.identifier_case_switch = interchange`, a custom-model trigger can fail with `relation "tokenizer_catalog.MODEL_DOCUMENT_MODEL" does not exist`. Set the parameter to `normal` for sessions that create or invoke these triggers.
+
+== Operational Notes
+
+* pg_tokenizer must be present in `shared_preload_libraries`; changing the list requires a server restart.
+* Use UTF-8 database encoding for multilingual text.
+* Building from source downloads and compiles Rust dependencies and therefore takes more time and memory than a typical PGXS extension.
+* Test application-specific analyzer and model configurations with representative text before production use.
