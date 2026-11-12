@@ -1,0 +1,112 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= postgresql_anonymizer
+
+== 概述
+postgresql_anonymizer 是一款 PostgreSQL 扩展插件，用于在数据库层对敏感数据进行动态或静态脱敏与匿名化，从而在保障数据安全的同时满足 GDPR 等隐私合规要求。
+
+== 安装
+本文档提供源码安装步骤。
+
+[TIP]
+源码安装环境为 Ubuntu 24.04(x86_64)，环境中已经安装了 IvorySQL5 或以上版本，安装路径为/usr/ivory-5。
+
+=== 源码安装
+从 https://gitlab.com/dalibo/postgresql_anonymizer/-/archive/3.2.3/postgresql_anonymizer-3.2.3.tar.gz 下载 postgresql_anonymizer v3.2.3 源代码。
+
+** 安装 rust 和 pgrx
+[literal]
+----
+# 安装 rust
+sudo curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+最新版本的 postgresql_anonymizer-3.2.3 要求 cargo-pgrx 的版本 0.19.1。
+
+首先升级rustc
+rustup update stable   
+
+安装0.19.1的 cargo-pgrx
+cargo install cargo-pgrx --version 0.19.1 --locked
+
+cargo pgrx init --pg18  /usr/ivory-5/bin/pg_config
+----
+
+** 编译安装 postgresql_anonymizer
+[literal]
+----
+# 源代码解压缩后进入其目录
+cd postgresql_anonymizer-3.2.3
+ 
+# 编译代码
+PGRX_PG_CONFIG_PATH=/usr/ivory-5/bin/pg_config make extension PG_CONFIG=/usr/ivory-5/bin/pg_config PGVER=pg18
+
+# 安装插件
+sudo make install PG_CONFIG=/usr/ivory-5/bin/pg_config PGVER=pg18
+----
+
+[TIP]
+如果出现找不到xlocale.h的错误，需要手动修改 /usr/ivory-5/include/postgresql/server/pg_config.h
+删除或者注释掉 #define HAVE_XLOCALE_H 1 这一行
+
+== 创建插件
+psql 连接到数据库，执行如下命令：
+[literal]
+----
+ivorysql=# CREATE EXTENSION anon;
+CREATE EXTENSION
+
+ivorysql=# SELECT anon.init();    -- anon.init() loads the dataset required by the fake_* faking functions.
+
+打开透明动态脱敏开关
+ALTER DATABASE ivorysql SET anon.transparent_dynamic_masking = on;
+
+修改pg配置文件，把 anon 加入到 shared_preload_libraries
+shared_preload_libraries = 'anon';
+
+重启数据库
+----
+
+== 使用
+[literal]
+----
+-- 首先创建一张含敏感字段的测试表
+CREATE TABLE people AS
+SELECT 153478       AS id,
+       'Sarah'      AS firstname,
+       'Conor'      AS lastname,
+       '0609110911' AS phone;
+
+-- 声明一个需要被脱敏的用户
+CREATE ROLE skynet LOGIN;
+SECURITY LABEL FOR anon ON ROLE skynet IS 'MASKED';
+GRANT pg_read_all_data TO skynet;
+
+-- 给字段挂脱敏规则
+SECURITY LABEL FOR anon ON COLUMN people.lastname
+  IS 'MASKED WITH FUNCTION anon.dummy_last_name()';
+SECURITY LABEL FOR anon ON COLUMN people.phone
+  IS 'MASKED WITH FUNCTION anon.partial(phone, 2, $$******$$, 2)';
+  
+验证动态脱敏（换一个被标记为 MASKED 的角色登录去查，结果应被自动打码）：
+\connect - skynet
+SELECT * FROM people; -- 期望 lastname 变成随机假姓、phone 变成 06******11
+
+   id   | firstname | lastname |   phone    
+--------+-----------+----------+------------
+ 153478 | Sarah     | Gaylord  | 06******11
+(1 row)
+----
+
+[TIP]
+在IvorySQL的兼容模式下，postgresql_anonymizer 的部分语句可能存在兼容问题
+
+例如：
+SECURITY LABEL FOR anon ON COLUMN people.phone
+  IS 'MASKED WITH FUNCTION anon.partial(phone, 2, $$******$$, 2)';
+
+ERROR:  Anon: `MASKED WITH FUNCTION anon.partial(phone, 2, $$******$$, 2)` is not a valid label for a column
+DETAIL:  anon.partial(phone, 2, $$******$$, 2) is not qualified
+
+此时可以通过临时设置兼容模式为 pg 来解决。

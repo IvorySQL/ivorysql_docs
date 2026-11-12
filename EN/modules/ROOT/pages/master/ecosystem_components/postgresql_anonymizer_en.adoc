@@ -1,0 +1,110 @@
+:sectnums:
+:sectnumlevels: 5
+
+= postgresql_anonymizer
+
+== Overview
+postgresql_anonymizer is a PostgreSQL extension that provides dynamic or static masking and anonymization of sensitive data at the database level, helping protect data while meeting privacy compliance requirements such as the GDPR.
+
+== Installation
+This document describes how to install the extension from source.
+
+[TIP]
+The source installation described here uses Ubuntu 24.04 (x86_64), with IvorySQL 5 or later already installed in /usr/ivory-5.
+
+=== Installing from Source
+Download the postgresql_anonymizer v3.2.3 source code from https://gitlab.com/dalibo/postgresql_anonymizer/-/archive/3.2.3/postgresql_anonymizer-3.2.3.tar.gz.
+
+** Install Rust and pgrx
+[literal]
+----
+# Install Rust
+sudo curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+The latest version of postgresql_anonymizer 3.2.3 requires cargo-pgrx 0.19.1.
+
+First, update rustc
+rustup update stable
+
+Install cargo-pgrx 0.19.1
+cargo install cargo-pgrx --version 0.19.1 --locked
+
+cargo pgrx init --pg18  /usr/ivory-5/bin/pg_config
+----
+
+** Build and install postgresql_anonymizer
+[literal]
+----
+# Enter the source directory after extracting the archive
+cd postgresql_anonymizer-3.2.3
+
+# Build the source code
+PGRX_PG_CONFIG_PATH=/usr/ivory-5/bin/pg_config make extension PG_CONFIG=/usr/ivory-5/bin/pg_config PGVER=pg18
+
+# Install the extension
+sudo make install PG_CONFIG=/usr/ivory-5/bin/pg_config PGVER=pg18
+----
+
+[TIP]
+If an error reports that xlocale.h cannot be found, manually edit /usr/ivory-5/include/postgresql/server/pg_config.h and delete or comment out the following line: #define HAVE_XLOCALE_H 1
+
+== Creating the Extension
+Connect to the database with psql and run the following commands:
+[literal]
+----
+ivorysql=# CREATE EXTENSION anon;
+CREATE EXTENSION
+
+ivorysql=# SELECT anon.init();    -- anon.init() loads the dataset required by the fake_* faking functions.
+
+Enable transparent dynamic masking
+ALTER DATABASE ivorysql SET anon.transparent_dynamic_masking = on;
+
+Edit the PostgreSQL configuration file and add anon to shared_preload_libraries
+shared_preload_libraries = 'anon';
+
+Restart the database
+----
+
+== Usage
+[literal]
+----
+-- First, create a test table containing sensitive columns
+CREATE TABLE people AS
+SELECT 153478       AS id,
+       'Sarah'      AS firstname,
+       'Conor'      AS lastname,
+       '0609110911' AS phone;
+
+-- Declare a user whose data access must be masked
+CREATE ROLE skynet LOGIN;
+SECURITY LABEL FOR anon ON ROLE skynet IS 'MASKED';
+GRANT pg_read_all_data TO skynet;
+
+-- Apply masking rules to the columns
+SECURITY LABEL FOR anon ON COLUMN people.lastname
+  IS 'MASKED WITH FUNCTION anon.dummy_last_name()';
+SECURITY LABEL FOR anon ON COLUMN people.phone
+  IS 'MASKED WITH FUNCTION anon.partial(phone, 2, $$******$$, 2)';
+
+Verify dynamic masking (connect as a role marked MASKED and query the table; the results should be masked automatically):
+\connect - skynet
+SELECT * FROM people; -- Expected: lastname is replaced with a random fake surname, and phone becomes 06******11
+
+   id   | firstname | lastname |   phone
+--------+-----------+----------+------------
+ 153478 | Sarah     | Gaylord  | 06******11
+(1 row)
+----
+
+[TIP]
+In IvorySQL compatibility mode, some postgresql_anonymizer statements may encounter compatibility issues.
+
+For example:
+SECURITY LABEL FOR anon ON COLUMN people.phone
+  IS 'MASKED WITH FUNCTION anon.partial(phone, 2, $$******$$, 2)';
+
+ERROR:  Anon: `MASKED WITH FUNCTION anon.partial(phone, 2, $$******$$, 2)` is not a valid label for a column
+DETAIL:  anon.partial(phone, 2, $$******$$, 2) is not qualified
+
+In this case, temporarily setting the compatibility mode to pg resolves the issue.
