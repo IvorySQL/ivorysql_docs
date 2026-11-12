@@ -251,7 +251,7 @@ After the upgrade is completed,`pg_upgrade` will generate a cleanup script:
 
 == Managing IvorySQL Versions
 
-IvorySQL is based on PostgreSQL and is updated at the same frequency as PostgreSQL, with one major release per year and one minor release per quarter. IvorySQL {ivorysql-version} is based on PostgreSQL {pg-version}, and all versions of IvorySQL are backward compatible.The relevant version features can be viewed by looking at https://www.ivorysql.org/en/releases-page/[Official Website]。
+IvorySQL is based on PostgreSQL and is updated at the same frequency as PostgreSQL, with one major release per year and one minor release per quarter. IvorySQL {ivorysql-version} is based on PostgreSQL {pg-version}, and all versions of IvorySQL are backward compatible.The relevant version features can be viewed by looking at https://github.com/IvorySQL/IvorySQL/releases[Official Website]。
 
 
 == Managing IvorySQL database access
