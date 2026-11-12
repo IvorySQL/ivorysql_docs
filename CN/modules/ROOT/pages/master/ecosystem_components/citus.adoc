@@ -1,0 +1,173 @@
+:sectnums:
+:sectnumlevels: 5
+
+= Citus
+
+== 概述
+
+Citus 是 PostgreSQL 的开源分布式扩展（由 Microsoft 开源维护），将 PostgreSQL 转换为分布式数据库。它通过表分片（sharding）、分布式查询计划与并行执行，在多节点集群上实现水平扩展，同时保留标准 SQL 接口。
+
+Citus 的核心能力：
+
+* *分布式表*：按分布列将大表哈希分片到多个节点，透明支持 INSERT/UPDATE/DELETE/SELECT
+* *引用表*：小维度表全节点复制，与分布式表 JOIN 零网络开销
+* *分布式查询*：基于 Citus Adaptive 执行器的并行查询，支持分片裁剪（shard pruning）
+* *在线扩容*：rebalance_table_shards 在集群间重新均衡分片
+
+Citus 14.x 支持 PostgreSQL 16、17、18。IvorySQL 5.x 基于 PostgreSQL 18，兼容 Citus 14.2。
+
+[TIP]
+本文档源码安装环境为 Debian 12（bookworm）容器，IvorySQL 5.6 镜像，Citus 14.2.0。
+
+== 安装
+
+=== 前置条件
+
+Citus 以 PostgreSQL 扩展形式编译，需要 IvorySQL 的开发头文件（pg_config）与编译工具链。
+
+[literal]
+----
+# Debian / Ubuntu
+sudo apt install gcc make bison flex pkg-config \
+    libcurl4-openssl-dev liblz4-dev libzstd-dev \
+    zlib1g-dev libssl-dev autoconf automake libtool
+----
+
+=== 源码安装
+
+[literal]
+----
+git clone --depth 1 --branch v14.2.0 https://github.com/citusdata/citus.git
+cd citus
+
+# 确保 pg_config 位于 PATH（IvorySQL 默认安装路径示例）
+export PATH=/usr/ivory-5/bin:$PATH
+
+./configure
+make -j$(nproc)
+sudo make install
+----
+
+=== 验证安装
+
+[literal]
+----
+ls /usr/ivory-5/lib/postgresql/citus.so
+ls /usr/ivory-5/share/postgresql/extension/citus.control
+----
+
+== 配置
+
+Citus 必须通过 `shared_preload_libraries` 预加载。
+
+IvorySQL 默认已预加载自身组件（`gb18030_2022`、`liboracle_parser`、`ivorysql_ora`），配置时应**保留原有库并追加 citus**：
+
+[literal]
+----
+# postgresql.conf
+shared_preload_libraries = 'citus, gb18030_2022, liboracle_parser, ivorysql_ora'
+----
+
+修改后重启实例：
+
+[literal]
+----
+pg_ctl restart -D $PGDATA
+----
+
+[TIP]
+不建议使用 `ALTER SYSTEM SET shared_preload_libraries` 配置多库列表：实测该方式可能将整个列表写入为单一库名，导致启动失败（`could not access file`）。建议直接编辑 postgresql.conf。
+
+== 使用
+
+=== 创建扩展
+
+[literal]
+----
+-- psql -U ivorysql -p 5432 -d postgres
+CREATE EXTENSION citus;
+SELECT citus_version();
+
+--  citus_version
+-- ----------------------------------------
+--  Citus 14.2.0 on x86_64-pc-linux-gnu ...
+----
+
+=== 创建分布式表
+
+[literal]
+----
+CREATE TABLE orders (
+    order_id  bigint,
+    user_id   bigint,
+    amount    numeric(10,2),
+    created   date DEFAULT current_date
+);
+
+-- 按 user_id 哈希分片
+SELECT create_distributed_table('orders', 'user_id');
+
+-- 查看分片情况（默认 32 个分片）
+SELECT table_name, shard_count FROM citus_tables;
+
+--  table_name | shard_count
+-- ------------+-------------
+--  orders     |          32
+----
+
+=== 数据操作与分片裁剪
+
+分布式表的 DML 与普通表语法完全一致，Citus 根据分布列自动路由：
+
+[literal]
+----
+INSERT INTO orders VALUES (1, 100, 99.90, current_date);
+INSERT INTO orders VALUES (2, 200, 59.50, current_date);
+INSERT INTO orders VALUES (3, 100, 129.00, current_date);
+
+-- 带分布列条件的查询会裁剪到单个分片
+EXPLAIN SELECT * FROM orders WHERE user_id = 100;
+
+--  QUERY PLAN
+-- --------------------------------------------------------
+--  Custom Scan (Citus Adaptive)
+--    Task Count: 1
+--    ->  Task
+--          Node: host=localhost port=5432 dbname=postgres
+--          ->  Seq Scan on orders_102009 orders
+--                Filter: (user_id = 100)
+
+-- 跨分片聚合自动并行汇总
+SELECT count(*), sum(amount) FROM orders;
+----
+
+=== 分片再均衡
+
+新增 worker 节点后，使用 rebalance 在集群间迁移分片：
+
+[literal]
+----
+-- 添加节点（在所有 worker 上安装并预加载 citus 后）
+SELECT citus_add_node('worker1', 5432);
+
+-- 在线再均衡分片
+SELECT rebalance_table_shards();
+
+-- 查看集群节点
+SELECT nodename, nodeport FROM pg_dist_node;
+----
+
+== Oracle 兼容模式说明
+
+实测（Citus 14.2.0 + IvorySQL 5.6，双模式监听 5432/1521），Oracle 兼容模式下 Citus 存在以下限制：
+
+. *扩展安装受限*：在 Oracle 模式连接（1521 端口）中执行 `CREATE EXTENSION citus` 会因 Oracle 解析器拒绝扩展脚本中的 PostgreSQL 专有语法（如 `CREATE SEQUENCE ... NO CYCLE`）而失败
+. *Oracle 类型表无法分布式化*：对包含 `NUMBER`、`VARCHAR2` 等 Oracle 类型的表执行 `create_distributed_table` 时，DDL 将被下发到 worker 端重放，而 worker 端 Citus 仅能安装在 PostgreSQL 模式实例中，无法识别 Oracle 类型，导致失败
+
+因此，当前版本建议在 **PostgreSQL 兼容模式（5432 端口）** 下使用 Citus 分布式能力；Oracle 模式下的表可继续使用 IvorySQL 的 Oracle 语法特性，但不建议纳入 Citus 分布式集群。
+
+== 限制
+
+* Citus 仅支持 PostgreSQL 兼容模式；Oracle 兼容模式下无法安装扩展
+* Citus 版本须与后端 PostgreSQL 大版本匹配（Citus 14.x 对应 PostgreSQL 16/17/18）
+* 所有 worker 节点均需安装相同版本的 Citus 与 IvorySQL，并正确配置 `shared_preload_libraries`
