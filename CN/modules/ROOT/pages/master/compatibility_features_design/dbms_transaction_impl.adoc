@@ -1,0 +1,101 @@
+:sectnums:
+:sectnumlevels: 5
+
+= DBMS_TRANSACTION 包设计
+
+== 目的
+
+通过 `ivorysql_ora` 扩展提供 Oracle 风格的事务控制接口，复用已有 PL/iSQL 语句和事务管理函数。本实现支持 `COMMIT`、`ROLLBACK`、`SAVEPOINT`、`ROLLBACK_SAVEPOINT`、`READ_ONLY` 和 `READ_WRITE`，改动限定在扩展内部，不增加内核事务接口。
+
+使用方式及调用限制见 xref:master/oracle_compatibility/compat_dbms_transaction.adoc[DBMS_TRANSACTION 包]。
+
+== 实现说明
+
+=== 代码组织
+
+[cols="3,4",options="header"]
+|===
+|文件 |职责
+|`src/builtin_packages/dbms_transaction/dbms_transaction--1.0.sql` |注册 C 函数，定义包规范与包体，授予包执行权限
+|`src/builtin_packages/dbms_transaction/dbms_transaction.c` |保存点名称校验、调用上下文检查及事务函数桥接
+|`sql/dbms_transaction.sql` |事务操作、异常输入、自治事务及跨用户调用的回归用例
+|`expected/dbms_transaction.out`、`expected/dbms_transaction_1.out` |没有或具备可用 dblink 环境时的期望结果
+|`Makefile`、`meson.build`、`ivorysql_ora_merge_sqls` |编译、回归及扩展 SQL 合并注册
+|===
+
+上述路径均相对于 `contrib/ivorysql_ora/`。
+
+=== 包接口与权限
+
+包声明使用 `AUTHID CURRENT_USER`，并执行 `GRANT EXECUTE ON PACKAGE dbms_transaction TO PUBLIC`，使普通用户能够以自身权限调用。包级执行授权不改变业务对象的访问权限。
+
+两个保存点 C 函数注册在 `sys` 模式中，均为 `VOLATILE`，且未声明 `STRICT`，以便对 `NULL` 名称给出明确错误。
+
+[source,text]
+----
+顶层 CALL dbms_transaction.savepoint('sp1')
+    → PL/iSQL 包体
+    → sys.ora_dbms_transaction_savepoint(text)
+    → DefineSavepoint(name)
+    → 顶层命令结束时完成子事务状态转换
+----
+
+=== 子程序映射
+
+[cols="2,4",options="header"]
+|===
+|子程序 |实现
+|`COMMIT` |包体执行 PL/iSQL 原生 `COMMIT` 语句
+|`ROLLBACK` |包体执行 PL/iSQL 原生 `ROLLBACK` 语句
+|`SAVEPOINT` |包体通过 `PERFORM` 调用 C 函数，最终调用 `DefineSavepoint()`
+|`ROLLBACK_SAVEPOINT` |包体通过 `PERFORM` 调用 C 函数，最终调用 `RollbackToSavepoint()`
+|`READ_ONLY` |动态执行 `SET TRANSACTION READ ONLY`
+|`READ_WRITE` |动态执行 `SET TRANSACTION READ WRITE`
+|===
+
+`COMMIT` 和 `ROLLBACK` 复用 PL/iSQL 的事务终止路径，继承其原子上下文限制。包没有额外开启事务，也不会让原本不允许终止事务的调用上下文获得提交或回滚能力。
+
+读写模式过程只设置访问模式，不改变隔离级别，也不实现额外的 Oracle 快照机制。切换模式的时机和写入限制由底层 `SET TRANSACTION` 规则处理。
+
+=== 保存点桥接
+
+PL/iSQL 没有原生保存点语句，因此两个包过程由 C 函数桥接到 `access/xact.h` 声明的事务管理函数。它们按以下顺序执行：
+
+. `get_savepoint_name()` 拒绝 `NULL` 名称和长度达到 256 字节的名称；上限为 255 字节，名称按字符串传递。
+. `RequireTransactionBlock(true, ...)` 确认存在显式事务块，防止在无效状态下调用保存点函数。
+. `check_not_nested_in_pl_call()` 通过 `SPI_get_connected() > 0` 判断是否嵌套在其他 PL/iSQL 调用中；若嵌套则报错。
+. 调用 `DefineSavepoint()` 或 `RollbackToSavepoint()`，由内核完成后续事务状态转换。
+
+保存点函数只标记待处理的事务状态，实际子事务启动或回滚在顶层命令结束后完成。如果嵌套过程在该转换完成前继续执行，可能访问尚未就绪的事务状态。因此保存点操作必须作为独立顶层 `CALL`，不能在 C 桥接中强行提交命令来绕过限制。
+
+这里直接调用事务管理函数，没有新增 `SPI_savepoint` 等 SPI 接口。`SPI_get_connected()` 仅用于检查调用深度，不负责执行保存点操作。
+
+=== 边界与错误处理
+
+[cols="3,2,4",options="header"]
+|===
+|条件 |SQLSTATE |诊断
+|保存点名称为 `NULL` |`22004` |`DBMS_TRANSACTION savepoint name must not be NULL`
+|保存点名称超过 255 字节 |`22023` |`DBMS_TRANSACTION savepoint name too long (max 255 bytes)`
+|保存点操作不在显式事务块中 |`25P01` |只能用于事务块的错误
+|保存点操作嵌套在其他 PL/iSQL 调用中 |`25000` |必须移到独立顶层 `CALL` 的错误及提示
+|回滚到不存在的保存点 |`3B001` |内核返回 `savepoint ... does not exist`
+|原子上下文中调用包提交或回滚 |`2D000` |`invalid transaction termination`
+|只读事务取得快照后切换为读写模式 |`25001` |`transaction read-write mode must be set before any query`
+|===
+
+同名保存点重定义、重复回滚及回滚后撤销后续保存点等行为直接复用内核语义。Oracle 空字符串转 `NULL` 的处理发生在进入 C 桥接之前。
+
+=== 自治事务
+
+保存点嵌套检查不豁免自治事务，也不依据用户可设置的 `plisql.inside_autonomous_transaction` 参数放行。真正的自治事务在独立 dblink 会话执行，当前回归场景没有显式事务块，因此先被 `RequireTransactionBlock()` 拒绝。
+
+包内提交和回滚仍受事务终止上下文约束；当前自治事务用例返回 `invalid transaction termination`。读写模式过程可设置独立会话的事务模式，不影响父事务的访问模式。
+
+== 测试验证
+
+`dbms_transaction` 回归组覆盖提交与回滚、自动提交开关、匿名块调用、保存点回滚与重定义、具名参数、名称边界、读写模式切换、原子上下文、保存点嵌套防护及调用者权限。
+
+自治事务用例先探测 dblink 回环连接；可用时验证自治事务中的事务控制与访问模式，否则跳过该部分并使用另一份期望输出。
+
+在已配置、编译并安装的 IvorySQL 源码目录中，可运行 `make -C contrib/ivorysql_ora oracle-installcheck ORA_REGRESS=dbms_transaction`。目标实例需具备对应版本的 `ivorysql_ora`，自治事务测试还需可用的 dblink 环境。
