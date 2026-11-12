@@ -1,0 +1,27 @@
+:sectnums:
+:sectnumlevels: 5
+
+= FOR 循环隐式记录
+
+== 遍历查询结果
+
+在 PL/iSQL 中，查询 `FOR` 循环可以隐式声明一个记录变量。使用查询的列名或别名读取每行的字段。对于计算列，请在 SELECT 列表中指定别名，方便在循环体内引用。
+
+[source,sql]
+----
+BEGIN
+    FOR item IN (
+        SELECT 1 AS invoice_id, 'open' AS label FROM dual
+        UNION ALL
+        SELECT 2, 'paid' FROM dual
+        ORDER BY invoice_id
+    ) LOOP
+        RAISE NOTICE '% %', item.invoice_id, item.label;
+    END LOOP;
+END;
+/
+----
+
+代码块先输出 `1 open`，再输出 `2 paid`。循环引入的 `item` 在循环体内使用。示例通过 `ORDER BY` 明确遍历顺序。
+
+实现细节见 xref:master/compatibility_features_design/for_loop_implicit_record_impl.adoc[隐式记录实现]。
