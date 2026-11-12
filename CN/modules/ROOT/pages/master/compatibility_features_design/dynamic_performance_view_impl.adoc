@@ -1,0 +1,98 @@
+:sectnums:
+:sectnumlevels: 5
+
+= 动态性能视图设计
+
+== 目的
+
+在 `ivorysql_ora` 中定义 `SYS.V$SESSION`、`SYS.V$PROCESS` 和 `SYS.V$PARAMETER`，将底层活动统计及配置参数映射为 Oracle 风格的视图列。实现复用现有数据源和统计函数，不增加采集进程或新的统计存储。
+
+列定义及查询示例见 xref:master/oracle_compatibility/compat_dynamic_performance_view.adoc[动态性能视图]。
+
+== 实现说明
+
+=== 代码组织
+
+[cols="3,4",options="header"]
+|===
+|文件 |职责
+|`contrib/ivorysql_ora/src/sysview/sysview--1.0.sql` |三个动态性能视图的 SQL 定义
+|`contrib/ivorysql_ora/ivorysql_ora_merge_sqls` |将系统视图脚本纳入扩展 SQL 合并流程
+|`contrib/ivorysql_ora/sql/ora_sysview.sql` |视图结构和参数查询的回归用例
+|`contrib/ivorysql_ora/expected/ora_sysview.out` |列类型及参数查询的期望结果
+|===
+
+[source,text]
+----
+SYS.V$SESSION ──→ pg_stat_activity ──→ 后端活动统计
+             └─→ pg_blocking_pids(pid) ──→ 阻塞 PID 列表首项
+SYS.V$PROCESS ──→ pg_stat_activity ──→ 后端活动统计
+SYS.V$PARAMETER → pg_settings ──→ 当前参数设置
+----
+
+三个对象均为普通 SQL 视图，通过投影、类型转换和 `CASE` 表达式提供兼容列。数据刷新及可见性沿用底层机制。
+
+=== 会话信息映射
+
+`V$SESSION` 从 `pg_stat_activity` 读取信息，将 `pid`、`usename` 和 `application_name` 分别映射为 `SID`、`USERNAME` 和 `PROGRAM`。主要转换规则如下：
+
+* `state` 为 `active` 或 `fastpath function call` 时，`STATUS` 为 `ACTIVE`，其余分支为 `INACTIVE`，包括底层状态为空的情况。
+* `backend_type` 为 `client backend` 时，`TYPE` 为 `USER`，其余分支为 `BACKGROUND`。
+* `MACHINE` 使用 `COALESCE(client_hostname, host(client_addr), client_addr::text)`，优先显示主机名，否则使用地址。
+* `backend_start`、`query_start` 和 `xact_start` 分别映射为登录、SQL 开始和事务开始时间，保留底层 `timestamptz` 类型。
+* `query_id` 转为 `VARCHAR2(19)`，`query` 转为 `VARCHAR2(4000)`。查询标识生成及 SQL 文本采集仍由底层设置控制。
+* `wait_event`、`wait_event_type` 和 `client_port` 分别映射为 `EVENT`、`WAIT_CLASS` 和 `PORT`。
+
+阻塞信息通过以下表达式取得：
+
+[source,sql]
+----
+(pg_catalog.pg_blocking_pids(pid))[1]::NUMBER AS blocking_session
+----
+
+它只保留数组首项，空数组取值为空。该函数与活动统计分别取得数据，不能将结果解释为始终一致的完整阻塞图。
+
+`SID` 采用可复用的后端 PID，使用时需结合启动时间。`SQL_ID` 是底层查询标识的字符串表示，不能解释为 Oracle 的 SQL_ID 编码。
+
+=== 进程信息映射
+
+`V$PROCESS` 同样以 `pg_stat_activity` 为数据源，使用 `pid` 作为 `SPID`，使用 `usename` 作为数据库用户名，使用 `application_name` 作为 `PROGRAM`，并直接输出 `backend_type` 为 `PNAME`。
+
+`BACKGROUND` 根据 `backend_type` 生成：客户端后端返回 `NULL`，其他分支返回字符串 `'1'`。由于 `SID` 和 `SPID` 均来自 `pid`，两个视图可以直接关联。该视图展示统计系统已报告的后端，而不是另行扫描操作系统进程。
+
+=== 参数信息映射
+
+`V$PARAMETER` 读取 `pg_settings`，将 `setting`、`boot_val` 和 `short_desc` 映射为当前值、默认值和描述。所有值均按视图声明转换为 `VARCHAR2` 或 `NUMBER`。
+
+`TYPE` 依据 `vartype` 映射：`bool` 为 `1`，`integer` 为 `3`，包括实数、枚举和字符串在内的其他类型为 `2`。
+
+`ISDEFAULT` 使用 `setting IS NOT DISTINCT FROM boot_val` 比较，因此相同字符串及两边均为空时返回 `TRUE`。它比较当前显示值与编译默认值，不依据参数来源判断。
+
+修改属性按 `context` 映射：
+
+[cols="2,2,2",options="header"]
+|===
+|底层 context |ISSES_MODIFIABLE |ISSYS_MODIFIABLE
+|`user`、`superuser` |`TRUE` |`IMMEDIATE`
+|`sighup` |`FALSE` |`IMMEDIATE`
+|`postmaster`、`internal` |`FALSE` |`FALSE`
+|其他上下文 |`FALSE` |`DEFERRED`
+|===
+
+这些映射是显示属性，不执行参数修改，也不替代参数权限、重载或重启检查。
+
+=== 权限与统计可见性
+
+三个视图的定义没有向 `PUBLIC` 授予 `SELECT`，由管理员控制对象访问权限。
+
+视图授权与底层信息可见性分开处理。活动统计函数根据调用者角色决定会话详情的可见性；权限不足时，SQL 文本可显示 `<insufficient privilege>`，状态、时间及等待事件等底层字段可为空。视图中的 `CASE` 仍会对空值使用默认分支，因此可能得到 `INACTIVE`、`BACKGROUND` 或 `'1'`，不能据此推断被隐藏会话的真实状态。
+
+参数视图沿用 `pg_settings` 的可见性限制。授予视图查询权限不会自动授予 `pg_read_all_stats`、`pg_read_all_settings`，也不会获得修改配置的权限。
+
+== 测试验证
+
+`ora_sysview` 回归用例通过 psql 的 `\d SYS.V$SESSION` 和 `\d SYS.V$PROCESS` 检查列名与类型，并查询 `V$PARAMETER` 中的 `listen_addresses`、`application_name`、`archive_command`、`archive_mode` 和 `block_size`，按参数名排序核对字段映射。
+
+在已配置、编译并安装的 IvorySQL 源码目录中，可运行 `make -C contrib/ivorysql_ora oracle-installcheck ORA_REGRESS=ora_sysview`。目标实例需具备对应版本的 `ivorysql_ora`。
+
+会话 PID、SQL 文本、等待事件和参数值随环境变化。检查运行结果时应验证数据来源和映射规则；跨用户可见性与实际阻塞关系需要结合角色和并发会话验证。

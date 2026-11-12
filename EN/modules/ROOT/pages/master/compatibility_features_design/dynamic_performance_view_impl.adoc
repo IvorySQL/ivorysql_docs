@@ -1,0 +1,98 @@
+:sectnums:
+:sectnumlevels: 5
+
+= Dynamic Performance Views Design
+
+== Purpose
+
+Define `SYS.V$SESSION`, `SYS.V$PROCESS`, and `SYS.V$PARAMETER` in `ivorysql_ora`, mapping underlying activity statistics and configuration parameters to Oracle-style view columns. The implementation reuses existing data sources and statistics functions without adding collector processes or statistics storage.
+
+See xref:master/oracle_compatibility/compat_dynamic_performance_view.adoc[Dynamic Performance Views] for column definitions and query examples.
+
+== Implementation
+
+=== Code organization
+
+[cols="3,4",options="header"]
+|===
+|File |Responsibility
+|`contrib/ivorysql_ora/src/sysview/sysview--1.0.sql` |SQL definitions of the three dynamic performance views
+|`contrib/ivorysql_ora/ivorysql_ora_merge_sqls` |Includes the system view script in extension SQL assembly
+|`contrib/ivorysql_ora/sql/ora_sysview.sql` |Regression cases for view structure and parameter queries
+|`contrib/ivorysql_ora/expected/ora_sysview.out` |Expected column types and parameter query results
+|===
+
+[source,text]
+----
+SYS.V$SESSION ──→ pg_stat_activity ──→ Backend activity statistics
+             └─→ pg_blocking_pids(pid) ──→ First blocking PID
+SYS.V$PROCESS ──→ pg_stat_activity ──→ Backend activity statistics
+SYS.V$PARAMETER → pg_settings ──→ Current parameter settings
+----
+
+All three objects are ordinary SQL views using projections, casts, and `CASE` expressions to provide compatible columns. Refresh behavior and visibility follow the underlying mechanisms.
+
+=== Session mappings
+
+`V$SESSION` reads `pg_stat_activity`, mapping `pid`, `usename`, and `application_name` to `SID`, `USERNAME`, and `PROGRAM`. The main conversion rules are:
+
+* `STATUS` is `ACTIVE` for an underlying `state` of `active` or `fastpath function call`; all other branches return `INACTIVE`, including a NULL state.
+* `TYPE` is `USER` when `backend_type` is `client backend`; all other branches return `BACKGROUND`.
+* `MACHINE` uses `COALESCE(client_hostname, host(client_addr), client_addr::text)`, preferring a hostname and falling back to an address.
+* `backend_start`, `query_start`, and `xact_start` map to login, SQL start, and transaction start times, retaining the underlying `timestamptz` type.
+* `query_id` is cast to `VARCHAR2(19)` and `query` to `VARCHAR2(4000)`. Query identifier generation and SQL text collection remain controlled by underlying settings.
+* `wait_event`, `wait_event_type`, and `client_port` map to `EVENT`, `WAIT_CLASS`, and `PORT`.
+
+Blocking information comes from this expression:
+
+[source,sql]
+----
+(pg_catalog.pg_blocking_pids(pid))[1]::NUMBER AS blocking_session
+----
+
+It retains only the first array element, returning NULL for an empty array. The function and activity statistics retrieve data separately, so the result is not a complete blocking graph guaranteed to be consistent at every moment.
+
+`SID` is a reusable backend PID and should be considered together with the start time. `SQL_ID` is the underlying query identifier cast to a string, rather than Oracle's SQL_ID encoding.
+
+=== Process mappings
+
+`V$PROCESS` also reads `pg_stat_activity`, using `pid` as `SPID`, `usename` as the database username, and `application_name` as `PROGRAM`. It exposes `backend_type` as `PNAME`.
+
+`BACKGROUND` is NULL for a client backend and the string `'1'` in every other branch. Because both `SID` and `SPID` come from `pid`, the views can be joined directly. The view exposes backends reported by the statistics system rather than scanning operating system processes separately.
+
+=== Parameter mappings
+
+`V$PARAMETER` reads `pg_settings`, mapping `setting`, `boot_val`, and `short_desc` to the current value, default value, and description. Values are cast to the declared `VARCHAR2` or `NUMBER` types.
+
+`TYPE` maps `vartype` as follows: `bool` becomes `1`, `integer` becomes `3`, and all other types, including real, enum, and string, become `2`.
+
+`ISDEFAULT` compares values with `setting IS NOT DISTINCT FROM boot_val`. Equal strings, or two NULLs, return `TRUE`. It compares the current displayed value with the compiled-in default rather than examining the setting's source.
+
+Modification attributes map `context` as follows:
+
+[cols="2,2,2",options="header"]
+|===
+|Underlying context |ISSES_MODIFIABLE |ISSYS_MODIFIABLE
+|`user`, `superuser` |`TRUE` |`IMMEDIATE`
+|`sighup` |`FALSE` |`IMMEDIATE`
+|`postmaster`, `internal` |`FALSE` |`FALSE`
+|Other contexts |`FALSE` |`DEFERRED`
+|===
+
+These mappings provide display attributes. They do not modify parameters or replace privilege, reload, or restart checks.
+
+=== Privileges and statistics visibility
+
+None of the three view definitions grants `SELECT` to `PUBLIC`. Administrators control access to the objects.
+
+View access and underlying information visibility are separate. Activity statistics functions check the caller's role before exposing session details. With insufficient privileges, SQL text can show `<insufficient privilege>` and underlying state, time, and wait fields can be NULL. The view's `CASE` expressions still use their default branches for NULL values, potentially producing `INACTIVE`, `BACKGROUND`, or `'1'`. These values do not identify the actual state of a hidden session.
+
+Parameter visibility follows `pg_settings` restrictions. Granting view access does not automatically grant `pg_read_all_stats`, `pg_read_all_settings`, or permission to change configuration.
+
+== Verification
+
+The `ora_sysview` regression cases use psql's `\d SYS.V$SESSION` and `\d SYS.V$PROCESS` to check column names and types. They also query `listen_addresses`, `application_name`, `archive_command`, `archive_mode`, and `block_size` in `V$PARAMETER`, ordered by parameter name, to verify field mappings.
+
+From a configured, built, and installed IvorySQL source tree, run `make -C contrib/ivorysql_ora oracle-installcheck ORA_REGRESS=ora_sysview`. The target instance needs the matching version of `ivorysql_ora`.
+
+Session PIDs, SQL text, wait events, and parameter values vary by environment. Validate their data sources and mapping rules when checking runtime results. Cross-user visibility and actual blocking relationships require verification with the relevant roles and concurrent sessions.

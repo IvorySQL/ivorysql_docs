@@ -1,0 +1,137 @@
+:sectnums:
+:sectnumlevels: 5
+
+= Dynamic Performance Views
+
+== Purpose
+
+IvorySQL provides `SYS.V$SESSION`, `SYS.V$PROCESS`, and `SYS.V$PARAMETER` for querying backend sessions, processes, and configuration parameters. The views map underlying activity statistics and parameter settings to Oracle-style view names for routine monitoring.
+
+== Functionality
+
+[cols="2,4",options="header"]
+|===
+|View |Purpose
+|`SYS.V$SESSION` |Queries session status, SQL, wait events, and blocking sessions
+|`SYS.V$PROCESS` |Queries backend process IDs, application names, and process types
+|`SYS.V$PARAMETER` |Queries current parameter values, defaults, and modification attributes
+|===
+
+=== V$SESSION
+
+[cols="2,2,4",options="header"]
+|===
+|Column |Type |Description
+|`SID` |`NUMBER` |Backend process PID
+|`USERNAME` |`VARCHAR2(128)` |Database username
+|`STATUS` |`VARCHAR2(40)` |`ACTIVE` when the underlying state is `active` or `fastpath function call`; `INACTIVE` otherwise
+|`MACHINE` |`VARCHAR2(128)` |Client hostname, falling back to the client IP address
+|`PROGRAM` |`VARCHAR2(256)` |The connection's `application_name`
+|`TYPE` |`VARCHAR2(30)` |`USER` for a `client backend`; `BACKGROUND` otherwise
+|`LOGON_TIME` |`timestamptz` |Backend start time
+|`SQL_EXEC_START` |`timestamptz` |Start time of the current SQL statement, or the most recent statement if idle
+|`SQL_ID` |`VARCHAR2(19)` |The underlying `query_id` converted to a string
+|`SQL_TEXT` |`VARCHAR2(4000)` |Current or most recent SQL text
+|`BLOCKING_SESSION` |`NUMBER` |First PID in the list of backends blocking this backend; NULL when none exist
+|`EVENT` |`VARCHAR2(64)` |Underlying wait event name
+|`WAIT_CLASS` |`VARCHAR2(64)` |Underlying wait event type
+|`TRANSACTION_START` |`timestamptz` |Current transaction start time; can be NULL without an active transaction
+|`PORT` |`NUMBER` |Client port; `-1` for a Unix-domain socket connection
+|===
+
+`SID` is an operating system process ID and can be reused after the process exits. Combine it with `LOGON_TIME` when identifying a session. `SQL_ID` uses the underlying query identifier rather than Oracle's SQL_ID encoding. It is NULL when `compute_query_id` is disabled or no query identifier has been generated.
+
+`EVENT` and `WAIT_CLASS` use the underlying event classifications. A session with `STATUS = 'ACTIVE'` can still be waiting for a resource. SQL text collection also depends on `track_activities` and `track_activity_query_size`. SQL text shown for an idle session does not mean that the statement is still executing.
+
+=== V$PROCESS
+
+[cols="2,2,4",options="header"]
+|===
+|Column |Type |Description
+|`SPID` |`NUMBER` |Backend process PID; joins to `V$SESSION.SID`
+|`USERNAME` |`VARCHAR2(128)` |Database username
+|`PROGRAM` |`VARCHAR2(256)` |The connection's `application_name`
+|`PNAME` |`VARCHAR2(30)` |Underlying `backend_type`
+|`BACKGROUND` |`VARCHAR2(1)` |NULL for a client backend; `'1'` for other backends
+|===
+
+Here, `USERNAME` identifies the database user and `PROGRAM` is the connection name set by the application. Interpret process information using these meanings.
+
+=== V$PARAMETER
+
+[cols="2,2,4",options="header"]
+|===
+|Column |Type |Description
+|`NAME` |`VARCHAR2(80)` |IvorySQL parameter name
+|`TYPE` |`NUMBER` |`1` for Boolean parameters, `3` for integers, and `2` otherwise
+|`VALUE` |`VARCHAR2(4000)` |Parameter setting visible to the current connection
+|`DEFAULT_VALUE` |`VARCHAR2(255)` |The parameter's compiled-in default, `boot_val`
+|`ISDEFAULT` |`VARCHAR2(5)` |`TRUE` if the current value matches the compiled-in default; `FALSE` otherwise
+|`ISSES_MODIFIABLE` |`VARCHAR2(5)` |`TRUE` for an underlying context of `user` or `superuser`; `FALSE` otherwise
+|`ISSYS_MODIFIABLE` |`VARCHAR2(9)` |`IMMEDIATE`, `DEFERRED`, or `FALSE`, mapped from the parameter context
+|`DESCRIPTION` |`VARCHAR2(255)` |Short parameter description
+|===
+
+Parameter names and values come from IvorySQL configuration. Modification attributes map parameter contexts and do not grant the current user permission to change a setting. Actual changes follow the parameter's rules for setting, reload, or restart.
+
+== Query examples
+
+Run these examples in Oracle compatibility mode, using `SYS` to qualify view names. Session, process, and parameter results depend on the running environment.
+
+=== Inspect the current session and active sessions
+
+[source,sql]
+----
+SELECT sid, username, status, program, logon_time
+FROM sys.v$session
+WHERE sid = pg_backend_pid();
+
+SELECT sid, username, sql_id, sql_exec_start, sql_text
+FROM sys.v$session
+WHERE type = 'USER' AND status = 'ACTIVE'
+ORDER BY sql_exec_start;
+----
+
+=== Inspect waits and associated processes
+
+[source,sql]
+----
+SELECT sid, blocking_session, event, wait_class
+FROM sys.v$session
+WHERE blocking_session IS NOT NULL;
+
+SELECT s.sid, s.username, p.spid, p.pname, p.program
+FROM sys.v$session s
+JOIN sys.v$process p ON p.spid = s.sid
+WHERE s.sid = pg_backend_pid();
+----
+
+`BLOCKING_SESSION` returns only the first blocking PID, so it does not describe every blocking relationship.
+
+=== Inspect parameters
+
+[source,sql]
+----
+SELECT name, type, value, default_value, isdefault,
+       isses_modifiable, issys_modifiable
+FROM sys.v$parameter
+WHERE name IN ('application_name', 'archive_mode', 'block_size')
+ORDER BY name;
+----
+
+== Query privileges and considerations
+
+The view definitions do not grant `SELECT` to `PUBLIC`. An administrator can grant access to an existing monitoring role as needed, for example:
+
+[source,sql]
+----
+GRANT USAGE ON SCHEMA sys TO monitor_user;
+GRANT SELECT ON sys.v$session, sys.v$process, sys.v$parameter
+TO monitor_user;
+----
+
+After view access is granted, the underlying statistics still follow the caller's visibility rules. Complete session details for other roles require appropriate statistics privileges, such as `pg_read_all_stats`. Some parameter visibility is restricted by privileges such as `pg_read_all_settings`. Administrators grant these roles as needed; view grants do not include them automatically.
+
+Without sufficient privileges, some columns for other sessions are NULL and `SQL_TEXT` can show `<insufficient privilege>`. `STATUS`, `TYPE`, and `BACKGROUND` still follow their mapping expressions. When underlying information is hidden, those values alone cannot reliably identify actual activity or process categories.
+
+Repeated activity queries within a long transaction can reuse the same statistics snapshot. To sample again, query after ending the transaction or first run `SELECT pg_stat_clear_snapshot();` to clear the current statistics snapshot. Sessions and blocking relationships can change between queries.
