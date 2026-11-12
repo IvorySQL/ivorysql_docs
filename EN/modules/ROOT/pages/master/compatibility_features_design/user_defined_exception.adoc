@@ -1,0 +1,140 @@
+:sectnums:
+:sectnumlevels: 5
+
+
+= **Feature Overview**
+
+IvorySQL provides an Oracle-compatible user-defined EXCEPTION feature. It supports declaring exceptions in PL/iSQL stored procedures, package specifications, and package bodies; raising an exception by name with RAISE; catching it by name with WHEN; and associating an exception name with a specified error code through PRAGMA EXCEPTION_INIT.
+
+Basic usage:
+
+```sql
+CREATE OR REPLACE PROCEDURE test_exception IS
+  my_exception EXCEPTION;
+  PRAGMA EXCEPTION_INIT(my_exception, -20001);
+BEGIN
+  RAISE my_exception;
+EXCEPTION
+  WHEN my_exception THEN
+    RAISE INFO 'caught: %', SQLERRM;
+END;
+/
+```
+
+== Implementation
+
+=== User-Defined EXCEPTION Data Structure
+
+`PLISQL_DTYPE_EXCEPTION` is added to the `PLiSQL_datum_type` enumeration to distinguish user-defined exceptions from ordinary variables, records, and package variables.
+
+The `PLiSQL_exception_var` structure is defined in `pl_exception_type.h`:
+
+```
+typedef struct PLiSQL_exception_var
+{
+    PLiSQL_datum_type dtype;
+    int               dno;
+    Oid               pkgoid;
+    char             *refname;
+    int               lineno;
+    int               sqlcode;
+} PLiSQL_exception_var;
+```
+
+`dno` is the exception's index in the datum array of the current PL/iSQL compilation unit. `refname` stores the exception name, `lineno` stores the declaration location, and `sqlcode` stores the error code used when raising and catching the exception.
+
+`plisql_build_exception` creates the exception datum, adds it to the compiler datum array through `plisql_adddatum`, and adds it to the current namespace as `PLISQL_NSTYPE_VAR`. The namespace type used for ordinary variables is reused; the datum's `PLISQL_DTYPE_EXCEPTION` type determines whether the object is an exception.
+
+Without `PRAGMA EXCEPTION_INIT`, the exception's `sqlcode` is initialized to `ERRCODE_RAISE_EXCEPTION`, which corresponds to the internal PostgreSQL SQLSTATE `P0001`. An exception datum stores only compile-time metadata and has no mutable runtime value.
+
+=== User-Defined EXCEPTION Declaration Syntax
+
+The following production is added to the declaration statements in `pl_gram.y`:
+
+```
+decl_varname K_EXCEPTION ';'
+```
+
+When this syntax is parsed, `plisql_build_exception` creates the exception and registers it in the current PL/iSQL namespace. Exception names therefore use the existing lexical scope and duplicate-name rules: an inner scope can look up an exception in an outer scope, while objects with the same name cannot be declared more than once in the same scope.
+
+An exception is a special PL/iSQL identifier rather than a PostgreSQL data type. `PLISQL_DTYPE_EXCEPTION` branches are added to the executor paths for variable initialization, datum copying, function-memory cleanup, and package-resource cleanup. Exceptions do not require initialization at block entry, and no runtime value is copied. Paths in which an exception cannot be used, such as assignment and OUT-parameter processing, either reject the type or skip irrelevant processing.
+
+=== Raising a User-Defined Exception
+
+An `exception_var` member is added to `PLiSQL_stmt_raise` to store the `PLiSQL_exception_var` pointer resolved at compile time.
+
+When a RAISE statement is compiled, if the lexer returns `T_DATUM` and the datum has type `PLISQL_DTYPE_EXCEPTION`, the exception is stored in `exception_var` instead of being processed as a predefined exception-condition name:
+
+```
+RAISE exception_name;
+```
+
+At execution time, `exec_stmt_raise` obtains the `sqlcode` and exception name from `exception_var` and writes the `sqlcode` to the error-code field used by `ErrorData`. If no explicit message is supplied, the default message for a user-defined exception is `User-Defined Exception`; consequently, `SQLERRM` in the exception handler returns the same string.
+
+The error code and error message are processed separately. `PRAGMA EXCEPTION_INIT` changes only the error code and does not automatically produce an ORA message from that code. The RAISE `MESSAGE` option can override the default message:
+
+```sql
+RAISE my_exception USING MESSAGE = 'application error';
+```
+
+An unqualified RAISE with no other parameters continues to rethrow the current exception from an exception handler. To prevent `RAISE exception_name` from being mistaken for an unqualified RAISE, the rethrow condition also checks whether `exception_var` is null.
+
+=== Catching a User-Defined Exception with WHEN
+
+When parsing a WHEN condition, `plisql_parse_err_condition` first calls `plisql_lookup_exception` to search the current namespace for a user-defined exception. It checks `OTHERS` and predefined exception conditions only when no user-defined exception is found.
+
+When a user-defined exception is found, the compiler creates a `PLiSQL_condition` and copies the `sqlcode` from `PLiSQL_exception_var` into `PLiSQL_condition.sqlerrstate`:
+
+```
+EXCEPTION
+  WHEN exception_name THEN
+    handler_statement;
+```
+
+Runtime processing reuses the existing PL/iSQL exception-block implementation. A block containing an EXCEPTION section runs in an internal subtransaction. When an error occurs, the internal subtransaction is rolled back and `ErrorData` is copied. `exception_matches_conditions` then compares `ErrorData.sqlerrcode` with `PLiSQL_condition.sqlerrstate`. After a match, the executor initializes `SQLSTATE`, `SQLERRM`, and the current error information before running the corresponding handler statements.
+
+By reusing the existing processing path, user-defined exceptions automatically support exception-block rollback, `SQLERRM`, `SQLSTATE`, and rethrowing through an unqualified RAISE in a handler.
+
+=== Associating an Error Code with PRAGMA EXCEPTION_INIT
+
+Support for the `PRAGMA` and `EXCEPTION_INIT` keywords is added to the keyword and grammar files. The grammar uses `any_identifier` to reference an already declared exception and accepts both positive and negative integers:
+
+```
+PRAGMA EXCEPTION_INIT(exception_name, error_code);
+```
+
+`plisql_process_pragma_exception_init` performs the following work at compile time:
+
+1. Searches the current namespace for `exception_name`.
+2. Verifies that the corresponding datum has type `PLISQL_DTYPE_EXCEPTION`.
+3. Calls `plisql_validate_exception_error_code` to validate the error code.
+4. Calls `plisql_exception_set_sqlcode` to update the `sqlcode` in the exception datum.
+
+The error-code validation rules are as follows: `100` is the only accepted positive value; negative values from `-1000000` through `-1` are accepted except for `-1403`; zero, positive values other than `100`, and values below `-1000000` are rejected. An invalid error code produces an `illegal ORACLE error number` error at compile time.
+
+`PRAGMA EXCEPTION_INIT` does not generate a runtime statement. A subsequently compiled RAISE statement stores the exception datum pointer and can therefore read the updated `sqlcode`. A subsequently compiled WHEN condition writes the updated `sqlcode` into its condition node.
+
+=== Exceptions in Stored Procedures and Packages
+
+When a standalone stored procedure is compiled, its exception datums are stored in the datum array of the corresponding `PLiSQL_function` and follow the namespace scope of the procedure's declaration section.
+
+Package compilation reuses the existing package namespace and datum-management mechanism. When a package body is compiled, `package_body_init` restores the namespace, datums, and subprogram information from the package specification. An exception declared in a package specification can therefore be used in the package body, and package-body exceptions can be referenced by subprograms in that body. Exceptions are constant identifiers, require no package-state initialization, and contain no runtime value that must be released.
+
+`copy_plisql_datums` shares the exception datum pointer directly. `plisql_free_function_memory` and the package-resource cleanup code recognize the datum type but do not perform ordinary variable-value cleanup on it. For debugging compiled output, `plisql_dumptree` calls `plisql_dump_exception` to display the exception name, `dno`, `sqlcode`, and declaration line.
+
+=== Build and Regression Tests
+
+Both `Makefile` and `meson.build` include `pl_exception_type.c`. The `plisql_exception` test is registered in the Oracle regression-test list. Its input and expected-output files are:
+
+```
+src/pl/plisql/src/sql/plisql_exception.sql
+src/pl/plisql/src/expected/plisql_exception.out
+```
+
+The regression test actually raises and catches exceptions, and each matching handler writes a row to a results table. It covers package-level exceptions, procedure-local exceptions, propagation within a package, multiple exceptions, `PRAGMA EXCEPTION_INIT`, handler selection for different associated error codes, error-code boundary validation, and passing `SQLERRM` between package procedures.
+
+=== Current Implementation Boundaries
+
+The current implementation matches WHEN handlers by `sqlcode`, not by the declaration identity of an exception datum. All user-defined exceptions without `PRAGMA EXCEPTION_INIT` share `P0001`; consequently, two different unassociated exceptions cannot be distinguished using only their error codes. Different exceptions associated with the same error code also produce the same matching result. Associate exceptions with distinct valid error codes through `PRAGMA EXCEPTION_INIT` when they must be distinguished.
+
+The `sqlcode` field in `PLiSQL_exception_var` is used both for internal PostgreSQL SQLSTATE encodings and for Oracle-style integer error codes specified by PRAGMA. The current implementation ensures that RAISE and WHEN for the same exception use the same integer for matching, but it does not provide a separate conversion layer from Oracle error numbers to PostgreSQL SQLSTATE values.
