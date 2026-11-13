@@ -1,0 +1,27 @@
+:sectnums:
+:sectnumlevels: 5
+
+= FOR Loop Implicit Records
+
+== Iterate over query rows
+
+In PL/iSQL, a query `FOR` loop can introduce its own record variable. Use the query's column names or aliases to access the fields of each row. For computed columns, supply a name in the SELECT list so the field is easy to reference.
+
+[source,sql]
+----
+BEGIN
+    FOR item IN (
+        SELECT 1 AS invoice_id, 'open' AS label FROM dual
+        UNION ALL
+        SELECT 2, 'paid' FROM dual
+        ORDER BY invoice_id
+    ) LOOP
+        RAISE NOTICE '% %', item.invoice_id, item.label;
+    END LOOP;
+END;
+/
+----
+
+The block prints `1 open` followed by `2 paid`. The loop introduces `item` for use in its body. The example's `ORDER BY` makes the iteration order explicit.
+
+See xref:master/compatibility_features_design/for_loop_implicit_record_impl.adoc[implicit record implementation].

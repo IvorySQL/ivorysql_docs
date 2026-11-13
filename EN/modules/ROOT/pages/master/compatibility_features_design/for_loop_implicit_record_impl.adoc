@@ -1,0 +1,14 @@
+:sectnums:
+:sectnumlevels: 5
+
+= FOR Loop Implicit Record Implementation
+
+== Bind the loop variable
+
+The query-loop rule in `src/pl/plisql/src/pl_gram.y` can introduce a record datum for an undeclared loop target. The name belongs to the loop's PL/iSQL namespace, which lets the body resolve references such as `item.invoice_id`.
+
+== Assign each row
+
+At execution, the query loop assigns the result row to that record before executing the body. The query's tuple descriptor supplies the record's field names and types, so SELECT aliases determine the field names for expressions.
+
+For a runnable example, see xref:master/oracle_compatibility/compat_for_loop_implicit_record.adoc[FOR loop implicit records].

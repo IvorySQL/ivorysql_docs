@@ -1,0 +1,14 @@
+:sectnums:
+:sectnumlevels: 5
+
+= FOR 循环隐式记录实现
+
+== 绑定循环变量
+
+`src/pl/plisql/src/pl_gram.y` 的查询循环规则可为未声明的循环目标创建记录。变量名注册在该循环的 PL/iSQL 命名空间中，因此循环体能够解析 `item.invoice_id` 等引用。
+
+== 逐行赋值
+
+运行时，查询循环先将结果行赋给记录，再执行循环体。查询的元组描述符提供字段名称和类型，表达式的字段名由 SELECT 别名决定。
+
+可运行的示例见 xref:master/oracle_compatibility/compat_for_loop_implicit_record.adoc[FOR 循环隐式记录]。
