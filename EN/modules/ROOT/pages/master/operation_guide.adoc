@@ -29,7 +29,9 @@ Releasing a minor version is not going to change the internal storage format, so
 
 === Upgrade data via pg_dumpall
 
-The traditional cross-version upgrade method uses pg_dump/pg_dumpall to logically backup the database and then restore it in the new version via pg_restore. It is recommended to use the new version of pg_dump/pg_dumpall tool when exporting the old version of the database. You can take advantage of its latest parallel export and restore features, while reducing database bloat problems.
+The default output of `pg_dumpall` is a plain SQL script containing the cluster's databases and global objects such as roles and tablespaces. Replay this script with `psql` on the target cluster. Use `pg_restore` for individual database archives created with a format such as `pg_dump -Fc`.
+
+Use the `pg_dumpall` executable from the target version when exporting an older cluster.
 
 Logical backup and restore is very simple but slow.  Downtime depends on the size of the database, so it is suitable for small to medium sized database upgrades.
 
@@ -38,10 +40,8 @@ Logical backup and restore is very simple but slow.  Downtime depends on the siz
 1.Stop the application before performing a logical backup and make sure that no data is updated, as updates after the backup has started will not be exported. If necessary, modify the /usr/local/pgsql/data/pg_hba.conf file to disable others from accessing the database. Then backup the database.
 
 ```
-pg_dumpall > outputfile
+pg_dumpall --file=outputfile
 ```
-
-> If you have installed a new version of IvorySQL, you can use the new version of the pg_dumpall command to back up the old version of the database.
 
 2.Stop the backend services of older versions.
 
@@ -65,13 +65,14 @@ Or stop the background service by other means.
 
     /usr/local/pgsql/bin/postgres -D /usr/local/pgsql/data
 
-8.Finally, using the new version of the psql command to restore the data.
+*8.* Use the new version of `psql` to replay the SQL file. The `-X` option skips the local psql startup file.
 
-    /usr/local/pgsql/bin/psql -d postgres -f outputfile
+    /usr/local/pgsql/bin/psql -X -d postgres -f outputfile
 
-To reduce downtime, you can install the new version of IvorySQL to another directory, while starting the service using a different port. Then perform both the export and import of the database.
+To run both versions side by side, install the target version in another directory and start it on a separate port. Save the source dump and check that `pg_dumpall` succeeds before replaying it on the target.
 
-    pg_dumpall -p 5432 | psql -d postgres -p 5433
+    pg_dumpall -p 5432 --file=outputfile
+    psql -X -d postgres -p 5433 -f outputfile
 
 When the above operation is executed, the old and new versions of the backend service run simultaneously, with the new version using port 5433 and the old version using port 5432.
 
