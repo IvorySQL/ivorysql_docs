@@ -26,13 +26,30 @@ When adding guc parameters, we need to add them uniformly in the *ivy_guc.c*. Wh
 | ivorysql.datetime_ignore_nls_mask | Indicates whether the date format will be affected by the NLS parameter. The default value is 0, which can be set using the set command. The reset command resets the date format, and the reset all command resets the variable
 | ivorysql.enable_emptystring_to_NULL | The value is (on/off), and when this variable is on, it will convert the inserted empty string into a NULL value for storage
 | ivorysql.identifier_case_switch | Set character case conversion mode
-| ivorysql.listen_address | Indicates the address for compatibility mode listening. When initializing the database, read the configuration from the ivorysql.conf file, modify the value in the configuration file, and restart the database to take effect. This can be viewed through the show command
+| ivorysql.enable_case_switch | The value is (on/off) and the default value is on. It enables the identifier case conversion feature in Oracle compatible mode. See section 7.3 for details
+| ivorysql.listen_addresses | Indicates the address(es) for compatibility mode listening. The default value is 'localhost'; a comma-separated list of addresses is accepted. When initializing the database, read the configuration from the ivorysql.conf file, modify the value in the configuration file, and restart the database to take effect. This can be viewed through the show command
 | ivorysql.port | Indicates the port number for connecting in compatibility mode. When initializing the database, read the configuration from the ivorysql.conf file and modify the value in the configuration file. To take effect, restart the database and view it through the show command
 | nls_date_format | Represents the default date format, which can be viewed through the show command and defaults to 'YYYY-MM-DD'. It can be set through the set command and reset back to the default value through the reset command. The reset all command will reset this variable
 | nls_length_semantics | Compatible with oracle parameters of the same name, controlling the size of memory occupied by a character
 | nls_timestamp_format | Compatible with oracle parameters of the same name, controlling date format with time
 | nls_timestamp_tz_format | Compatible with oracle parameters of the same name, controlling the date format with time zone
 | shared_preload_libraries | When initializing the database, read from the ivorysql.conf file and view it through the show command. Modify the value in the configuration file and restart the database to take effect.
+|===
+
+=== Developer options
+
+The parameters below also belong to the `ivorysql.*` family, but they are developer/diagnostic switches: they are hidden from `pg_settings` (registered with `GUC_NO_SHOW_ALL`) and are not written to `ivorysql.conf.sample`, so they normally do not need to be changed. Their current value can be viewed with the `show` command and changed within a session with `set`.
+
+[cols="^1,^1,^3"]
+|===
+| Variable | Default | Description
+| ivorysql.allow_out_parameter_const | false | The value is (on/off). When on, an OUT parameter of a PL/iSQL function can be a constant value
+| ivorysql.default_with_rowids | false | The value is (on/off). When on, a rowid column is added automatically when a new table is created
+| ivorysql.enable_internal_warning | false | The value is (on/off). When on, internal warning information is printed
+| ivorysql.enable_seq_scale_fixed | false | The value is (on/off). Switch for the sequence scale value fix
+| ivorysql.identifier_case_from_pg_dump | false | Shows whether the identifier with quotes is from pg_dump. Used by pg_dump; it is flagged `GUC_DISALLOW_IN_FILE`, so it can only be set inside a session
+| ivorysql.out_parameter_column_position | false | The value is (on/off). When on, a PL/iSQL function constructs the OUT parameter columns by their position
+| ivorysql.rowid_seq_cache | 20 | Number of cached sequence values for rowid generation, range 1-60000
 |===
 
 === Example

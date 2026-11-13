@@ -27,13 +27,30 @@
 | ivorysql.datetime_ignore_nls_mask | 表示日期格式是否会受NLS参数影响，默认为0，可以通过set命令设置，reset 命令重置，reset all命令会重置该变量
 | ivorysql.enable_emptystring_to_NULL | 取值为（on/off）,该变量为on时，会将插入的空字符串转成NULL值存储
 | ivorysql.identifier_case_switch | 设置字符大小写转换模式
-| ivorysql.listen_address | 表示兼容模式监听的地址，在初始化数据库时，从ivorysql.conf文件中读取该配置，在配置文件中修改该值，需要重启数据库生效，可以通过show命令查看
+| ivorysql.enable_case_switch | 取值为（on/off），默认为 on，用于开启 Oracle 兼容模式下的标识符大小写转换特性，详细说明参见 7.3 节
+| ivorysql.listen_addresses | 表示兼容模式监听的地址，默认为 'localhost'，可取多个地址（逗号分隔）。在初始化数据库时，从ivorysql.conf文件中读取该配置，在配置文件中修改该值，需要重启数据库生效，可以通过show命令查看
 | ivorysql.port | 表示兼容模式下连接的端口号，在初始化数据库时，从ivorysql.conf文件中读取该配置，在配置文件中修改该值，需要重启数据库生效，可以通过show命令查看
 | nls_date_format | 表示默认的日期格式，可以通过show命令查看，默认为‘YYYY-MM-DD’，可以通过set命令设置，可以通过reset命令重置回默认值，reset all 命令会重置该变量
 | nls_length_semantics | 兼容Oracle的同名参数，控制一个字符所占内存的大小
 | nls_timestamp_format | 兼容Oracle的同名参数，控制带时间的日期格式
 | nls_timestamp_tz_format | 兼容Oracle的同名参数，控制带时区的日期格式
 | shared_preload_libraries | 在初始化数据库时，从ivorysql.conf文件中读取，可以通过show命令查看，在配置文件中修改该值，重启数据库生效。
+|====
+
+=== 开发者选项
+
+以下参数同属 `ivorysql.*` 系列，但均为开发者/诊断用途的开关：它们在 `pg_settings` 中默认不可见（注册时带有 `GUC_NO_SHOW_ALL` 标记），也不会写入 `ivorysql.conf.sample`，通常不需要修改。可以通过 `show` 命令查看当前值，或在会话内通过 `set` 修改。
+
+[cols="^1,^1,^3"]
+|====
+| 变量名 | 默认值 | 描述
+| ivorysql.allow_out_parameter_const | false | 取值为（on/off），为 on 时 PL/iSQL 函数的 OUT 参数可以是常量值
+| ivorysql.default_with_rowids | false | 取值为（on/off），为 on 时新建表自动添加 rowid 列
+| ivorysql.enable_internal_warning | false | 取值为（on/off），为 on 时打印内部告警信息
+| ivorysql.enable_seq_scale_fixed | false | 取值为（on/off），sequence 的 scale 值修正开关
+| ivorysql.identifier_case_from_pg_dump | false | 标识带引号的标识符是否来自 pg_dump，供 pg_dump 使用；带 `GUC_DISALLOW_IN_FILE` 标记，只能在会话内设置
+| ivorysql.out_parameter_column_position | false | 取值为（on/off），为 on 时 PL/iSQL 函数按参数位置构造 OUT 参数列
+| ivorysql.rowid_seq_cache | 20 | rowid 序列的缓存值个数，取值范围 1-60000
 |====
 
 === 部分变量使用示例
