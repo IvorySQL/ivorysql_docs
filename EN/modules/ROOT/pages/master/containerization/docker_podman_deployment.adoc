@@ -1,76 +1,224 @@
-
 :sectnums:
 :sectnumlevels: 5
 
-= Docker & Podman deployment IvorySQL
+= Deploying IvorySQL with Docker and Podman
 
 [TIP]
 ====
-In addition to Docker Hub, the IvorySQL community also provides a Harbor registry for users in China. Replace the image prefix used in this chapter with `registry.highgo.com/`, e.g. `registry.highgo.com/ivorysql/ivorysql:5.0-ubi8`.
+Besides Docker Hub, the IvorySQL community provides a Harbor registry for users in China. Replace the registry prefix in this chapter with `registry.highgo.com/`, for example `registry.highgo.com/ivorysql/ivorysql:5.6-ubi8`.
 ====
 
-== Running IvorySQL in docker
+== Image and listening ports
 
-** Get IvorySQL image from Docker Hub
-```
-$ docker pull ivorysql/ivorysql:5.0-ubi8
-```
+The official image `ivorysql/ivorysql` uses `5.6-ubi8` as its main tag; `5.6-bookworm` and `5.6-trixie` are variants built on other base images with the same functionality. The image declares three ports:
 
-** Running IvorySQL
-```
-$ docker run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=your_password -d ivorysql/ivorysql:5.0-ubi8
-```
+[cols="1,1,3"]
+|===
+| Port | Purpose | Notes
 
-** Check if the IvorySQL container is running successfully
-```
-$ docker ps | grep ivorysql
-CONTAINER ID   IMAGE               COMMAND                   CREATED          STATUS          PORTS                              NAMES
-6faa2d0ed705   ivorysql/ivorysql:5.0-ubi8   "docker-entrypoint.s…"   50 seconds ago   Up 49 seconds   5866/tcp, 0.0.0.0:5434->5432/tcp   ivorysql
-```
+| `5432/tcp` | PostgreSQL-compatible listener | Sessions connected on this port see `ivorysql.compatible_mode = pg`
+| `1521/tcp` | Oracle-compatible listener | Sessions connected on this port see `ivorysql.compatible_mode = oracle`
+| `5866/tcp` | Temporary init port | Used only inside the container while it initializes; **not a service port**, no need to publish it
+|===
+
+The data directory is pinned by the image environment variable `PGDATA` to `/var/local/ivorysql/ivorysql-5/data` and declared as an anonymous volume. For production, use a named volume instead, as described in "Data persistence" below.
+
+== Running with Docker
+
+=== Pull the image
+
+[source,bash]
+----
+$ docker pull ivorysql/ivorysql:5.6-ubi8
+----
+
+=== Start a container
+
+`IVORYSQL_PASSWORD` is **required**: it sets the password of the superuser created during initialization. Without it the container exits immediately (exit code `1`) and logs:
+
+[source,text]
+----
+Error: Database is uninitialized and superuser password is not specified.
+       You must specify IVORYSQL_PASSWORD to a non-empty value for the
+       superuser. For example, "-e IVORYSQL_PASSWORD=password" on "docker run".
+
+       You may also use "POSTGRES_HOST_AUTH_METHOD=trust" to allow all
+       connections without a password. This is *not* recommended.
+----
+
+The command below does four things at once: set the password, put the data directory on a named volume, publish both listeners, and add a health check:
+
+[source,bash]
+----
+$ docker run -d --name ivorysql \
+    -e IVORYSQL_PASSWORD=your_password \
+    -v ivorysql_data:/var/local/ivorysql/ivorysql-5/data \
+    -p 1521:1521 -p 5433:5432 \
+    --health-cmd "pg_isready -p 1521 -U ivorysql" \
+    --health-interval 10s --health-timeout 5s --health-retries 5 \
+    ivorysql/ivorysql:5.6-ubi8
+----
+
+Here the container's `1521` is published on host `1521` and the container's `5432` on host `5433`, so it does not collide with a local PostgreSQL. Adjust the host ports as needed.
+
+=== Startup log
+
+A healthy container logs both listeners:
+
+[source,text]
+----
+server started
+2026-11-11 16:15:19.039 UTC [1] LOG:  starting PostgreSQL 18.6 (IvorySQL 5.6) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
+2026-11-11 16:15:19.039 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2026-11-11 16:15:19.039 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2026-11-11 16:15:19.042 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 1521
+2026-11-11 16:15:19.042 UTC [1] LOG:  listening on IPv6 address "::", port 1521
+2026-11-11 16:15:19.044 UTC [1] LOG:  listening on Unix socket "/tmp/.s.PGSQL.5432"
+2026-11-11 16:15:19.049 UTC [1] LOG:  listening on Unix socket "/tmp/.s.PGSQL.1521"
+2026-11-11 16:15:19.064 UTC [1] LOG:  database system is ready to accept connections
+----
+
+=== Port mapping
+
+[source,bash]
+----
+$ docker port ivorysql
+1521/tcp -> 0.0.0.0:11521
+1521/tcp -> [::]:11521
+5432/tcp -> 0.0.0.0:15532
+5432/tcp -> [::]:15532
+----
+
+(The output above comes from a run that published the container ports on `11521` and `15532`; with the command in the previous section it shows `1521` and `5433` instead.)
+
+=== Environment variables
+
+[cols="1,1,3"]
+|===
+| Variable | Default | Notes
+
+| `IVORYSQL_PASSWORD` | none (required) | Superuser password; the container exits when it is missing
+| `IVORYSQL_USER` | `ivorysql` | Superuser name created during initialization
+| `IVORYSQL_DB` | same as `IVORYSQL_USER` | Database name created during initialization
+| `POSTGRES_INITDB_ARGS` | none | Extra arguments passed to `initdb`, for example `-m pg` initializes in PostgreSQL mode
+| `POSTGRES_HOST_AUTH_METHOD` | none | Set to `trust` to disable password checks; the container prints a warning, not recommended in production
+|===
+
+During the first initialization, `*.sql` files mounted under `/docker-entrypoint-initdb.d/` are executed automatically, which is convenient for creating databases, tables, or seeding data.
+
+=== Data persistence
+
+The container writes its data into `PGDATA` (`/var/local/ivorysql/ivorysql-5/data`); without a volume, removing the container loses the data. With a named volume, restarts and container rebuilds keep it:
+
+[source,bash]
+----
+$ docker restart ivorysql
+$ psql -h 127.0.0.1 -p 1521 -U ivorysql -d postgres -c "select id, note from t_vol;"
+ id | note
+----+------
+  1 | ok
+(1 row)
+----
+
+`docker volume inspect` shows where the volume really lives on the host:
+
+[source,bash]
+----
+$ docker volume inspect ivorysql_data
+"Mountpoint": "/var/lib/docker/volumes/ivorysql_data/_data",
+"Driver": "local",
+----
+
+After mounting, the `PGDATA` directory contains `PG_VERSION` (with `18` inside), `ivorysql.conf`, `pg_hba.conf` and the rest of the cluster files.
+
+=== Health check
+
+The image has **no** `ss`, `netstat`, or `ps` (running `ps` returns `ps: command not found`), so do not build a health check on `ss -lntp` or `curl`. Use the bundled `pg_isready` instead; both listeners answer it:
+
+[source,text]
+----
+/var/local/ivorysql/ivorysql-5/bin/pg_isready -p 5432   →  /tmp:5432 - accepting connections   rc=0
+/var/local/ivorysql/ivorysql-5/bin/pg_isready -p 1521   →  /tmp:1521 - accepting connections   rc=0
+----
+
+== One container, two ports, two compatibility modes
+
+This is where the IvorySQL image surprises people most: **the same container and the same data are Oracle-compatible when you connect on `1521` and PostgreSQL-compatible when you connect on `5432`.**
+
+[source,bash]
+----
+$ psql -h 127.0.0.1 -p 5433 -U ivorysql -d postgres -At \
+    -c "select current_setting('ivorysql.port') as ivory, current_setting('ivorysql.compatible_mode') as mode, current_setting('server_version') as ver"
+1521|pg|18.6
+
+$ psql -h 127.0.0.1 -p 1521 -U ivorysql -d postgres -At -c "<the same query>"
+1521|oracle|18.6
+----
+
+Comparing the `ivorysql.*` parameters in `pg_settings`, **only `ivorysql.compatible_mode` differs** among the eight entries:
+
+[source,text]
+----
+# 1521 listener
+ivorysql.compatible_mode=oracle
+ivorysql.database_mode=oracle
+ivorysql.datetime_ignore_nls_mask=0
+ivorysql.enable_case_switch=on
+ivorysql.enable_emptystring_to_NULL=on
+ivorysql.identifier_case_switch=interchange
+ivorysql.listen_addresses=*
+ivorysql.port=1521
+
+# 5432 listener
+ivorysql.compatible_mode=pg
+(the other 7 entries are identical)
+----
+
+Note that `ivorysql.database_mode` stays `oracle` on both connections: it records the mode chosen when the database was created and does not change with the port. What changes is the set of semantics the current session parses SQL with.
+
+So an Oracle-style table can be created directly on the Oracle listener, and both ports can then read it:
+
+[source,sql]
+----
+create table if not exists t_vol(id int primary key, note varchar2(20));
+insert into t_vol values (1, 'ok');
+
+select id, note from t_vol;
+ id | note
+----+------
+  1 | ok
+(1 row)
+----
+
+The container initializes in Oracle mode because that is the default of `initdb` itself (`-m, --dbmode=MODE  set database mode, default is oracle`) and the entrypoint does not pass `-m`. To initialize in PostgreSQL mode instead, pass `-e POSTGRES_INITDB_ARGS="-m pg"`.
 
 == Running with Podman
 
-** Pull IvorySQL Image from Docker Hub
-```
-[highgo@manager-node1 ~]$ podman pull ivorysql/ivorysql:5.0-ubi8
-✔ docker.io/ivorysql/ivorysql:5.0-ubi8
-Trying to pull docker.io/ivorysql/ivorysql:5.0-ubi8...
-Getting image source signatures
-Copying blob 5885448c5c88 done   |
-Copying blob 6c502b378234 done   |
-Copying blob 8b4f2b90d6b6 done   |
-Copying blob 9b000f2935f6 done   |
-Copying blob 806f782da874 done   |
-Copying blob e4c51845a9eb done   |
-Copying blob dcb1e9a04275 done   |
-Copying blob 285a279173f8 done   |
-Copying blob 1f6f247b9ae0 done   |
-Copying blob 3cc81bed8614 done   |
-Copying blob 863c87bf25eb done   |
-Copying blob 4f4fb700ef54 done   |
-Copying config 88e1bbeda8 done   |
-Writing manifest to image destination
-88e1bbeda81c51d88e12cbd2b19730498f1343d1c64bb3dddc8ffcb08a1f965f
-```
+The Podman command line matches Docker, so replace `docker` with `podman`:
 
-** Run IvorySQL Container
-```
-$ podman run --name ivorysql -p 5434:5432 -e IVORYSQL_PASSWORD=123456 -d ivorysql/ivorysql:5.0-ubi8
-```
+[source,bash]
+----
+$ podman pull ivorysql/ivorysql:5.6-ubi8
+$ podman run -d --name ivorysql \
+    -e IVORYSQL_PASSWORD=your_password \
+    -v ivorysql_data:/var/local/ivorysql/ivorysql-5/data \
+    -p 1521:1521 -p 5433:5432 \
+    ivorysql/ivorysql:5.6-ubi8
+$ podman ps --filter name=ivorysql
+----
 
-** Check if IvorySQL Container is Running Successfully
-```
-[highgo@manager-node1 ~]$ podman ps | grep ivorysql
-CONTAINER ID            IMAGE                       COMMAND          CREATED          STATUS          PORTS                                 NAMES
-368dee58d5ef  docker.io/ivorysql/ivorysql:5.0-ubi8  postgres    20 seconds ago  Up 20 seconds  0.0.0.0:5434->5432/tcp, 1521/tcp, 5866/tcp  ivorysql
+Once the container is up, verify it the same way as with Docker, either from inside the container or from the host:
 
-[highgo@manager-node1 ~]$ podman exec -it ivorysql /bin/bash
-[root@8cc631eb413d /]#
-ivorysql=# select version();
-                                                        version
-------------------------------------------------------------------------------------------------------------------------
- PostgreSQL 18.0 (IvorySQL 5.0) on x86_64-pc-linux-gnu, compiled by gcc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-28), 64-bit
-(1 row)
+[source,bash]
+----
+$ podman exec -it ivorysql psql -U ivorysql -d postgres -c "select version();"
+$ psql -h 127.0.0.1 -p 1521 -U ivorysql -d postgres     # Oracle-compatible
+$ psql -h 127.0.0.1 -p 5433 -U ivorysql -d postgres     # PostgreSQL-compatible
+----
 
-ivorysql=#
-```
+== Troubleshooting
+
+* **The container exits right after starting**: `docker logs ivorysql` shows `Database is uninitialized and superuser password is not specified.`, meaning `-e IVORYSQL_PASSWORD` was omitted.
+* **Nothing answers on `1521`**: the `PORTS` column of `docker ps` lists only `5432/tcp`, so `1521` was never published; add `-p 1521:1521`.
+* **Host port `1521` is already taken**: publish another host port, for example `-p 11521:1521`; the container still listens on `1521`.
+* **`5866/tcp` is listed but refuses connections**: it is the temporary init port, used only inside the container during initialization and never published.
