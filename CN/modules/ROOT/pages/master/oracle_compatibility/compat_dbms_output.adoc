@@ -1,0 +1,34 @@
+:sectnums:
+:sectnumlevels: 5
+
+= DBMS_OUTPUT 包
+
+== 缓冲和读取消息
+
+请用具有包执行权限的角色连接 Oracle 兼容模式。`DBMS_OUTPUT.ENABLE` 启用会话缓冲区。`PUT` 将文本追加到当前行，`PUT_LINE` 追加文本并结束当前行，`NEW_LINE` 直接结束当前行。
+
+在同一会话中使用 `GET_LINE` 读取已完成的行。成功读到一行时，输出状态为 0。缓冲区为空时，状态为 1。需要一次读取多行时，可使用 `GET_LINES`。
+
+[source,sql]
+----
+CALL dbms_output.enable(20000);
+CALL dbms_output.put('invoice=');
+CALL dbms_output.put_line('42');
+
+DECLARE
+    output_line text;
+    status integer;
+BEGIN
+    dbms_output.get_line(output_line, status);
+    RAISE NOTICE 'status=% line=%', status, output_line;
+    dbms_output.get_line(output_line, status);
+    RAISE NOTICE 'status=%', status;
+END;
+/
+
+CALL dbms_output.disable();
+----
+
+第一条通知显示 `status=0 line=invoice=42`。第二条通知显示 `status=1`，因为第一次读取已经取走了唯一的完整行。`DISABLE` 会关闭缓冲并清空缓冲区。
+
+实现细节见 xref:master/compatibility_features_design/dbms_output_impl.adoc[DBMS_OUTPUT 实现]。

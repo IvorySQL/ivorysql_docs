@@ -1,0 +1,34 @@
+:sectnums:
+:sectnumlevels: 5
+
+= DBMS_OUTPUT Package
+
+== Buffer and read messages
+
+Connect in Oracle compatibility mode with a role that can execute the package. `DBMS_OUTPUT.ENABLE` enables a session buffer. `PUT` appends text to the current line, `PUT_LINE` appends text and finishes the line, and `NEW_LINE` finishes the line without appending text.
+
+Use `GET_LINE` to read each completed line in the same session. Its output status is 0 when it retrieves a line and 1 when the buffer is empty. Use `GET_LINES` when a caller needs to retrieve several lines at once.
+
+[source,sql]
+----
+CALL dbms_output.enable(20000);
+CALL dbms_output.put('invoice=');
+CALL dbms_output.put_line('42');
+
+DECLARE
+    output_line text;
+    status integer;
+BEGIN
+    dbms_output.get_line(output_line, status);
+    RAISE NOTICE 'status=% line=%', status, output_line;
+    dbms_output.get_line(output_line, status);
+    RAISE NOTICE 'status=%', status;
+END;
+/
+
+CALL dbms_output.disable();
+----
+
+The first notice shows `status=0 line=invoice=42`. The second shows `status=1`, because the first call consumed the only completed line. `DISABLE` turns buffering off and clears the buffer.
+
+See xref:master/compatibility_features_design/dbms_output_impl.adoc[DBMS_OUTPUT implementation].

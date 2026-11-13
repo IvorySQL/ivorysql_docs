@@ -1,0 +1,14 @@
+:sectnums:
+:sectnumlevels: 5
+
+= DBMS_OUTPUT Implementation
+
+== Per-session output
+
+The PL/iSQL package in `contrib/ivorysql_ora/src/builtin_packages/dbms_output/dbms_output--1.0.sql` delegates storage and retrieval to the corresponding C functions. The backend keeps the buffer for the session. Writers append fragments to the pending line, then move the line into the readable buffer when it is finished.
+
+== Read completed lines
+
+The C retrieval functions return a composite result. The package copies the line and status into `GET_LINE` output parameters, or an array and count into `GET_LINES` parameters. The reader advances as it consumes completed lines. Applications choose how to display or process the returned text.
+
+See xref:master/oracle_compatibility/compat_dbms_output.adoc[DBMS_OUTPUT package] for a runnable example.
