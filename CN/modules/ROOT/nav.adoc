@@ -116,6 +116,7 @@
 ** xref:master/getting-started/daily_monitoring.adoc[日常监控]
 ** xref:master/getting-started/daily_maintenance.adoc[日常维护]
 ** xref:master/operation_guide.adoc[运维管理指南]
+** xref:master/best_practices/production_checklist.adoc[生产上线检查清单与最佳实践]
 * 数据迁移
 ** xref:master/migration_guide.adoc[迁移指南]
 * IvorySQL开发者

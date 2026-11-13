@@ -115,6 +115,7 @@
 ** xref:master/getting-started/daily_monitoring.adoc[Monitoring]
 ** xref:master/getting-started/daily_maintenance.adoc[Maintenance]
 ** xref:master/operation_guide.adoc[Operation Management]
+** xref:master/best_practices/production_checklist.adoc[Production Go-Live Checklist and Best Practices]
 * Data Migration
 ** xref:master/migration_guide.adoc[Migration]
 * IvorySQL Developers
