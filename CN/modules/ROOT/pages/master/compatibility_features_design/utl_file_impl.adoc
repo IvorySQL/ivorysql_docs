@@ -1,0 +1,14 @@
+:sectnums:
+:sectnumlevels: 5
+
+= UTL_FILE 实现
+
+== 查找目录
+
+`UTL_FILE` 包通过 `sys.utl_file_directory` 解析目录别名。`contrib/ivorysql_ora/src/builtin_packages/utl_file/utl_file.c` 中的 C 实现打开解析出的服务器路径。文件操作受数据库服务进程的文件系统权限约束。
+
+== 文件句柄与行
+
+`FOPEN` 返回一个包记录，其 ID 对应当前后端的打开文件槽位。后续操作据此获取文件流和配置的行长度限制。`GET_LINE` 从流中读取一行，并用 `no_data_found` SQL 条件报告文件末尾。`FCLOSE` 释放槽位供后续打开文件时使用。
+
+完整示例见 xref:master/oracle_compatibility/compat_utl_file.adoc[UTL_FILE 包]。

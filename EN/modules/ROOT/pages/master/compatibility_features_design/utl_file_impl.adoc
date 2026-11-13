@@ -1,0 +1,14 @@
+:sectnums:
+:sectnumlevels: 5
+
+= UTL_FILE Implementation
+
+== Directory lookup
+
+The `UTL_FILE` package resolves directory aliases through `sys.utl_file_directory`. The C implementation in `contrib/ivorysql_ora/src/builtin_packages/utl_file/utl_file.c` opens the resulting server-side path. The server process's filesystem permissions apply to the file operation.
+
+== File handles and lines
+
+`FOPEN` returns a package record whose ID identifies an open file slot in the backend. Subsequent operations use that slot to find the stream and its configured line limit. `GET_LINE` reads a line from the stream and uses the `no_data_found` SQL condition to signal end of file. `FCLOSE` releases the slot for later opens.
+
+For an end-to-end example, see xref:master/oracle_compatibility/compat_utl_file.adoc[UTL_FILE package].
