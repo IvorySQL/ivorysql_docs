@@ -1,0 +1,26 @@
+:sectnums:
+:sectnumlevels: 5
+
+= UTL_URL 包
+
+== 转义 URL 或其中的组件
+
+请用具有包执行权限的角色连接 Oracle 兼容模式。对整个 URL 使用 `UTL_URL.ESCAPE(url)` 时，`/`、`?` 和 `&` 等分隔符会保留。如果输入将作为 URL 的一个组件，且其中的分隔符需要转义，请将第二个参数设为 `true`。两种用法都会将空格编码为 `%20`。
+
+如果转义字节需要使用指定编码，请将字符集（例如 `UTF8`）传给 `ESCAPE` 的第三个参数或 `UNESCAPE` 的第二个参数。省略字符集或传入 NULL 时，包使用数据库编码。
+
+[source,sql]
+----
+SELECT utl_url.escape('https://example.test/a b?q=a+b') AS url;
+SELECT utl_url.escape('a+b&c=d', true) AS query_value;
+SELECT utl_url.escape('中文', false, 'UTF8') AS encoded;
+SELECT utl_url.unescape('%E4%B8%AD%E6%96%87+a%20b', 'UTF8') AS decoded;
+----
+
+四条查询依次返回 `https://example.test/a%20b?q=a+b`、`a%2Bb%26c%3Dd`、`%E4%B8%AD%E6%96%87` 和 `中文+a b`。解码时字面加号仍为加号。
+
+== 解码百分号转义
+
+`UNESCAPE` 将 `%XX` 序列还原为字节。请传入生成这些序列时使用的字符集。无效或不完整的转义会报错。由于 `ESCAPE` 也会转义输入中的百分号，请对原始值调用该函数。
+
+实现细节见 xref:master/compatibility_features_design/utl_url_impl.adoc[UTL_URL 实现]。

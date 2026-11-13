@@ -1,0 +1,14 @@
+:sectnums:
+:sectnumlevels: 5
+
+= UTL_URL Implementation
+
+== Encode bytes
+
+The `UTL_URL` package delegates to the C entry points in `contrib/ivorysql_ora/src/builtin_packages/utl_url/utl_url.c`. `ESCAPE` converts the input to the requested encoding before examining its bytes. ASCII letters, digits and the unreserved punctuation pass through. The boolean argument controls whether reserved delimiters pass through. Each other byte becomes one uppercase hexadecimal `%XX` group.
+
+== Decode consecutive groups
+
+`UNESCAPE` accumulates consecutive `%XX` groups before converting the resulting bytes to the database encoding. A group of escaped bytes can form one multibyte character. Literal text is already in the database encoding and is copied separately. The parser checks the two hexadecimal digits in each group and rejects an escaped zero byte.
+
+For runnable examples, see xref:master/oracle_compatibility/compat_utl_url.adoc[UTL_URL package].

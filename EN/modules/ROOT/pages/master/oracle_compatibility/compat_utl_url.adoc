@@ -1,0 +1,26 @@
+:sectnums:
+:sectnumlevels: 5
+
+= UTL_URL Package
+
+== Escape a URL or a component
+
+Connect in Oracle compatibility mode with a role that can execute the package. Use `UTL_URL.ESCAPE(url)` on a URL when you want to preserve delimiters such as `/`, `?` and `&`. Pass `true` as the second argument when a value will be inserted into a URL component and its delimiters need escaping. Spaces become `%20` in both cases.
+
+Pass a character set such as `UTF8` as the third argument to `ESCAPE` or the second argument to `UNESCAPE` when the encoded bytes need a specific encoding. With an omitted or NULL character set, the package uses the database encoding.
+
+[source,sql]
+----
+SELECT utl_url.escape('https://example.test/a b?q=a+b') AS url;
+SELECT utl_url.escape('a+b&c=d', true) AS query_value;
+SELECT utl_url.escape('中文', false, 'UTF8') AS encoded;
+SELECT utl_url.unescape('%E4%B8%AD%E6%96%87+a%20b', 'UTF8') AS decoded;
+----
+
+The results are `https://example.test/a%20b?q=a+b`, `a%2Bb%26c%3Dd`, `%E4%B8%AD%E6%96%87` and `中文+a b`, respectively. A literal plus remains a plus when decoding.
+
+== Decode percent escapes
+
+`UNESCAPE` decodes `%XX` byte sequences. Supply the same character set used to produce those sequences. Invalid or incomplete escapes raise an error. A percent sign in the input to `ESCAPE` is itself escaped, so apply it to the original value.
+
+See xref:master/compatibility_features_design/utl_url_impl.adoc[UTL_URL implementation].
