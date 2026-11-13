@@ -1,0 +1,290 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+
+= **本地开发与测试工作流**
+
+本页给出一条从源码到补丁的完整路径：准备工具、配置与编译、初始化双模式实例、在本机跑三档测试、按社区约定提交补丁。
+
+本页出现的命令与终端输出都来自实际执行记录；**本批次没有实测的步骤会明确标注，不会给出伪造的输出**。
+
+== 适用范围
+
+* 需要改动 C 代码、SQL 回归测试或 TAP 测试的贡献者。
+* 需要在本地复现「Oracle 兼容模式初始化失败」这类问题的贡献者。
+
+只做文档修订的读者不需要构建，直接参考 xref:master/contribution/contribution_guide.adoc[贡献指南] 即可。
+
+== 前置条件
+
+=== 构建依赖
+
+各发行版的依赖包清单与安装命令见 xref:master/installation_guide.adoc[安装指南]，本页不重复。
+
+=== 本页额外要求的工具
+
+[cols="1,2"]
+|===
+| 工具 | 用途
+
+| `git` | 取得源码、生成补丁
+| C 编译器（`gcc` 或 `clang`） | 编译服务端与 contrib 模块
+| `perl` | 运行 TAP 测试；`--enable-tap-tests` 还要求 `IPC::Run`
+|===
+
+=== 不要用 root 跑测试
+
+`initdb` 拒绝以 root 身份运行，因此 `make check`、`make -C src/bin/initdb check` 这类目标必须在普通用户下执行。
+
+== 从源码构建
+
+=== 取得源码
+
+[source,bash]
+----
+git clone https://github.com/IvorySQL/IvorySQL.git
+cd IvorySQL
+----
+
+=== 配置
+
+[source,bash]
+----
+./configure --prefix=<INSTALL_DIR> --with-uuid=e2fs --enable-tap-tests
+----
+
+* `<INSTALL_DIR>` 由自己决定，例如安装指南中使用的 `/usr/local/ivorysql/ivorysql-5`。
+* `--with-uuid` 指定 `contrib/uuid-ossp` 依赖的 UUID 库，可选值只有 `bsd`、`e2fs`、`ossp` 三个。
+* `--enable-tap-tests` 是 TAP 测试的开关；不加这个参数，`make -C src/bin/initdb check` 不会真正跑用例。
+
+`configure --help` 中与本节相关的几行原文：
+
+[source,text]
+----
+  --enable-debug          build with debugging symbols (-g)
+  --enable-tap-tests      enable TAP tests (requires Perl and IPC::Run)
+  --enable-cassert        enable assertion checks (for debugging)
+  --with-uuid=LIB         build contrib/uuid-ossp using LIB (bsd,e2fs,ossp)
+  --with-ossp-uuid        obsolete spelling of --with-uuid=ossp
+----
+
+`--with-ossp-uuid` 是 `--with-uuid=ossp` 的过时拼写，新脚本不要再用。
+
+==== 漏写 `--with-uuid` 的后果
+
+`configure` 阶段**不会**报错：没有给这个参数时，脚本直接把值置为 `no`。
+
+[source,text]
+----
+1127:PGAC_ARG_REQ(with, uuid, [LIB], [build contrib/uuid-ossp using LIB (bsd,e2fs,ossp)])
+1128:if test x"$with_uuid" = x"" ; then
+1129-  with_uuid=no
+1130-fi
+1144:    AC_MSG_ERROR([--with-uuid must specify one of bsd, e2fs, or ossp])
+----
+
+代价出现在 `make` 阶段：`contrib/uuid-ossp/uuid-ossp.c` 会命中一条 `#error`。
+
+[source,text]
+----
+38-#include <uuid/uuid.h>
+39-#else
+40:#error "please use configure's --with-uuid switch to select a UUID library"
+41-#endif
+----
+
+顶层 `GNUmakefile:11` 的 `all` 与 `install` 都会无条件递归 `contrib/uuid-ossp`，所以 `make` 直接停在上面这条 `#error`，`make install` 根本执行不到。
+
+=== 编译与安装
+
+[source,bash]
+----
+make -j$(nproc)
+make install
+----
+
+顶层 `make install` 会连同 contrib 一起安装，`uuid-ossp` 的控制文件、SQL 脚本与共享库都会进入安装树。
+
+**只装核心要当心**：`make -C src install` 只安装 `src/` 下的内容，不碰 `contrib/`。这样装出来的安装树服务端可用，但 `share/postgresql/extension/` 里没有 `uuid-ossp`，于是 Oracle 模式的 `initdb` 必然失败；补装方式见文末「常见失败与对应动作」。
+
+== 初始化双模式实例
+
+=== 两种模式
+
+`initdb` 用 `-m` 指定数据库模式，可选 `oracle` 与 `pg`，默认是 `oracle`。
+
+[source,bash]
+----
+# Oracle 兼容模式（默认）
+initdb -D <PGDATA_ORACLE> -m oracle
+
+# 原生 PostgreSQL 模式
+initdb -D <PGDATA_PG> -m pg
+----
+
+两种模式的差别体现在 bootstrap 阶段读取的输入文件：Oracle 模式额外需要 `postgres_oracle.bki`、`preload_ora_misc.sql` 等文件，`pg` 模式只用原生那一套。
+
+=== `uuid-ossp` 与两种模式的关系
+
+Oracle 模式在初始化末段要加载 `uuid-ossp` 扩展，因此**安装树必须同时具备三件东西**：`extension/uuid-ossp.control`、`extension/uuid-ossp--1.1.sql` 和 pkglib 目录下的 `uuid-ossp` 共享库。`pg` 模式不加载它。
+
+逐项删除文件后的实测结果（同一份安装树，每次只动一个文件）：
+
+[cols="1,3,1"]
+|===
+| 场景 | 操作 | 退出码
+
+| A | 三件套齐备，`initdb -m oracle` | 0
+| B | 删 `uuid-ossp.control`，`initdb -m oracle` | 1
+| C | 删 `uuid-ossp.control`，`initdb -m pg` | 0
+| D | 删 `uuid-ossp--1.1.sql`，`initdb -m oracle` | 1
+| E | 删 `uuid-ossp.so`，`initdb -m oracle` | 1
+|===
+
+结论：**Oracle 模式对三件套是硬依赖，`pg` 模式不受影响**。
+
+当前 master 的 `initdb` 在 bootstrap 之后才发现扩展缺失，此时数据目录已经建出来、随后被回滚删除，报错也看不出到底缺哪个文件；上游有把这项检查提前到写盘之前的改动，合入后失败会发生在创建数据目录之前。
+
+=== `-L` 的语义
+
+`initdb -L <dir>` 让 initdb 从 `<dir>` 读取它自己的输入文件，等价于覆盖内部的 `share_path`。
+
+但它**不改变扩展的解析路径**：`CREATE EXTENSION` 由 post-bootstrap 阶段的后端进程按编译期 `SHAREDIR` 解析。所以不要用 `-L` 去「指向一份临时扩展目录」来绕过扩展缺失，那样只会让 initdb 的输入来源与真正的扩展目录分叉，排查时容易误判。
+
+== 本地测试三档
+
+三档都要在非 root 用户下执行。三档的耗时与覆盖面依次递增，日常开发通常只需要第一档。
+
+=== 第一档：TAP 测试
+
+[source,bash]
+----
+make -C src/bin/initdb check
+----
+
+这是最快的一档，只跑 `src/bin/initdb/t/` 下的 Perl 用例。实测尾部输出（本批次使用的源码树上 `t/` 下有三个用例；用例数量会随版本变化）：
+
+[source,text]
+----
+# +++ tap check in src/bin/initdb +++
+t/001_initdb.pl ............. ok
+t/002_gb18030.pl ............ ok
+t/003_uuid_ossp_missing.pl .. ok
+All tests successful.
+Files=3, Tests=86, 19 wallclock secs ( 0.04 usr  0.01 sys +  7.25 cusr  9.03 csys = 16.33 CPU)
+Result: PASS
+----
+
+这一档的夹具做法值得知道：`make` 会先在 `tmp_install` 里用下面这条命令生成模板，
+
+[source,bash]
+----
+initdb --auth trust --no-sync -m pg --no-instructions --lc-messages=C --no-clean <tmp_install>/initdb-template
+----
+
+再以固定端口跑 `prove`：
+
+[source,bash]
+----
+PGPORT=65432 prove -I ../../../src/test/perl/ -I . t/*.pl
+----
+
+也就是说 **TAP 的公共模板固定使用 `-m pg`**，与 Oracle 模式无关；要覆盖 Oracle 模式，用例必须自己在临时安装树上初始化实例。
+
+=== 第二档：核心回归
+
+[source,bash]
+----
+make check
+----
+
+这一档跑 `pg_regress` 的核心回归集。**本批次未实测**，因此本页不粘贴它的尾部输出。
+
+=== 第三档：Oracle 兼容回归
+
+[source,bash]
+----
+make oracle-check-world
+----
+
+这一档跑 Oracle 兼容相关的回归全集，体量明显大于前两档，建议留给提交前的最后一轮。**本批次同样未实测**，本页不粘贴输出。
+
+=== 跑测试的几个注意点
+
+* 先跑第一档：它最快，能先暴露 TAP 基础设施（`perl`、`IPC::Run`、`prove`）自身的问题。
+* 结果以 `All tests successful.` 与 `Result: PASS` 为准；出现 `Dubious`、`Failed` 时要打开对应日志逐个排查。
+* 各档产生的实例与数据目录都在自己的 `tmp_check/` 下，可以整体删除，不必手工清理。
+
+== 提交补丁
+
+=== 提交信息风格
+
+本仓库的提交标题遵循 `area: imperative summary`：区域名小写、冒号、紧跟祈使句、结尾不加句号。现有提交就是范例：
+
+[source,text]
+----
+initdb: fail early with an actionable error when Oracle mode lacks uuid-ossp
+initdb: add TAP coverage for the Oracle mode uuid-ossp check
+initdb: list every --with-uuid value in the hint and check the TAP exit status
+----
+
+正文写清「为什么改」「改了什么」和「怎么验证的」，验证部分尽量贴上实际跑过的命令与结果。
+
+=== AI 协作声明
+
+使用 AI 工具辅助编写代码或文档时，提交信息里要加两条声明：
+
+[source,text]
+----
+Assisted-by: AGENT_NAME:MODEL_VERSION
+Percentage of AI-generated code: xx%
+----
+
+`AGENT_NAME` 是 AI 工具或框架的名字，`MODEL_VERSION` 是具体模型版本，例如：
+
+[source,text]
+----
+Assisted-by: Claude:4.6
+Assisted-by: GitHub:Copilot
+Assisted-by: OpenAI:gpt-4
+----
+
+另一条纪律：**AI 工具不得添加 `Signed-off-by` 标签**。只有人类才能在法律上认证开发者原创证书（DCO），提交者要自己审查全部 AI 生成内容、自己签名，并对贡献负全责。
+
+=== 生成并发送补丁
+
+[source,bash]
+----
+# 导出整个分支相对 master 的补丁
+git format-patch origin/master
+
+# 只要最后一个提交
+git format-patch -1 HEAD
+----
+
+导出的 `.patch` 可以作为邮件附件发送给邮件列表，也可以把分支推送到自己的 fork 后开 Pull Request。
+
+=== 签署 CLA
+
+提交代码或文档之前需要先签署贡献者许可协议，签署方式与两条下载链接见 xref:master/contribution/contribution_guide.adoc[贡献指南] 的「签署 CLA」一节。未签署 CLA 的 Pull Request 无法进入评审阶段。
+
+== 常见失败与对应动作
+
+[cols="2,2,2"]
+|===
+| 现象 | 原因 | 动作
+
+| `make` 停在 `uuid-ossp.c:40:2: error: #error "please use configure's --with-uuid switch to select a UUID library"` | 配置时没给 `--with-uuid` | 重新执行 `./configure --with-uuid=e2fs ...`（或改用 `ossp`、`bsd`）
+| `configure` 提示缺少 `IPC::Run` | TAP 测试依赖没装 | Debian/Ubuntu：`sudo apt install libipc-run-perl`
+| Oracle 模式 `initdb` 退出码 1，报错指向 `uuid-ossp` 扩展 | 安装树缺三件套，常见于 `make -C src install` 的部分安装 | `make -C contrib/uuid-ossp install` 补装，或改用 `-m pg`
+| `make check` 一开始就失败 | 以 root 身份执行 | 换普通用户重跑
+|===
+
+== 小结
+
+. 用 `--with-uuid` 指定 UUID 库，用 `--enable-tap-tests` 打开 TAP。
+. 顶层 `make install` 才会把 contrib 一起装上。
+. `-m oracle` 需要 `uuid-ossp` 三件套，`-m pg` 不需要。
+. 每天至少跑一次 `make -C src/bin/initdb check`，提交前再跑回归全集。
+. 提交信息按 `area: imperative summary` 写，用了 AI 就补上两条声明。

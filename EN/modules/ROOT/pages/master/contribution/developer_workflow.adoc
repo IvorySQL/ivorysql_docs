@@ -1,0 +1,290 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+
+= **Local Development and Testing Workflow**
+
+This page walks through the full path from source code to a submitted patch: prepare the tools, configure and build, initialize clusters in both modes, run the three tiers of tests locally, and submit the patch following the community conventions.
+
+Every command and every terminal output on this page comes from an actual run. **Steps that were not measured in this batch are called out explicitly; no output on this page is invented.**
+
+== Scope
+
+* Contributors who change C code, SQL regression tests, or TAP tests.
+* Contributors who need to reproduce problems such as "Oracle-compatible mode fails during initialization".
+
+Readers who only revise documentation do not need a build; see the xref:master/contribution/contribution_guide.adoc[Contribution Guide] instead.
+
+== Prerequisites
+
+=== Build dependencies
+
+The package list for each distribution and its installation commands are in the xref:master/installation_guide.adoc[Installation Guide]; this page does not repeat them.
+
+=== Additional tools required by this page
+
+[cols="1,2"]
+|===
+| Tool | Purpose
+
+| `git` | Get the sources, generate patches
+| C compiler (`gcc` or `clang`) | Build the server and contrib modules
+| `perl` | Run TAP tests; `--enable-tap-tests` also requires `IPC::Run`
+|===
+
+=== Do not run tests as root
+
+`initdb` refuses to run as root, so targets such as `make check` and `make -C src/bin/initdb check` must be run by a regular user.
+
+== Building from Source
+
+=== Get the sources
+
+[source,bash]
+----
+git clone https://github.com/IvorySQL/IvorySQL.git
+cd IvorySQL
+----
+
+=== Configure
+
+[source,bash]
+----
+./configure --prefix=<INSTALL_DIR> --with-uuid=e2fs --enable-tap-tests
+----
+
+* `<INSTALL_DIR>` is your choice, for example the `/usr/local/ivorysql/ivorysql-5` prefix used in the Installation Guide.
+* `--with-uuid` selects the UUID library used by `contrib/uuid-ossp`; the only accepted values are `bsd`, `e2fs`, and `ossp`.
+* `--enable-tap-tests` is the switch for TAP tests. Without it, `make -C src/bin/initdb check` does not actually run the cases.
+
+The relevant lines from `configure --help`:
+
+[source,text]
+----
+  --enable-debug          build with debugging symbols (-g)
+  --enable-tap-tests      enable TAP tests (requires Perl and IPC::Run)
+  --enable-cassert        enable assertion checks (for debugging)
+  --with-uuid=LIB         build contrib/uuid-ossp using LIB (bsd,e2fs,ossp)
+  --with-ossp-uuid        obsolete spelling of --with-uuid=ossp
+----
+
+`--with-ossp-uuid` is the obsolete spelling of `--with-uuid=ossp`; do not use it in new scripts.
+
+==== What happens if --with-uuid is omitted
+
+`configure` does **not** fail: when the option is absent, the script simply sets the value to `no`.
+
+[source,text]
+----
+1127:PGAC_ARG_REQ(with, uuid, [LIB], [build contrib/uuid-ossp using LIB (bsd,e2fs,ossp)])
+1128:if test x"$with_uuid" = x"" ; then
+1129-  with_uuid=no
+1130-fi
+1144:    AC_MSG_ERROR([--with-uuid must specify one of bsd, e2fs, or ossp])
+----
+
+The price is paid during `make`: the translation unit `contrib/uuid-ossp/uuid-ossp.c` hits an `#error`.
+
+[source,text]
+----
+38-#include <uuid/uuid.h>
+39-#else
+40:#error "please use configure's --with-uuid switch to select a UUID library"
+41-#endif
+----
+
+Both the `all` and `install` goals in the top-level `GNUmakefile:11` recurse into `contrib/uuid-ossp` unconditionally, so `make` stops at that `#error` and `make install` is never reached.
+
+=== Build and install
+
+[source,bash]
+----
+make -j$(nproc)
+make install
+----
+
+The top-level `make install` installs contrib as well, so the `uuid-ossp` control file, SQL script, and shared library all land in the installation tree.
+
+**Be careful with a core-only install**: `make -C src install` installs only what is under `src/` and never touches `contrib/`. The resulting installation tree has a working server, but `share/postgresql/extension/` contains no `uuid-ossp`, so Oracle-compatible `initdb` is guaranteed to fail. See "Common Failures and Fixes" at the end of this page for how to install it afterwards.
+
+== Initializing Clusters in Both Modes
+
+=== The two modes
+
+`initdb` selects the database mode with `-m`. The accepted values are `oracle` and `pg`, and the default is `oracle`.
+
+[source,bash]
+----
+# Oracle-compatible mode (default)
+initdb -D <PGDATA_ORACLE> -m oracle
+
+# Native PostgreSQL mode
+initdb -D <PGDATA_PG> -m pg
+----
+
+The difference shows up in the input files read during the bootstrap stage: Oracle mode additionally needs files such as `postgres_oracle.bki` and `preload_ora_misc.sql`, while `pg` mode uses only the native set.
+
+=== How uuid-ossp relates to the two modes
+
+Oracle mode loads the `uuid-ossp` extension near the end of initialization, so the installation tree **must provide all three pieces**: `extension/uuid-ossp.control`, `extension/uuid-ossp--1.1.sql`, and the `uuid-ossp` shared library under the pkglib directory. `pg` mode does not load it.
+
+Measured results after deleting one file at a time from the same installation tree:
+
+[cols="1,3,1"]
+|===
+| Case | Action | Exit code
+
+| A | All three present, `initdb -m oracle` | 0
+| B | Delete `uuid-ossp.control`, `initdb -m oracle` | 1
+| C | Delete `uuid-ossp.control`, `initdb -m pg` | 0
+| D | Delete `uuid-ossp--1.1.sql`, `initdb -m oracle` | 1
+| E | Delete `uuid-ossp.so`, `initdb -m oracle` | 1
+|===
+
+In short: **Oracle mode hard-depends on the three pieces, `pg` mode does not.**
+
+The current master `initdb` only notices the missing extension after the bootstrap stage, at which point the data directory has already been created and is then rolled back and removed, and the message does not say which file is missing. Upstream has a change that moves the check ahead of any disk write; once merged, the failure happens before the data directory is created.
+
+=== What -L actually does
+
+`initdb -L <dir>` makes initdb read its own input files from `<dir>`; it is equivalent to overriding the internal `share_path`.
+
+It does **not** change how extensions are resolved: `CREATE EXTENSION` is resolved by the post-bootstrap backend process against the compiled-in `SHAREDIR`. Do not use `-L` to "point at a temporary extension directory" in order to work around a missing extension; that only forks the input location from the real extension directory and misleads diagnosis.
+
+== Three Tiers of Local Testing
+
+All three tiers must be run by a regular (non-root) user. Time cost and coverage increase from tier to tier; day-to-day work usually needs only the first one.
+
+=== Tier 1: TAP tests
+
+[source,bash]
+----
+make -C src/bin/initdb check
+----
+
+This is the fastest tier; it runs only the Perl cases under `src/bin/initdb/t/`. Measured output (the tree used in this batch had three cases under `t/`; the number varies between versions):
+
+[source,text]
+----
+# +++ tap check in src/bin/initdb +++
+t/001_initdb.pl ............. ok
+t/002_gb18030.pl ............ ok
+t/003_uuid_ossp_missing.pl .. ok
+All tests successful.
+Files=3, Tests=86, 19 wallclock secs ( 0.04 usr  0.01 sys +  7.25 cusr  9.03 csys = 16.33 CPU)
+Result: PASS
+----
+
+The fixture behind this tier is worth knowing: `make` first creates a template under `tmp_install` with
+
+[source,bash]
+----
+initdb --auth trust --no-sync -m pg --no-instructions --lc-messages=C --no-clean <tmp_install>/initdb-template
+----
+
+and then runs `prove` on a fixed port:
+
+[source,bash]
+----
+PGPORT=65432 prove -I ../../../src/test/perl/ -I . t/*.pl
+----
+
+So the **shared TAP template always uses `-m pg`** and has nothing to do with Oracle mode; a case that wants Oracle mode has to initialize its own instance from a temporary installation tree.
+
+=== Tier 2: core regression
+
+[source,bash]
+----
+make check
+----
+
+This tier runs the core `pg_regress` suite. It was **not measured in this batch**, so this page does not paste its output.
+
+=== Tier 3: Oracle-compatible regression
+
+[source,bash]
+----
+make oracle-check-world
+----
+
+This tier runs the full Oracle-compatibility regression set and is considerably larger than the first two; leave it for the final round before submitting. It was **also not measured in this batch**, so no output is pasted here.
+
+=== Notes on running the tests
+
+* Start with tier 1: it is the fastest and surfaces problems with the TAP infrastructure itself (`perl`, `IPC::Run`, `prove`).
+* Judge by `All tests successful.` and `Result: PASS`; when `Dubious` or `Failed` appears, open the corresponding log and work through it.
+* Each tier leaves its instances and data directories under its own `tmp_check/`, which can be deleted wholesale — no manual cleanup needed.
+
+== Submitting a Patch
+
+=== Commit message style
+
+Commit subjects in this repository follow `area: imperative summary`: a lowercase area name, a colon, an imperative sentence, and no trailing period. Existing commits are the reference:
+
+[source,text]
+----
+initdb: fail early with an actionable error when Oracle mode lacks uuid-ossp
+initdb: add TAP coverage for the Oracle mode uuid-ossp check
+initdb: list every --with-uuid value in the hint and check the TAP exit status
+----
+
+The body should state why the change is needed, what it does, and how it was verified; the verification part should paste the commands and results that were actually run.
+
+=== AI assistance disclosure
+
+When AI tools helped write code or documentation, add both statements to the commit message:
+
+[source,text]
+----
+Assisted-by: AGENT_NAME:MODEL_VERSION
+Percentage of AI-generated code: xx%
+----
+
+`AGENT_NAME` is the name of the AI tool or framework and `MODEL_VERSION` is the specific model version, for example:
+
+[source,text]
+----
+Assisted-by: Claude:4.6
+Assisted-by: GitHub:Copilot
+Assisted-by: OpenAI:gpt-4
+----
+
+One more rule: **AI tools must not add `Signed-off-by` tags**. Only a human can legally certify the Developer Certificate of Origin (DCO), so the submitter reviews all AI-generated content, adds the signature, and takes full responsibility for the contribution.
+
+=== Generating and sending the patch
+
+[source,bash]
+----
+# Export the whole branch relative to master
+git format-patch origin/master
+
+# Export only the last commit
+git format-patch -1 HEAD
+----
+
+The resulting `.patch` files can be sent as mail attachments to the mailing list, or you can push the branch to your own fork and open a Pull Request.
+
+=== Sign the CLA
+
+Code and documentation contributions require a signed Contributor License Agreement. The signing process and the two download links are in the "Sign the CLA" section of the xref:master/contribution/contribution_guide.adoc[Contribution Guide]. A Pull Request from a contributor without a signed CLA cannot enter the review stage.
+
+== Common Failures and Fixes
+
+[cols="2,2,2"]
+|===
+| Symptom | Cause | Action
+
+| `make` stops at `uuid-ossp.c:40:2: error: #error "please use configure's --with-uuid switch to select a UUID library"` | `--with-uuid` was not passed to configure | Re-run `./configure --with-uuid=e2fs ...` (or `ossp`, `bsd`)
+| `configure` reports a missing `IPC::Run` | TAP test dependencies are not installed | Debian/Ubuntu: `sudo apt install libipc-run-perl`
+| Oracle mode `initdb` exits with status 1 and the error mentions the `uuid-ossp` extension | The installation tree lacks the three pieces, typically after a core-only `make -C src install` | `make -C contrib/uuid-ossp install`, or use `-m pg`
+| `make check` fails immediately | It was run as root | Re-run it as a regular user
+|===
+
+== Summary
+
+. Pass `--with-uuid` to select the UUID library and `--enable-tap-tests` to enable TAP.
+. Only the top-level `make install` installs contrib.
+. `-m oracle` needs the three `uuid-ossp` pieces; `-m pg` does not.
+. Run `make -C src/bin/initdb check` at least once a day, and the full regression before submitting.
+. Write the commit subject as `area: imperative summary`, and add the two AI statements if AI tools were used.
