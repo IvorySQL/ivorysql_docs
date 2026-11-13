@@ -107,6 +107,8 @@ IvorySQL也支持报告有关系统正在干什么的 动态信息，例如当�
 |视图名称                      | 描述
 | `pg_stat_archiver`            | 只有一行，显示有关 WAL 归档进程活动的统计信息。              
 | `pg_stat_bgwriter`            | 只有一行，显示有关后台写进程的活动的统计信息。               
+| `pg_stat_checkpointer`       | 只有一行，显示检查点和重启点的活动。
+| `pg_stat_io`                 | 按后端类型、目标对象和上下文分组显示 I/O 统计信息。
 | `pg_stat_database`            | 每个数据库一行，显示数据库范围的统计信息。                   
 | `pg_stat_database_conflicts`  | 每个数据库一行，显示数据库范围的统计信息， 这些信息的内容是关于由于与后备服务器的恢复过程 发生冲突而被取消的查询。 
 | `pg_stat_all_tables`          | 当前数据库中每个表一行，显示有关访问指定表的统计信息。       
@@ -594,18 +596,33 @@ SELECT pid, wait_event_type, wait_event FROM pg_stat_activity WHERE wait_event i
 **表20.`pg_stat_bgwriter` 视图**
 |====
 | 列 | 类型 | 描述
-| `checkpoints_timed` | `bigint` | 已执行的预定检查点数
-| `checkpoints_req` | `bigint` | 请求已执行的检查点数
-| `checkpoint_write_time` | `double precision` | 检查点处理中将文件写入磁盘的部分所花费的总时间，以毫秒为单位
-| `checkpoint_sync_time` | `double precision` | 检查点处理中将文件同步到磁盘的部分所花费的总时间，以毫秒为单位
-| `buffers_checkpoint` | `bigint` | 检查点期间写入的缓冲区数
 | `buffers_clean` | `bigint` | 后台写入器写入的缓冲区数
 | `maxwritten_clean` | `bigint` | 后台写入器因为写入太多缓冲区而停止清理扫描的次数
-| `buffers_backend` | `bigint` | 后端直接写入的缓冲区数
-| `buffers_backend_fsync` | `bigint` | 后端必须执行自己的 `fsync` 调用的次数（通常后台写入器处理这些，即使后端执行自己的写入）
 | `buffers_alloc` | `bigint` | 分配的缓冲区数
 | `stats_reset` | `timestamp with time zone` | 这些统计数据最后一次重置的时间
 |====
+
+==== `pg_stat_checkpointer`
+
+通过此视图查看定时、请求和已完成的检查点以及相关 I/O。视图也包含重启点计数。写入和同步时间以毫秒计。
+
+[source,sql]
+----
+SELECT num_timed, num_requested, num_done, buffers_written,
+       write_time, sync_time, stats_reset
+FROM pg_stat_checkpointer;
+----
+
+==== `pg_stat_io`
+
+通过此视图查看后端写入和同步调用。查询时保留 `object` 和 `context`，以区分 I/O 的目标对象与上下文。
+
+[source,sql]
+----
+SELECT backend_type, object, context, writes, write_bytes, fsyncs
+FROM pg_stat_io
+WHERE backend_type = 'client backend';
+----
 
 ==== `pg_stat_database`
 
