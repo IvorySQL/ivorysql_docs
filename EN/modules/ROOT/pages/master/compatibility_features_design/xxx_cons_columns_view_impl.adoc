@@ -1,0 +1,14 @@
+:sectnums:
+:sectnumlevels: 5
+
+= Constraint Column View Implementation
+
+== Map constraints to columns
+
+The definitions in `contrib/ivorysql_ora/src/sysview/sysview--1.0.sql` join a constraint's relation and column numbers to `pg_class` and `pg_attribute`. The column's ordinal comes from its entry in `pg_constraint.conkey`. `ALL_CONS_COLUMNS` expands the array with ordinality. The other views look up the matching column's position in the array.
+
+== Apply visibility rules
+
+`USER_CONS_COLUMNS` filters by table owner. `ALL_CONS_COLUMNS` checks schema usage and table select privileges, and it includes a separate projection for column-level `NOT NULL` attributes outside primary keys. `DBA_CONS_COLUMNS` projects regular-table constraints and includes a separate projection for `NOT NULL` attributes. Each view applies the Oracle identifier case conversion to its names.
+
+For a query that uses the ordinal, see xref:master/oracle_compatibility/compat_xxx_cons_columns_view.adoc[constraint column views].
