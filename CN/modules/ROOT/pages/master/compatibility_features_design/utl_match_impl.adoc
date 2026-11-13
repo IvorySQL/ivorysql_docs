@@ -1,0 +1,14 @@
+:sectnums:
+:sectnumlevels: 5
+
+= UTL_MATCH 实现
+
+== 包入口
+
+`contrib/ivorysql_ora/src/builtin_packages/utl_match/utl_match--1.0.sql` 中的 PL/iSQL 封装提供 Oracle 兼容的参数和返回类型，调用 `utl_match.c` 中对应的 C 实现。
+
+== 距离和相似度
+
+编辑距离函数计算 Levenshtein 距离。相似度形式根据字符串长度将距离转换为分数。Jaro–Winkler 函数在窗口范围内匹配字符，考虑匹配字符的顺序，并根据共同前缀调整分数。包同时提供小数和整数两种得分形式。
+
+可运行的示例见 xref:master/oracle_compatibility/compat_utl_match.adoc[UTL_MATCH 包]。

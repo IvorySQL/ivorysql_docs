@@ -1,0 +1,33 @@
+:sectnums:
+:sectnumlevels: 5
+
+= UTL_MATCH Package
+
+== Choose a comparison
+
+Connect in Oracle compatibility mode with a role that can execute the package. The functions take two strings.
+
+[cols="2,3",options="header"]
+|===
+| Function | Result
+| `EDIT_DISTANCE` | Minimum number of insertions, deletions and substitutions.
+| `EDIT_DISTANCE_SIMILARITY` | Edit-distance score from 0 to 100.
+| `JARO_WINKLER` | Similarity score from 0 to 1, with extra weight for a shared prefix.
+| `JARO_WINKLER_SIMILARITY` | Jaro–Winkler score on an integer scale from 0 to 100.
+|===
+
+A larger similarity score means a closer match. Use edit distance when the number of changes matters. When comparing names, Jaro–Winkler can help rank likely spelling variations. The comparison is case-sensitive, so normalize both inputs explicitly when case should be ignored.
+
+== Compare example strings
+
+[source,sql]
+----
+SELECT utl_match.edit_distance('kitten', 'sitting') AS edits,
+       utl_match.edit_distance_similarity('cat', 'cat') AS exact_score;
+SELECT utl_match.jaro_winkler('MARTHA', 'MARHTA') > 0.9 AS close_match,
+       utl_match.jaro_winkler_similarity('cat', 'cat') AS exact_score;
+----
+
+The first query returns 3 edits and an exact-match score of 100. The second returns true for the similar names and 100 for the identical strings.
+
+See xref:master/compatibility_features_design/utl_match_impl.adoc[UTL_MATCH implementation].
