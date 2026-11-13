@@ -1,0 +1,345 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= 安全认证与权限管理
+本章介绍 IvorySQL 的连接认证、密码存储、传输加密与权限管理。
+
+IvorySQL 沿用 PostgreSQL 的认证与权限机制：一条连接能不能建立，先由 `pg_hba.conf` 里匹配到的第一条记录决定用哪种认证方式；认证通过之后，再由角色与对象权限决定这条连接能看到什么、能改什么。
+
+下文命令与输出均取自本机实测（IvorySQL 5.6，PostgreSQL 18.6 内核，`initdb -m oracle` 初始化的单实例）。命令按默认端口书写：PostgreSQL 监听 `5432`、Oracle 兼容监听 `1521`；实测环境使用非默认端口，因此引用输出时把端口写成 `<port>`，其余字符逐字保留。
+
+== 认证方式概览
+
+=== pg_hba.conf 的五个字段
+`pg_hba.conf` 位于数据目录下，由 `initdb` 生成。`initdb` 默认写入的是 `trust` 规则，实测实例去掉注释后只有 6 行，前五行是：
+
+[source,text]
+----
+# TYPE  DATABASE        USER            ADDRESS                 METHOD
+local   all             all                                     trust
+host    all             all             127.0.0.1/32            trust
+host    all             all             ::1/128                 trust
+local   replication     all                                     trust
+host    replication     all             127.0.0.1/32            trust
+----
+
+五个字段的含义与实测取值：
+
+[cols="1,3,2"]
+|===
+| 字段 | 含义 | 实测取值
+
+| TYPE | 连接类型。`local` 是 Unix 域套接字；`host` 是 TCP/IP 连接（加密与否都算）；另有 `hostssl`、`hostnossl`、`hostgssenc`、`hostnogssenc` 用于限定加密方式 | `local`、`host`
+| DATABASE | 该规则适用于哪些数据库。`all` 不匹配 `replication`，复制连接必须单独写一条 | `all`、`replication`
+| USER | 该规则适用于哪些角色。除具体角色名外还可用 `all`，或以 `+` 前缀引用角色组 | `all`
+| ADDRESS | 客户端地址。可写 CIDR（`127.0.0.1/32`、`::1/128`），也可写 `samehost`、`samenet`；`local` 类型此列为空 | `127.0.0.1`、`::1`
+| METHOD | 认证方式。可取 `trust`、`reject`、`md5`、`password`、`scram-sha-256`、`gss`、`sspi`、`ident`、`peer`、`pam`、`oauth`、`ldap`、`cert` | `trust`
+|===
+
+`trust` 不校验密码，只适合本机调试。`password` 以明文发送密码，`md5` 与 `scram-sha-256` 发送的是加密凭据，对外服务时应使用后者。
+
+当前生效的规则可以用 `pg_hba_file_rules` 视图核对，它把文件解析成 11 列（`rule_number`、`file_name`、`line_number`、`type`、`database`、`user_name`、`address`、`netmask`、`auth_method`、`options`、`error`）：
+
+[source,sql]
+----
+SELECT line_number, type, database, user_name, address, auth_method
+FROM pg_hba_file_rules ORDER BY line_number;
+
+ line_number | type  |   database    | user_name |  address  | auth_method
+-------------+-------+---------------+-----------+-----------+-------------
+         117 | local | {all}         | {all}     |           | trust
+         119 | host  | {all}         | {all}     | 127.0.0.1 | trust
+         121 | host  | {all}         | {all}     | ::1       | trust
+         124 | local | {replication} | {all}     |           | trust
+         125 | host  | {replication} | {all}     | 127.0.0.1 | trust
+         126 | host  | {replication} | {all}     | ::1       | trust
+(6 rows)
+----
+
+`database` 与 `user_name` 是数组类型，所以显示成花括号包裹的形式。`error` 列在规则写错时才有内容，用 `SELECT * FROM pg_hba_file_rules WHERE error IS NOT NULL;` 可以一次定位写错的行。
+
+=== 改规则后只需重载
+实测在 `trust` 规则之前插入一条针对角色 `app_scram` 的 `scram-sha-256` 规则，再执行 `SELECT pg_reload_conf();`，视图立刻反映新规则，不需要重启实例：
+
+[source,text]
+----
+ line_number | type  |   database    |  user_name  |  address  |  auth_method
+-------------+-------+---------------+-------------+-----------+---------------
+         117 | local | {all}         | {all}       |           | trust
+         119 | host  | {all}         | {app_scram} | 127.0.0.1 | scram-sha-256
+         120 | host  | {all}         | {all}       | 127.0.0.1 | trust
+         122 | host  | {all}         | {all}       | ::1       | trust
+         125 | local | {replication} | {all}       |           | trust
+         126 | host  | {replication} | {all}       | 127.0.0.1 | trust
+         127 | host  | {replication} | {all}       | ::1       | trust
+(7 rows)
+----
+
+规则按文件顺序匹配、第一条匹配的记录生效，所以新规则必须排在 `trust` 规则之前，否则永远轮不到它。此时口令错误就连不上，口令正确才连得上：
+
+[source,text]
+----
+$ psql -h 127.0.0.1 -p <port> -U app_scram -d postgres
+psql: error: connection to server at "127.0.0.1", port <port> failed: FATAL:  password authentication failed for user "app_scram"
+
+$ PGPASSWORD='S3cret!' psql -h 127.0.0.1 -p <port> -U app_scram -d postgres -c "select current_user"
+ current_user
+--------------
+ app_scram
+(1 row)
+----
+
+== 密码与加密
+
+=== password_encryption 的取值
+`password_encryption` 决定设置或修改密码时使用哪种算法。实测默认值与可选值：
+
+[source,text]
+----
+SHOW password_encryption;
+ password_encryption
+---------------------
+ scram-sha-256
+(1 row)
+
+SELECT enumvals FROM pg_settings WHERE name = 'password_encryption';
+      enumvals
+---------------------
+ {md5,scram-sha-256}
+(1 row)
+----
+
+它只有 `md5` 与 `scram-sha-256` 两个取值，默认是 `scram-sha-256`。该参数是会话级的：在会话内 `SET password_encryption = 'md5';` 之后 `SHOW` 返回 `md5`，新开会话仍然是 `scram-sha-256`。
+
+=== 密码存成什么样
+同一条 `CREATE ROLE ... PASSWORD`，在不同设置下写入 `pg_authid` 的内容完全不同：
+
+[source,sql]
+----
+SET password_encryption = 'scram-sha-256';
+CREATE ROLE app_scram LOGIN PASSWORD 'S3cret!';
+SET password_encryption = 'md5';
+CREATE ROLE app_md5 LOGIN PASSWORD 'S3cret!';
+
+SET
+CREATE ROLE
+SET
+WARNING:  setting an MD5-encrypted password
+DETAIL:  MD5 password support is deprecated and will be removed in a future release of PostgreSQL.
+HINT:  Refer to the PostgreSQL documentation for details about migrating to another password type.
+CREATE ROLE
+
+SELECT rolname, left(rolpassword, 18) AS verifier_prefix, length(rolpassword) AS verifier_len
+FROM pg_authid WHERE rolname IN ('app_scram','app_md5') ORDER BY rolname;
+
+  rolname  |  verifier_prefix   | verifier_len
+-----------+--------------------+--------------
+ app_md5   | md5b7f02b609f580ea |           35
+ app_scram | SCRAM-SHA-256$4096 |          133
+(2 rows)
+----
+
+`md5` 把密码的 MD5 摘要直接存进 `pg_authid`，并在设置时发出弃用警告；`scram-sha-256` 存的是带迭代次数的 SCRAM 校验值。此后改变 `password_encryption` 不会重写已有角色的校验值——实测两个角色的前缀在参数切换后保持原样，只有之后新建或修改的密码才受当前设置影响。`pg_authid` 只有超级用户可读，普通排查改用 `pg_roles` 或 `\du`。
+
+== 传输加密
+
+TLS 由 `ssl` 系列参数控制，实测实例没有启用：
+
+[source,text]
+----
+SHOW ssl;
+ ssl
+-----
+ off
+(1 row)
+----
+
+`pg_settings` 中 `ssl` 前缀的参数共 16 个：`ssl`、`ssl_ca_file`、`ssl_cert_file`、`ssl_ciphers`、`ssl_crl_dir`、`ssl_crl_file`、`ssl_dh_params_file`、`ssl_groups`、`ssl_key_file`、`ssl_library`、`ssl_max_protocol_version`、`ssl_min_protocol_version`、`ssl_passphrase_command`、`ssl_passphrase_command_supports_reload`、`ssl_prefer_server_ciphers`、`ssl_tls13_ciphers`。实测取值包括：`ssl_cert_file` = `server.crt`、`ssl_key_file` = `server.key`、`ssl_ciphers` = `HIGH:MEDIUM:+3DES:!aNULL`、`ssl_min_protocol_version` = `TLSv1.2`、`ssl_groups` = `X25519:prime256v1`、`ssl_prefer_server_ciphers` = `on`、`ssl_library` = `OpenSSL`。需要说明的是，这些取值取决于构建是否链接 OpenSSL：未链接 OpenSSL 的构建中 `ssl_ciphers` 与 `ssl_groups` 显示 `none`、`ssl_library` 为空，参数集合也随之变化（本机另一种构建实测为 17 个，多出 `ssl_sni`）。
+
+本章实测环境未配置证书，因此这里不给出启用 TLS 的配置输出。判断一条连接是否已加密，看 `pg_stat_ssl` 即可——实测本机连接为 `ssl = f`，`version` 与 `cipher` 均为空：
+
+[source,sql]
+----
+SELECT ssl, version, cipher FROM pg_stat_ssl WHERE pid = pg_backend_pid();
+ ssl | version | cipher
+-----+---------+--------
+ f   |         |
+(1 row)
+----
+
+== 角色与权限模型
+
+=== 角色属性
+角色（ROLE）与用户（USER）在 IvorySQL 中是同一套对象，区别只在有没有 `LOGIN`。实测三个角色的属性：
+
+[source,sql]
+----
+SELECT rolname, rolsuper, rolcanlogin, rolcreatedb, rolcreaterole, rolbypassrls
+FROM pg_roles WHERE rolname LIKE 'app_%' ORDER BY rolname;
+
+   rolname   | rolsuper | rolcanlogin | rolcreatedb | rolcreaterole | rolbypassrls
+-------------+----------+-------------+-------------+---------------+--------------
+ app_md5     | f        | t           | f           | f             | f
+ app_nologin | f        | f           | f           | f             | f
+ app_scram   | f        | t           | f           | f             | f
+(3 rows)
+----
+
+没有 `LOGIN` 的角色无法建立连接，实测报错为：
+
+[source,text]
+----
+psql: error: connection to server at "127.0.0.1", port <port> failed: FATAL:  role "app_nologin" is not permitted to log in
+----
+
+=== 授权与回收
+对象级权限用 `GRANT` 与 `REVOKE` 管理，可用 `has_table_privilege` 之类的函数复核：
+
+[source,sql]
+----
+CREATE TABLE app_orders (id int PRIMARY KEY, amt numeric(10,2));
+INSERT INTO app_orders VALUES (1, 9.90);
+GRANT SELECT ON app_orders TO app_scram;
+SELECT has_table_privilege('app_scram','app_orders','SELECT') AS reader_can_select,
+       has_table_privilege('app_scram','app_orders','INSERT') AS reader_can_insert;
+
+CREATE TABLE
+INSERT 0 1
+GRANT
+ reader_can_select | reader_can_insert
+-------------------+-------------------
+ t                 | f
+(1 row)
+
+REVOKE SELECT ON app_orders FROM app_scram;
+SELECT has_table_privilege('app_scram','app_orders','SELECT') AS after_revoke_select;
+
+REVOKE
+ after_revoke_select
+---------------------
+ f
+(1 row)
+----
+
+此时再用该角色查询这张表，报错为：
+
+[source,text]
+----
+$ PGPASSWORD='S3cret!' psql -h 127.0.0.1 -p <port> -U app_scram -d postgres -c "select * from app_orders"
+ERROR:  permission denied for table app_orders
+----
+
+=== 默认权限与对象属主
+`ALTER DEFAULT PRIVILEGES` 只影响此后新建的对象。实测给 `app_scram` 授出 `public` 模式下新建表的 `SELECT` 后，`pg_default_acl` 中多出一条记录，随后新建的表自动带上该权限：
+
+[source,sql]
+----
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO app_scram;
+SELECT pg_get_userbyid(defaclrole) AS grantor, defaclobjtype, defaclacl
+FROM pg_default_acl ORDER BY 1,2;
+CREATE TABLE app_orders_new (id int);
+SELECT has_table_privilege('app_scram','app_orders_new','SELECT') AS inherited_default_grant;
+
+ALTER DEFAULT PRIVILEGES
+ grantor | defaclobjtype |     defaclacl
+---------+---------------+-------------------
+ ivy     | r             | {app_scram=r/ivy}
+(1 row)
+
+CREATE TABLE
+ inherited_default_grant
+-------------------------
+ t
+(1 row)
+----
+
+对象属主是另一个维度：属主对自己拥有的对象天然具备全部权限。实测 `app_orders` 的属主原本是 `ivy`，执行 `ALTER TABLE app_orders OWNER TO app_scram;` 后 `pg_class` 中的属主随之改变：
+
+[source,sql]
+----
+SELECT relname, pg_get_userbyid(relowner) AS owner FROM pg_class WHERE relname = 'app_orders';
+  relname   |   owner
+------------+-----------
+ app_orders | app_scram
+(1 row)
+----
+
+`public` 模式的默认 ACL 也值得核对——实测为 `pg_database_owner=UC/pg_database_owner` 与 `=U/pg_database_owner`，即普通角色对 `public` 模式只有 `USAGE`、没有 `CREATE`，实测 `has_schema_privilege('app_scram','public','CREATE')` 返回 `f`。
+
+== Oracle 兼容模式下的差异
+
+=== 兼容模式由所连的监听决定
+同一个实例同时监听两个端口，连哪个端口就进入哪种模式。实测：
+
+[source,text]
+----
+-- 连接 PostgreSQL 监听
+SHOW ivorysql.compatible_mode;
+ ivorysql.compatible_mode
+--------------------------
+ pg
+(1 row)
+
+-- 连接 Oracle 兼容监听（默认 1521）
+SHOW ivorysql.compatible_mode;
+ ivorysql.compatible_mode
+--------------------------
+ oracle
+(1 row)
+----
+
+两个监听由同一个 postmaster 提供（启动日志中同一进程分别侦听两个端口），因此数据目录、角色、密码与 `pg_hba.conf` 是共用的：实测同一条 `scram-sha-256` 规则对两个监听同时生效，口令错误时两个端口都报 `FATAL:  password authentication failed for user "app_scram"`。
+
+=== Oracle 风格 DDL 与建用户语句
+在 Oracle 兼容监听上可直接使用 Oracle 风格的类型与伪表：
+
+[source,sql]
+----
+CREATE TABLE ora_t (id NUMBER(10) PRIMARY KEY, name VARCHAR2(20));
+CREATE TABLE
+
+SELECT SYSDATE FROM dual;
+  sysdate
+------------
+ 2026-11-12
+(1 row)
+----
+
+同样的语句在 PostgreSQL 监听上直接报错：
+
+[source,text]
+----
+ERROR:  type "number" does not exist
+LINE 1: CREATE TABLE pg_t (id NUMBER(10) PRIMARY KEY, name VARCHAR2(...
+                              ^
+
+ERROR:  relation "dual" does not exist
+LINE 1: SELECT SYSDATE FROM dual
+                            ^
+----
+
+但兼容模式不改变角色管理语句。实测在两个监听上执行 Oracle 风格的 `CREATE USER ... IDENTIFIED BY`，报错完全相同：
+
+[source,text]
+----
+ERROR:  unrecognized role option "identified"
+LINE 1: CREATE USER ora_user IDENTIFIED BY 'Ora#2026'
+                             ^
+----
+
+也就是说，无论连哪个端口，建角色都要写 `CREATE ROLE 角色名 LOGIN PASSWORD '...'`，密码算法仍由 `password_encryption` 决定。
+
+== 权限排查清单
+
+按下面的顺序排查，多数「连不上」与「没权限」都能在一次会话内定位：
+
+. 规则是否写错：`SELECT * FROM pg_hba_file_rules WHERE error IS NOT NULL;`，返回 0 行说明文件语法正确（实测 0 行）。
+. 规则是否已生效：改完 `pg_hba.conf` 后执行 `SELECT pg_reload_conf();`，再查一次 `pg_hba_file_rules` 看行号与 `auth_method` 是否更新。
+. 连的是哪个监听：`SHOW ivorysql.compatible_mode;`，返回 `pg` 或 `oracle`，避免在错误的模式下排查语法问题。
+. 角色能不能登录：`SELECT rolname, rolsuper, rolcanlogin FROM pg_roles WHERE rolname = '角色名';`，`rolcanlogin` 为 `f` 时会报 `role ... is not permitted to log in`。
+. 口令算法是否匹配：`SHOW password_encryption;` 确认当前会话设置；必要时用超级用户查看 `pg_authid` 中校验值的前缀（`md5` 或 `SCRAM-SHA-256$`）。
+. 对象权限是否足够：`SELECT has_table_privilege('角色名','表名','SELECT');`，为 `f` 时查询会报 `permission denied for table ...`。
+. 新建对象是否继承权限：`SELECT * FROM pg_default_acl;`，确认 `ALTER DEFAULT PRIVILEGES` 的授权对象与模式正确。
+. 连接是否加密：`SELECT ssl, version, cipher FROM pg_stat_ssl WHERE pid = pg_backend_pid();`，`ssl` 为 `f` 表示当前连接没有走 TLS。
+. 当前有哪些客户端连着：`SELECT usename, client_addr, state FROM pg_stat_activity WHERE backend_type = 'client backend';`，实测返回 `ivy | 127.0.0.1 | active`。
