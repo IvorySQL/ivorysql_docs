@@ -74,6 +74,75 @@ In IvorySQL's Oracle compatibility mode, the pgvector extension can also work co
 [TIP]
 We suggest users to test using port 1521, using the command: psql -p 1521.
 
+=== Dual listening ports
+
+In an Oracle-mode cluster a single postmaster listens on two ports at once, and the port a client connects to decides which parser takes over the session:
+
+|====
+| Parameter | Default port | Parser used by connections on that port
+| `port` | 5432 | PostgreSQL parser (`ivorysql.compatible_mode` = `pg`)
+| `ivorysql.port` | 1521 | Oracle-compatible parser (`ivorysql.compatible_mode` = `oracle`)
+|====
+
+Both parameters have built-in defaults, so leaving them out of `postgresql.conf` still works. Connect with psql to each port and the difference shows up:
+
+[literal]
+----
+$ psql -h 127.0.0.1 -p 1521 -d postgres -c "select current_setting('ivorysql.compatible_mode'), current_setting('ivorysql.port'), current_setting('port')"
+ current_setting | current_setting | current_setting
+-----------------+-----------------+-----------------
+ oracle          | 1521            | 5432
+(1 row)
+
+$ psql -h 127.0.0.1 -p 5432 -d postgres -c "select current_setting('ivorysql.compatible_mode'), current_setting('ivorysql.port'), current_setting('port')"
+ current_setting | current_setting | current_setting
+-----------------+-----------------+-----------------
+ pg              | 1521            | 5432
+(1 row)
+----
+
+Same user, same database, same cluster: only the connection port changed, and the session is in a different compatibility mode. The mode is decided when the connection is established, from the local port on the server side; the client address, the user name and the database name have no say in it.
+
+[TIP]
+====
+To find out which mode the current session is in, read `current_setting('ivorysql.compatible_mode')`.
+
+Do not use `show port` or `show ivorysql.port` for this. Both print the very same values (5432 and 1521) on either port, because they describe the listeners, not the session.
+====
+
+`ivorysql.compatible_mode` can be changed within a session with `SET`, but that does not survive reconnecting — a new connection is classified by its port again. `ivorysql.database_mode`, by contrast, is a property of the cluster: written into `pg_control` at `initdb` time, unrelated to the port you connect to.
+
+[WARNING]
+====
+The two listening ports must differ. The defaults, 5432 and 1521, are already correct and need no extra configuration.
+
+Do not start the server with `pg_ctl -o "-p 1521"`. The `-o` option overrides `port` only; `ivorysql.port` keeps its value, the two 1521 assignments collide, and the server will not start — the same conflict as setting `port` to 1521.
+
+Nor set `port = 1521` in `postgresql.conf`:
+
+[literal]
+----
+LOG:  could not bind IPv4 address "127.0.0.1": Address already in use
+HINT:  Is another postmaster already running on port 1521? If not, wait a few seconds and retry.
+WARNING:  could not create listen socket for "localhost"
+FATAL:  could not create any Oracle TCP/IP sockets
+----
+
+`Address already in use` reads like another process owns the port, but the process holding it is this cluster's own Oracle listener, and `ss` shows no second postmaster. Compare `port` with `ivorysql.port` in the configuration before hunting for a port conflict.
+====
+
+If a different port is really needed, change only `ivorysql.port` and keep the two values apart:
+
+[literal]
+----
+port = 5432
+ivorysql.port = 1522
+----
+
+After a restart, port 1522 gives you `oracle` and port 5432 gives you `pg`.
+
+The second listener exists only on Oracle-mode clusters: the postmaster creates the Oracle listening socket only when the cluster was created with `initdb --dbmode=oracle` (in the source, the `DB_ORACLE == database_mode` check). A PostgreSQL-mode cluster listens on `port` alone.
+
 === Data Type
 
 [literal]
