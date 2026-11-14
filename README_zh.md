@@ -115,7 +115,7 @@ antora -v
 
     然后耐心等待，当成功运行结束后，你就可以到../demo 中查看自己生成的网页了。
 
-检查之后，你就可以开始提交[PR](https://github.com/IvorySQL/ivorysql_docs/blob/v5.0/CN/modules/ROOT/pages/v5.0/32.adoc)，感谢您对社区的贡献^ _ ^，我们会在审核过后，考虑是否更新网站。
+检查之后，你就可以开始提交[PR](./CN/modules/ROOT/pages/8.1.adoc)，感谢您对社区的贡献^ _ ^，我们会在审核过后，考虑是否更新网站。
 
 ## Autobuild
 
