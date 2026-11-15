@@ -57,6 +57,7 @@
 ** xref:master/oracle_compatibility/compat_dbms_utility.adoc[DBMS_UTILITY Package]
 ** xref:master/oracle_compatibility/compat_dbms_scheduler.adoc[DBMS_SCHEDULER Package]
 ** xref:master/oracle_compatibility/compat_dbms_transaction.adoc[DBMS_TRANSACTION Package]
+** xref:master/oracle_compatibility/compat_dbms_session.adoc[DBMS_SESSION Package]
 ** xref:master/oracle_compatibility/compat_ascii_function.adoc[ASCII Function]
 ** xref:master/oracle_compatibility/compat_listagg_function.adoc[LISTAGG Aggregate Function]
 ** xref:master/oracle_compatibility/compat_rawtohex_function.adoc[RAWTOHEX Function]
