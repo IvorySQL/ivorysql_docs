@@ -5,6 +5,7 @@
 ** xref:master/getting-started/quick_start.adoc[快速开始]
 * 安装部署
 ** xref:master/installation_guide.adoc[安装指南]
+** xref:master/installation_wsl2.adoc[Windows(WSL2)源码编译]
 ** xref:master/cluster_setup.adoc[集群搭建]
 * Oracle兼容功能
 ** xref:master/oracle_compatibility/compat_case_conversion.adoc[大小写转换]

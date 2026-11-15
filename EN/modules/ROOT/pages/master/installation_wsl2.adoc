@@ -1,0 +1,195 @@
+
+:sectnums:
+:sectnumlevels: 5
+
+= **Source Build and Verification on Windows(WSL2)**
+
+== When to Use
+
+The packages IvorySQL publishes target Linux distributions. Every installation method described in the installation guide (yum, rpm, deb and source) has to run on Linux. On a Windows development machine, the recommended path is to install Ubuntu through WSL2, build, debug and run the regression tests inside the Linux subsystem, and let Windows-side clients reach the instance through `localhost`.
+
+This page walks through the whole flow. All commands were executed on Windows 11 + WSL2 (Ubuntu 24.04) against the `master` branch of IvorySQL.
+
+== Prerequisites
+
+- Windows 10 version 2004 or later, or Windows 11
+- Virtualization enabled in BIOS (Intel VT-x or AMD-V)
+- At least 8GB of RAM and 10GB of free disk space
+
+== Install WSL2 and Ubuntu
+
+Run the following in an elevated PowerShell:
+
+[source,powershell]
+----
+wsl --install -d Ubuntu-24.04
+----
+
+Reboot the host when the installation finishes. The first start of Ubuntu asks for a Linux user name and password.
+
+Confirm the distribution runs on WSL 2:
+
+[source,bash]
+----
+$ wsl -l -v
+  NAME            STATE           VERSION
+* Ubuntu-24.04    Running         2
+----
+
+[TIP]
+====
+If the distribution fails to start with `WslRegisterDistribution failed with error 0x80370102`, virtualization is disabled in the firmware. Enable VT-x or AMD-V and retry. When the `wsl --install` download stalls, use `wsl --install -d Ubuntu-24.04 --web-download` instead.
+====
+
+== Install Build Dependencies
+
+Inside Ubuntu:
+
+[source,bash]
+----
+sudo apt update
+sudo apt install -y build-essential bison flex git pkg-config gettext \
+  libreadline-dev zlib1g-dev libssl-dev libxml2-dev libxslt1-dev \
+  libicu-dev libperl-dev python3-dev tcl-dev libldap2-dev uuid-dev \
+  libpam0g-dev libselinux1-dev
+----
+
+== Get the Source
+
+[source,bash]
+----
+git clone --depth 1 https://github.com/IvorySQL/IvorySQL.git
+cd IvorySQL
+----
+
+[CAUTION]
+====
+Keep the checkout in the Linux filesystem, for example `~/IvorySQL`, rather than under `/mnt/c`. Compiling across the Windows mount is markedly slower and some scripts fail on the permission differences.
+====
+
+== Build and Install
+
+[source,bash]
+----
+./configure --prefix=$HOME/ivory --with-uuid=e2fs --enable-debug
+make -j$(nproc)
+make install
+----
+
+|====
+| Option | Description
+| `--prefix` | Installation directory. Using a directory under `$HOME` avoids `sudo make install` and makes removal a single `rm -rf`
+| `--with-uuid` | Required. Accepts `bsd`, `e2fs` or `ossp`. Without it `make` stops in `contrib/uuid-ossp` with `#error "please use configure's --with-uuid switch to select a UUID library"`
+| `--enable-debug` | Builds binaries with debug symbols for gdb
+|====
+
+[NOTE]
+====
+`make -j$(nproc)` saturates every CPU core. WSL2 uses at most half of the host memory by default; on a memory-constrained machine use `make -j2` so the compiler is not killed by the OOM handler.
+====
+
+== Initialize the Cluster
+
+[source,bash]
+----
+export PATH=$HOME/ivory/bin:$PATH
+
+initdb -D $HOME/ivory/data
+pg_ctl -D $HOME/ivory/data -l $HOME/ivory/log.txt start
+----
+
+`initdb` creates an Oracle-compatible cluster by default, which is what `initdb -m oracle` selects explicitly. For a PostgreSQL-mode cluster use `initdb -D $HOME/ivory/data -m pg`.
+
+[CAUTION]
+====
+`initdb` refuses to run as root. Use the regular user created when the Ubuntu distribution was set up, without `sudo`.
+====
+
+== Connect and Verify
+
+Oracle-compatible mode listens on port 1521:
+
+[source,bash]
+----
+$ psql -d ivorysql -p 1521
+psql (18.6)
+Type "help" for help.
+
+ivorysql=#
+----
+
+Check the Oracle compatibility features:
+
+[source,sql]
+----
+SELECT version();
+SHOW ivorysql.compatible_mode;
+SELECT 1 FROM dual;
+SELECT sys_context('USERENV', 'DB_NAME');
+----
+
+One cluster listens on both ports, and the port a session connects to decides its compatibility mode:
+
+[cols="1,2,2"]
+|====
+| Port | Mode | compatible_mode
+| 1521 | Oracle compatible | oracle
+| 5432 | PostgreSQL | pg
+|====
+
+Connecting on 5432 shows the other mode for the very same statement:
+
+[source,bash]
+----
+$ psql -d ivorysql -p 5432
+ivorysql=# SHOW ivorysql.compatible_mode;
+ pg
+----
+
+== Connect from Windows
+
+WSL2 forwards local ports by default, so a Windows-side `psql` or GUI client can connect to `localhost` directly:
+
+[source,powershell]
+----
+psql -h 127.0.0.1 -p 1521 -U ivorysql -d ivorysql
+----
+
+[NOTE]
+====
+This relies on `listen_addresses` in `ivorysql.conf` and on the rules in `pg_hba.conf`. If the connection is refused, check the listening address first and then whether `pg_hba.conf` accepts connections from 127.0.0.1.
+====
+
+== Common Failures
+
+=== make fails in contrib/uuid-ossp
+
+[source,text]
+----
+error: #error "please use configure's --with-uuid switch to select a UUID library"
+----
+
+`configure` ran without a UUID library, so `with_uuid=no` and the module is skipped. Install `uuid-dev`, re-run `./configure --with-uuid=e2fs` and rebuild.
+
+=== initdb: cannot be run as root
+
+`initdb` refuses to run as a superuser. Run it as a regular user, or create a non-root user inside the container before initializing.
+
+=== Port 1521 already in use
+
+An Oracle client installed on Windows or inside WSL may already hold 1521. Change `ivorysql.port` in `ivorysql.conf`, or stop the process that holds the port and restart the instance.
+
+== Clean Up
+
+[source,bash]
+----
+pg_ctl -D $HOME/ivory/data stop
+rm -rf $HOME/IvorySQL $HOME/ivory
+----
+
+Remove the distribution:
+
+[source,powershell]
+----
+wsl --unregister Ubuntu-24.04
+----

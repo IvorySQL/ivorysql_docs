@@ -5,6 +5,7 @@
 ** xref:master/getting-started/quick_start.adoc[Quick Start]
 * Deploy
 ** xref:master/installation_guide.adoc[Installation]
+** xref:master/installation_wsl2.adoc[Source build on Windows(WSL2)]
 ** xref:master/cluster_setup.adoc[Cluster]
 * Oracle Compatibility
 ** xref:master/oracle_compatibility/compat_case_conversion.adoc[Case conversion]
