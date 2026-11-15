@@ -8,7 +8,7 @@
 
 The packages IvorySQL publishes target Linux distributions. Every installation method described in the installation guide (yum, rpm, deb and source) has to run on Linux. On a Windows development machine, the recommended path is to install Ubuntu through WSL2, build, debug and run the regression tests inside the Linux subsystem, and let Windows-side clients reach the instance through `localhost`.
 
-This page walks through the whole flow. All commands were executed on Windows 11 + WSL2 (Ubuntu 24.04) against the `master` branch of IvorySQL.
+This page walks through the whole flow. All commands were executed on Windows 11 + WSL2 (Ubuntu 24.04) against the `master` branch of IvorySQL (PostgreSQL 19beta1, IvorySQL 5beta1); the outputs are copied from those runs.
 
 == Prerequisites
 
@@ -112,20 +112,43 @@ Oracle-compatible mode listens on port 1521:
 [source,bash]
 ----
 $ psql -d ivorysql -p 1521
-psql (18.6)
+psql (19beta1)
 Type "help" for help.
 
-ivorysql=#
+[ORA]ivorysql=#
 ----
+
+[NOTE]
+====
+In Oracle-compatible mode the psql prompt carries an `[ORA]` prefix, which distinguishes it from a PostgreSQL-mode prompt.
+====
 
 Check the Oracle compatibility features:
 
 [source,sql]
 ----
-SELECT version();
-SHOW ivorysql.compatible_mode;
-SELECT 1 FROM dual;
-SELECT sys_context('USERENV', 'DB_NAME');
+[ORA]ivorysql=# SELECT version();
+ PostgreSQL 19beta1 (IvorySQL 5beta1) on x86_64-pc-linux-gnu, compiled by gcc
+ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
+(1 row)
+
+[ORA]ivorysql=# SHOW ivorysql.compatible_mode;
+ ivorysql.compatible_mode
+--------------------------
+ oracle
+(1 row)
+
+[ORA]ivorysql=# SELECT 1 FROM dual;
+ ?column?
+----------
+        1
+(1 row)
+
+[ORA]ivorysql=# SELECT sys_context('USERENV','DB_NAME');
+ sys_context
+-------------
+ ivorysql
+(1 row)
 ----
 
 One cluster listens on both ports, and the port a session connects to decides its compatibility mode:
@@ -142,9 +165,20 @@ Connecting on 5432 shows the other mode for the very same statement:
 [source,bash]
 ----
 $ psql -d ivorysql -p 5432
+psql (19beta1)
+Type "help" for help.
+
 ivorysql=# SHOW ivorysql.compatible_mode;
+ ivorysql.compatible_mode
+--------------------------
  pg
+(1 row)
 ----
+
+[NOTE]
+====
+`SHOW` takes the same argument and returns the same shape in both modes; only the value differs. Oracle-only objects such as `dual` and `sys_context` are available only in a session opened on port 1521.
+====
 
 == Connect from Windows
 

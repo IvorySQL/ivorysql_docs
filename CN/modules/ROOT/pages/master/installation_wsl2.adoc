@@ -8,7 +8,7 @@
 
 IvorySQL 官方发布的安装包面向 Linux 发行版，安装指南中的 yum、rpm、deb 与源码安装方式均需要在 Linux 环境执行。开发环境为 Windows 时，推荐使用 WSL2 安装 Ubuntu，在 Linux 子系统中完成源码编译、调试和回归测试；Windows 侧的客户端通过 `localhost` 访问运行在 WSL2 中的实例。
 
-本文覆盖从零到可用的完整流程。文中命令已在 Windows 11 + WSL2(Ubuntu 24.04) + IvorySQL master 分支上执行验证。
+本文覆盖从零到可用的完整流程。文中命令已在 Windows 11 + WSL2(Ubuntu 24.04) + IvorySQL master 分支（PostgreSQL 19beta1、IvorySQL 5beta1）上执行验证，输出均取自实际运行结果。
 
 == 前置条件
 
@@ -114,20 +114,43 @@ Oracle 兼容模式监听 1521 端口：
 [source,bash]
 ----
 $ psql -d ivorysql -p 1521
-psql (18.6)
+psql (19beta1)
 Type "help" for help.
 
-ivorysql=#
+[ORA]ivorysql=#
 ----
+
+[NOTE]
+====
+Oracle 兼容模式下 psql 提示符带有 `[ORA]` 前缀，与 PostgreSQL 模式的提示符区分。
+====
 
 验证 Oracle 兼容特性：
 
 [source,sql]
 ----
-SELECT version();
-SHOW ivorysql.compatible_mode;
-SELECT 1 FROM dual;
-SELECT sys_context('USERENV', 'DB_NAME');
+[ORA]ivorysql=# SELECT version();
+ PostgreSQL 19beta1 (IvorySQL 5beta1) on x86_64-pc-linux-gnu, compiled by gcc
+ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit
+(1 row)
+
+[ORA]ivorysql=# SHOW ivorysql.compatible_mode;
+ ivorysql.compatible_mode
+--------------------------
+ oracle
+(1 row)
+
+[ORA]ivorysql=# SELECT 1 FROM dual;
+ ?column?
+----------
+        1
+(1 row)
+
+[ORA]ivorysql=# SELECT sys_context('USERENV','DB_NAME');
+ sys_context
+-------------
+ ivorysql
+(1 row)
 ----
 
 同一个集群同时监听两个端口，连接端口决定会话的兼容模式：
@@ -144,9 +167,20 @@ SELECT sys_context('USERENV', 'DB_NAME');
 [source,bash]
 ----
 $ psql -d ivorysql -p 5432
+psql (19beta1)
+Type "help" for help.
+
 ivorysql=# SHOW ivorysql.compatible_mode;
+ ivorysql.compatible_mode
+--------------------------
  pg
+(1 row)
 ----
+
+[NOTE]
+====
+`SHOW` 的参数名与返回值在两种模式下一致，只有取值不同；`dual` 表、`sys_context` 等 Oracle 专有对象只在 1521 端口的会话中可用。
+====
 
 == 从 Windows 连接
 
