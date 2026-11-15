@@ -1,0 +1,329 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= DBMS_SESSION Package
+
+== Purpose
+
+This document describes the application-context subset of the Oracle-compatible
+`DBMS_SESSION` package provided by IvorySQL's built-in `ivorysql_ora` extension.
+The package stores session-scoped `(namespace, attribute, value)` entries that can be
+read back with `SYS_CONTEXT` and used to drive row-level security policies.
+
+The package is installed automatically when an IvorySQL cluster is initialized in
+Oracle compatibility mode; no additional `CREATE EXTENSION` step is required.
+
+== Functional Description
+
+* Context values are kept in a per-backend hash table. They are visible only to the
+  session that created them and disappear when the session ends.
+* Namespace and attribute names are case-insensitive. They are folded to upper case
+  when stored, so a value set with `SET_CONTEXT('app', 'usr', ...)` can be read with
+  `SYS_CONTEXT('APP', 'USR')`.
+* A namespace and an attribute may each be up to 255 bytes long; a value may be up to
+  4000 bytes. Longer namespace/attribute names and values are rejected with an error.
+* Setting an attribute that already exists overwrites its previous value. Setting a
+  `NULL` value stores the attribute with a `NULL` value; it does not remove the
+  attribute.
+* Reading an unknown namespace or attribute returns `NULL`.
+* `SYS_CONTEXT` reads the session context store for every namespace other than the
+  built-in `USERENV` and `SYS_SESSION_ROLES` namespaces.
+* `DISCARD ALL` and `DISCARD PACKAGES` clear all session context values, so a pooled
+  connection does not leak one client's context to the next client.
+
+== Supported Interfaces
+
+[cols="3,5"]
+|===
+|Interface |Description
+
+|`DBMS_SESSION.SET_CONTEXT(namespace, attribute, value)`
+|Stores or overwrites one attribute value in the current session.
+
+|`DBMS_SESSION.CLEAR_CONTEXT(namespace [, attribute])`
+|Removes one attribute. When `attribute` is omitted, removes every attribute of the
+namespace.
+
+|`DBMS_SESSION.CLEAR_ALL_CONTEXT(namespace)`
+|Removes every attribute of the namespace.
+
+|`DBMS_SESSION.RESET_PACKAGE`
+|Resets all PL/iSQL package state in the session so that package initialization runs
+again on the next access. It does not clear application-context values.
+
+|`sys.dbms_session_list_context()`
+|Set-returning function that lists all context entries of the current session. It
+returns one row per entry with the columns `namespace`, `attribute`, and `value`.
+|===
+
+== Syntax
+
+[source,sql]
+----
+DBMS_SESSION.SET_CONTEXT(namespace VARCHAR2, attribute VARCHAR2, value VARCHAR2);
+
+DBMS_SESSION.CLEAR_CONTEXT(namespace VARCHAR2, attribute VARCHAR2 DEFAULT NULL);
+
+DBMS_SESSION.CLEAR_ALL_CONTEXT(namespace VARCHAR2);
+
+DBMS_SESSION.RESET_PACKAGE;
+
+SELECT * FROM sys.dbms_session_list_context();
+----
+
+[cols="1,3"]
+|===
+|Parameter |Description
+
+|`namespace`
+|Context namespace. Maximum 255 bytes; must not be `NULL`.
+
+|`attribute`
+|Attribute name inside the namespace. Maximum 255 bytes. For `SET_CONTEXT` it must not
+be `NULL`; for `CLEAR_CONTEXT` a `NULL` (or omitted) value clears the whole namespace.
+
+|`value`
+|Attribute value. Maximum 4000 bytes. A `NULL` value is stored as `NULL`.
+|===
+
+== Examples
+
+=== Store and read a value
+
+[source,sql]
+----
+CALL dbms_session.set_context('app_ctx', 'user_id', '42');
+CALL dbms_session.set_context('app_ctx', 'role', 'manager');
+
+SELECT sys_context('app_ctx', 'user_id') AS user_id,
+       sys_context('app_ctx', 'role')    AS role;
+----
+
+Result:
+
+[source]
+----
+ user_id |  role
+---------+---------
+ 42      | manager
+(1 row)
+----
+
+Setting the same attribute again overwrites the previous value:
+
+[source,sql]
+----
+CALL dbms_session.set_context('app_ctx', 'user_id', '99');
+SELECT sys_context('app_ctx', 'user_id') AS user_id;
+----
+
+[source]
+----
+ user_id
+---------
+ 99
+(1 row)
+----
+
+=== Case-insensitive names
+
+[source,sql]
+----
+CALL dbms_session.set_context('app_ctx', 'mixedAttr', 'mval');
+
+SELECT sys_context('APP_CTX', 'MIXEDATTR') AS upper_read,
+       sys_context('app_ctx', 'mixedattr') AS lower_read,
+       sys_context('App_Ctx', 'MixedAttr') AS mixed_read;
+----
+
+All three columns return `mval`. An overwrite or a clear operation that uses a
+different case reaches the same entry.
+
+=== Unknown names and NULL values
+
+[source,sql]
+----
+-- Unknown attribute or namespace: NULL
+SELECT sys_context('app_ctx', 'missing') IS NULL AS missing_is_null;
+SELECT sys_context('no_such_ns', 'x')    IS NULL AS ns_is_null;
+
+-- An explicit NULL value is stored and reads back as NULL
+CALL dbms_session.set_context('app_ctx', 'nullable', NULL);
+SELECT sys_context('app_ctx', 'nullable') IS NULL AS value_is_null;
+----
+
+=== Clear attributes and namespaces
+
+[source,sql]
+----
+-- Clear one attribute
+CALL dbms_session.clear_context('app_ctx', 'role');
+SELECT sys_context('app_ctx', 'role') IS NULL AS role_cleared;
+
+-- Clear the whole namespace by omitting the attribute
+CALL dbms_session.clear_context('app_ctx');
+SELECT sys_context('app_ctx', 'user_id') IS NULL AS app_ctx_cleared;
+
+-- Equivalent form: CLEAR_ALL_CONTEXT
+CALL dbms_session.set_context('other_ns', 'k1', 'v1');
+CALL dbms_session.clear_all_context('other_ns');
+SELECT sys_context('other_ns', 'k1') IS NULL AS other_ns_cleared;
+----
+
+=== List all context entries
+
+[source,sql]
+----
+CALL dbms_session.set_context('app_ctx', 'user_id', '99');
+CALL dbms_session.set_context('app_ctx', 'role', 'manager');
+CALL dbms_session.set_context('other_ns', 'k1', 'v1');
+
+SELECT * FROM sys.dbms_session_list_context()
+ORDER BY namespace, attribute;
+----
+
+[source]
+----
+ namespace | attribute |  value
+-----------+-----------+---------
+ APP_CTX   | ROLE      | manager
+ APP_CTX   | USER_ID   | 99
+ OTHER_NS  | K1        | v1
+(3 rows)
+----
+
+Note that the stored names are upper-cased, and that the output order of the function
+itself is unspecified; add `ORDER BY` when a deterministic order is required.
+
+=== Drive a row-level security policy
+
+Application context is commonly used to pass the current application user to a
+row-level security policy. Queries must run as a role that does not own the table,
+because table owners and superusers bypass row-level security.
+
+[source,sql]
+----
+CREATE TABLE docs (id int, owner text, body text);
+INSERT INTO docs VALUES (1, 'alice', 'a-doc'), (2, 'bob', 'b-doc');
+
+ALTER TABLE docs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY p_owner ON docs USING (owner = sys_context('app', 'usr'));
+
+CREATE ROLE dbms_sess_rls NOSUPERUSER;
+GRANT SELECT ON docs TO dbms_sess_rls;
+
+CALL dbms_session.set_context('app', 'usr', 'alice');
+SET ROLE dbms_sess_rls;
+SELECT * FROM docs ORDER BY id;      -- only alice's row
+RESET ROLE;
+
+CALL dbms_session.set_context('app', 'usr', 'bob');
+SET ROLE dbms_sess_rls;
+SELECT * FROM docs ORDER BY id;      -- only bob's row
+RESET ROLE;
+
+-- After the context is cleared the predicate is NULL and no row is visible
+CALL dbms_session.clear_context('app');
+SET ROLE dbms_sess_rls;
+SELECT * FROM docs ORDER BY id;      -- 0 rows
+RESET ROLE;
+
+DROP TABLE docs;
+DROP ROLE dbms_sess_rls;
+----
+
+=== Reset PL/iSQL package state
+
+`RESET_PACKAGE` resets package state, but leaves application-context values intact:
+
+[source,sql]
+----
+CREATE OR REPLACE PACKAGE rp_pkg IS
+    g_n NUMBER := 0;
+    FUNCTION get_n RETURN NUMBER;
+    FUNCTION set_n(n NUMBER) RETURN NUMBER;
+END rp_pkg;
+/
+
+CREATE OR REPLACE PACKAGE BODY rp_pkg IS
+    FUNCTION get_n RETURN NUMBER AS
+    BEGIN
+        RETURN g_n;
+    END;
+    FUNCTION set_n(n NUMBER) RETURN NUMBER AS
+    BEGIN
+        g_n := n;
+        RETURN n;
+    END;
+END rp_pkg;
+/
+
+SELECT rp_pkg.set_n(42);
+SELECT rp_pkg.get_n;          -- 42
+
+CALL dbms_session.reset_package();
+SELECT rp_pkg.get_n;          -- 0: package initialization ran again
+
+CALL dbms_session.set_context('rp_ns', 'key', 'preserved');
+CALL dbms_session.reset_package();
+SELECT sys_context('rp_ns', 'key') AS ctx_after_reset;  -- preserved
+
+DROP PACKAGE rp_pkg;
+----
+
+=== Clear context when a connection is reused
+
+[source,sql]
+----
+CALL dbms_session.set_context('app', 'usr', 'carol');
+SELECT sys_context('app', 'usr') AS before_discard;   -- carol
+
+DISCARD ALL;
+
+SELECT sys_context('app', 'usr') IS NULL AS after_discard;  -- t
+----
+
+== Behavioral Differences from Oracle
+
+[cols="1,2,2"]
+|===
+|Scenario |Oracle DBMS_SESSION |IvorySQL DBMS_SESSION
+
+|Name length
+|Namespace and attribute are limited to 128 bytes
+|Up to 255 bytes
+
+|Value length
+|Up to 4000 bytes
+|Up to 4000 bytes
+
+|Case handling
+|Names are case-insensitive
+|Names are case-insensitive and are stored in upper case
+
+|`LIST_CONTEXT`
+|Package procedure with an `OUT` collection parameter
+|Not exposed as a package procedure. Use the set-returning function
+`sys.dbms_session_list_context()` instead
+
+|`DISCARD ALL` / `DISCARD PACKAGES`
+|Not applicable
+|Clears all session context values
+
+|`RESET_PACKAGE`
+|Resets package state
+|Resets PL/iSQL package state; application-context values are preserved
+|===
+
+== Notes and Limitations
+
+* The context store is session-local. Values set in one session are never visible in
+  another session, even when both sessions use the same namespace and attribute names.
+* `SET_CONTEXT` rejects a `NULL` namespace or attribute, and rejects names of 256 bytes
+  or more and values longer than 4000 bytes.
+* Because `SYS_CONTEXT` is evaluated when a query runs, changing a context value takes
+  effect for the next query in the same session.
+* For connection pools, run `DISCARD ALL` (or `DISCARD PACKAGES`) before handing a
+  connection to another client.

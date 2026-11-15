@@ -57,6 +57,7 @@
 ** xref:master/oracle_compatibility/compat_dbms_utility.adoc[DBMS_UTILITY包]
 ** xref:master/oracle_compatibility/compat_dbms_scheduler.adoc[DBMS_SCHEDULER包]
 ** xref:master/oracle_compatibility/compat_dbms_transaction.adoc[DBMS_TRANSACTION包]
+** xref:master/oracle_compatibility/compat_dbms_session.adoc[DBMS_SESSION包]
 ** xref:master/oracle_compatibility/compat_ascii_function.adoc[ASCII函数]
 ** xref:master/oracle_compatibility/compat_listagg_function.adoc[LISTAGG聚合函数]
 ** xref:master/oracle_compatibility/compat_rawtohex_function.adoc[RAW转十六进制函数]

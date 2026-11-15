@@ -1,0 +1,324 @@
+:sectnums:
+:sectnumlevels: 5
+
+:imagesdir: ./_images
+
+= DBMS_SESSION 包
+
+== 目的
+
+本文档介绍 IvorySQL 内置 `ivorysql_ora` 扩展所提供的 Oracle 兼容 `DBMS_SESSION`
+包的应用上下文（application context）子集。该包按会话保存 `(命名空间, 属性, 值)`
+三元组，可通过 `SYS_CONTEXT` 读取，并可用于驱动行级安全策略。
+
+在 Oracle 兼容模式下初始化 IvorySQL 集群时，该包会自动安装，无需额外执行
+`CREATE EXTENSION`。
+
+== 功能说明
+
+* 上下文值保存在每个后端进程（会话）独立的哈希表中，仅对创建它的会话可见，
+  会话结束时自动消失。
+* 命名空间和属性名不区分大小写。存储时会转换为大写，因此使用
+  `SET_CONTEXT('app', 'usr', ...)` 设置的值可以通过
+  `SYS_CONTEXT('APP', 'USR')` 读取。
+* 命名空间和属性名的最大长度均为 255 字节，值的最大长度为 4000 字节；超长的
+  名称或值会报错。
+* 对已存在的属性再次执行 `SET_CONTEXT` 会覆盖旧值。将值设置为 `NULL` 时，属性
+  仍然存在，只是其值为 `NULL`，并不会删除该属性。
+* 读取不存在的命名空间或属性时返回 `NULL`。
+* 除内置的 `USERENV` 和 `SYS_SESSION_ROLES` 命名空间外，`SYS_CONTEXT` 会从会话
+  上下文存储中读取值。
+* `DISCARD ALL` 和 `DISCARD PACKAGES` 会清空所有会话上下文值，因此连接池复用
+  连接时不会把上一个客户端的上下文泄漏给下一个客户端。
+
+== 支持的接口
+
+[cols="3,5"]
+|===
+|接口 |说明
+
+|`DBMS_SESSION.SET_CONTEXT(namespace, attribute, value)`
+|在当前会话中保存或覆盖一个属性值。
+
+|`DBMS_SESSION.CLEAR_CONTEXT(namespace [, attribute])`
+|删除一个属性。省略 `attribute` 时，删除该命名空间下的所有属性。
+
+|`DBMS_SESSION.CLEAR_ALL_CONTEXT(namespace)`
+|删除该命名空间下的所有属性。
+
+|`DBMS_SESSION.RESET_PACKAGE`
+|重置当前会话中所有 PL/iSQL 包的状态，使包在下次访问时重新执行初始化。
+不会清除应用上下文值。
+
+|`sys.dbms_session_list_context()`
+|集合返回函数，列出当前会话的所有上下文条目。每个条目返回一行，包含
+`namespace`、`attribute` 和 `value` 三列。
+|===
+
+== 语法
+
+[source,sql]
+----
+DBMS_SESSION.SET_CONTEXT(namespace VARCHAR2, attribute VARCHAR2, value VARCHAR2);
+
+DBMS_SESSION.CLEAR_CONTEXT(namespace VARCHAR2, attribute VARCHAR2 DEFAULT NULL);
+
+DBMS_SESSION.CLEAR_ALL_CONTEXT(namespace VARCHAR2);
+
+DBMS_SESSION.RESET_PACKAGE;
+
+SELECT * FROM sys.dbms_session_list_context();
+----
+
+[cols="1,3"]
+|===
+|参数 |说明
+
+|`namespace`
+|上下文命名空间。最大 255 字节，不能为 `NULL`。
+
+|`attribute`
+|命名空间内的属性名。最大 255 字节。`SET_CONTEXT` 中不能为 `NULL`；
+`CLEAR_CONTEXT` 中为 `NULL`（或省略）时表示清空整个命名空间。
+
+|`value`
+|属性值。最大 4000 字节。值为 `NULL` 时按 `NULL` 保存。
+|===
+
+== 示例
+
+=== 保存并读取值
+
+[source,sql]
+----
+CALL dbms_session.set_context('app_ctx', 'user_id', '42');
+CALL dbms_session.set_context('app_ctx', 'role', 'manager');
+
+SELECT sys_context('app_ctx', 'user_id') AS user_id,
+       sys_context('app_ctx', 'role')    AS role;
+----
+
+结果：
+
+[source]
+----
+ user_id |  role
+---------+---------
+ 42      | manager
+(1 row)
+----
+
+再次设置同一属性会覆盖旧值：
+
+[source,sql]
+----
+CALL dbms_session.set_context('app_ctx', 'user_id', '99');
+SELECT sys_context('app_ctx', 'user_id') AS user_id;
+----
+
+[source]
+----
+ user_id
+---------
+ 99
+(1 row)
+----
+
+=== 名称不区分大小写
+
+[source,sql]
+----
+CALL dbms_session.set_context('app_ctx', 'mixedAttr', 'mval');
+
+SELECT sys_context('APP_CTX', 'MIXEDATTR') AS upper_read,
+       sys_context('app_ctx', 'mixedattr') AS lower_read,
+       sys_context('App_Ctx', 'MixedAttr') AS mixed_read;
+----
+
+三列均返回 `mval`。使用不同大小写进行覆盖或清除，操作的仍是同一个条目。
+
+=== 未知名称与 NULL 值
+
+[source,sql]
+----
+-- 未知属性或命名空间：返回 NULL
+SELECT sys_context('app_ctx', 'missing') IS NULL AS missing_is_null;
+SELECT sys_context('no_such_ns', 'x')    IS NULL AS ns_is_null;
+
+-- 显式设置为 NULL 的值会被保存，读取时返回 NULL
+CALL dbms_session.set_context('app_ctx', 'nullable', NULL);
+SELECT sys_context('app_ctx', 'nullable') IS NULL AS value_is_null;
+----
+
+=== 清除属性与命名空间
+
+[source,sql]
+----
+-- 清除单个属性
+CALL dbms_session.clear_context('app_ctx', 'role');
+SELECT sys_context('app_ctx', 'role') IS NULL AS role_cleared;
+
+-- 省略属性名，清除整个命名空间
+CALL dbms_session.clear_context('app_ctx');
+SELECT sys_context('app_ctx', 'user_id') IS NULL AS app_ctx_cleared;
+
+-- 等价写法：CLEAR_ALL_CONTEXT
+CALL dbms_session.set_context('other_ns', 'k1', 'v1');
+CALL dbms_session.clear_all_context('other_ns');
+SELECT sys_context('other_ns', 'k1') IS NULL AS other_ns_cleared;
+----
+
+=== 列出所有上下文条目
+
+[source,sql]
+----
+CALL dbms_session.set_context('app_ctx', 'user_id', '99');
+CALL dbms_session.set_context('app_ctx', 'role', 'manager');
+CALL dbms_session.set_context('other_ns', 'k1', 'v1');
+
+SELECT * FROM sys.dbms_session_list_context()
+ORDER BY namespace, attribute;
+----
+
+[source]
+----
+ namespace | attribute |  value
+-----------+-----------+---------
+ APP_CTX   | ROLE      | manager
+ APP_CTX   | USER_ID   | 99
+ OTHER_NS  | K1        | v1
+(3 rows)
+----
+
+注意：保存的名称会转换为大写；该函数本身的输出顺序不确定，如需稳定顺序请使用
+`ORDER BY`。
+
+=== 驱动行级安全策略
+
+应用上下文常用于把当前应用用户传给行级安全策略。查询必须以非表所有者的角色
+执行，因为表所有者和超级用户会绕过行级安全。
+
+[source,sql]
+----
+CREATE TABLE docs (id int, owner text, body text);
+INSERT INTO docs VALUES (1, 'alice', 'a-doc'), (2, 'bob', 'b-doc');
+
+ALTER TABLE docs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY p_owner ON docs USING (owner = sys_context('app', 'usr'));
+
+CREATE ROLE dbms_sess_rls NOSUPERUSER;
+GRANT SELECT ON docs TO dbms_sess_rls;
+
+CALL dbms_session.set_context('app', 'usr', 'alice');
+SET ROLE dbms_sess_rls;
+SELECT * FROM docs ORDER BY id;      -- 只能看到 alice 的行
+RESET ROLE;
+
+CALL dbms_session.set_context('app', 'usr', 'bob');
+SET ROLE dbms_sess_rls;
+SELECT * FROM docs ORDER BY id;      -- 只能看到 bob 的行
+RESET ROLE;
+
+-- 清除上下文后谓词为 NULL，查询不到任何行
+CALL dbms_session.clear_context('app');
+SET ROLE dbms_sess_rls;
+SELECT * FROM docs ORDER BY id;      -- 0 行
+RESET ROLE;
+
+DROP TABLE docs;
+DROP ROLE dbms_sess_rls;
+----
+
+=== 重置 PL/iSQL 包状态
+
+`RESET_PACKAGE` 会重置包状态，但不会清除应用上下文值：
+
+[source,sql]
+----
+CREATE OR REPLACE PACKAGE rp_pkg IS
+    g_n NUMBER := 0;
+    FUNCTION get_n RETURN NUMBER;
+    FUNCTION set_n(n NUMBER) RETURN NUMBER;
+END rp_pkg;
+/
+
+CREATE OR REPLACE PACKAGE BODY rp_pkg IS
+    FUNCTION get_n RETURN NUMBER AS
+    BEGIN
+        RETURN g_n;
+    END;
+    FUNCTION set_n(n NUMBER) RETURN NUMBER AS
+    BEGIN
+        g_n := n;
+        RETURN n;
+    END;
+END rp_pkg;
+/
+
+SELECT rp_pkg.set_n(42);
+SELECT rp_pkg.get_n;          -- 42
+
+CALL dbms_session.reset_package();
+SELECT rp_pkg.get_n;          -- 0：包初始化重新执行
+
+CALL dbms_session.set_context('rp_ns', 'key', 'preserved');
+CALL dbms_session.reset_package();
+SELECT sys_context('rp_ns', 'key') AS ctx_after_reset;  -- preserved
+
+DROP PACKAGE rp_pkg;
+----
+
+=== 连接复用时清空上下文
+
+[source,sql]
+----
+CALL dbms_session.set_context('app', 'usr', 'carol');
+SELECT sys_context('app', 'usr') AS before_discard;   -- carol
+
+DISCARD ALL;
+
+SELECT sys_context('app', 'usr') IS NULL AS after_discard;  -- t
+----
+
+== 与 Oracle 的行为差异
+
+[cols="1,2,2"]
+|===
+|场景 |Oracle DBMS_SESSION |IvorySQL DBMS_SESSION
+
+|名称长度
+|命名空间和属性名限制为 128 字节
+|最长 255 字节
+
+|值长度
+|最长 4000 字节
+|最长 4000 字节
+
+|大小写处理
+|名称不区分大小写
+|名称不区分大小写，且以大写形式存储
+
+|`LIST_CONTEXT`
+|带 `OUT` 集合参数的包过程
+|未作为包过程提供，改用集合返回函数
+`sys.dbms_session_list_context()`
+
+|`DISCARD ALL` / `DISCARD PACKAGES`
+|不适用
+|清空所有会话上下文值
+
+|`RESET_PACKAGE`
+|重置包状态
+|重置 PL/iSQL 包状态；应用上下文值保持不变
+|===
+
+== 说明与限制
+
+* 上下文存储是会话本地的。一个会话设置的值对另一个会话不可见，即使两个会话
+  使用相同的命名空间和属性名。
+* `SET_CONTEXT` 会拒绝 `NULL` 命名空间或属性，也会拒绝长度达到 256 字节的
+  名称和超过 4000 字节的值。
+* `SYS_CONTEXT` 在查询执行时求值，因此在同一会话中修改上下文值会影响下一条
+  查询。
+* 使用连接池时，在把连接交给另一个客户端之前执行 `DISCARD ALL`（或
+  `DISCARD PACKAGES`）。
