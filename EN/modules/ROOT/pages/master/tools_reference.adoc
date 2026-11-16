@@ -2761,6 +2761,20 @@ $ edit /usr/local/pgsql/data/note.to.self
 $ pg_verifybackup --ignore=note.to.self --skip-checksums /usr/local/pgsql/data
 ```
 
+==== Take and verify a base backup
+
+The example assumes a primary with no additional tablespaces, a user with replication access, and an empty or nonexistent backup directory. Allow replication connections in `pg_hba.conf` and reserve two WAL sender connections for the backup and WAL stream. Run both commands with the IvorySQL tools from the server's major version.
+
+[source,sh]
+----
+pg_basebackup --host=primary.example --username=backup_user \
+  --pgdata=/srv/backups/ivorysql-base --format=plain --wal-method=stream \
+  --manifest-checksums=SHA256
+pg_verifybackup /srv/backups/ivorysql-base
+----
+
+`pg_basebackup` writes `backup_manifest` alongside the backup files. Keep the manifest and the streamed WAL with the backup. `pg_verifybackup` checks the files against the manifest and parses the WAL ranges required by the backup. If verification fails, keep the original diagnostics and take a fresh backup. Test recovery in a separate data directory before relying on the backup.
+
 === psql
 
 psql — IvorySQL interactive terminal
