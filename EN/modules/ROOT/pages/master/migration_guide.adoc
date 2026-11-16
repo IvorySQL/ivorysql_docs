@@ -88,7 +88,7 @@ Download address: https://cpan.metacpan.org/authors/id/T/TI/TIMB/DBI-1.643.tar.g
 
 ==== Install DBD-Oracle
 
-Download address：https://sourceforge.net/projects/ora2pg/
+Download address: https://cpan.metacpan.org/authors/id/Z/ZA/ZARQUON/DBD-Oracle-1.76.tar.gz
 
 Set environment variables; Load environment variables; Because ORACLE must be defined_ HOME environment variable; This example configures environment variables under the ivorysql user
 
@@ -110,7 +110,7 @@ Set environment variables：
 
 ```
 export POSTGRES_HOME=/opt/ivorysql/3.2
-# tar -zxvf DBD-Pg-3.80.tar.gz
+# tar -zxvf DBD-Pg-3.8.0.tar.gz
 # source /home/ivorysql/.bashrc
 # cd DBD-Pg-3.8.0
 # perl Makefile.PL
