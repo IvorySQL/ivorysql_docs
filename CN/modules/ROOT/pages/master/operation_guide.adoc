@@ -150,6 +150,28 @@ pg_upgrade https://www.postgresql.org/docs/current/pgupgrade.html[文档]概述�
 
 这种升级方法可以用内置的逻辑复制工具和外部的逻辑复制系统如pglogical，Slony，Londiste，和Bucardo。
 
+==== 切换写入前同步序列状态
+
+内置逻辑复制会复制表行，其中包括标识列已经生成的值。底层序列的计数更新保留在发布端。准备订阅端的模式时，使用与发布端一致的序列定义。
+
+切换时，停止发布端的应用写入和序列调用，等待订阅端完成表同步并应用剩余变更。同步序列状态期间，保持订阅端应用写入关闭。在发布端读取每个应用序列的状态。
+
+[source,sql]
+----
+SELECT last_value, is_called FROM public.invoice_id_seq;
+----
+
+例如，发布端返回 `last_value = 842` 和 `is_called = true` 时，在订阅端执行以下语句。
+
+[source,sql]
+----
+SELECT pg_catalog.setval('public.invoice_id_seq'::regclass, 842, true);
+----
+
+同时复制 `last_value` 和 `is_called`。如果 `is_called` 为 `true` 且增量为 `1`，下一个值就是 `843`；如果为 `false`，下次调用直接返回传给 `setval` 的值。使用缓存时，记录的值可能领先于最近发放的 ID。选择安全的起点时，还要考虑显式写入表中的 ID。
+
+同步后先禁用订阅，再将写入切换到新主库。对照已迁移的数据验证第一个自动生成的值。
+
 == 使用 pg_upgrade 将 PostgreSQL 升级到 IvorySQL
 
 `pg_upgrade` 支持将原生 PostgreSQL 集群升级到 IvorySQL。当源集群为原生 PostgreSQL ，而目标为 IvorySQL 集群时，必须使用 `-g`（`--using-ora-pg`）参数。
