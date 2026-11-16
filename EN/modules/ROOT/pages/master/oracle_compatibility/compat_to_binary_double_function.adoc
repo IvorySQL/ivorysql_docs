@@ -1,0 +1,14 @@
+= TO_BINARY_DOUBLE
+
+`TO_BINARY_DOUBLE` converts its argument to double-precision `BINARY_DOUBLE`. It accepts numbers, binary floating-point values, and text. The one-argument text form accepts decimal and scientific notation. Supply a numeric format model as the second argument to interpret formatted text.
+
+[source,sql]
+----
+SELECT TO_BINARY_DOUBLE('1.25e200') AS scientific,
+       TO_BINARY_DOUBLE('9,876.5', '9,999.9') AS formatted,
+       TO_BINARY_DOUBLE(16777217::NUMBER) =
+           TO_BINARY_DOUBLE(16777216::NUMBER) AS equal_after_conversion
+FROM dual;
+----
+
+The query returns `1.25e+200`, `9876.5`, and `f`. Double precision distinguishes both integers in the comparison. Converting an already rounded xref:master/oracle_compatibility/compat_to_binary_float_function.adoc[BINARY_FLOAT] to double precision keeps the rounded value.

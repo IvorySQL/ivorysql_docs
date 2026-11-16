@@ -1,0 +1,14 @@
+= TO_BINARY_FLOAT
+
+`TO_BINARY_FLOAT` 将输入转换为单精度 `BINARY_FLOAT`。对于数值、二进制浮点数或 `'1.25'`、`'1.25e6'` 这样的文本，使用 `TO_BINARY_FLOAT(value)`。如果输入包含格式模型所描述的分隔符，使用 `TO_BINARY_FLOAT(text, format)`。
+
+[source,sql]
+----
+SELECT TO_BINARY_FLOAT('1,234.5', '9,999.9') AS formatted,
+       TO_BINARY_FLOAT(16777217::NUMBER) =
+           TO_BINARY_FLOAT(16777216::NUMBER) AS rounded,
+       TO_BINARY_FLOAT(NULL::TEXT) IS NULL AS null_preserved
+FROM dual;
+----
+
+查询依次返回 `1234.5`、`t` 和 `t`。单精度会将 `16777217` 舍入为 `16777216`。如果需要区分这两个整数，可以使用 xref:master/oracle_compatibility/compat_to_binary_double_function.adoc[TO_BINARY_DOUBLE]。
