@@ -1,0 +1,9 @@
+= DBMS_SCHEDULER implementation
+
+The package uses tables under `sys` to store jobs, programs, schedules, and execution records. Job owners can inspect their job definitions through `sys.user_scheduler_jobs` and run records through `sys.user_scheduler_job_run_details`.
+
+`EVALUATE_CALENDAR_STRING` computes the next occurrence from timestamps and a repeat expression. `RUN_JOB(..., use_current_session => TRUE)` executes the job in the calling backend. Calendar evaluation and synchronous execution can be used before enabling background scheduling.
+
+Automatic execution requires the `ivorysql_ora` library in `shared_preload_libraries` and `ivorysql.scheduler = on` at server startup. The launcher dispatches work in databases configured in `ivorysql.scheduler_databases`. The package and catalog definitions are in `dbms_scheduler--1.0.sql`; the launcher and job worker are implemented in `scheduler_launcher.c` and `scheduler_worker.c` in the same source directory.
+
+See xref:master/oracle_compatibility/compat_dbms_scheduler.adoc[DBMS_SCHEDULER usage] for a synchronous example.

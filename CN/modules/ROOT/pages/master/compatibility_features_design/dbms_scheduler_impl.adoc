@@ -1,0 +1,9 @@
+= DBMS_SCHEDULER 实现
+
+此包使用 `sys` 模式下的表存储作业、程序、计划和执行记录。作业所有者可以通过 `sys.user_scheduler_jobs` 查看作业定义，通过 `sys.user_scheduler_job_run_details` 查看运行记录。
+
+`EVALUATE_CALENDAR_STRING` 根据时间戳和重复表达式计算下次运行时间。`RUN_JOB(..., use_current_session => TRUE)` 在调用方的后端进程中执行作业。启用后台调度前，可先评估调度表达式并同步运行作业。
+
+自动执行要求服务器启动时在 `shared_preload_libraries` 中加载 `ivorysql_ora`，并设置 `ivorysql.scheduler = on`。启动器在 `ivorysql.scheduler_databases` 指定的数据库中派发作业。包和目录定义见 `dbms_scheduler--1.0.sql`，启动器和作业进程分别实现在同一源码目录的 `scheduler_launcher.c` 和 `scheduler_worker.c` 中。
+
+同步执行示例见 xref:master/oracle_compatibility/compat_dbms_scheduler.adoc[DBMS_SCHEDULER 用法]。

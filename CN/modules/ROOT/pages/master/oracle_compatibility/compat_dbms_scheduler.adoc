@@ -1,0 +1,56 @@
+= DBMS_SCHEDULER 包
+
+通过 Oracle 模式端口连接数据库后使用此包。
+
+== 检查调度表达式
+
+`EVALUATE_CALENDAR_STRING` 通过第四个参数返回下一个匹配的时间。本示例将会话时区设为 UTC。表达式每天在 09:30:00 匹配一次，因此从 7 月 1 日中午开始搜索会返回 7 月 2 日 09:30:00。
+
+[source,sql]
+----
+SET TIME ZONE 'UTC';
+
+DECLARE
+    next_run TIMESTAMP WITH TIME ZONE;
+BEGIN
+    DBMS_SCHEDULER.EVALUATE_CALENDAR_STRING(
+        'FREQ=DAILY;BYHOUR=9;BYMINUTE=30;BYSECOND=0',
+        CAST('2026-01-01 00:00:00 +00:00' AS TIMESTAMP WITH TIME ZONE),
+        CAST('2026-07-01 12:00:00 +00:00' AS TIMESTAMP WITH TIME ZONE),
+        next_run);
+    RAISE NOTICE '%', next_run AT TIME ZONE 'UTC';
+END;
+/
+
+RESET TIME ZONE;
+----
+
+== 在当前会话中手动运行作业
+
+以下示例创建禁用状态的作业，供手动运行。`RUN_JOB` 在 `use_current_session => TRUE` 时同步执行，便于在删除作业前检查执行效果。查询返回一行，值为 `ran`。
+
+[source,sql]
+----
+CREATE TABLE scheduler_demo_log (message VARCHAR2(30));
+
+BEGIN
+    DBMS_SCHEDULER.CREATE_JOB(
+        job_name => 'scheduler_demo_job',
+        job_type => 'PLSQL_BLOCK',
+        job_action => 'BEGIN INSERT INTO scheduler_demo_log VALUES (''ran''); END;',
+        enabled => FALSE,
+        auto_drop => FALSE);
+    DBMS_SCHEDULER.RUN_JOB('scheduler_demo_job', use_current_session => TRUE);
+END;
+/
+
+SELECT message FROM scheduler_demo_log;
+
+BEGIN
+    DBMS_SCHEDULER.DROP_JOB('scheduler_demo_job');
+END;
+/
+DROP TABLE scheduler_demo_log;
+----
+
+后台定时执行的配置见 xref:master/compatibility_features_design/dbms_scheduler_impl.adoc[DBMS_SCHEDULER 实现]。
