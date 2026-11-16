@@ -1,0 +1,14 @@
+= TO_BINARY_DOUBLE
+
+`TO_BINARY_DOUBLE` 将数值、二进制浮点数或文本转换为双精度 `BINARY_DOUBLE`。单参数的文本形式支持十进制和科学记数法。如需解析带格式的文本，可在第二个参数中传入数值格式模型。
+
+[source,sql]
+----
+SELECT TO_BINARY_DOUBLE('1.25e200') AS scientific,
+       TO_BINARY_DOUBLE('9,876.5', '9,999.9') AS formatted,
+       TO_BINARY_DOUBLE(16777217::NUMBER) =
+           TO_BINARY_DOUBLE(16777216::NUMBER) AS equal_after_conversion
+FROM dual;
+----
+
+查询依次返回 `1.25e+200`、`9876.5` 和 `f`。双精度可以区分比较中的两个整数。将已舍入的 xref:master/oracle_compatibility/compat_to_binary_float_function.adoc[BINARY_FLOAT] 转为双精度时，仍然保留舍入后的值。

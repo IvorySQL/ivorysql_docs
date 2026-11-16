@@ -1,0 +1,14 @@
+= TO_BINARY_FLOAT
+
+`TO_BINARY_FLOAT` converts its argument to a single-precision `BINARY_FLOAT`. Use `TO_BINARY_FLOAT(value)` for numeric or binary floating-point inputs, or for text in a form such as `'1.25'` or `'1.25e6'`. Use `TO_BINARY_FLOAT(text, format)` when a string contains delimiters described by a numeric format model.
+
+[source,sql]
+----
+SELECT TO_BINARY_FLOAT('1,234.5', '9,999.9') AS formatted,
+       TO_BINARY_FLOAT(16777217::NUMBER) =
+           TO_BINARY_FLOAT(16777216::NUMBER) AS rounded,
+       TO_BINARY_FLOAT(NULL::TEXT) IS NULL AS null_preserved
+FROM dual;
+----
+
+The query returns `1234.5`, `t`, and `t`. Single precision rounds `16777217` to `16777216`. When that distinction matters, see xref:master/oracle_compatibility/compat_to_binary_double_function.adoc[TO_BINARY_DOUBLE].
