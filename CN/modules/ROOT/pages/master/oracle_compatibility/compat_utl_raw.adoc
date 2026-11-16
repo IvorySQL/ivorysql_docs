@@ -1,0 +1,15 @@
+= UTL_RAW 包
+
+在 Oracle 模式下，`UTL_RAW.CAST_TO_RAW(c IN VARCHAR2) RETURN RAW` 返回参数 `c` 按数据库编码存储的字节。跨库比较字节值前，先用 `SHOW server_encoding;` 确认编码。
+
+[source,sql]
+----
+SELECT RAWTOHEX(UTL_RAW.CAST_TO_RAW('ABC')) AS ascii_hex,
+       RAWTOHEX(UTL_RAW.CAST_TO_RAW('你好')) AS utf8_hex,
+       UTL_RAW.CAST_TO_RAW(NULL) IS NULL AS null_preserved
+FROM dual;
+----
+
+在 UTF-8 数据库中，结果依次为 `414243`、`E4BDA0E5A5BD` 和 `t`。`CAST_TO_RAW` 的返回类型是 `RAW`，`RAWTOHEX` 将其中的字节显示为十六进制数字。如果输入本身是十六进制字符串，请用 `HEXTORAW` 解码。例如，`UTL_RAW.CAST_TO_RAW('41')` 包含 `34` 和 `31` 两个字节。
+
+参见 xref:master/compatibility_features_design/utl_raw_impl.adoc[UTL_RAW 实现]。

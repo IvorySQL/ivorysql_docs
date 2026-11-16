@@ -1,0 +1,7 @@
+= UTL_RAW 实现
+
+`contrib/ivorysql_ora/src/builtin_packages/utl_raw` 下的 `utl_raw--1.0.sql` 定义了包规格和包体。`CAST_TO_RAW` 将输入转换为 `text`，再调用 `pg_catalog.convert_to`，目标编码由 `pg_catalog.getdatabaseencoding()` 提供。
+
+包规格声明了用于二进制数值转换的 `BIG_ENDIAN`（`1`）、`LITTLE_ENDIAN`（`2`）和 `MACHINE_ENDIAN`（`3`）。当前 `CAST_TO_RAW` 只接受一个参数，会按原顺序复制文本编码后的字节。
+
+`contrib/ivorysql_ora/sql/utl_raw.sql` 回归测试覆盖了 ASCII、多字节字符、空值和 LATIN1 输入。参见 xref:master/oracle_compatibility/compat_utl_raw.adoc[UTL_RAW 用法]。
