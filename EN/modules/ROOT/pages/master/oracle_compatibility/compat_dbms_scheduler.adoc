@@ -1,0 +1,56 @@
+= DBMS_SCHEDULER package
+
+Use the package in a database reached through the Oracle-mode port.
+
+== Check a calendar expression
+
+`EVALUATE_CALENDAR_STRING` returns a matching timestamp through its fourth argument. This example sets the session time zone to UTC. The expression matches every day at 09:30:00, so a search starting July 1 at noon returns July 2 at 09:30:00.
+
+[source,sql]
+----
+SET TIME ZONE 'UTC';
+
+DECLARE
+    next_run TIMESTAMP WITH TIME ZONE;
+BEGIN
+    DBMS_SCHEDULER.EVALUATE_CALENDAR_STRING(
+        'FREQ=DAILY;BYHOUR=9;BYMINUTE=30;BYSECOND=0',
+        CAST('2026-01-01 00:00:00 +00:00' AS TIMESTAMP WITH TIME ZONE),
+        CAST('2026-07-01 12:00:00 +00:00' AS TIMESTAMP WITH TIME ZONE),
+        next_run);
+    RAISE NOTICE '%', next_run AT TIME ZONE 'UTC';
+END;
+/
+
+RESET TIME ZONE;
+----
+
+== Run a job once in the current session
+
+This example creates a disabled job so it can be run on demand. `RUN_JOB` with `use_current_session => TRUE` runs synchronously and lets you inspect the effect before dropping the job. The query returns one row with `ran`.
+
+[source,sql]
+----
+CREATE TABLE scheduler_demo_log (message VARCHAR2(30));
+
+BEGIN
+    DBMS_SCHEDULER.CREATE_JOB(
+        job_name => 'scheduler_demo_job',
+        job_type => 'PLSQL_BLOCK',
+        job_action => 'BEGIN INSERT INTO scheduler_demo_log VALUES (''ran''); END;',
+        enabled => FALSE,
+        auto_drop => FALSE);
+    DBMS_SCHEDULER.RUN_JOB('scheduler_demo_job', use_current_session => TRUE);
+END;
+/
+
+SELECT message FROM scheduler_demo_log;
+
+BEGIN
+    DBMS_SCHEDULER.DROP_JOB('scheduler_demo_job');
+END;
+/
+DROP TABLE scheduler_demo_log;
+----
+
+For scheduled execution in the background, see xref:master/compatibility_features_design/dbms_scheduler_impl.adoc[DBMS_SCHEDULER implementation].
