@@ -88,7 +88,7 @@ DBI，Database Independent Interface，是 Perl 语言连接数据库的接口
 
 ==== 安装DBD-Oracle
 
-下载地址：https://sourceforge.net/projects/ora2pg/
+下载地址： https://cpan.metacpan.org/authors/id/Z/ZA/ZARQUON/DBD-Oracle-1.76.tar.gz
 
 设置环境变量; 加载环境变量;因为必须定义ORACLE_HOME环境变量;本例在ivorysql用户下配置环境变量
 
