@@ -1,0 +1,15 @@
+= UTL_RAW package
+
+In Oracle mode, `UTL_RAW.CAST_TO_RAW(c IN VARCHAR2) RETURN RAW` returns the bytes of `c` in the database encoding. Check that encoding with `SHOW server_encoding;` before comparing byte values across databases.
+
+[source,sql]
+----
+SELECT RAWTOHEX(UTL_RAW.CAST_TO_RAW('ABC')) AS ascii_hex,
+       RAWTOHEX(UTL_RAW.CAST_TO_RAW('你好')) AS utf8_hex,
+       UTL_RAW.CAST_TO_RAW(NULL) IS NULL AS null_preserved
+FROM dual;
+----
+
+In a UTF-8 database, the results are `414243`, `E4BDA0E5A5BD`, and `t`. The result of `CAST_TO_RAW` itself is a `RAW` value. `RAWTOHEX` displays its bytes as hexadecimal digits. To decode a string that already represents hexadecimal bytes, use `HEXTORAW`. For example, `UTL_RAW.CAST_TO_RAW('41')` contains two bytes, `34` and `31`.
+
+See xref:master/compatibility_features_design/utl_raw_impl.adoc[UTL_RAW implementation].

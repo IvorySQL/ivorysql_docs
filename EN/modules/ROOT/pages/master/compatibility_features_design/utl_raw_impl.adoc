@@ -1,0 +1,7 @@
+= UTL_RAW implementation
+
+The `utl_raw--1.0.sql` file under `contrib/ivorysql_ora/src/builtin_packages/utl_raw` defines the package specification and body. `CAST_TO_RAW` casts the input to `text` and calls `pg_catalog.convert_to` with the encoding returned by `pg_catalog.getdatabaseencoding()`.
+
+The package specification declares `BIG_ENDIAN` (`1`), `LITTLE_ENDIAN` (`2`), and `MACHINE_ENDIAN` (`3`) for binary number conversions. The current `CAST_TO_RAW` signature accepts a single argument and copies the encoded text bytes in order.
+
+The `contrib/ivorysql_ora/sql/utl_raw.sql` regression test covers ASCII, multibyte, null, and LATIN1 inputs. See xref:master/oracle_compatibility/compat_utl_raw.adoc[UTL_RAW usage].
