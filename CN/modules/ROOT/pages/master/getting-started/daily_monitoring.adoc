@@ -845,6 +845,54 @@ SELECT pg_stat_get_backend_pid(s.backendid) AS pid,
 - 判断当前数据库中带有最多未授予锁的关系（它很可能是数据库客户端的竞争源）。
 - 判断锁竞争给数据库总体性能带来的影响，以及锁竞争随着整个数据库流量的变化范围。
 
+=== 查找阻塞锁等待的会话
+
+在发生等待的数据库中执行以下查询。`pg_blocking_pids` 会列出持有冲突锁的会话，以及在锁队列中先提出冲突请求的会话。如果阻塞者的状态为 `idle in transaction`，说明其事务仍然打开，正在等待客户端。`query` 列显示该会话最后执行的语句。
+
+[source,sql]
+----
+SELECT DISTINCT waiting.pid AS waiting_pid,
+       waiting.wait_event,
+       blocker_pid,
+       blocker.state AS blocker_state,
+       statement_timestamp() - blocker.xact_start AS blocker_xact_age,
+       blocker.query AS blocker_last_query
+FROM pg_stat_activity AS waiting
+CROSS JOIN LATERAL unnest(pg_blocking_pids(waiting.pid)) AS b(blocker_pid)
+LEFT JOIN pg_stat_activity AS blocker ON blocker.pid = b.blocker_pid
+WHERE waiting.datname = current_database()
+  AND waiting.wait_event_type = 'Lock'
+ORDER BY waiting_pid, blocker_pid;
+----
+
+阻塞者 PID 为 `0` 时，表示锁由预备事务持有。可通过 `pg_prepared_xacts` 和 `pg_locks` 排查。查看其他用户的完整会话信息需要超级用户权限或 `pg_read_all_stats` 权限。
+
+要复现行锁等待，请在测试数据库中的会话 A 执行以下语句，保持事务打开。
+
+[source,sql]
+----
+CREATE TABLE lock_wait_demo (id integer PRIMARY KEY);
+INSERT INTO lock_wait_demo VALUES (1);
+
+BEGIN;
+SELECT id FROM lock_wait_demo WHERE id = 1 FOR UPDATE;
+----
+
+在连接同一数据库的会话 B 中执行以下语句。
+
+[source,sql]
+----
+SELECT id FROM lock_wait_demo WHERE id = 1 FOR UPDATE;
+----
+
+在会话 C 中执行诊断查询，应看到会话 B 被会话 A 阻塞。在 A 中提交事务，待 B 完成后删除测试表。
+
+[source,sql]
+----
+COMMIT;
+DROP TABLE lock_wait_demo;
+----
+
 == Progress Reporting
 
 IvorySQL具有在命令执行过程中报告某些命令进度的能力。 目前，支持进度报告的命令只有`ANALYZE`,`CLUSTER`,`CREATE INDEX`, `VACUUM`, 和 BASE_BACKUP例如 pg_basebackup发出的进行基础备份的复制命令。未来可能还会扩展。

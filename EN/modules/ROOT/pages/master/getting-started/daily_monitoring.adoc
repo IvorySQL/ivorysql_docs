@@ -963,6 +963,54 @@ SELECT pg_stat_get_backend_pid(s.backendid) AS pid,
 * Determine the relation in the current database with the most ungranted locks (which might be a source of contention among database clients).
 * Determine the effect of lock contention on overall database performance, as well as the extent to which contention varies with overall database traffic.
 
+==== Find the sessions blocking a lock wait
+
+Run the following query in the database where the wait occurs. `pg_blocking_pids` lists sessions holding conflicting locks or queued ahead with conflicting requests. A blocker in `idle in transaction` is waiting for its client while the transaction remains open. Its `query` column shows the last statement it ran.
+
+[source,sql]
+----
+SELECT DISTINCT waiting.pid AS waiting_pid,
+       waiting.wait_event,
+       blocker_pid,
+       blocker.state AS blocker_state,
+       statement_timestamp() - blocker.xact_start AS blocker_xact_age,
+       blocker.query AS blocker_last_query
+FROM pg_stat_activity AS waiting
+CROSS JOIN LATERAL unnest(pg_blocking_pids(waiting.pid)) AS b(blocker_pid)
+LEFT JOIN pg_stat_activity AS blocker ON blocker.pid = b.blocker_pid
+WHERE waiting.datname = current_database()
+  AND waiting.wait_event_type = 'Lock'
+ORDER BY waiting_pid, blocker_pid;
+----
+
+A blocker PID of `0` represents a prepared transaction. Use `pg_prepared_xacts` and `pg_locks` to investigate it. Full session details for other users require a superuser or a role with `pg_read_all_stats` privileges.
+
+To reproduce a row lock wait, run the following in session A in a scratch database and leave its transaction open.
+
+[source,sql]
+----
+CREATE TABLE lock_wait_demo (id integer PRIMARY KEY);
+INSERT INTO lock_wait_demo VALUES (1);
+
+BEGIN;
+SELECT id FROM lock_wait_demo WHERE id = 1 FOR UPDATE;
+----
+
+Run this in session B connected to the same database.
+
+[source,sql]
+----
+SELECT id FROM lock_wait_demo WHERE id = 1 FOR UPDATE;
+----
+
+Run the diagnostic query in session C. It should report session B waiting on session A. Commit in A so B can finish, then remove the test table.
+
+[source,sql]
+----
+COMMIT;
+DROP TABLE lock_wait_demo;
+----
+
 === Progress Reporting
 
 IvorySQL has the ability to report the progress of certain commands during command execution. Currently, the only commands which support progress reporting are `ANALYZE`, `CLUSTER`, `CREATE INDEX`, `VACUUM`, `COPY`, and https://www.postgresql.org/docs/current/protocol-replication.html#PROTOCOL-REPLICATION-BASE-BACKUP[BASE_BACKUP] (i.e., replication command that https://www.postgresql.org/docs/current/app-pgbasebackup.html[pg_basebackup] issues to take a base backup). This may be expanded in the future.
