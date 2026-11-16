@@ -2802,6 +2802,20 @@ $ edit /usr/local/pgsql/data/note.to.self
 $ pg_verifybackup --ignore=note.to.self --skip-checksums /usr/local/pgsql/data
 ```
 
+==== 创建并校验基础备份
+
+本例假定主库没有额外表空间，备份用户拥有复制权限，目标目录为空或尚未创建。在 `pg_hba.conf` 中允许复制连接，并为备份流和 WAL 流预留两个 WAL 发送连接。使用与服务器主版本一致的 IvorySQL 工具运行以下命令。
+
+[source,sh]
+----
+pg_basebackup --host=primary.example --username=backup_user \
+  --pgdata=/srv/backups/ivorysql-base --format=plain --wal-method=stream \
+  --manifest-checksums=SHA256
+pg_verifybackup /srv/backups/ivorysql-base
+----
+
+`pg_basebackup` 将 `backup_manifest` 写入备份目录。备份文件、清单和随备份接收的 WAL 应一同保存。`pg_verifybackup` 对照清单检查文件，并解析备份所需范围的 WAL。如果校验失败，保留原始错误信息并重新备份。在独立的数据目录中演练恢复，再将备份用于实际恢复。
+
 === psql
 
 psql — IvorySQL的交互式终端
