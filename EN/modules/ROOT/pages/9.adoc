@@ -1910,6 +1910,10 @@ Do not dump databases whose name matches *`pattern`*. Multiple patterns can be e
 
 Use the specified value of extra_float_digits when dumping floating-point data, instead of the maximum available precision. Routine dumps made for backup purposes should not use this option.
 
+- `--filter=*`filename`*`
+
+Specify a filename from which to read patterns for databases excluded from the dump. The patterns are interpreted according to the same rules as `--exclude-database`. To read from `STDIN`, use `-` as the filename. The `--filter` option can be specified in conjunction with `--exclude-database` for excluding databases, and can also be specified more than once for multiple filter files. Each line in the file lists one database pattern in the format `exclude database *PATTERN*`. Lines starting with `#` are considered comments and ignored (comments can be placed after an object pattern row as well), and blank lines are also ignored.
+
 - `--if-exists`
 
 Use conditional commands (i.e., add an `IF EXISTS` clause) to drop databases and other objects. This option is not valid unless `--clean` is also specified.
@@ -1930,6 +1934,14 @@ Do not wait forever to acquire shared table locks at the beginning of the dump. 
 
 Do not dump comments.
 
+- `--no-data`
+
+Do not dump data.
+
+- `--no-policies`
+
+Do not dump row security policies.
+
 - `--no-publications`
 
 Do not dump publications.
@@ -1938,9 +1950,17 @@ Do not dump publications.
 
 Do not dump passwords for roles. When restored, roles will have a null password, and password authentication will always fail until the password is set. Since password values aren't needed when this option is specified, the role information is read from the catalog view `pg_roles` instead of `pg_authid`. Therefore, this option also helps if access to `pg_authid` is restricted by some security policy.
 
+- `--no-schema`
+
+Do not dump schema (data definitions).
+
 - `--no-security-labels`
 
 Do not dump security labels.
+
+- `--no-statistics`
+
+Do not dump statistics. This is the default.
 
 - `--no-subscriptions`
 
@@ -1974,9 +1994,25 @@ Add `ON CONFLICT DO NOTHING` to `INSERT` commands. This option is not valid unle
 
 Force quoting of all identifiers. This option is recommended when dumping a database from a server whose IvorySQL major version is different from pg_dumpall's, or when the output is intended to be loaded into a server of a different major version. By default, pg_dumpall quotes only identifiers that are reserved words in its own major version. This sometimes results in compatibility issues when dealing with servers of other versions that may have slightly different sets of reserved words. Using `--quote-all-identifiers` prevents such issues, at the price of a harder-to-read dump script.
 
+- `--restrict-key=*`restrict_key`*`
+
+Use the provided string as the `psql` `\restrict` key in the dump output. If no restrict key is specified, `pg_dumpall` will generate a random one as needed. Keys may contain only alphanumeric characters. This option is primarily intended for testing purposes and other scenarios that require repeatable output (e.g., comparing dump files). It is not recommended for general use, as a malicious server with advance knowledge of the key may be able to inject arbitrary code that will be executed on the machine that runs `psql` with the dump output.
+
 - `--rows-per-insert=*`nrows`*`
 
 Dump data as `INSERT` commands (rather than `COPY`). Controls the maximum number of rows per `INSERT` command. The value specified must be a number greater than zero. Any error during restoring will cause only rows that are part of the problematic `INSERT` to be lost, rather than the entire table contents.
+
+- `--statistics`
+
+Dump optimizer statistics.
+
+- `--statistics-only`
+
+Dump only the statistics, not the schema (data definitions) or data. Optimizer statistics for tables, materialized views, foreign tables, and indexes are dumped.
+
+- `--sequence-data`
+
+Include sequence data in the dump. This is the default behavior except when `--no-data`, `--schema-only`, or `--statistics-only` is specified.
 
 - `--use-set-session-authorization`
 
