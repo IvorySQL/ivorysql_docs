@@ -1458,11 +1458,11 @@ pg_dump — 把IvorySQL数据库抽取为一个脚本文件或其他归档文件
 
 只转储数据，而不转储模式（数据定义）。表数据、大对象和序列值都会被转储。这个选项类似于指定 `--section=data`，但是由于历史原因又不完全相同。
 
-- `-b` `--blobs`
+- `-b` `--large-objects` `--blobs`（已弃用）
 
-在转储中包括大对象。这是当 `--schema`、 `--table` 或 `--schema-only` 被指定时的默认行为。因此，只有在请求转储一个特定方案或者表的情况中， `-b` 开关才对向转储中加入大对象有用。注意blobs是被考虑的数据，因此在使用 `--data-only` 时将被包括在内，但在使用 `--schema-only` 时则不会包括。
+在转储中包括大对象。这是除指定 `--schema`、`--table`、`--schema-only`、`--statistics-only` 或 `--no-data` 之外的默认行为。因此，只有在请求转储特定模式或表时，`-b` 开关才对向转储中加入大对象有用。注意大对象被视为数据，因此在使用 `--data-only` 时将被包括在内，但在使用 `--schema-only` 或 `--statistics-only` 时则不会包括。
 
-- `-B` `--no-blobs`
+- `-B` `--no-large-objects` `--no-blobs`（已弃用）
 
 在转储中排除大对象。当同时给定 `-b` 和 `-B` 时，行为是在数据被转储时输出大对象，请参考 `-b` 文档。
 
@@ -1474,7 +1474,7 @@ pg_dump — 把IvorySQL数据库抽取为一个脚本文件或其他归档文件
 
 使得在输出的开始是一个创建数据库本身并且重新连接到被创建的数据库的命令（通过这种形式的一个脚本，在运行脚本之前你连接的是目标安装中的哪个数据库都没有关系）。如果也指定了 `--clean`，脚本会在重新连接到目标数据库之前先删除它然后再重建。通过 `--create`，输出还会包括数据库的注释（如果有）以及与这个数据库相关的任何配置变量设置，也就是任何提到了这个数据库的 `ALTER DATABASE ... SET ...` 命令和 `ALTER ROLE ... IN DATABASE ... SET ...` 命令。该数据库本身的访问特权也会被转储，除非指定有 `--no-acl`。当发出归档(非文本)输出文件时，这个选项被忽略。对于归档格式，你可以在调用 `pg_restore` 时指定该选项。
 
-- `-e *pattern*` `-−extension=*pattern*`
+- `-e *pattern*` `--extension=*pattern*`
 
 只转储匹配 *`pattern`* 的扩展。 如果未指定此选项，目标数据库中的所有非系统扩展都将被转储。 通过写入多个 `-e` 开关，可以选择多个扩展。 *`pattern`* 参数可以理解为与psql's `\d` 命令使用的规则相同的模式， 所以还可以通过在模式中写入通配符来选择多个扩展。 在使用通配符时，如果需要防止来自扩展通配符的shell，请小心的引用模式。任何由 `pg_extension_config_dump` 注册的配置关系被包括在转储中，如果他的扩展已经被 `-−extension` 指定了。注意当指定了 `-e` ，pg_dump不尝试转储任何所选扩展可能依赖的其他数据库对象。 也就是说，这里不保证指定扩展转储的结果能够由他们自己成功恢复到一个干净的数据库中。
 
@@ -1562,13 +1562,37 @@ pg_dump版本并退出。
 
 只有在转储具有行安全性的表的内容时，这个选项才相关。默认情况下， pg_dump将把 http://www.postgresql.org/docs/17/runtime-config-client.html#GUC-ROW-SECURITY[row_security] 设置为 off 来确保从该表中转储 出所有的数据。如果用户不具有足够能绕过行安全性的特权，那么会抛出 一个错误这个参数指示pg_dump将 http://www.postgresql.org/docs/17/runtime-config-client.html#GUC-ROW-SECURITY[row_security] 设置为 on，允许用户只转储该表中 它们能够访问到的部分内容。注意如果当前你使用了这个选项，你可能还想得到 `INSERT` 格式的转储，因为恢复期间的 `COPY FROM` 不支持行安全性。
 
+- `--exclude-extension=*pattern*`
+
+不转储任何匹配 *`pattern`* 的扩展。该模式按照与 `-e` 相同的规则进行解释。可以多次指定 `--exclude-extension` 以排除匹配多个模式的扩展。当同时给定 `-e` 和 `--exclude-extension` 时，行为是仅转储至少匹配一个 `-e` 开关但不匹配任何 `--exclude-extension` 开关的扩展。如果指定了 `--exclude-extension` 而未指定 `-e`，则匹配 `--exclude-extension` 的扩展将从正常转储中排除。
+
+- `--exclude-table-and-children=*pattern*`
+
+与 `-T`/`--exclude-table` 选项相同，但同时也会排除匹配 *`pattern`* 的表的所有分区或继承子表。
+
 - `--exclude-table-data=*pattern*`
 
 不转储匹配 *`pattern`* 模式的任何表中的数据。该模式根据 `-t` 的相同规则被解释。`--exclude-table-data` 可以被给定多次来排除匹配多个模式的表。当你需要一个特定表的定义但不想要其中的数据时，这个选项就有用了。要排除数据库中所有表的数据，见 `--schema-only`。
 
+- `--exclude-table-data-and-children=*pattern*`
+
+与 `--exclude-table-data` 选项相同，但同时也会排除匹配 *`pattern`* 的表的所有分区或继承子表的数据。
+
 - `--extra-float-digits=*ndigits*`
 
 在转储浮点数据时使用规定的 `extra_float_digits` 值，而不是最大可用精度。以备份目的生成的常规转储不使用此选项。
+
+- `--filter=*filename*`
+
+指定一个文件名，从中读取要包含在转储中或从转储中排除的对象模式。这些模式按照与对应选项相同的规则进行解释：表使用 `-t`/`--table`、`--table-and-children`、`-T`/`--exclude-table` 和 `--exclude-table-and-children`；模式（schema）使用 `-n`/`--schema` 和 `-N`/`--exclude-schema`；外部服务器上的数据使用 `--include-foreign-data`；表数据使用 `--exclude-table-data` 和 `--exclude-table-data-and-children`；扩展使用 `-e`/`--extension` 和 `--exclude-extension`。要从 `STDIN` 读取，请使用 `-` 作为文件名。`--filter` 选项可以与上述用于包含或排除对象的选项一起使用，也可以多次指定以使用多个过滤文件。
++
+该文件每行列出一个对象模式，格式如下：
++
+`{ include | exclude } { extension | foreign_data | table | table_and_children | table_data | table_data_and_children | schema } *PATTERN*`
++
+第一个关键字指定是要包含还是排除与模式匹配的对象。第二个关键字指定要使用该模式过滤的对象类型：`extension`（扩展，类似于 `-e`/`--extension` 或 `--exclude-extension`）、`foreign_data`（外部服务器上的数据，类似于 `--include-foreign-data`，只能与 `include` 关键字一起使用）、`table`（表，类似于 `-t`/`--table` 或 `-T`/`--exclude-table`）、`table_and_children`（表及其任何分区或继承子表，类似于 `--table-and-children` 或 `--exclude-table-and-children`）、`table_data`（匹配 *`pattern`* 的任何表的表数据，类似于 `--exclude-table-data`，只能与 `exclude` 关键字一起使用）、`table_data_and_children`（匹配 *`pattern`* 的表及其任何分区或继承子表的表数据，类似于 `--exclude-table-data-and-children`，只能与 `exclude` 关键字一起使用）以及 `schema`（模式，类似于 `-n`/`--schema` 或 `-N`/`--exclude-schema`）。
++
+以 `#` 开头的行被视为注释并被忽略。注释也可以放在对象模式行之后，空行同样会被忽略。
 
 - `--if-exists`
 
@@ -1594,13 +1618,29 @@ pg_dump版本并退出。
 
 不转储注释。
 
+- `--no-data`
+
+不转储数据。
+
+- `--no-policies`
+
+不转储行安全性策略。
+
 - `--no-publications`
 
 不转储publication。
 
+- `--no-schema`
+
+不转储模式（数据定义）。
+
 - `--no-security-labels`
 
 不转储安全标签。
+
+- `--no-statistics`
+
+不转储统计信息。这是默认行为。
 
 - `--no-subscriptions`
 
@@ -1609,6 +1649,10 @@ pg_dump版本并退出。
 - `--no-sync`
 
 默认情况下，`pg_dump` 将等待所有文件被安全地写入磁盘。这个选项会让 `pg_dump` 不等待直接返回，这样会更快，但是也意味着后续的一次操作系统崩溃会让该转储损坏。通常这个选项对测试有用，但是不应该在从生产安装中转储数据时使用。
+
+- `--no-table-access-method`
+
+不输出选择表访问方法的命令。通过这个选项，在恢复期间所有对象都将使用默认表访问方法创建。当发出归档（非文本）输出文件时，此选项会被忽略。对于归档格式，你可以在调用 `pg_restore` 时指定该选项。
 
 - `--no-tablespaces`
 
@@ -1630,6 +1674,10 @@ pg_dump版本并退出。
 
 强制引用所有标识符。当从IvorySQL主版本与pg_dump不同的服务器上转储一个数据库时或者当输出准备载入到一个具有不同主版本的服务器时，推荐使用这个选项。默认情况下，pg_dump只对在其主版本中是被保留词的标识符加上引号。在转储其他版本服务器时，这种默认行为有时会导致兼容性问题，因为那些版本可能具有些许不同的被保留词集合。使用 `--quote-all-identifiers` 能阻止这种问题，但代价是转储脚本更难阅读。
 
+- `--restrict-key=*restrict_key*`
+
+使用提供的字符串作为转储输出中的 `psql` `\restrict` 密钥。此选项只能用于纯文本转储，即当 `--format` 设置为 `plain` 或省略 `--format` 选项时。如果未指定 restrict key，`pg_dump` 将在需要时生成一个随机密钥。密钥只能包含字母数字字符。此选项主要用于测试以及需要可重复输出（例如比较转储文件）的场景。不建议在一般场景下使用，因为事先知道密钥的恶意服务器可能会注入任意代码并在运行 `psql` 执行转储输出的机器上执行。
+
 - `--rows-per-insert=*nrows*`
 
 数据转储为 `INSERT` 命令（而不是 `COPY` ）。 控制每个 `INSERT` 命令的最大行数。 指定的值必须大于零。重新加载期间的任何错误都将导致有问题的`INSERT` 相关的行将丢失，而不是整个表内容。
@@ -1637,6 +1685,10 @@ pg_dump版本并退出。
 - `--section=*sectionname*`
 
 只转储命名节。节的名称可以是 `pre-data`、 `data` 或 `post-data`。这个选项可以被指定多次来选择多个节。默认是转储所有节。数据节包含真正的表数据、大对象内容和序列值。数据后项包括索引、触发器、规则和除了已验证检查约束之外的约束的定义。数据前项包括所有其他数据定义项。
+
+- `--sequence-data`
+
+在转储中包含序列数据。这是除指定 `--no-data`、`--schema-only` 或 `--statistics-only` 之外的默认行为。
 
 - `--serializable-deferrable`
 
@@ -1646,9 +1698,25 @@ pg_dump版本并退出。
 
 在做一个数据库的转储时指定一个同步的快照。在需要把转储和一个逻辑复制槽 或者一个并发会话同步时可以用上这个选项。在并行转储的情况下，将使用这个选项指定的快照名而不是取一个新快照。
 
+- `--statistics`
+
+转储优化器统计信息。
+
+- `--statistics-only`
+
+仅转储统计信息，不转储模式（数据定义）或数据。将转储表、物化视图、外部表和索引的优化器统计信息。
+
 - `--strict-names`
 
 要求每一个扩展( `-e` / `--extension` )，模式（ `-n` / `--schema` ）和表（ `-t` / `--table` ）限定符匹配要转储的数据库中至少一个扩展/模式/表。 注意，如果没有找到有这样的扩展/模式/表限定符匹配，即便没有 `--strict-names` ，pg_dump也将生成一个错误。这个选项对 `-N` / `--exclude-schema`、`-T` / `--exclude-table` 或者 `--exclude-table-data` 没有效果。无法匹配任何对象的排除模式不会被当作错误。
+
+- `--sync-method=*method*`
+
+当设置为 `fsync`（默认值）时，`pg_dump --format=directory` 将递归打开并同步归档目录中的所有文件。在 Linux 上，可以改用 `syncfs` 请求操作系统同步包含归档目录的整个文件系统。当使用 `--no-sync` 或 `--format` 未设置为 `directory` 时，此选项无效。
+
+- `--table-and-children=*pattern*`
+
+与 `-t`/`--table` 选项相同，但同时也会包含匹配 *`pattern`* 的表的所有分区或继承子表。
 
 - `--use-set-session-authorization`
 
