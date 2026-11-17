@@ -2547,6 +2547,12 @@ Only restore the named section. The section name can be `pre-data`, `data`, or `
 
 Require that each schema (`-n`/`--schema`) and table (`-t`/`--table`) qualifier match at least one schema/table in the backup file.
 
+- `--transaction-size=N`
+
+Execute the restore as a series of transactions, each processing up to `N` database objects. `N` must be a positive integer. This option implies `--exit-on-error`, and cannot be combined with `-1` / `--single-transaction`. Note that parallel worker connections (`-j` / `--jobs`) do not use this batch size; they commit after each command so that results are immediately visible to other workers.
+
+`--transaction-size` offers an intermediate choice between the default behavior (one transaction per SQL command) and `-1` / `--single-transaction` (one transaction for all restored objects). While `--single-transaction` has the least overhead, it may be impractical for large databases because the transaction takes a lock on each restored object, possibly exhausting the server's lock table space. Using `--transaction-size` with a size of a few thousand objects offers nearly the same performance benefits while capping the amount of lock table space needed.
+
 - `--use-set-session-authorization`
 
 Output SQL-standard `SET SESSION AUTHORIZATION` commands instead of `ALTER OWNER` commands to determine object ownership. This makes the dump more standards-compatible, but depending on the history of the objects in the dump, might not restore properly.
