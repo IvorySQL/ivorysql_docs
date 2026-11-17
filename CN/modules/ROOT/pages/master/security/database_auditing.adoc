@@ -1,0 +1,134 @@
+= 数据库审计
+
+== 概述
+
+数据库审计用于记录数据库的访问与操作行为，以满足安全监控、故障排查及合规审计要求。虽然 IvorySQL 可以通过 `log_statement` 等内置参数记录 SQL 语句，但内置日志粒度较粗，难以精确审计对特定表或列的对象级访问。
+
+为实现细粒度审计，IvorySQL 支持 **PgAudit**（`pgaudit`）扩展。PgAudit 深度集成于 IvorySQL 服务日志子系统，可在 PostgreSQL 兼容模式（默认端口 `5432`）和 Oracle 兼容模式（默认端口 `1521`）下生成详细的会话级与对象级审计日志。
+
+* **会话审计（Session Audit Logging）**：按配置的语句类别（如 `READ`、`WRITE`、`DDL`、`ROLE` 等）记录用户会话中执行的所有匹配语句。
+* **对象审计（Object Audit Logging）**：通过将特定权限授予指定的审计角色（`pgaudit.role`），仅针对指定表、视图或列的 `SELECT`、`INSERT`、`UPDATE`、`DELETE` 操作生成审计记录。
+
+关于 PgAudit 源码编译与基础安装步骤，请参考 xref:master/ecosystem_components/pgaudit.adoc[PgAudit 生态集成]。
+
+== 审计功能配置
+
+=== 启用 PgAudit
+
+在配置审计规则前，需要在数据库启动时加载 `pgaudit` 共享库，并在需要审计的数据库中创建扩展。
+
+1. 在 `postgresql.conf` 中将 `pgaudit` 加入 `shared_preload_libraries`：
++
+[source,ini]
+----
+shared_preload_libraries = 'pgaudit'
+----
++
+[NOTE]
+====
+如果 `shared_preload_libraries` 中已配置其他模块（例如 IvorySQL 兼容插件），请以英文逗号分隔追加 `pgaudit`，并重启 IvorySQL 服务使配置生效。
+====
+
+2. 重启 IvorySQL 实例后，在目标数据库中创建扩展：
++
+[source,sql]
+----
+CREATE EXTENSION pgaudit;
+----
+
+=== 配置会话审计
+
+会话审计根据 `pgaudit.log` 中定义的语句类别记录操作日志。
+
+[cols="1,1,2",options="header"]
+|===
+| 参数 | 默认值 | 说明
+| `pgaudit.log` | `none` | 需要审计的语句类别列表（逗号分隔）：`READ`、`WRITE`、`FUNCTION`、`ROLE`、`DDL`、`MISC`、`MISC_SET`、`ALL` 或 `none`。在类别前加 `-` 表示排除（例如 `all, -misc`）。
+| `pgaudit.log_level` | `log` | `AUDIT:` 审计日志的输出级别（`debug5`..`debug1`、`info`、`notice`、`warning`、`log`）。
+| `pgaudit.log_catalog` | `on` | 控制是否记录仅访问系统目录（`pg_catalog`）的语句。设为 `off` 可减少客户端驱动查询产生的噪音日志。
+| `pgaudit.log_client` | `off` | 是否将审计日志同时发送到客户端会话（生产环境通常保持 `off`）。
+| `pgaudit.log_parameter` | `off` | 是否在审计日志中一并记录 SQL 语句的绑定参数值。
+| `pgaudit.log_parameter_max_size` | `0` | 单个参数值的最大记录字节数（`0` 表示不限制）。
+| `pgaudit.log_relation` | `off` | 为 `SELECT` 或 DML 语句中引用的每个关系（表/视图）单独生成一条审计记录。
+| `pgaudit.log_statement_once` | `off` | 同一语句/子语句组合仅在首次记录审计日志时输出完整 SQL 文本和参数。
+|===
+
+以下示例在 `postgresql.conf` 中配置审计 DDL、权限变更及写操作，同时过滤纯系统表查询：
+
+[source,ini]
+----
+pgaudit.log = 'ddl, role, write'
+pgaudit.log_catalog = off
+pgaudit.log_parameter = on
+pgaudit.log_relation = on
+----
+
+无需重启数据库，执行以下命令使配置生效：
+
+[source,sql]
+----
+SELECT pg_reload_conf();
+----
+
+=== 配置对象审计
+
+对象审计通过将表、视图或列的权限授予 `pgaudit.role` 指定的非登录审计角色来实现精准审计。
+
+1. 创建审计角色并在 `postgresql.conf` 中设置 `pgaudit.role`：
++
+[source,sql]
+----
+CREATE ROLE auditor NOLOGIN;
+ALTER SYSTEM SET pgaudit.role = 'auditor';
+SELECT pg_reload_conf();
+----
+
+2. 将需要审计的操作权限授予 `auditor`：
++
+[source,sql]
+----
+-- 审计对敏感表的 SELECT 和 INSERT 操作
+GRANT SELECT, INSERT ON public.accounts TO auditor;
+
+-- 仅审计对特定列的 UPDATE 操作
+GRANT UPDATE (balance) ON public.accounts TO auditor;
+----
+
+当任意用户对 `public.accounts` 执行匹配操作时，即使 `pgaudit.log` 为 `none`，PgAudit 也会生成 `OBJECT` 类型的审计日志。
+
+== 审计管理
+
+=== 保护审计配置
+
+* **严格管控超级用户权限**：仅超级用户可以修改 `shared_preload_libraries`、`pgaudit.role` 和全局 `pgaudit.log`。切勿向业务应用账号授予超级用户权限。
+* **防止会话级绕过**：普通用户无法在自己的会话中通过 `SET` 修改 `pgaudit.log` 或 `pgaudit.role`，从而确保用户无法自行关闭审计。
+* **集中持久化配置**：建议统一通过 `postgresql.conf` 或 `ALTER SYSTEM` 管理审计参数，避免分散设置。
+
+=== 日志存储与轮转
+
+PgAudit 生成的审计日志以 `AUDIT:` 为前缀写入 IvorySQL 服务日志。建议在 `postgresql.conf` 中配置日志采集与轮转策略，避免磁盘占满并满足留存周期要求：
+
+[source,ini]
+----
+logging_collector = on
+log_directory = 'log'
+log_filename = 'ivorysql-%Y-%m-%d.log'
+log_rotation_age = 1d
+log_rotation_size = 100MB
+log_line_prefix = '%m [%p] %q%u@%d/%a '
+----
+
+=== 审计日志查看与维护
+
+审计记录采用结构化 CSV 风格格式（`AUDIT: <类型>,<语句ID>,<子语句ID>,<类别>,<命令>,<对象类型>,<对象名>,<SQL语句>,<参数>`）。
+
+日志示例：
+
+[source,text]
+----
+LOG:  AUDIT: SESSION,1,1,DDL,CREATE TABLE,,,CREATE TABLE t1 (id int, name varchar(50));,<none>
+LOG:  AUDIT: OBJECT,2,1,READ,SELECT,TABLE,public.accounts,SELECT balance FROM public.accounts;,<none>
+----
+
+* 可通过 `grep "AUDIT:" log/ivorysql-*.log` 筛选审计日志，或接入集中式日志平台 / SIEM 系统实现防篡改留存与告警。
+* 在 Oracle 兼容模式（`1521` 端口）下使用时，请结合数据脱敏与合规要求评估是否开启 `pgaudit.log_parameter`（开启后会明文记录参数值），并严格限制 `log_directory` 目录的文件系统访问权限。
