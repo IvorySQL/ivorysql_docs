@@ -6,6 +6,7 @@
 * Deploy
 ** xref:master/installation_guide.adoc[Installation]
 ** xref:master/cluster_setup.adoc[Cluster]
+** xref:master/read_write_separation_cluster.adoc[Read-Write Separation Cluster]
 * Oracle Compatibility
 ** xref:master/oracle_compatibility/compat_case_conversion.adoc[Case conversion]
 ** xref:master/oracle_compatibility/compat_like_operator.adoc[LIKE operator]

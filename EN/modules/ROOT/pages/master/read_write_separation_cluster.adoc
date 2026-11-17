@@ -1,0 +1,142 @@
+= Read-Write Separation Cluster
+
+== Overview
+
+In production environments with heavy read workloads, routing all queries to a single primary node can create CPU and I/O bottlenecks. A read-write separation cluster pairs an IvorySQL streaming replication topology (one primary node and one or more standby nodes) with a database middleware proxy that inspects incoming SQL requests, sends write transactions to the primary node, and distributes read-only `SELECT` queries across standby nodes.
+
+**Pgpool-II** is a widely used open-source middleware for PostgreSQL and IvorySQL that provides connection pooling, streaming-replication awareness, automatic load balancing, and health checking without requiring application-level sharding logic.
+
+* **Write routing**: `INSERT`, `UPDATE`, `DELETE`, DDL statements, and write transactions are routed to the primary node.
+* **Read load balancing**: Read-only `SELECT` statements outside write transactions are distributed across healthy nodes according to configured `backend_weight` values.
+* **Compatibility modes**: IvorySQL exposes PostgreSQL mode (default port `5432`) and Oracle-compatible mode (default port `1521`). Configure `Pgpool-II` backend ports consistently for the compatibility mode used by your applications.
+
+For setting up the underlying IvorySQL primary and standby nodes, see xref:master/cluster_setup.adoc[Cluster Setup].
+
+== Deployment Steps
+
+=== Prerequisites
+
+1. Deploy a working IvorySQL streaming replication cluster (at least one primary node and one standby node). Refer to xref:master/cluster_setup.adoc[Cluster Setup] for primary/standby initialization.
+2. Verify replication is active on the primary node:
++
+[source,sql]
+----
+SELECT client_addr, state, sync_state FROM pg_stat_replication;
+----
+3. Ensure network connectivity and `pg_hba.conf` rules on all IvorySQL nodes allow connections from the `Pgpool-II` host.
+
+=== Installing Pgpool-II
+
+Install `Pgpool-II` on the middleware host (or a dedicated proxy node) using your system package manager or from source:
+
+[source,bash]
+----
+# Example on RHEL / Rocky Linux / CentOS
+sudo dnf install -y pgpool-II
+
+# Example on Debian / Ubuntu
+sudo apt-get update && sudo apt-get install -y pgpool2
+----
+
+=== Configuring Backend Nodes and Load Balancing
+
+Edit `pgpool.conf` (typically under `/etc/pgpool-II/pgpool.conf` or `/usr/local/etc/pgpool.conf`) to define the IvorySQL primary and standby backends, streaming replication checks, and load balancing:
+
+[source,ini]
+----
+# Listen settings
+listen_addresses = '*'
+port = 9999
+
+# Backend mode
+backend_clustering_mode = 'streaming_replication'
+
+# Primary node (node 0)
+backend_hostname0 = '192.168.1.10'
+backend_port0 = 5432
+backend_weight0 = 0
+backend_flag0 = 'ALLOW_TO_FAILOVER'
+
+# Standby node (node 1)
+backend_hostname1 = '192.168.1.11'
+backend_port1 = 5432
+backend_weight1 = 1
+backend_flag1 = 'ALLOW_TO_FAILOVER'
+
+# Enable read-write separation / load balancing
+load_balance_mode = on
+
+# Streaming replication delay and health checks
+sr_check_period = 10
+sr_check_user = 'ivorysql'
+sr_check_database = 'postgres'
+
+health_check_period = 10
+health_check_user = 'ivorysql'
+health_check_database = 'postgres'
+----
+
+[NOTE]
+====
+Setting `backend_weight0 = 0` and `backend_weight1 = 1` routes read-only `SELECT` queries exclusively to the standby node while keeping all writes on the primary node. To share read traffic between primary and standby, set a positive weight on both nodes (for example, `backend_weight0 = 0.3` and `backend_weight1 = 0.7`).
+
+If your applications connect in IvorySQL Oracle-compatible mode, set `backend_port0` and `backend_port1` to `1521` (the IvorySQL Oracle listener port) rather than `5432`.
+====
+
+=== Configuring Authentication and Starting Pgpool-II
+
+1. Configure `pool_hba.conf` on the `Pgpool-II` host to allow client connections (set `enable_pool_hba = on` in `pgpool.conf`):
++
+[source,text]
+----
+host    all    all    0.0.0.0/0    scram-sha-256
+----
+
+2. Register database user credentials in `pool_passwd` using `pg_enc` so `Pgpool-II` can authenticate clients against IvorySQL:
++
+[source,bash]
+----
+pg_enc -m -f /etc/pgpool-II/pgpool.conf -u ivorysql -p
+----
+
+3. Start and enable `Pgpool-II`:
++
+[source,bash]
+----
+sudo systemctl enable --now pgpool
+----
+
+== Usage Configuration
+
+=== Verifying Node Roles and Routing
+
+Connect through the `Pgpool-II` port (`9999`) using `psql` and inspect node status:
+
+[source,bash]
+----
+psql -h <pgpool_host> -p 9999 -U ivorysql -d postgres -c "SHOW pool_nodes;"
+----
+
+Confirm that node `0` reports `role = primary` and node `1` reports `role = standby`, both with `status = up`.
+
+You can also verify routing behavior with read and write queries:
+
+[source,sql]
+----
+-- Read query: routed to standby (when backend_weight0 = 0)
+SELECT inet_server_addr(), pg_is_in_recovery();
+
+-- Write query: routed to primary
+CREATE TABLE rw_test (id int, created_at timestamp DEFAULT now());
+INSERT INTO rw_test (id) VALUES (1);
+----
+
+=== Tuning Read-Write Routing Behavior
+
+Configure the following parameters in `pgpool.conf` based on your application's consistency requirements:
+
+* `disable_load_balance_on_write`: Controls how `SELECT` queries are routed after a write inside the same transaction or session.
+  - `transaction` (default): After a write, subsequent reads in the same transaction go to the primary; reads in a new transaction can return to standby nodes.
+  - `trans_transaction` / `dml_adaptive` / `always`: Keeps reads on the primary longer when strict read-your-own-writes consistency is needed.
+* `delay_threshold`: Maximum WAL replay lag (in bytes) permitted on a standby before `Pgpool-II` temporarily stops routing read queries to that standby and falls back to the primary.
+* `write_function_list` / `read_only_function_list`: Classify stored functions or procedures that modify data so `Pgpool-II` routes `SELECT my_write_func()` to the primary node rather than a standby.
