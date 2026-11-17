@@ -1,0 +1,142 @@
+= 读写分离集群
+
+== 概述
+
+在读多写少的生产业务场景下，将所有查询请求都发送到单一主节点容易引发 CPU 和 I/O 瓶颈。读写分离集群将 IvorySQL 流复制拓扑（一主多从）与数据库中间件代理结合，由代理层自动识别 SQL 请求类型，将写事务路由至主节点，并将只读 `SELECT` 查询分发至备节点执行。
+
+**Pgpool-II** 是 PostgreSQL 与 IvorySQL 生态中常用的开源中间件，无需修改应用层分片逻辑即可提供连接池、流复制感知、自动负载均衡与节点健康检查能力。
+
+* **写请求路由**：`INSERT`、`UPDATE`、`DELETE`、DDL 语句以及写事务均路由至主节点。
+* **读请求负载均衡**：不在写事务中的只读 `SELECT` 查询，会按配置的 `backend_weight` 权重分发至健康的备节点或主节点。
+* **兼容模式支持**：IvorySQL 提供 PostgreSQL 兼容模式（默认端口 `5432`）和 Oracle 兼容模式（默认端口 `1521`）。请根据业务实际使用的兼容模式统一配置 `Pgpool-II` 的后端端口。
+
+关于底层 IvorySQL 主备流复制集群的初始化步骤，请参考 xref:master/cluster_setup.adoc[集群搭建]。
+
+== 部署步骤
+
+=== 前置条件
+
+1. 已部署可正常运行的 IvorySQL 流复制集群（至少包含一个主节点和一个备节点），初始化方式可参考 xref:master/cluster_setup.adoc[集群搭建]。
+2. 在主节点上确认流复制状态正常：
++
+[source,sql]
+----
+SELECT client_addr, state, sync_state FROM pg_stat_replication;
+----
+3. 确保所有 IvorySQL 节点的防火墙及 `pg_hba.conf` 允许来自 `Pgpool-II` 所在主机的连接。
+
+=== 安装 Pgpool-II
+
+在中间件节点（或独立代理服务器）上通过系统包管理器或源码安装 `Pgpool-II`：
+
+[source,bash]
+----
+# RHEL / Rocky Linux / CentOS 示例
+sudo dnf install -y pgpool-II
+
+# Debian / Ubuntu 示例
+sudo apt-get update && sudo apt-get install -y pgpool2
+----
+
+=== 配置后端节点与负载均衡
+
+编辑 `pgpool.conf`（通常位于 `/etc/pgpool-II/pgpool.conf` 或 `/usr/local/etc/pgpool.conf`），配置 IvorySQL 主备节点、流复制检查和负载均衡参数：
+
+[source,ini]
+----
+# 监听地址与端口
+listen_addresses = '*'
+port = 9999
+
+# 集群模式设为流复制
+backend_clustering_mode = 'streaming_replication'
+
+# 主节点（节点 0）
+backend_hostname0 = '192.168.1.10'
+backend_port0 = 5432
+backend_weight0 = 0
+backend_flag0 = 'ALLOW_TO_FAILOVER'
+
+# 备节点（节点 1）
+backend_hostname1 = '192.168.1.11'
+backend_port1 = 5432
+backend_weight1 = 1
+backend_flag1 = 'ALLOW_TO_FAILOVER'
+
+# 开启读写分离 / 负载均衡
+load_balance_mode = on
+
+# 流复制延迟检查与健康检查
+sr_check_period = 10
+sr_check_user = 'ivorysql'
+sr_check_database = 'postgres'
+
+health_check_period = 10
+health_check_user = 'ivorysql'
+health_check_database = 'postgres'
+----
+
+[NOTE]
+====
+将 `backend_weight0` 设为 `0`、`backend_weight1` 设为 `1`，可使只读 `SELECT` 查询全部路由至备节点，主节点专注处理写请求；若希望主节点也分担部分读流量，可为两者设置正权重（例如 `backend_weight0 = 0.3`、`backend_weight1 = 0.7`）。
+
+如果应用以 IvorySQL Oracle 兼容模式连接，请将 `backend_port0` 和 `backend_port1` 配置为 `1521`（IvorySQL Oracle 监听端口），而非 `5432`。
+====
+
+=== 配置认证并启动服务
+
+1. 在 `Pgpool-II` 主机配置 `pool_hba.conf` 允许客户端接入（同时在 `pgpool.conf` 中开启 `enable_pool_hba = on`）：
++
+[source,text]
+----
+host    all    all    0.0.0.0/0    scram-sha-256
+----
+
+2. 使用 `pg_enc` 将数据库用户凭据写入 `pool_passwd`，以便 `Pgpool-II` 完成客户端认证：
++
+[source,bash]
+----
+pg_enc -m -f /etc/pgpool-II/pgpool.conf -u ivorysql -p
+----
+
+3. 启动并设置 `Pgpool-II` 开机自启：
++
+[source,bash]
+----
+sudo systemctl enable --now pgpool
+----
+
+== 使用配置
+
+=== 验证节点角色与路由效果
+
+通过 `Pgpool-II` 端口（`9999`）使用 `psql` 连接并查看集群节点状态：
+
+[source,bash]
+----
+psql -h <pgpool_host> -p 9999 -U ivorysql -d postgres -c "SHOW pool_nodes;"
+----
+
+确认节点 `0` 的 `role` 为 `primary`、节点 `1` 的 `role` 为 `standby`，且两者 `status` 均为 `up`。
+
+随后可通过读写测试验证分流是否生效：
+
+[source,sql]
+----
+-- 读查询：在 backend_weight0 = 0 时将路由到备节点（pg_is_in_recovery() 返回 t）
+SELECT inet_server_addr(), pg_is_in_recovery();
+
+-- 写操作：自动路由到主节点
+CREATE TABLE rw_test (id int, created_at timestamp DEFAULT now());
+INSERT INTO rw_test (id) VALUES (1);
+----
+
+=== 读写路由关键参数调优
+
+根据业务对数据一致性的要求，可在 `pgpool.conf` 中调整以下参数：
+
+* `disable_load_balance_on_write`：控制同一事务或会话中发生写操作后，后续 `SELECT` 的路由策略。
+  - `transaction`（默认值）：写操作后，同一事务内的后续读请求路由到主节点；新事务中的读请求可恢复分发至备节点。
+  - `trans_transaction` / `dml_adaptive` / `always`：当业务需要更严格的“写后立即可读”一致性时，可延长读请求固定在主节点的时间范围。
+* `delay_threshold`：备节点允许的最大 WAL 回放延迟（字节数）。超过该阈值时，`Pgpool-II` 会暂停向该备节点分发读流量并回退至主节点。
+* `write_function_list` / `read_only_function_list`：显式标记会修改数据的自定义函数或存储过程，确保 `Pgpool-II` 将 `SELECT my_write_func()` 正确路由到主节点执行。
