@@ -90,7 +90,7 @@ The Bootstrap Kit is primarily used to initialize the foundational structure of 
 
 The genbki.pl script processes system table files like pg_class.h, pg_namespace.h, and pg_proc.h, and generates postgres.bki for initdb to load. This primarily involves loading initialization data, such as creating system tables, system functions, and predefined types.
 
-During the compilation phase before initdb, genbki.pl generates both postgres.bki and postgres_ora.bki. While postgres.bki remains unchanged from PostgreSQL, postgres_ora.bki includes additional system objects for Oracle compatibility.
+During the compilation phase before initdb, genbki.pl generates both postgres.bki and postgres_oracle.bki. While postgres.bki remains unchanged from PostgreSQL, postgres_oracle.bki includes additional system objects for Oracle compatibility.
 ****
 
 image::p20.jpg[]
