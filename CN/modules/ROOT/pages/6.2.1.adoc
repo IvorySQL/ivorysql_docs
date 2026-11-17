@@ -89,7 +89,7 @@ Bootstrap Kit 主要用于初始化 PostgreSQL 数据库系统的基础结构，
 
 genbki.pl 处理系统表文件如pg_class.h,pg_namespace.h,pg_proc.h等，并生成postgres.bki供initdb加载，主要是加载初始化数据，如创建系统表，系统函数和预定义类型等。
 
-在initdb前的编译阶段，会通过genbki.pl生成postgres.bki 和 postgres_ora.bki，postgres.bki保持PG原样，postgres_ora.bki在pg的基础上增加oracle 兼容的系统对象。
+在initdb前的编译阶段，会通过genbki.pl生成postgres.bki 和 postgres_oracle.bki，postgres.bki保持PG原样，postgres_oracle.bki在pg的基础上增加oracle 兼容的系统对象。
 ****
 
 image::p20.jpg[]
