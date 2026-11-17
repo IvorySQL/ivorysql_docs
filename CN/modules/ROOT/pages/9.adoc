@@ -2573,6 +2573,12 @@ pg_restore接受下列命令行参数。
 
 要求每一个模式（ `-n` / `--schema`）以及表（ `-t` / `--table`）限定词匹配备份文件中至少一个模式/表。
 
+- `--transaction-size=N`
+
+以一系列事务的方式执行恢复，每个事务最多处理 `N` 个数据库对象。`N` 必须是一个正整数。此选项隐含了 `--exit-on-error`，且不能与 `-1` / `--single-transaction` 同时使用。请注意，并行工作连接（`-j` / `--jobs`）不使用此批量大小；它们会在每条命令后提交，以便结果对其他工作进程立即可见。
+
+`--transaction-size` 提供了介于默认行为（每条 SQL 命令一个事务）和 `-1` / `--single-transaction`（所有恢复对象共用一个事务）之间的折中选择。虽然 `--single-transaction` 开销最小，但对于大型数据库可能并不实用，因为该事务会对每个恢复的对象加锁，从而可能耗尽服务器的锁表空间。将 `--transaction-size` 设置为几千个对象，既能获得几乎相同的性能收益，又能限制所需的锁表空间大小。
+
 - `--use-set-session-authorization`
 
 输出 SQL 标准的 `SET SESSION AUTHORIZATION` 命令取代 `ALTER OWNER` 命令来决定对象拥有权。这会让转储更加兼容标准，但是依赖于转储中对象的历史，可能无法正确恢复。
