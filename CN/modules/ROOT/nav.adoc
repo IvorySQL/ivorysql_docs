@@ -187,6 +187,8 @@
 **** xref:master/compatibility_features_design/to_binary_float_function_impl.adoc[二进制浮点转换函数]
 **** xref:master/compatibility_features_design/to_binary_double_function_impl.adoc[双精度浮点转换函数]
 *** xref:master/gb18030.adoc[国标GB18030]
+* 安全指南
+** xref:master/security/database_auditing.adoc[数据库审计]
 * 参考指南
 ** xref:master/tools_reference.adoc[工具参考]
 ** xref:master/contribution/asciidoc_syntax_reference.adoc[asciidoc语法快速参考]
