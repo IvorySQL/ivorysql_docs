@@ -903,6 +903,10 @@ Sets the target directory to write the output to. pg_basebackup will create this
 
 Selects the format for the output. *`format`* can be one of the following: `p` `plain` Write the output as plain files, with the same layout as the source server's data directory and tablespaces. When the cluster has no additional tablespaces, the whole database will be placed in the target directory. If the cluster contains additional tablespaces, the main data directory will be placed in the target directory, but all other tablespaces will be placed in the same absolute path as they have on the source server. (See `--tablespace-mapping` to change that.)This is the default format. `t` `tar` Write the output as tar files in the target directory. The main data directory's contents will be written to a file named `base.tar`, and each other tablespace will be written to a separate tar file named after that tablespace's OID.If the target directory is specified as `-` (dash), the tar contents will be written to standard output, suitable for piping to (for example) gzip. This is only allowed if the cluster has no additional tablespaces and WAL streaming is not used.
 
+- `-i *old_manifest_file*` `--incremental=*old_manifest_file*`
+
+Performs an incremental backup. The backup manifest for the reference backup must be provided, and will be uploaded to the server, which will respond by sending the requested incremental backup.
+
 - `-R` `--write-recovery-conf`
 
 Creates a http://www.postgresql.org/docs/17/warm-standby.html#FILE-STANDBY-SIGNAL[`standby.signal`] file and appends connection settings to the `IvorySQL.auto.conf` file in the target directory (or within the base archive file when using tar format). This eases setting up a standby server using the results of the backup.The `IvorySQL.auto.conf` file will record the connection settings and, if specified, the replication slot that pg_basebackup is using, so that streaming replication will use the same settings later on.
@@ -992,6 +996,10 @@ Prevents the creation of a temporary replication slot for the backup.By default,
 - `--no-verify-checksums`
 
 Disables verification of checksums, if they are enabled on the server the base backup is taken from.By default, checksums are verified and checksum failures will result in a non-zero exit status. However, the base backup will not be removed in such a case, as if the `--no-clean` option had been used. Checksum verification failures will also be reported in the http://www.postgresql.org/docs/17/monitoring-stats.html#MONITORING-PG-STAT-DATABASE-VIEW[`pg_stat_database`] view.
+
+- `--sync-method=*method*`
+
+When set to `fsync`, which is the default, pg_basebackup will recursively open and synchronize all files in the backup directory. When the plain format is used, the search for files will follow symbolic links for the WAL directory and each configured tablespace. On Linux, `syncfs` may be used instead to ask the operating system to synchronize the whole file system that contains the backup directory. When the plain format is used, pg_basebackup will also synchronize the file systems that contain the WAL files and each tablespace. See `recovery_init_sync_method` for information about the caveats to be aware of when using `syncfs`. This option has no effect when `--no-sync` is used.
 
 The following command-line options control the connection to the source server:
 
