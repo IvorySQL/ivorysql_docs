@@ -1,0 +1,134 @@
+= Database Auditing
+
+== Overview
+
+Database auditing records database access and operations for security monitoring, troubleshooting, and regulatory compliance. While IvorySQL provides built-in statement logging through standard parameters such as `log_statement`, built-in logging is coarse-grained and cannot easily track object-level access (such as specific tables or columns).
+
+For fine-grained auditing, IvorySQL supports the **PgAudit** (`pgaudit`) extension. PgAudit integrates with the IvorySQL server logging subsystem to generate detailed session and object audit logs across both PostgreSQL-compatible mode (default port `5432`) and Oracle-compatible mode (default port `1521`).
+
+* **Session Audit Logging**: Records all statements executed by a user session that match configured statement classes (such as `READ`, `WRITE`, `DDL`, or `ROLE`).
+* **Object Audit Logging**: Records operations (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) on specific relations (tables, views, columns) based on privileges granted to a designated auditor role (`pgaudit.role`).
+
+For source compilation and basic extension installation steps, see xref:master/ecosystem_components/pgaudit.adoc[PgAudit Ecosystem Integration].
+
+== Audit Function Configuration
+
+=== Enabling PgAudit
+
+Before configuring audit rules, load the `pgaudit` shared library at server startup and create the extension in each database you want to audit.
+
+1. Add `pgaudit` to `shared_preload_libraries` in `postgresql.conf`:
++
+[source,ini]
+----
+shared_preload_libraries = 'pgaudit'
+----
++
+[NOTE]
+====
+If `shared_preload_libraries` already contains other modules (for example, IvorySQL compatibility plugins), append `pgaudit` as a comma-separated entry and restart the IvorySQL server for the change to take effect.
+====
+
+2. Restart the IvorySQL instance and create the extension in the target database:
++
+[source,sql]
+----
+CREATE EXTENSION pgaudit;
+----
+
+=== Configuring Session Audit Logging
+
+Session auditing logs statements based on categories defined in `pgaudit.log`.
+
+[cols="1,1,2",options="header"]
+|===
+| Parameter | Default | Description
+| `pgaudit.log` | `none` | Comma-separated list of statement classes to audit: `READ`, `WRITE`, `FUNCTION`, `ROLE`, `DDL`, `MISC`, `MISC_SET`, `ALL`, or `none`. Prefix a class with `-` to exclude it (for example, `all, -misc`).
+| `pgaudit.log_level` | `log` | Server log level used for `AUDIT:` entries (`debug5`..`debug1`, `info`, `notice`, `warning`, `log`).
+| `pgaudit.log_catalog` | `on` | Controls whether statements referencing only system catalogs (`pg_catalog`) are logged. Setting `off` reduces log noise from client drivers.
+| `pgaudit.log_client` | `off` | Sends audit log messages to the client session in addition to the server log (usually kept `off` in production).
+| `pgaudit.log_parameter` | `off` | Includes bind/parameter values alongside the SQL statement in audit logs.
+| `pgaudit.log_parameter_max_size` | `0` | Maximum byte length logged per parameter value (`0` means unlimited).
+| `pgaudit.log_relation` | `off` | Creates a separate audit log entry for each relation (table/view) referenced in a `SELECT` or DML statement.
+| `pgaudit.log_statement_once` | `off` | Logs the statement text and parameters only on the first audit entry for a statement/substatement combination.
+|===
+
+Example configuration in `postgresql.conf` for auditing DDL, privilege changes, and writes while excluding `pg_catalog`-only queries:
+
+[source,ini]
+----
+pgaudit.log = 'ddl, role, write'
+pgaudit.log_catalog = off
+pgaudit.log_parameter = on
+pgaudit.log_relation = on
+----
+
+Reload the configuration without restarting the database:
+
+[source,sql]
+----
+SELECT pg_reload_conf();
+----
+
+=== Configuring Object Audit Logging
+
+Object auditing targets specific tables, views, or columns by assigning privileges to a dedicated non-login audit role specified by `pgaudit.role`.
+
+1. Create an audit role and configure `pgaudit.role` in `postgresql.conf`:
++
+[source,sql]
+----
+CREATE ROLE auditor NOLOGIN;
+ALTER SYSTEM SET pgaudit.role = 'auditor';
+SELECT pg_reload_conf();
+----
+
+2. Grant the operations you want to audit to `auditor`:
++
+[source,sql]
+----
+-- Audit SELECT and INSERT on a sensitive table
+GRANT SELECT, INSERT ON public.accounts TO auditor;
+
+-- Audit UPDATE only on a specific column
+GRANT UPDATE (balance) ON public.accounts TO auditor;
+----
+
+When any user executes a matching operation on `public.accounts`, PgAudit emits an `OBJECT` audit log entry, even if `pgaudit.log` is `none`.
+
+== Audit Management
+
+=== Protecting Audit Configuration
+
+* **Restrict superuser access**: Only superusers can modify `shared_preload_libraries`, `pgaudit.role`, or `pgaudit.log` globally. Do not grant superuser privileges to application accounts.
+* **Control `SET` overrides**: Non-superusers cannot change `pgaudit.log` or `pgaudit.role` in their own sessions, ensuring users cannot disable auditing for their connections.
+* **Use `postgresql.conf` or `ALTER SYSTEM`**: Persist audit parameters centrally rather than relying on per-database or per-role `ALTER` settings unless intentional exceptions are required.
+
+=== Log Storage and Rotation
+
+PgAudit writes entries prefixed with `AUDIT:` to the IvorySQL server log. Configure log collection and rotation in `postgresql.conf` to prevent disk exhaustion and support retention policies:
+
+[source,ini]
+----
+logging_collector = on
+log_directory = 'log'
+log_filename = 'ivorysql-%Y-%m-%d.log'
+log_rotation_age = 1d
+log_rotation_size = 100MB
+log_line_prefix = '%m [%p] %q%u@%d/%a '
+----
+
+=== Reviewing Audit Logs
+
+Audit records follow a structured CSV-like format (`AUDIT: <TYPE>,<STATEMENT_ID>,<SUBSTATEMENT_ID>,<CLASS>,<COMMAND>,<OBJECT_TYPE>,<OBJECT_NAME>,<STATEMENT>,<PARAMETER>`).
+
+Example log output:
+
+[source,text]
+----
+LOG:  AUDIT: SESSION,1,1,DDL,CREATE TABLE,,,CREATE TABLE t1 (id int, name varchar(50));,<none>
+LOG:  AUDIT: OBJECT,2,1,READ,SELECT,TABLE,public.accounts,SELECT balance FROM public.accounts;,<none>
+----
+
+* Filter `AUDIT:` lines using standard log tools (`grep "AUDIT:" log/ivorysql-*.log`) or forward logs to a centralized SIEM / log aggregation platform for tamper-resistant retention and alerting.
+* In Oracle-compatible mode (port `1521`), verify both `log_directory` permissions and `pgaudit.log_parameter` settings according to your data-masking and compliance requirements, since `pgaudit.log_parameter = on` records literal parameter values in plaintext.
