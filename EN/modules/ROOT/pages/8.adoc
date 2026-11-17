@@ -197,7 +197,7 @@ Click submit new issue button. WELL DONE!
 
 == **Contribute Code**
 
-=== First: Fork https://ivorysql.org/[ivorysql.org]  warehouse
+=== First: Fork https://github.com/IvorySQL/IvorySQL[IvorySQL]  warehouse
 
 1 Open the ivorysql warehouse: https://github.com/IvorySQL/IvorySQL 
 
