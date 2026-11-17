@@ -1482,9 +1482,9 @@ The following command-line options control the content and format of the output.
 
 - `-b` `--blobs`
 
-  Include large objects in the dump. This is the default behavior except when `--schema`, `--table`, or `--schema-only` is specified. The `-b` switch is therefore only useful to add large objects to dumps where a specific schema or table has been requested. Note that blobs are considered data and therefore will be included when `--data-only` is used, but not when `--schema-only` is.
+  Include large objects in the dump. This is the default behavior except when `--schema`, `--table`, `--schema-only`, `--statistics-only`, or `--no-data` is specified. The `-b` switch is therefore only useful to add large objects to dumps where a specific schema or table has been requested. Note that large objects are considered data and therefore will be included when `--data-only` is used, but not when `--schema-only` or `--statistics-only` is.
 
-- `-B` `--no-blobs`
+- `-B` `--no-large-objects` `--no-blobs` (deprecated)
 
   Exclude large objects in the dump.When both `-b` and `-B` are given, the behavior is to output large objects, when data is being dumped, see the `-b` documentation.
 
@@ -1584,13 +1584,37 @@ The following command-line options control the content and format of the output.
 
   This option is relevant only when dumping the contents of a table which has row security. By default, pg_dump will set http://www.postgresql.org/docs/17/runtime-config-client.html#GUC-ROW-SECURITY[row_security] to off, to ensure that all data is dumped from the table. If the user does not have sufficient privileges to bypass row security, then an error is thrown. This parameter instructs pg_dump to set http://www.postgresql.org/docs/17/runtime-config-client.html#GUC-ROW-SECURITY[row_security] to on instead, allowing the user to dump the parts of the contents of the table that they have access to.Note that if you use this option currently, you probably also want the dump be in `INSERT` format, as the `COPY FROM` during restore does not support row security.
 
+- `--exclude-extension=*`pattern`*`
+
+  Do not dump any extensions matching *`pattern`*. The pattern is interpreted according to the same rules as for `-e`. `--exclude-extension` can be given more than once to exclude extensions matching any of several patterns. When both `-e` and `--exclude-extension` are given, the behavior is to dump just the extensions that match at least one `-e` switch but no `--exclude-extension` switches. If `--exclude-extension` appears without `-e`, then extensions matching `--exclude-extension` are excluded from what is otherwise a normal dump.
+
+- `--exclude-table-and-children=*`pattern`*`
+
+  This is the same as the `-T`/`--exclude-table` option, except that it also excludes any partitions or inheritance child tables of the table(s) matching the *`pattern`*.
+
 - `--exclude-table-data=*`pattern`*`
 
   Do not dump data for any tables matching *`pattern`*. The pattern is interpreted according to the same rules as for `-t`. `--exclude-table-data` can be given more than once to exclude tables matching any of several patterns. This option is useful when you need the definition of a particular table even though you do not need the data in it.To exclude data for all tables in the database, see `--schema-only`.
 
+- `--exclude-table-data-and-children=*`pattern`*`
+
+  This is the same as the `--exclude-table-data` option, except that it also excludes data of any partitions or inheritance child tables of the table(s) matching the *`pattern`*.
+
 - `--extra-float-digits=*`ndigits`*`
 
   Use the specified value of `extra_float_digits` when dumping floating-point data, instead of the maximum available precision. Routine dumps made for backup purposes should not use this option.
+
+- `--filter=*`filename`*`
+
+  Specify a filename from which to read patterns for objects to include or exclude from the dump. The patterns are interpreted according to the same rules as the corresponding options: `-t`/`--table`, `--table-and-children`, `-T`/`--exclude-table`, and `--exclude-table-and-children` for tables, `-n`/`--schema` and `-N`/`--exclude-schema` for schemas, `--include-foreign-data` for data on foreign servers, `--exclude-table-data` and `--exclude-table-data-and-children` for table data, and `-e`/`--extension` and `--exclude-extension` for extensions. To read from `STDIN`, use `-` as the filename. The `--filter` option can be specified in conjunction with the above listed options for including or excluding objects, and can also be specified more than once for multiple filter files.
++
+The file lists one object pattern per row, with the following format:
++
+`{ include | exclude } { extension | foreign_data | table | table_and_children | table_data | table_data_and_children | schema } *PATTERN*`
++
+The first keyword specifies whether the objects matched by the pattern are to be included or excluded. The second keyword specifies the type of object to be filtered using the pattern: `extension` (like `-e`/`--extension` or `--exclude-extension`), `foreign_data` (data on foreign servers, like `--include-foreign-data`; only usable with `include`), `table` (like `-t`/`--table` or `-T`/`--exclude-table`), `table_and_children` (like `--table-and-children` or `--exclude-table-and-children`), `table_data` (like `--exclude-table-data`; only usable with `exclude`), `table_data_and_children` (like `--exclude-table-data-and-children`; only usable with `exclude`), and `schema` (like `-n`/`--schema` or `-N`/`--exclude-schema`).
++
+Lines starting with `#` are considered comments and ignored. Comments can be placed after an object pattern row as well. Blank lines are also ignored.
 
 - `--if-exists`
 
@@ -1616,13 +1640,29 @@ The following command-line options control the content and format of the output.
 
   Do not dump comments.
 
+- `--no-data`
+
+  Do not dump data.
+
+- `--no-policies`
+
+  Do not dump row security policies.
+
 - `--no-publications`
 
   Do not dump publications.
 
+- `--no-schema`
+
+  Do not dump schema (data definitions).
+
 - `--no-security-labels`
 
   Do not dump security labels.
+
+- `--no-statistics`
+
+  Do not dump statistics. This is the default.
 
 - `--no-subscriptions`
 
@@ -1631,6 +1671,10 @@ The following command-line options control the content and format of the output.
 - `--no-sync`
 
   By default, `pg_dump` will wait for all files to be written safely to disk. This option causes `pg_dump` to return without waiting, which is faster, but means that a subsequent operating system crash can leave the dump corrupt. Generally, this option is useful for testing but should not be used when dumping data from production installation.
+
+- `--no-table-access-method`
+
+  Do not output commands to select table access methods. With this option, all objects will be created with whichever table access method is the default during restore. This option is ignored when emitting an archive (non-text) output file. For the archive formats, you can specify the option when you call `pg_restore`.
 
 - `--no-tablespaces`
 
@@ -1652,6 +1696,10 @@ The following command-line options control the content and format of the output.
 
   Force quoting of all identifiers. This option is recommended when dumping a database from a server whose IvorySQL major version is different from pg_dump's, or when the output is intended to be loaded into a server of a different major version. By default, pg_dump quotes only identifiers that are reserved words in its own major version. This sometimes results in compatibility issues when dealing with servers of other versions that may have slightly different sets of reserved words. Using `--quote-all-identifiers` prevents such issues, at the price of a harder-to-read dump script.
 
+- `--restrict-key=*`restrict_key`*`
+
+  Use the provided string as the `psql` `\restrict` key in the dump output. This can only be specified for plain-text dumps, i.e., when `--format` is set to `plain` or the `--format` option is omitted. If no restrict key is specified, `pg_dump` will generate a random one as needed. Keys may contain only alphanumeric characters. This option is primarily intended for testing purposes and other scenarios that require repeatable output (e.g., comparing dump files). It is not recommended for general use, as a malicious server with advance knowledge of the key may be able to inject arbitrary code that will be executed on the machine that runs `psql` with the dump output.
+
 - `--rows-per-insert=*`nrows`*`
 
   Dump data as `INSERT` commands (rather than `COPY`). Controls the maximum number of rows per `INSERT` command. The value specified must be a number greater than zero. Any error during restoring will cause only rows that are part of the problematic `INSERT` to be lost, rather than the entire table contents.
@@ -1659,6 +1707,10 @@ The following command-line options control the content and format of the output.
 - `--section=*`sectionname`*`
 
   Only dump the named section. The section name can be `pre-data`, `data`, or `post-data`. This option can be specified more than once to select multiple sections. The default is to dump all sections.The data section contains actual table data, large-object contents, and sequence values. Post-data items include definitions of indexes, triggers, rules, and constraints other than validated check constraints. Pre-data items include all other data definition items.
+
+- `--sequence-data`
+
+  Include sequence data in the dump. This is the default behavior except when `--no-data`, `--schema-only`, or `--statistics-only` is specified.
 
 - `--serializable-deferrable`
 
@@ -1668,9 +1720,25 @@ The following command-line options control the content and format of the output.
 
   Use the specified synchronized snapshot when making a dump of the database.This option is useful when needing to synchronize the dump with a logical replication slot or with a concurrent session.In the case of a parallel dump, the snapshot name defined by this option is used rather than taking a new snapshot.
 
+- `--statistics`
+
+  Dump optimizer statistics.
+
+- `--statistics-only`
+
+  Dump only the statistics, not the schema (data definitions) or data. Optimizer statistics for tables, materialized views, foreign tables, and indexes are dumped.
+
 - `--strict-names`
 
   Require that each extension (`-e`/`--extension`), schema (`-n`/`--schema`) and table (`-t`/`--table`) qualifier match at least one extension/schema/table in the database to be dumped. Note that if none of the extension/schema/table qualifiers find matches, pg_dump will generate an error even without `--strict-names`.This option has no effect on `-N`/`--exclude-schema`, `-T`/`--exclude-table`, or `--exclude-table-data`. An exclude pattern failing to match any objects is not considered an error.
+
+- `--sync-method=*`method`*`
+
+  When set to `fsync`, which is the default, `pg_dump --format=directory` will recursively open and synchronize all files in the archive directory. On Linux, `syncfs` may be used instead to ask the operating system to synchronize the whole file system that contains the archive directory. This option has no effect when `--no-sync` is used or `--format` is not set to `directory`.
+
+- `--table-and-children=*`pattern`*`
+
+  This is the same as the `-t`/`--table` option, except that it also includes any partitions or inheritance child tables of the table(s) matching the *`pattern`*.
 
 - `--use-set-session-authorization`
 
