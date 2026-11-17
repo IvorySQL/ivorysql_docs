@@ -186,6 +186,8 @@
 *** xref:master/compatibility_features_design/to_binary_float_function_impl.adoc[TO_BINARY_FLOAT Function]
 *** xref:master/compatibility_features_design/to_binary_double_function_impl.adoc[TO_BINARY_DOUBLE Function]
 ** xref:master/gb18030.adoc[GB18030 Character Set]
+* Security
+** xref:master/security/database_auditing.adoc[Database Auditing]
 * Reference
 ** xref:master/tools_reference.adoc[Tool Reference]
 ** xref:master/contribution/asciidoc_syntax_reference.adoc[asciidoc grammar quick reference]
