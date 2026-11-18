@@ -981,7 +981,7 @@ kubectl -n <cluster-namespace> edit configmap hippo-init-sql
 请务必将所有更改传回您的本地文件。另一个选项是在本地文件中进行更改，并使用 `kubectl --dry-run` 创建模板，并将输出通过管道传输到 `kubectl apply`：
 
 ----
-kubectl create configmap hippo-init-sql --from-file=init.sql=/path/to/init.sql --dry-run=client -o yaml | kubectl apply -f -
+kubectl create configmap hippo-init-sql --from-file=init.sql=/path/to/init.sql --dry-run=client -o yaml | kubectl -n ivory-operator apply -f -
 ----
 
 [TIP]
