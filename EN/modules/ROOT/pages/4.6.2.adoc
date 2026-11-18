@@ -1566,7 +1566,7 @@ Be sure to transfer any changes back over to your local file. Another option is 
 
 [source,shell]
 ----
-kubectl create configmap hippo-init-sql --from-file=init.sql=/path/to/init.sql --dry-run=client -o yaml | kubectl apply -f -
+kubectl create configmap hippo-init-sql --from-file=init.sql=/path/to/init.sql --dry-run=client -o yaml | kubectl -n ivory-operator apply -f -
 ----
 
 TIP: If you edit your ConfigMap and your changes aren't showing up, you may be waiting for IVYO to reconcile your cluster. After some time, IVYO will automatically reconcile the cluster or you can trigger reconciliation by applying any change to your cluster (e.g. with `kubectl apply -k examples/kustomize/ivory`).
