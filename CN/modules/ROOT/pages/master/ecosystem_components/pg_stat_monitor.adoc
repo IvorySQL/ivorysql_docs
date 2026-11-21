@@ -37,6 +37,31 @@ make USE_PGXS=1
 make USE_PGXS=1 install
 ----
 
+=== 在 Windows 上从源码构建（PostgreSQL 19）
+
+IvorySQL 的 PostgreSQL 19 开发版本需要支持 PostgreSQL 19 接口的插件版本。本节验证 `pg_stat_monitor` 2.4.1，测试基线为 https://github.com/IvorySQL/IvorySQL/pull/2321[IvorySQL Windows 移植 PR] 的提交 `7c1742cde16b`。构建工具包括 Visual Studio 2022 的 C/C++ 工具链、Git、Perl、winflexbison3、Meson 和 Ninja。
+
+[source,powershell]
+----
+git clone https://github.com/IvorySQL/IvorySQL.git IvorySQL
+Set-Location IvorySQL
+git fetch https://github.com/Muzzammil242/IvorySQL.git 7c1742cde16b699045c94fe053cc8798c1e093cd
+git checkout --detach FETCH_HEAD
+git clone --depth 1 --branch 2.4.1 https://github.com/percona/pg_stat_monitor.git contrib/pg_stat_monitor
+----
+
+在 `contrib/pg_stat_monitor/src/hash_query.c` 的 `pgsm_startup()` 中，将 `dsa_create_in_place()` 参数中的条件编译移到宏调用前。声明 `int tranche_id`，保留版本条件，在 PostgreSQL 19 及以上调用 `LWLockNewTrancheId("pg_stat_monitor_dsa")`，较早版本调用 `LWLockNewTrancheId()`。将返回值赋给 `tranche_id`，并用它作为原宏调用的第三个参数。这可避免 MSVC 在宏参数中解析预处理指令时报 C2059。
+
+[source,powershell]
+----
+Add-Content contrib/meson.build "`nsubdir('pg_stat_monitor')"
+meson setup build --vsenv --auto-features=disabled -Duuid=none -Dssl=none -Dbuildtype=release --prefix "$PWD/pg-install"
+meson compile -C build pg_stat_monitor
+meson install -C build
+----
+
+安装目录为 `pg-install`。使用测试实例按下文加载插件并执行 `CREATE EXTENSION`。在连接到 PostgreSQL 监听端口的 IPv4 会话中执行 `SELECT 42 AS monitor_smoke;`，再从另一个会话确认统计视图包含该查询且 `client_ip` 为 `127.0.0.1`。2.4.1 对应的 SQL 扩展版本为 `2.4`。可参阅 https://github.com/huier5635-cmd/agentUniverse/actions/runs/44951494790[Windows 构建及启动验证]。
+
 == 加载模块
 
 在启动时，将 pg_stat_monitor 添加到 shared_preload_libraries 配置参数中，以加载该库。这是因为 pg_stat_monitor 需要额外的共享内存。
