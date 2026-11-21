@@ -37,6 +37,31 @@ make USE_PGXS=1
 make USE_PGXS=1 install
 ----
 
+=== Building from source on Windows (PostgreSQL 19)
+
+The PostgreSQL 19 development version of IvorySQL requires an extension version that supports PostgreSQL 19 interfaces. This procedure tests `pg_stat_monitor` 2.4.1 with commit `7c1742cde16b` from the https://github.com/IvorySQL/IvorySQL/pull/2321[IvorySQL Windows port pull request]. The build uses the Visual Studio 2022 C/C++ toolchain, Git, Perl, winflexbison3, Meson, and Ninja.
+
+[source,powershell]
+----
+git clone https://github.com/IvorySQL/IvorySQL.git IvorySQL
+Set-Location IvorySQL
+git fetch https://github.com/Muzzammil242/IvorySQL.git 7c1742cde16b699045c94fe053cc8798c1e093cd
+git checkout --detach FETCH_HEAD
+git clone --depth 1 --branch 2.4.1 https://github.com/percona/pg_stat_monitor.git contrib/pg_stat_monitor
+----
+
+In `pgsm_startup()` in `contrib/pg_stat_monitor/src/hash_query.c`, move the preprocessor conditional out of the argument list for `dsa_create_in_place()`. Declare `int tranche_id` and preserve the version condition. Assign the return value of `LWLockNewTrancheId("pg_stat_monitor_dsa")` for PostgreSQL 19 and later, or `LWLockNewTrancheId()` for earlier versions. Pass `tranche_id` as the third argument in the original call. This avoids MSVC error C2059 when preprocessing the macro invocation.
+
+[source,powershell]
+----
+Add-Content contrib/meson.build "`nsubdir('pg_stat_monitor')"
+meson setup build --vsenv --auto-features=disabled -Duuid=none -Dssl=none -Dbuildtype=release --prefix "$PWD/pg-install"
+meson compile -C build pg_stat_monitor
+meson install -C build
+----
+
+Use the test installation under `pg-install` to preload the module and run `CREATE EXTENSION` as described below. Run `SELECT 42 AS monitor_smoke;` in one IPv4 session on the PostgreSQL listener. From a separate session, confirm that the statistics view contains the query with `client_ip` set to `127.0.0.1`. The SQL extension version for release 2.4.1 is `2.4`. See the https://github.com/huier5635-cmd/agentUniverse/actions/runs/44951494790[Windows build and startup test].
+
 == Load the module
 
 Load pg_stat_monitor at the start time by adding it to the shared_preload_libraries configuration parameter. This is because pg_stat_monitor requires additional shared memory.

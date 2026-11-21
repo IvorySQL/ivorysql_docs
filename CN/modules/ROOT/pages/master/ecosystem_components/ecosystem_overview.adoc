@@ -22,7 +22,7 @@ IvorySQL 作为一款兼容 Oracle 且基于 PostgreSQL 的高级开源数据库
 | 9 | xref:master/ecosystem_components/pgrouting.adoc[pgrouting] | 3.8.0 | 提供地理空间数据的路由计算功能，支持多种算法和数据格式 | 地理空间分析、路径规划、物流优化
 | 10 | xref:master/ecosystem_components/system_stats.adoc[system_stats] | 3.2 | 提供用于访问系统级统计信息的函数 | 系统监控
 | 11 | xref:master/ecosystem_components/wal2json.adoc[wal2json] | 2.6 | 用于 PostgreSQL 逻辑解码的输出插件，为每个事务生成一个JSON对象 | 变更数据捕获（CDC）、实时数据同步、事件驱动微服务、缓存刷新及跨库数据同步等
-| 12 | xref:master/ecosystem_components/pg_stat_monitor.adoc[pg_stat_monitor] | 2.3.1 | 收集性能统计数据，并通过统一视图和直方图形式直观展示查询性能指标。 | 性能监控
+| 12 | xref:master/ecosystem_components/pg_stat_monitor.adoc[pg_stat_monitor] | 2.3.1（PostgreSQL 19 的 Windows 验证使用 2.4.1） | 收集性能统计数据，并通过统一视图和直方图形式直观展示查询性能指标。 | 性能监控
 | 13 | xref:master/ecosystem_components/pg_ai_query.adoc[pg_ai_query] | 0.1.1 | AI驱动的自然语言转SQL扩展，支持多种大语言模型 | AI辅助查询、自然语言数据库交互
 | 14 | xref:master/ecosystem_components/pg_partman.adoc[pg_partman] | 5.2 | 辅助管理原生分区表，自动创建、维护、清理分区子表 | 海量数据存储管理
 | 15 | xref:master/ecosystem_components/pgbouncer.adoc[pgbouncer] | 1.25.1 | PostgreSQL 轻量级连接池，提供连接复用和高效连接管理 | 高并发连接管理、连接复用、减少数据库连接开销 
