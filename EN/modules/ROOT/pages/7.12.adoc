@@ -19,23 +19,23 @@ IvorySQL provides compatibility for Oracle custom packages, including creation, 
 
 The CREATE OR REPLACE PACKAGE statement is used to create or replace the specification of a package. A package is a collection of related stored procedures, functions, and other program objects, stored as a single unit in the database. The package specification declares these objects, and the package body defines them.
 
-To create or replace the specification of a package in your own schema, you must have the CREATE PROCEDURE system privilege. If you are creating or replacing a package in another user's schema, you need the CREATE ANY PROCEDURE system privilege.
+Creating a package specification requires `CREATE` on the target schema and `USAGE` on the `plisql` language. Replacing an existing specification also requires the privileges of the package owner. Superusers can perform these operations.
 
 === Create package body
 
-The CREATE OR REPLACE PACKAGE BODY statement is used to create or replace a package body. To create a package body requires the same privileges as creating the specification of a package, and it is required that the package body and package specification be in the same schema, with the package specification already existing. This statement defines the objects declared in the package specification.
+The CREATE OR REPLACE PACKAGE BODY statement creates or replaces the definitions declared by a package specification. It requires `CREATE` on the target schema and an existing specification in that schema. Replacing an existing body also requires the privileges of the package owner. Superusers can perform these operations.
 
 When the package specification contains cursors or subprograms, a package body must be present to define them. Otherwise, the package body is optional.
 
 === Alter package
 
-The ALTER PACKAGE statement is used to modify the properties of a package.The privileges required to execute the ALTER PACKAGE statement are: you must be the owner of the package or have the ALTER ANY PROCEDURE privilege to modify packages owned by other users.
+The ALTER PACKAGE statement modifies package properties and requires the privileges of the package owner, or superuser privileges.
 
 === Drop package and package body
 
 The DROP PACKAGE statement deletes a package in the database. This statement will remove both the package body and the package specification.The DROP PACKAGE BODY statement only deletes the package body.
 
-It is not possible to delete a single object within the package using this statement. The privileges required:the package must be in the user's schema, or the user must have the DROP ANY PROCEDURE system privilege.
+`DROP PACKAGE` requires the privileges of the package owner or the schema owner, or superuser privileges. `DROP PACKAGE BODY` requires the privileges of the owning package's owner, or superuser privileges.
 
 === DISCARD PACKAGE
 
