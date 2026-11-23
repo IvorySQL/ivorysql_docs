@@ -102,9 +102,9 @@ IvorySQL 开发者的典型成长路径为：用户 → 审查者 → 提交者 
 
 无论您是要提交 Issue、参与讨论，还是贡献代码与文档，您都需要使用 GitHub 账号登录并与 IvorySQL 项目进行交互。
 
-请参考 <https://docs.github.com/en/get-started/start-your-journey> 注册您的 GitHub 账号，并熟悉 Git 工具和工作流。
+请参考 <https://github.com/join> 注册您的 GitHub 账号，并参考 <https://docs.github.com/en/get-started/start-your-journey> 熟悉 Git 工具和工作流。
 
-IvorySQL 源码托管在 GitHub：<https://github.com/IvorySQL>。
+IvorySQL 源码托管在 GitHub：<https://github.com/IvorySQL/IvorySQL>。
 
 === 签署 CLA
 
@@ -112,6 +112,9 @@ IvorySQL 源码托管在 GitHub：<https://github.com/IvorySQL>。
 
 * https://ivorysql.org/pdf/individual_cla.pdf[个人贡献者]
 * https://ivorysql.org/pdf/corporate_cla.pdf[企业贡献者]
+
+[NOTE]
+cla@ivorysql.org 是邮件列表地址，非列表成员发送的邮件会先进入人工审核队列。若您在发送后收到类似 "Your mail ... is being held until the list moderator can review it" 的自动通知，属于正常流程，请耐心等待审核，无需重复发送。
 
 [TIP]
 如果您通过 AtomGit 平台进行贡献，系统会自动协助您完成 CLA 签署流程，无需手动下载和发送文件。
