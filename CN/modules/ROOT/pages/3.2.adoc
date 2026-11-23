@@ -942,9 +942,23 @@ IvorySQL具有在命令执行过程中报告某些命令进度的能力。 目�
 | heap_blks_scanned | bigint | 被扫描的堆块数量。由于visibility map被用来优化扫描，一些块将被跳过而不做检查，被跳过的块会被包括在这个总数中，因此当清理完成时这个数字最终将会等于heap_blks_total。仅当处于扫描堆阶段时这个计数器才会前进。
 | heap_blks_vacuumed | bigint | 被清理的堆块数量。除非表没有索引，这个计数器仅在处于清理堆阶段时才会前进。不包含死亡元组的块会被跳过，因此这个计数器可能有时会向前跳跃一个比较大的增量。
 | index_vacuum_count | bigint | 已完成的索引清理周期数。
-| max_dead_tuples | bigint | 在需要执行一个索引清理周期之前我们可以存储的死亡元组数，取决于maintenance_work_mem。
-| num_dead_tuples | bigint | 从上一个索引清理周期以来收集的死亡元组数。
+| max_dead_tuple_bytes | bigint | 开始下一次索引清理周期前可用于保存死亡元组标识的内存上限，单位为字节。
+| dead_tuple_bytes | bigint | 当前保存死亡元组标识所占的内存，单位为字节。
+| num_dead_item_ids | bigint | 从上一个索引清理周期以来收集的死亡项标识数量。
+| indexes_total | bigint | 当前索引清理或收尾阶段需要处理的索引数。
+| indexes_processed | bigint | 当前阶段已经处理的索引数。
+| delay_time | double precision | 基于代价的延迟所消耗的毫秒数，启用 `track_cost_delay_timing` 时报告。
 |====
+
+查询时分别读取内存用量和项数量。每个正在运行的清理进程在视图中对应一行。
+
+[source,sql]
+----
+SELECT pid, relid::regclass, phase,
+       max_dead_tuple_bytes, dead_tuple_bytes, num_dead_item_ids,
+       indexes_total, indexes_processed, delay_time
+FROM pg_stat_progress_vacuum;
+----
 
 **表37.VACUUM的阶段**
 |====
