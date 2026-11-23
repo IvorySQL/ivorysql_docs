@@ -127,7 +127,21 @@ oratimestampltz_in()
 oratimestamptz_in()
 ```
 
-如果相应的掩码被设置，则调用原生PG的处理函数，否则调用兼容代码并忽略NLS格式。
+对应位为 1 时，该类型使用原生 PostgreSQL 输入解析；对应位为 0 时，兼容输入函数使用该类型配置的 NLS 格式解析。默认掩码为 `0`，因此四种类型最初都使用各自的 NLS 输入格式。将相应格式字符串设为 `pg` 也会选择原生 PostgreSQL 解析。
+
+下面的 `oradate` 示例先使用 `nls_date_format`，再将位 `1` 设为 1，使用原生 PostgreSQL 输入格式。两次查询均返回 `2026-01-31`。
+
+[source,sql]
+----
+BEGIN;
+SET ivorysql.datetime_ignore_nls_mask = 0;
+SET nls_date_format = 'DD/MM/YYYY';
+SELECT TO_CHAR('31/01/2026'::sys.oradate, 'YYYY-MM-DD');
+
+SET ivorysql.datetime_ignore_nls_mask = 1;
+SELECT TO_CHAR('2026-01-31'::sys.oradate, 'YYYY-MM-DD');
+ROLLBACK;
+----
 
 === GUC参数 `nls_date_format`/`nls_timestamp_format`/`nls_timestamp_tz_format`
 

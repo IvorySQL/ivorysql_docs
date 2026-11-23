@@ -122,7 +122,21 @@ oratimestampltz_in()
 oratimestamptz_in()
 ```
 
-If the corresponding mask is set, the native PostgreSQL processing function is called; otherwise, the compatibility code is invoked, and NLS formats are ignored.
+A set bit selects native PostgreSQL input parsing for that type. With the bit clear, the compatibility input function parses using the type's configured NLS format. The default mask is `0`, so all four types initially use their NLS input formats. Setting the relevant format string to `pg` also selects native PostgreSQL parsing.
+
+For `oradate`, this example first uses `nls_date_format`, then sets bit `1` to accept native PostgreSQL input. Both queries return `2026-01-31`.
+
+[source,sql]
+----
+BEGIN;
+SET ivorysql.datetime_ignore_nls_mask = 0;
+SET nls_date_format = 'DD/MM/YYYY';
+SELECT TO_CHAR('31/01/2026'::sys.oradate, 'YYYY-MM-DD');
+
+SET ivorysql.datetime_ignore_nls_mask = 1;
+SELECT TO_CHAR('2026-01-31'::sys.oradate, 'YYYY-MM-DD');
+ROLLBACK;
+----
 
 === GUC Parameters `nls_date_format`/`nls_timestamp_format`/`nls_timestamp_tz_format`
 
