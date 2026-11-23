@@ -1087,6 +1087,27 @@ To create a backup of a local server with one tar file for each tablespace compr
 $ pg_basebackup -D backup -Ft --compress=gzip:9
 ```
 
+==== Reconstruct an incremental backup
+
+To restore `inc2`, supply the full backup and every incremental backup on which it depends, in chronological order. For a chain `full` → `inc1` → `inc2`, use empty or nonexistent output directory `/srv/backup/rebuilt`. Keep the input backups and their manifests available until the command finishes.
+
+[source,sh]
+----
+pg_combinebackup --output=/srv/backup/rebuilt /srv/backup/full /srv/backup/inc1 /srv/backup/inc2
+pg_verifybackup /srv/backup/rebuilt
+----
+
+`pg_combinebackup` writes a full backup to the output directory. Use `pg_verifybackup` to check that reconstructed backup against its manifest before starting a server from it.
+
+For additional tablespaces, map their paths in the last input backup to empty restore locations. If `pg_basebackup` relocated the tablespaces, use those backup paths, not the paths on the source server. For example, when `inc2` links a tablespace to `/srv/backup/inc2-ts`, use this form of the first command.
+
+[source,sh]
+----
+pg_combinebackup --output=/srv/backup/rebuilt --tablespace-mapping=/srv/backup/inc2-ts=/restore/ts /srv/backup/full /srv/backup/inc1 /srv/backup/inc2
+----
+
+The mapping's destination must also be empty or nonexistent. It identifies where the reconstructed tablespace files will be written.
+
 === pgbench
 
 pgbench — run a benchmark test on IvorySQL

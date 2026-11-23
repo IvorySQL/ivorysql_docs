@@ -1077,6 +1077,27 @@ $ pg_basebackup -D - -Ft -X fetch | bzip2 > backup.tar.bz2
 $ pg_basebackup -D backup/data -T /opt/ts=$(pwd)/backup/ts
 ```
 
+==== 合成增量备份链
+
+要恢复 `inc2`，按时间顺序传入完整备份和它依赖的每份增量备份。对于 `full` → `inc1` → `inc2` 这条备份链，使用为空或尚未创建的输出目录 `/srv/backup/rebuilt`。命令结束前，保留所有输入备份及其清单。
+
+[source,sh]
+----
+pg_combinebackup --output=/srv/backup/rebuilt /srv/backup/full /srv/backup/inc1 /srv/backup/inc2
+pg_verifybackup /srv/backup/rebuilt
+----
+
+`pg_combinebackup` 在输出目录中生成完整备份。启动恢复实例前，用 `pg_verifybackup` 对照清单检查合成结果。
+
+如果集簇还有额外表空间，将最后一份输入备份中的表空间路径映射到空的恢复位置。如果 `pg_basebackup` 已重定位表空间，应使用备份路径。例如，`inc2` 将一个表空间链接到 `/srv/backup/inc2-ts` 时，第一条命令使用以下形式。
+
+[source,sh]
+----
+pg_combinebackup --output=/srv/backup/rebuilt --tablespace-mapping=/srv/backup/inc2-ts=/restore/ts /srv/backup/full /srv/backup/inc1 /srv/backup/inc2
+----
+
+映射的目标目录也应为空或尚未创建，用于保存合成后的表空间文件。
+
 === pgbench
 
 pgbench — 在IvorySQL上运行一个基准测试
