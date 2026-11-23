@@ -507,7 +507,7 @@ CREATE ROLE
 === Import table structure
 
 Because of the materialized view, in TABLE_ The sh.sql contains the index of the materialized view, which will fail to create. You need to first create a table, then create a materialized view, and finally create an index.
-Cancel the materialized view index and create it separately later:
+Edit `TABLE_sh.sql` to remove the materialized-view indexes and save this table-only script as `tab.sql`. Create the deferred indexes after importing the materialized views.
 
 ```
 CREATE INDEX fw_psc_s_mv_chan_bix ON fweek_pscat_sales_mv (channel_id);
@@ -523,7 +523,7 @@ ALTER TEXT SEARCH CONFIGURATION en ALTER MAPPING FOR hword, hword_part, word WIT
 ```
 
 ```
-psql orcl  -f  tab.sql.sql
+psql -v ON_ERROR_STOP=1 -d orcl -f tab.sql
 
 ALTER TABLE PARTITION sh.sales OWNER TO sh;
 COMMENT
@@ -541,12 +541,18 @@ ALTER TABLE
 
 === Authorize objects
 
+Review `GRANT_sh.sql` for the roles and objects already present on the target. The following is an excerpt of the generated SQL.
+
 ```
-cat psql orcl  -f  GRANT_sh.sql
 CREATE USER SH WITH PASSWORD 'change_my_secret' LOGIN;
 ALTER TABLE sh.fweek_pscat_sales_mv OWNER TO sh;
 GRANT ALL ON  sh.fweek_pscat_sales_mv TO sh;
 ```
+
+[source,sh]
+----
+psql -v ON_ERROR_STOP=1 -d orcl -f GRANT_sh.sql
+----
 
 === Import materialized view structure
 

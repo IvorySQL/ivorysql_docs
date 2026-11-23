@@ -497,7 +497,7 @@ CREATE ROLE
 
 由于有物化视图，在TABLE_sh.sql 里包含了物化视图的索引，会创建失败。需先创建表，在创建物化视图，最后创建索引。
 
-取消物化视图索引，后面单独创建：
+从 `TABLE_sh.sql` 中移除物化视图索引，将编辑后的表结构脚本保存为 `tab.sql`。导入物化视图后，再创建暂缓的索引。
 
 ```
 CREATE INDEX fw_psc_s_mv_chan_bix ON fweek_pscat_sales_mv (channel_id);
@@ -513,7 +513,7 @@ ALTER TEXT SEARCH CONFIGURATION en ALTER MAPPING FOR hword, hword_part, word WIT
 ```
 
 ```
-psql orcl  -f  tab.sql
+psql -v ON_ERROR_STOP=1 -d orcl -f tab.sql
 
 ALTER TABLE PARTITION sh.sales OWNER TO sh;
 COMMENT
@@ -531,12 +531,18 @@ ALTER TABLE
 
 === 给对象授权
 
+检查 `GRANT_sh.sql`，使其适合目标库已经存在的角色和对象。以下为生成的 SQL 节选。
+
 ```
-cat psql orcl  -f  GRANT_sh.sql
 CREATE USER SH WITH PASSWORD 'change_my_secret' LOGIN;
 ALTER TABLE sh.fweek_pscat_sales_mv OWNER TO sh;
 GRANT ALL ON  sh.fweek_pscat_sales_mv TO sh;
 ```
+
+[source,sh]
+----
+psql -v ON_ERROR_STOP=1 -d orcl -f GRANT_sh.sql
+----
 
 === 导入物化视图结构
 
