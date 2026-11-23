@@ -71,14 +71,14 @@ $$ LANGUAGE plisql SECURITY INVOKER;
 |*参数名称*|*返回值*
 |IP_ADDRESS | 客户端的IP地址。
 |HOST | 客户端主机的名称。
-|ISDBA | 如果当前用户是数据库管理员，则返回TRUE。
+|ISDBA | `current_user` 具有数据库超级用户属性时返回 `TRUE`，否则返回 `FALSE`。结果随当前活动角色变化。
 |LANG | 语言的缩写名称，比现有的 “LANGUAGE ”参数更简短。
 |LANGUAGE | 当前会话的使用的语言和地区，以及数据库字符集，格式为：language_territory.characterset。
 |NLS_DATE_FORMAT | 当前session的日期格式。
 |PLATFORM_SLASH | 在用户的平台上用作文件路径分隔符的斜线字符（Unix或Linux是’/’，Windows是’\’）。
 |DB_NAME | 当前连接的CDB的名称。
-|SID | 当前会话的系统标识符。
-|SESSIONID | 审计会话标识符。不能在分布式 SQL 语句中使用此属性。
+|SID | 当前会话的后端进程 ID，与 `pg_backend_pid()` 相同。
+|SESSIONID | 本会话在 `sys.userenv_sessionid_sequence` 上的当前值。会话尚未取得值时，首次调用会分配一个值。
 |CLIENT_INFO | 返回最多 64 字节的用户会话信息，应用程序可使用 DBMS_APPLICATION_INFO 包存储这些信息。
 |ENTRYID | 当前审计条目编号。审计条目编号序列在细粒度审计记录和常规审计记录之间共享。不能在分布式 SQL 语句中使用此属性。只有通过标准或细粒度审计的审计处理程序才能看到正确的审计条目标识符。
 |TERMINAL | 当前会话客户端的操作系统标识符。在分布式 SQL 语句中，该属性返回本地会话的标识符。在分布式环境中，仅支持远程 SELECT 语句，不支持远程 INSERT、UPDATE 或 DELETE 操作。(此参数的返回长度可能因操作系统而异)。

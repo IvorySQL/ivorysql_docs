@@ -49,9 +49,9 @@ $$ LANGUAGE sql STRICT;
 [cols="3,7"] 
 |==== 
 |Parameter Name|Return Value 
-|sid | The user ID of the current session. 
-|sessionid | Returns the audit session identifier. 
+|sid | Backend process ID of the current session, as returned by `pg_backend_pid()`.
+|sessionid | This session's current value of `sys.userenv_sessionid_sequence`. The first call allocates a value if this session has none.
 |language | Returns the language, territory, and character set of the current database session. 
 |lang | Returns the ISO abbreviation of the language name. 
-|isdba | Returns "TRUE" if the user has been authenticated as an administrator or has administrator privileges through the operating system or password file; otherwise, returns "FALSE". 
+|isdba | Returns `TRUE` when `current_user` has the database superuser attribute, and `FALSE` otherwise. The result follows the active role.
 |====
