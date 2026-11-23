@@ -29,7 +29,7 @@ When specified on the command line, user and database names have their case pres
 |  | pg_receivewal             | Streams WAL segments from a running cluster via the replication protocol and writes them to disk for archiving or downstream recovery.
 |  | pg_recvlogical            | Manages logical-replication slots and streams decoded changes over a replication connection for custom consumers.
 |  | pg_restore                | Replays archives produced by pg_dump (non-plain formats) directly into a database or onto stdout, supporting selective and reordered restores.
-|  | pg_verifybackup | Validates a plain-format backup created by `pg_basebackup` against its `backup_manifest`, detecting missing or corrupted files before restore.
+|  | pg_verifybackup | Validates plain or tar backups created by `pg_basebackup` against their `backup_manifest`, detecting missing or corrupted files before restore. Direct tar verification requires `--no-parse-wal` and does not validate WAL parsing.
 |  | psql                      | Terminal client that runs SQL interactively or from scripts, providing meta-commands, variables and scripting conveniences.
 |  | reindexdb                 | Rebuilds indexes for a database, schema or table set, invoking http://www.postgresql.org/docs/17/sql-reindex.html[`REINDEX`] under the hood.
 |  | vacuumdb                  | Automates `VACUUM` (optionally `ANALYZE`) for selected databases or tables to reclaim space and refresh optimizer statistics.
@@ -2702,6 +2702,10 @@ pg_verifybackup accepts the following command-line arguments:
 
 Exit as soon as a problem with the backup is detected. If this option is not specified, `pg_verifybackup` will continue checking the backup even after a problem has been detected, and will report all problems detected as errors.
 
+- `-F format` `--format=format`
+
+Accept `plain` (`p`) or `tar` (`t`). The format is detected automatically when this option is omitted. For tar format, also supply `--no-parse-wal`, because WAL parsing requires files outside the tar archives.
+
 - `-i *path*` `--ignore=*path*`
 
 Ignore the specified file or directory, which should be expressed as a relative path name, when comparing the list of data files actually present in the backup to those listed in the `backup_manifest` file. If a directory is specified, this option affects the entire subtree rooted at that location. Complaints about extra files, missing files, file size differences, or checksum mismatches will be suppressed if the relative path name matches the specified path name. This option can be specified multiple times.
@@ -2760,6 +2764,14 @@ $ pg_basebackup -h mydbserver -D /usr/local/pgsql/data
 $ edit /usr/local/pgsql/data/note.to.self
 $ pg_verifybackup --ignore=note.to.self --skip-checksums /usr/local/pgsql/data
 ```
+
+To verify a tar-format backup directory directly, use the following commands. The second command checks the archive contents against the manifest and skips WAL parsing.
+
+[source,sh]
+----
+pg_basebackup --host=mydbserver --pgdata=/srv/backup/tar --format=tar --wal-method=stream
+pg_verifybackup --format=tar --no-parse-wal /srv/backup/tar
+----
 
 === psql
 

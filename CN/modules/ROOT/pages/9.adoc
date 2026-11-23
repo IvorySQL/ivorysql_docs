@@ -30,7 +30,7 @@
 |            | pg_receivewal             | pg_receivewal被用来从一个运行着的IvorySQL集簇以流的方式得到预写式日志。预写式日志会被使用流复制协议以流的方式传送，并且被写入到文件的一个本地目录。这个目录可以被用作归档位置来做一次使用时间点恢复的恢复。当预写式日志在服务器上被产生时，pg_receivewal实时以流的方式传输预写式日志，并且不像 http://www.postgresql.org/docs/17/runtime-config-wal.html#GUC-ARCHIVE-COMMAND[archive_command] 那样等待段完成。由于这个原因，在使用pg_receivewal时不必设置 http://www.postgresql.org/docs/17/runtime-config-wal.html#GUC-ARCHIVE-TIMEOUT[archive_timeout]。与 IvorySQL 后备服务器上的 WAL 接收进程不同，pg_receivewal默认只在一个 WAL 文件被关闭时才刷入 WAL 数据。要实时刷入 WAL 数据，必须指定选项 `--synchronous`。 由于pg_receivewal不应用于WAL，当 http://www.postgresql.org/docs/17/runtime-config-wal.html#GUC-SYNCHRONOUS-COMMIT[synchronous_commit] 等于 `remote_apply` 时，你将不允许它成为同步备用。 如果发生这样的情况，它将成为一个永远不能拉起的备用数据库，并且会导致事务提交阻塞。 为了避免这种情况，你应该为 http://www.postgresql.org/docs/17/runtime-config-replication.html#GUC-SYNCHRONOUS-STANDBY-NAMES[synchronous_standby_names] 配置一个适当的值，或规定为pg_receivewal 的 `application_name` 与它不匹配，或将 `synchronous_commit` 的值更改为 `remote_apply` 以外的内容。预写式日志在一个常规IvorySQL连接上被以流式传送，并且使用复制协议。连接必须由一个具有 `REPLICATION` 权限的用户或者一个超级用户建立，并且 `pg_hba.conf` 必须允许复制连接。服务器也必须被配置一个足够高的 http://www.postgresql.org/docs/17/runtime-config-replication.html#GUC-MAX-WAL-SENDERS[max_wal_senders] 来至少留出一个可用会话给流。首先，扫描WAL段文件所写入的目录，并发现最新完成的段文件，作为下一个段文件的开始的起始点。 这是独立计算的，根据用于压缩每个段的压缩方法。 如果用前面的方法无法计算出起点，最新的WAL刷写位置用作由服务器通过 `IDENTIFY_SYSTEM` 命令的报告。 
 |            | pg_recvlogical            | `pg_recvlogical` 控制逻辑解码复制槽以及来自这种复制槽的流数据。它会创建一个复制模式的连接，因此它受到和 http://www.postgresql.org/docs/17/app-pgreceivewal.html[pg_receivewal] 相同的约束，还有逻辑复制的约束。`pg_recvlogical` 与逻辑解码SQL接口的peek和get模式没有等效性。它咋接收到数据以及干净地退出时，它会惰性地发送数据的确认。为了检查一个槽上还未消费的待处理数据，可以使用 http://www.postgresql.org/docs/17/functions-admin.html#FUNCTIONS-REPLICATION[`pg_logical_slot_peek_changes`]。 
 |            | pg_restore                | pg_restore是一个用来从 http://www.postgresql.org/docs/17/app-pgdump.html[pg_dump] 创建的非文本格式归档恢复IvorySQL数据库的工具。它将发出必要的命令把该数据库重建成它被保存时的状态。这些归档文件还允许pg_restore选择恢复哪些内容或者在恢复前对恢复项重排序。这些归档文件被设计为可以在不同的架构之间迁移。pg_restore可以在两种模式下操作。如果指定了一个数据库名称，pg_restore会连接那个数据库并且把归档内容直接恢复到该数据库中。否则，会创建一个脚本，其中包含着重建该数据库所必要的 SQL 命令，它会被写入到一个文件或者标准输出。这个脚本输出等效于pg_dump的纯文本输出格式。因此，一些控制输出的选项与pg_dump的选项类似。显然，pg_restore无法恢复不在归档文件中的信息。例如，如果归档使用“以 `INSERT` 命令转储数据”选项创建， pg_restore将无法使用 `COPY` 语句装载数据。 
-|            | pg_verifybackup   | pg_verifybackup用于根据备份时服务器生成的 `backup_manifest` 检查使用 `pg_basebackup` 进行的数据库群集备份的完整性。备份必须以“普通”格式存储；“tar”格式的备份可以在解压缩后进行检查。需要注意的是，由pg_verifybackup执行的验证不包括也不可能包括运行中的服务器在尝试使用备份时执行的所有检查。 即使使用此工具，也应执行测试还原，并验证生成的数据库是否按预期工作，以及它们是否包含正确的数据。但是，pg_verifybackup可以检测到由于存储问题或用户错误而经常出现的许多问题。备份验证分四个阶段进行。首先，`pg_verifybackup` 读取 `backup_manifest` 文件。如果该文件不存在、无法读取、格式不正确或无法根据其内部校验和进行验证，`pg_verifybackup` 将以致命错误终止。其次，`pg_verifybackup` 将尝试验证当前存储在磁盘上的数据文件是否与服务器打算发送的数据文件完全相同，下面将介绍一些例外情况。 除了少数例外，额外和丢失的文件将被检测到。此步骤将忽略  `postgresql.auto.conf`、`standby.signal` 和 `recovery.signal` 的存在与否或对其的任何修改，因为预计这些文件可能是在备份过程中创建或修改的。它也不会抱怨目标目录中的 `backup_manifest` 文件或 `pg_wal` 中的任何内容，即使这些文件不会列在备份清单中。只检查文件；不验证目录的存在与否，除非间接验证：如果目录丢失，则它应该包含的任何文件也必然会丢失。 
+|            | pg_verifybackup   | pg_verifybackup用于根据备份时服务器生成的 `backup_manifest` 检查使用 `pg_basebackup` 进行的数据库群集备份的完整性。支持普通格式及 tar 格式备份；直接检查 tar 格式时需指定 `--no-parse-wal`，此时不验证 WAL 解析。需要注意的是，由pg_verifybackup执行的验证不包括也不可能包括运行中的服务器在尝试使用备份时执行的所有检查。 即使使用此工具，也应执行测试还原，并验证生成的数据库是否按预期工作，以及它们是否包含正确的数据。但是，pg_verifybackup可以检测到由于存储问题或用户错误而经常出现的许多问题。备份验证分四个阶段进行。首先，`pg_verifybackup` 读取 `backup_manifest` 文件。如果该文件不存在、无法读取、格式不正确或无法根据其内部校验和进行验证，`pg_verifybackup` 将以致命错误终止。其次，`pg_verifybackup` 将尝试验证当前存储在磁盘上的数据文件是否与服务器打算发送的数据文件完全相同，下面将介绍一些例外情况。 除了少数例外，额外和丢失的文件将被检测到。此步骤将忽略  `postgresql.auto.conf`、`standby.signal` 和 `recovery.signal` 的存在与否或对其的任何修改，因为预计这些文件可能是在备份过程中创建或修改的。它也不会抱怨目标目录中的 `backup_manifest` 文件或 `pg_wal` 中的任何内容，即使这些文件不会列在备份清单中。只检查文件；不验证目录的存在与否，除非间接验证：如果目录丢失，则它应该包含的任何文件也必然会丢失。
 |            | psql                      | psql是一个IvorySQL的基于终端的前端。它让你能交互式地键入查询，把它们发送给IvorySQL，并且查看查询结果。或者，输入可以来自于一个文件或者命令行参数。此外，psql还提供一些元命令和多种类似 shell 的特性来为编写脚本和自动化多种任务提供便利。 
 |            | reindexdb                 | reindexdb是用于重建一个IvorySQL数据库中索引的工具。reindexdb是 SQL 命令 http://www.postgresql.org/docs/17/sql-reindex.html[`REINDEX`]的一个包装器。 在通过这个工具和其他方法访问服务器来重索引数据库之间没有实质性的区别。 
 |            | vacuumdb                  | vacuumdb是用于清理一个IvorySQL数据库的工具。vacuumdb也将产生由IvorySQL查询优化器所使用的内部统计信息。 
@@ -2737,6 +2737,10 @@ pg_verifybackup 接受以下命令行参数：
 
 检测到备份问题后立即退出。 如果没有指定这个选项，`pg_verifybackup` 将在检测到问题后继续检查备份，并将检测到的所有问题报告为错误。
 
+- `-F format` `--format=format`
+
+接受 `plain`（`p`）或 `tar`（`t`）。省略此选项时自动检测格式。对于 tar 格式，还需指定 `--no-parse-wal`，因为 WAL 解析要求能够直接读取归档之外的文件。
+
 - `-i *path*` `--ignore=*path*`
 
 在将备份中实际存在的数据文件列表与 `backup_manifest` 文件中列出的数据文件列表进行比较时，忽略指定的文件或目录，该文件或目录应表示为相对路径名。如果指定了目录，则此选项会影响以该位置为根的整个子树。 如果相对路径名与指定的路径名匹配，有关额外文件、丢失文件、文件大小差异或校验和不匹配的投诉将被抑制。 可以多次指定此选项。
@@ -2801,6 +2805,14 @@ $ pg_basebackup -h mydbserver -D /usr/local/pgsql/data
 $ edit /usr/local/pgsql/data/note.to.self
 $ pg_verifybackup --ignore=note.to.self --skip-checksums /usr/local/pgsql/data
 ```
+
+可直接校验 tar 格式的备份目录。以下第二条命令对照清单检查归档内容，并跳过 WAL 解析。
+
+[source,sh]
+----
+pg_basebackup --host=mydbserver --pgdata=/srv/backup/tar --format=tar --wal-method=stream
+pg_verifybackup --format=tar --no-parse-wal /srv/backup/tar
+----
 
 === psql
 
