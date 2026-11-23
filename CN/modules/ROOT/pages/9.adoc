@@ -1538,9 +1538,17 @@ pg_dump版本并退出。
 
 防止转储访问特权（授予/收回命令）。
 
-- `-Z *0..9*` `--compress=*0..9*`
+- `-Z level` `-Z method[:detail]` `--compress=level` `--compress=method[:detail]`
 
-指定要使用的压缩级别。零意味着不压缩。对于自定义和目录归档格式，这会指定个体表数据段的压缩，并且默认是进行中等级别的压缩。对于纯文本输出，设置一个非零压缩级别会导致整个输出文件被压缩，就好像它被gzip处理过一样，但是默认是不压缩。tar 归档格式当前完全不支持压缩。
+选择 `gzip`、`lz4`、`zstd` 或 `none`，可用方法取决于客户端构建时包含的压缩库。整数形式的 detail 指定压缩级别，具名参数使用 `keyword=value`，例如 `gzip:level=6`。单独指定级别时，大于零表示使用 gzip，零表示关闭压缩。
+
+自定义格式和目录格式分别压缩表数据段，默认使用中等级别的 gzip。纯文本格式指定压缩时，会压缩整个 SQL 流，默认输出不压缩。tar 格式归档要求不压缩输出。
+
+[source,sh]
+----
+pg_dump --format=custom --compress=gzip:level=6 --file=app.dump appdb
+pg_restore --list app.dump
+----
 
 - `--binary-upgrade`
 
