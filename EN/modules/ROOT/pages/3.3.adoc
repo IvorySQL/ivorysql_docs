@@ -119,17 +119,24 @@ If for some reason autovacuum fails to clear old XIDs from a table, the system w
 
 ```
 WARNING:  database "mydb" must be vacuumed within 39985967 transactions
-HINT:  To avoid a database shutdown, execute a database-wide VACUUM in that database.
+HINT:  To avoid transaction ID assignment failures, execute a database-wide VACUUM in that database.
 ```
 
-(A manual `VACUUM` should fix the problem, as suggested by the hint; but note that the `VACUUM` must be performed by a superuser, else it will fail to process system catalogs and thus not be able to advance the database's `datfrozenxid`.) If these warnings are ignored, the system will shut down and refuse to start any new transactions once there are fewer than three million transactions left until wraparound:
+Run the database-wide `VACUUM` as a superuser so it can process system catalogs and advance `datfrozenxid`. If these warnings are ignored and fewer than three million transactions remain before wraparound, the server rejects commands that assign new transaction IDs. An excerpt of the resulting error is shown below.
 
 ```
-ERROR:  database is not accepting commands to avoid wraparound data loss in database "mydb"
-HINT:  Stop the postmaster and vacuum that database in single-user mode.
+ERROR:  database is not accepting commands that assign new transaction IDs to avoid wraparound data loss in database "mydb"
+HINT:  Execute a database-wide VACUUM in that database.
 ```
 
-The three-million-transaction safety margin exists to let the administrator recover without data loss, by manually executing the required `VACUUM` commands. However, since the system will not execute commands once it has gone into the safety shutdown mode, the only way to do this is to stop the server and start the server in single-user mode to execute `VACUUM`. The shutdown mode is not enforced in single-user mode. See the https://www.postgresql.org/docs/current/app-postgres.html[postgres] reference page for details about using single-user mode.
+The remaining transactions provide a safety margin for recovery. Connect to the database named in the error as a superuser and run a database-wide plain `VACUUM` while the server is running.
+
+[source,sql]
+----
+VACUUM;
+----
+
+Long-running or prepared transactions and stale replication slots can prevent cleanup from advancing the frozen XID. Investigate these blockers and resolve them according to their application or replication requirements. Use plain `VACUUM` for recovery. `VACUUM FULL` requires a new XID, and `VACUUM FREEZE` performs more work than the minimum needed to restore normal operation. After recovery, check the database age and autovacuum configuration.
 
 *Multixact IDs* are used to support row locking by multiple transactions. Since there is only limited space in a tuple header to store lock information, that information is encoded as a “multiple transaction ID”, or multixact ID for short, whenever there is more than one transaction concurrently locking a row. Information about which transaction IDs are included in any particular multixact ID is stored separately in the `pg_multixact` subdirectory, and only the multixact ID appears in the `xmax` field in the tuple header. Like transaction IDs, multixact IDs are implemented as a 32-bit counter and corresponding storage, all of which requires careful aging management, storage cleanup, and wraparound handling. There is a separate storage area which holds the list of members in each multixact, which also uses a 32-bit counter and which must also be managed.
 

@@ -117,17 +117,24 @@ SELECT datname, age(datfrozenxid) FROM pg_database;
 
 ```
 WARNING:  database "mydb" must be vacuumed within 39985967 transactions
-HINT:  To avoid a database shutdown, execute a database-wide VACUUM in that database.
+HINT:  To avoid transaction ID assignment failures, execute a database-wide VACUUM in that database.
 ```
 
-（如该示例所建议的，一次手动的`VACUUM`应该会修复该问题；但是注意该次`VACUUM`必须由一个超级用户来执行，否则它将无法处理系统目录并且因而不能推进数据库的`datfrozenxid`）。如果这些警告被忽略，一旦距离回卷点只剩下 3 百万个事务时，该系统将会关闭并且拒绝开始任何新的事务：
+以超级用户身份执行数据库范围的 `VACUUM`，才能处理系统目录并推进 `datfrozenxid`。如果忽略这些警告，当距离回卷点不足 3 百万个事务时，服务器会拒绝分配新事务 ID 的命令。以下是错误消息的节选。
 
 ```
-ERROR:  database is not accepting commands to avoid wraparound data loss in database "mydb"
-HINT:  Stop the postmaster and vacuum that database in single-user mode.
+ERROR:  database is not accepting commands that assign new transaction IDs to avoid wraparound data loss in database "mydb"
+HINT:  Execute a database-wide VACUUM in that database.
 ```
 
-这 3 百万个事务的安全余量是为了让管理员能通过手动执行所要求的`VACUUM`命令进行恢复而不丢失数据。但是，由于一旦系统进入到安全关闭模式，它将不会执行命令。做这个操作的唯一方法是停止服务器并且以单一用户启动服务器来执行`VACUUM`。单一用户模式中不会强制该关闭模式。
+剩余事务数为恢复保留了安全余量。以超级用户连接错误消息中指出的数据库，在服务器运行期间执行数据库范围的普通 `VACUUM`。
+
+[source,sql]
+----
+VACUUM;
+----
+
+长期运行的事务、预备事务和陈旧复制槽可能阻碍清理推进冻结 XID。应根据应用或复制需求排查并解决这些阻碍。恢复时使用普通 `VACUUM`。`VACUUM FULL` 需要分配新的 XID，`VACUUM FREEZE` 的工作量超出了恢复正常操作所需的最低范围。恢复后检查数据库年龄及自动清理配置。
 
 *Multixact ID*被用来支持被多个事务锁定的行。由于在一个元组头部 只有有限的空间可以用来存储锁信息，所以只要有多于一个事务并发地锁住一个行， 锁信息将使用一个“多个事务 ID”（或简称多事务 ID）来编码。任何特定 多事务 ID 中包括的事务 ID 的信息被独立地存储在`pg_multixact`子目 录中，并且只有多事务 ID 出现在元组头部的`xmax`域中。和事务 ID 类似，多事务 ID 也是用一个 32 位计数器实现，并且也采用了相似的存储，这些都要 求仔细的年龄管理、存储清除和回卷处理。在每个多事务中都有一个独立的存储区域 保存成员列表，它也使用一个 32 位计数器并且也应被管理。
 
