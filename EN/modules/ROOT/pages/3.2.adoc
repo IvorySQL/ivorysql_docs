@@ -1060,9 +1060,23 @@ Whenever `VACUUM` is running, the `pg_stat_progress_vacuum` view will contain on
 | `heap_blks_scanned` | `bigint` | Number of heap blocks scanned. Because the https://www.postgresql.org/docs/current/storage-vm.html[visibility map] is used to optimize scans, some blocks will be skipped without inspection; skipped blocks are included in this total, so that this number will eventually become equal to `heap_blks_total` when the vacuum is complete. This counter only advances when the phase is `scanning heap`. |
 | `heap_blks_vacuumed` | `bigint` | Number of heap blocks vacuumed. Unless the table has no indexes, this counter only advances when the phase is `vacuuming heap`. Blocks that contain no dead tuples are skipped, so the counter may sometimes skip forward in large increments. |
 | `index_vacuum_count` | `bigint` | Number of completed index vacuum cycles. |
-| `max_dead_tuples` | `bigint` | Number of dead tuples that we can store before needing to perform an index vacuum cycle, based on https://www.postgresql.org/docs/current/runtime-config-resource.html#GUC-MAINTENANCE-WORK-MEM[maintenance_work_mem]. |
-| `num_dead_tuples` | `bigint` | Number of dead tuples collected since the last index vacuum cycle. |
+| `max_dead_tuple_bytes` | `bigint` | Memory available to store dead tuple identifiers before another index vacuum cycle is needed, in bytes. |
+| `dead_tuple_bytes` | `bigint` | Memory currently used to store dead tuple identifiers, in bytes. |
+| `num_dead_item_ids` | `bigint` | Dead item identifiers collected since the last index vacuum cycle. |
+| `indexes_total` | `bigint` | Number of indexes to process in the current index vacuum or cleanup phase. |
+| `indexes_processed` | `bigint` | Number of indexes processed in the current phase. |
+| `delay_time` | `double precision` | Milliseconds spent in cost-based delay, reported when `track_cost_delay_timing` is enabled. |
 |====
+
+Query the memory and item-count fields separately. The view returns a row for each running vacuum.
+
+[source,sql]
+----
+SELECT pid, relid::regclass, phase,
+       max_dead_tuple_bytes, dead_tuple_bytes, num_dead_item_ids,
+       indexes_total, indexes_processed, delay_time
+FROM pg_stat_progress_vacuum;
+----
 
 .**VACUUM Phases**
 |====
