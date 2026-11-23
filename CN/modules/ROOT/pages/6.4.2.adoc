@@ -49,9 +49,9 @@ $$ LANGUAGE sql STRICT;
 [cols="2,8"]
 |====
 |*参数名称*|*返回值*
-|sid | 当前session的用户ID。
-|sessionid | 返回审计会话标识符。
+|sid | 当前会话的后端进程 ID，与 `pg_backend_pid()` 相同。
+|sessionid | 本会话在 `sys.userenv_sessionid_sequence` 上的当前值。会话尚未取得值时，首次调用会分配一个值。
 |language | 返回数据库当前会话的语言、地域和字符集。
 |lang | 返回ISO缩写语言名称。
-|isdba | 如果用户已经被认证为管理员;或者是通过操作系统或口令文件具有管理员特权的，返回“TRUE"，否则返回"FALSE"。
+|isdba | `current_user` 具有数据库超级用户属性时返回 `TRUE`，否则返回 `FALSE`。结果随当前活动角色变化。
 |====

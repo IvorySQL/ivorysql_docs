@@ -71,15 +71,14 @@ $$ LANGUAGE plisql SECURITY INVOKER;
 |Parameter Name|Return Value
 |IP_ADDRESS | The IP address of the client.
 |HOST | Name of the host machine from which the client has connected.
-|ISDBA | Returns TRUE if the user has been authenticated as having DBA privileges either through the operating system or through a password file.
+|ISDBA | Returns `TRUE` when `current_user` has the database superuser attribute, and `FALSE` otherwise. The result follows the active role.
 |LANG | The abbreviated name for the language, a shorter form than the existing 'LANGUAGE' parameter.
 |LANGUAGE | The language and territory currently used by your session, along with the database character set, in this form:language_territory.characterset
 |NLS_DATE_FORMAT | The date format for the session.
 |PLATFORM_SLASH | The slash character that is used as the file path delimiter for your platform.
 |DB_NAME | Name of the database as specified in the DB_NAME initialization parameter.
-|SID | 	
-The session ID.
-|SESSIONID | The auditing session identifier. You cannot use this attribute in distributed SQL statements.
+|SID | Backend process ID of the current session, as returned by `pg_backend_pid()`.
+|SESSIONID | This session's current value of `sys.userenv_sessionid_sequence`. The first call allocates a value if this session has none.
 |CLIENT_INFO | Returns up to 64 bytes of user session information that can be stored by an application using the DBMS_APPLICATION_INFO package. 
 |ENTRYID | The current audit entry number. The audit entryid sequence is shared between fine-grained audit records and regular audit records. You cannot use this attribute in distributed SQL statements. The correct auditing entry identifier can be seen only through an audit handler for standard or fine-grained audit.
 |TERMINAL | The operating system identifier for the client of the current session. In distributed SQL statements, this attribute returns the identifier for your local session. In a distributed environment, this is supported only for remote SELECT statements, not for remote INSERT, UPDATE, or DELETE operations. (The return length of this parameter may vary by operating system.)
