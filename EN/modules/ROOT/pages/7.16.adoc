@@ -44,7 +44,7 @@ SELECT fun1(1) FROM dual;
 (1 row)
 ```
 
-Modifying the previously defined declaration of a reference causes the function's status to become invalid, but the function can still execute successfully.
+Changing a referenced column's type invalidates the function's cached definition and sets `pg_proc.prostatus` to `n` (N/A, status unknown). This differs from `i`, which means invalid. The example below calls the function successfully with the new type; the subsequent explicit `ALTER FUNCTION ... COMPILE` sets its status to `v` (valid).
 
 ```
 ALTER TABLE t1 ALTER COLUMN id TYPE varchar(20);
