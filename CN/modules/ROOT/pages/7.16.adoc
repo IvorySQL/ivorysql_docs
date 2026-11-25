@@ -44,7 +44,7 @@ SELECT fun1(1) FROM dual;
 (1 row)
 ```
 
-修改引用的先前定义的声明，函数状态变为invalid，但是函数能够执行成功。
+修改所引用列的类型会使函数的缓存定义失效，并将 `pg_proc.prostatus` 设为 `n`（N/A，状态未知）。`i` 才表示无效状态。以下示例在类型变化后仍能成功调用函数；随后显式执行 `ALTER FUNCTION ... COMPILE`，将其状态设为 `v`（有效）。
 ```
 ALTER TABLE t1 ALTER COLUMN id TYPE varchar(20);
 
