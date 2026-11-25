@@ -11,9 +11,9 @@ IvorySQL provides Oracle-compatible OUT parameter functionality, including funct
 
 === Functions with OUT Parameters
 
-For PL/pgSQL functions, when creating a function, the system table pg_proc stores the total number of parameters (including OUT parameters) and their corresponding data types.
+For PL/iSQL functions, the system catalog `pg_proc` records argument counts, types and modes, including information about OUT parameters.
 
-In the interpret_function_parameter_list() function, which processes function parameters, it checks the parameter mode. If the mode is IN OUT, the parameter cannot have a default value.
+`interpret_function_parameter_list()` excludes `OUT` parameters from the input arguments and rejects default expressions on them. A separate check rejects an `IN OUT` default when the routine uses `plisql` and the Oracle parser is active. An `IN` parameter may have a default subject to the usual argument-order rules. See xref:7.15.adoc[OUT parameter examples] for the usage rules.
 
 In the make_return_stmt function, the error handling for detecting OUT parameters has been removed.
 
