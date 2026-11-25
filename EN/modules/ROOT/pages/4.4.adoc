@@ -1128,7 +1128,7 @@ EXPLAIN ANALYZE SELECT * FROM polygon_tbl WHERE f1 @> polygon '(0.5,2.0)';
 
 ​    Here we can see that the index returned one candidate row, which was then rejected by a recheck of the index condition. This happens because a GiST index is “lossy” for polygon containment tests: it actually returns the rows with polygons that overlap the target, and then we have to do the exact containment test on those rows.
 
-`EXPLAIN` has a `BUFFERS` option that can be used with `ANALYZE` to get even more run time statistics:
+In IvorySQL 5.6, `EXPLAIN ANALYZE` reports buffer usage by default when `BUFFERS` is not specified. Use `EXPLAIN (ANALYZE, BUFFERS OFF)` to omit it. The following example requests `BUFFERS` explicitly:
 
 ----
 EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM tenk1 WHERE unique1 < 100 AND unique2 > 9000;
@@ -1204,7 +1204,15 @@ The `Execution time` shown by `EXPLAIN ANALYZE` includes executor start-up and s
 
 ==== Caveats
 
-There are two significant ways in which run times measured by `EXPLAIN ANALYZE` can deviate from normal execution of the same query. First, since no output rows are delivered to the client, network transmission costs and I/O conversion costs are not included. Second, the measurement overhead added by `EXPLAIN ANALYZE` can be significant, especially on machines with slow `gettimeofday()` operating-system calls. You can use the https://www.postgresql.org/docs/17/pgtesttiming.html[pg_test_timing] tool to measure the overhead of timing on your system.
+`EXPLAIN ANALYZE` executes the query without sending its result rows to the client, so network transmission is outside the measurement. The default `SERIALIZE NONE` also omits conversion of result values to the client format. Use `SERIALIZE TEXT` or `SERIALIZE BINARY` with `ANALYZE` to perform that conversion on the server. `Execution Time` then includes conversion; when timing is enabled, the `Serialization` line reports conversion time separately.
+
+[source,sql]
+----
+EXPLAIN (ANALYZE, SERIALIZE TEXT) SELECT repeat('x', 1024);
+EXPLAIN (ANALYZE, SERIALIZE BINARY) SELECT repeat('x', 1024);
+----
+
+Instrumentation itself adds overhead, particularly on systems with slow `gettimeofday()` calls. Use https://www.postgresql.org/docs/18/pgtesttiming.html[pg_test_timing] to assess timing overhead on the system being measured.
 
 `EXPLAIN` results should not be extrapolated to situations much different from the one you are actually testing; for example, results on a toy-sized table cannot be assumed to apply to large tables. The planner's cost estimates are not linear and so it might choose a different plan for a larger or smaller table. An extreme example is that on a table that only occupies one disk page, you'll nearly always get a sequential scan plan whether indexes are available or not. The planner realizes that it's going to take one disk page read to process the table in any case, so there's no value in expending additional page reads to look at an index. (We saw this happening in the `polygon_tbl` example above.)
 
