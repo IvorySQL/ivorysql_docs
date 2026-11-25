@@ -2340,12 +2340,15 @@ select q''' is goog '';
 #### Syntax
 
 ```undefined
-SELECT [ database {schema} | schema ] sequence {nextval | currval};
+SELECT sequence.NEXTVAL;
+SELECT sequence.CURRVAL;
 ```
 
 #### Parameters
 
-`sequence`Sequence Name.
+`sequence` is an unqualified sequence name resolved using the session's search path. `NEXTVAL` advances the sequence; `CURRVAL` reads the last value obtained for that sequence in the current session and requires a preceding `NEXTVAL` in that session.
+
+For a schema-qualified sequence in IvorySQL 5.6, use `nextval('schema.sequence'::regclass)` and `currval('schema.sequence'::regclass)`. These explicit functions identify the intended sequence even when another schema has a sequence with the same name.
 
 #### Example
 
@@ -2359,11 +2362,25 @@ select sq.nextval;
 (1 row)
 
 select sq.currval;
- nextval
+ currval
 -----------
       1
 (1 row)
 ```
+
+The qualified form can be tested in a transaction that rolls back the example objects.
+
+[source,sql]
+----
+BEGIN;
+CREATE SCHEMA sales;
+CREATE SEQUENCE sales.order_seq;
+SELECT nextval('sales.order_seq'::regclass);
+SELECT currval('sales.order_seq'::regclass);
+ROLLBACK;
+----
+
+Both calls return `1` in this new sequence's session.
 
 === Compatible with time and date functions
 
