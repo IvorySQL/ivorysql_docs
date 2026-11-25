@@ -11,9 +11,9 @@ IvorySQL提供了兼容Oracle的out参数功能，包括含有out参数的函数
 
 === 含有out参数的函数
 
-对于pliSQL函数，在创建函数时，系统表pg_proc中存储函数参数为全部参数个数（包括OUT参数个数）及对应的参数数据类型。
+对于 PL/iSQL 函数，系统目录 `pg_proc` 保存参数个数、类型和模式等信息，其中包括 OUT 参数的信息。
 
-在处理函数参数的interpret_function_parameter_list()函数中，根据参数模式，判断如果是IN OUT，则参数不能有默认值。
+`interpret_function_parameter_list()` 将 `OUT` 参数排除在输入参数之外，并拒绝其默认表达式。另一项检查会在例程使用 `plisql` 且 Oracle 解析器启用时拒绝 `IN OUT` 参数的默认表达式。`IN` 参数可以有默认值，但须遵守通常的参数顺序规则。用法参见 xref:7.15.adoc[OUT 参数示例]。
 
 在make_return_stmt函数中，去掉如果发现有out参数报错的处理。
 
