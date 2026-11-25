@@ -584,9 +584,11 @@ COPY { table_name [ ( column_name [, ...] ) ] | ( query ) }
     FORCE_QUOTE { ( column_name [, ...] ) | * }
     FORCE_NOT_NULL ( column_name [, ...] )
     FORCE_NULL ( column_name [, ...] )
+    ON_ERROR error_action
+    REJECT_LIMIT maxerror
     ENCODING 'encoding_name'
 ----
-详细参数设置，请参阅 https://www.postgresql.org/docs/17/sql-copy.html[手册]。
+详细参数设置，请参阅 https://www.postgresql.org/docs/18/sql-copy.html[手册]。
 
 === 输出
 
@@ -625,7 +627,22 @@ COPY FROM可以被用于普通表、外部表、分区表或者具有INSTEAD OF 
 
 ​    即使数据会被服务器直接从一个文件读取或者写入一个文件而不通过 客户端，输入数据也会被根据ENCODING选项或者当前 客户端编码解释，并且输出数据会被根据ENCODING或 者当前客户端编码进行编码。
 
-​    COPY会在第一个错误处停止操作。这在 COPY TO的情况下不会导致问题，但是 在COPY FROM中目标表将已经收到了一 些行。这些行将不会变得可见或者可访问，但是它们仍然占据磁盘空间。 如果在一次大型的复制操作中出现错误，这可能浪费相当可观的磁盘空间。 你可能希望调用VACUUM来恢复被浪费的 空间。
+默认的 `ON_ERROR stop` 会在遇到第一个错误时结束 `COPY`。对于文本或 CSV 格式的 `COPY FROM`，`ON_ERROR ignore` 可以跳过字段值无法转换为目标列类型的行。它只能忽略这类可恢复的输入转换错误；例如，字段数不匹配仍会使命令失败。
+
+使用 `ON_ERROR ignore` 时，正整数 `REJECT_LIMIT` 指定允许丢弃的最大行数。丢弃数超过上限后命令失败；省略上限时不限制丢弃行数。以下示例跳过一行转换错误，导入编号为 1 和 3 的两行。
+
+[source,sql]
+----
+CREATE TEMP TABLE copy_demo (id integer, amount integer);
+COPY copy_demo FROM STDIN WITH (FORMAT csv, ON_ERROR ignore, REJECT_LIMIT 1);
+1,10
+2,invalid
+3,30
+\.
+SELECT * FROM copy_demo ORDER BY id;
+----
+
+如果 `COPY FROM` 失败，该命令已插入的行不会变得可见，但死元组仍可能占用磁盘空间。必要时执行 `VACUUM` 回收这些空间。
 
 ​    FORCE_NULL和FORCE_NOT_NULL可以被同时 用在同一列上。这会导致把已被引用的空值串转换为空值并且把未引用的空值 串转换为空串。
 

@@ -533,10 +533,12 @@ where option can be one of:
     FORCE_QUOTE { ( column_name [, ...] ) | * }
     FORCE_NOT_NULL ( column_name [, ...] )
     FORCE_NULL ( column_name [, ...] )
+    ON_ERROR error_action
+    REJECT_LIMIT maxerror
     ENCODING 'encoding_name'
 ----
 
-For detailed parameter settings, please refer to https://www.postgresql.org/docs/17/sql-copy.html[doc].
+For detailed parameter settings, please refer to https://www.postgresql.org/docs/18/sql-copy.html[doc].
 
 === Outputs
 
@@ -574,7 +576,22 @@ For identity columns, the `COPY FROM` command will always write the column value
 
 Input data is interpreted according to `ENCODING` option or the current client encoding, and output data is encoded in `ENCODING` or the current client encoding, even if the data does not pass through the client but is read from or written to a file directly by the server.
 
-`COPY` stops operation at the first error. This should not lead to problems in the event of a `COPY TO`, but the target table will already have received earlier rows in a `COPY FROM`. These rows will not be visible or accessible, but they still occupy disk space. This might amount to a considerable amount of wasted disk space if the failure happened well into a large copy operation. You might wish to invoke `VACUUM` to recover the wasted space.
+The default `ON_ERROR stop` ends `COPY` at the first error. For text or CSV `COPY FROM`, `ON_ERROR ignore` skips rows whose values cannot be converted to the target column types. This does not skip every kind of error: an incorrect number of fields, for example, still aborts the command.
+
+With `ON_ERROR ignore`, a positive `REJECT_LIMIT` sets the maximum number of rows that may be discarded. The command fails when the discarded count exceeds that limit. Without a limit, there is no maximum. This example discards one conversion error and imports rows 1 and 3.
+
+[source,sql]
+----
+CREATE TEMP TABLE copy_demo (id integer, amount integer);
+COPY copy_demo FROM STDIN WITH (FORMAT csv, ON_ERROR ignore, REJECT_LIMIT 1);
+1,10
+2,invalid
+3,30
+\.
+SELECT * FROM copy_demo ORDER BY id;
+----
+
+If `COPY FROM` fails, rows inserted by that command are not visible, but their dead tuples can still occupy disk space. Run `VACUUM` to reclaim that space when necessary.
 
 `FORCE_NULL` and `FORCE_NOT_NULL` can be used simultaneously on the same column. This results in converting quoted null strings to null values and unquoted null strings to empty strings.
 
