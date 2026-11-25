@@ -99,14 +99,17 @@ $ sudo yum --disablerepo=* localinstall *.rpm
 ** 安装依赖
 ```
 # CentOS
-$ sudo dnf install -y bison readline-devel zlib-devel openssl-devel uuid-devel
+$ sudo dnf install -y bison flex readline-devel zlib-devel openssl-devel uuid-devel libicu-devel
 $ sudo dnf groupinstall -y 'Development Tools'
 
 # Ubuntu
-$ sudo apt install -y bison libreadline-dev zlib1g-dev libssl-dev
+$ sudo apt install -y bison flex libreadline-dev zlib1g-dev libssl-dev libicu-dev
 $ sudo apt install -y build-essential
 $ sudo apt install -y pkg-config uuid-dev
 ```
+
+Flex 用于在构建时生成扫描器源码。默认配置还启用 ICU，并通过 `pkg-config` 检查 `icu-uc` 和 `icu-i18n` 开发库。因此，在执行下方配置命令前，需要在 Ubuntu 安装 `libicu-dev`，或在 CentOS 安装 `libicu-devel`。
+
 ** 获取IvorySQL源代码
 ```
 $ git clone https://github.com/IvorySQL/IvorySQL.git
