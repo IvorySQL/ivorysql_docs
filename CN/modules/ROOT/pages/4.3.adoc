@@ -2246,12 +2246,15 @@ select q''' is goog '';
 ==== 语法
 
 ```undefined
-SELECT [ database {schema} | schema ] sequence {nextval | currval};
+SELECT sequence.NEXTVAL;
+SELECT sequence.CURRVAL;
 ```
 
 ==== **参数**
 
-`sequence` 序列名.
+`sequence` 为不带模式限定的序列名，通过当前会话的搜索路径解析。`NEXTVAL` 推进序列；`CURRVAL` 读取本会话最近取得的该序列值，因此本会话须先调用过该序列的 `NEXTVAL`。
+
+IvorySQL 5.6 中如需用模式名限定序列，使用 `nextval('schema.sequence'::regclass)` 和 `currval('schema.sequence'::regclass)`。即使其他模式中存在同名序列，这种写法也能明确指定目标序列。
 
 ==== 示例
 
@@ -2265,11 +2268,25 @@ select sq.nextval;
 (1 row)
 
 select sq.currval;
- nextval
+ currval
 -----------
       1
 (1 row)
 ```
+
+可在事务中验证带模式名的写法，并回滚示例对象。
+
+[source,sql]
+----
+BEGIN;
+CREATE SCHEMA sales;
+CREATE SEQUENCE sales.order_seq;
+SELECT nextval('sales.order_seq'::regclass);
+SELECT currval('sales.order_seq'::regclass);
+ROLLBACK;
+----
+
+对于此新建序列，同一会话中的两次调用均返回 `1`。
 
 === 兼容时间和日期函数
 
