@@ -2537,6 +2537,29 @@ pg_restore接受下列命令行参数。
 
 只有在恢复具有行安全性的表的内容时，这个选项才相关。默认情况下，pg_restore将把 http://www.postgresql.org/docs/17/runtime-config-client.html#GUC-ROW-SECURITY[row_security] 设置为 off 来确保所有数据都被恢复到表中。如果用户不拥有足够绕过行安全性的特权，那么会抛出一个错误。这个参数指示pg_restore把 http://www.postgresql.org/docs/17/runtime-config-client.html#GUC-ROW-SECURITY[row_security] 设置为on允许用户尝试恢复启用了行安全性的表的内容。如果用户没有从转储向表中插入行的权限，这仍将失败。注意当前这个选项还要求转储处于 `INSERT` 格式，因为 `COPY FROM` 不支持行安全性。
 
+- `--filter=filename`
+
+从文件读取对象选择规则。每个非空行的格式为 `include object_type pattern` 或 `exclude object_type pattern`。以 `#` 开头的注释行及行尾注释会被忽略。
+
+`include` 支持 `schema`、`table`、`function`、`index`、`trigger`；`exclude` 只支持 `schema`。这些规则分别遵循 `--schema`、`--table`、`--function`、`--index`、`--trigger`、`--exclude-schema` 选项的选择规则，表规则与 `--table` 的选择行为相同。
+
+可以多次指定此选项，也可以与上述命令行选择选项组合使用。`--filter=-` 从标准输入读取规则，此时需单独传入归档文件名。
+
+例如，将以下内容保存为 `restore.filter`：
+
+[source,text]
+----
+# Select the orders table
+include table orders
+----
+
+然后恢复到已经存在的数据库：
+
+[source,sh]
+----
+pg_restore --exit-on-error --dbname=appdb --filter=restore.filter app.dump
+----
+
 - `--if-exists`
 
 使用条件命令（即增加一个 `IF EXISTS` 子句）删除数据库对象。只有指定了 `--clean` 时，这个选项才有效。
