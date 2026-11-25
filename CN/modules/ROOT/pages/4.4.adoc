@@ -1161,7 +1161,7 @@ EXPLAIN ANALYZE SELECT * FROM polygon_tbl WHERE f1 @> polygon '(0.5,2.0)';
 
 这里我们可以看到索引返回一个候选行，然后它会被索引条件的重新检查拒绝。这是因为一个 GiST 索引对于多边形包含测试是 “有损的”：它确实返回覆盖目标的多边形的行，然后我们必须在那些行上做精确的包含性测试。
 
-EXPLAIN有一个BUFFERS选项可以和ANALYZE一起使用来得到更多运行时统计信息：
+在 IvorySQL 5.6 中，`EXPLAIN ANALYZE` 在未指定 `BUFFERS` 时默认报告缓冲区使用情况。使用 `EXPLAIN (ANALYZE, BUFFERS OFF)` 可以关闭此报告。以下示例显式启用 `BUFFERS`：
 
 ----
 EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM tenk1 WHERE unique1 < 100 AND unique2 > 9000;
@@ -1236,7 +1236,15 @@ EXPLAIN UPDATE parent SET f2 = f2 + 1 WHERE f1 = 101;
 
 ==== 警告
 
-在两种有效的方法中EXPLAIN ANALYZE所度量的运行时间可能偏离同一个查询的正常执行。首先，由于不会有输出行被递交给客户端，网络传输开销和 I/O 转换开销没有被包括在内。其次，由EXPLAIN ANALYZE所增加的度量开销可能会很可观，特别是在操作系统调用gettimeofday()很慢的机器上。你可以使用pg_test_timing工具来度量在你的系统上的计时开销。
+`EXPLAIN ANALYZE` 执行查询但不向客户端发送结果行，因此不计入网络传输开销。默认的 `SERIALIZE NONE` 也不执行将结果值转换为客户端格式的操作。将 `SERIALIZE TEXT` 或 `SERIALIZE BINARY` 与 `ANALYZE` 一起使用，可以测量服务器端的输出转换。此时 `Execution Time` 包含转换开销；启用计时时，`Serialization` 行还会单独报告转换时间。
+
+[source,sql]
+----
+EXPLAIN (ANALYZE, SERIALIZE TEXT) SELECT repeat('x', 1024);
+EXPLAIN (ANALYZE, SERIALIZE BINARY) SELECT repeat('x', 1024);
+----
+
+测量本身也会带来开销，尤其是在 `gettimeofday()` 调用较慢的系统上。可以使用 https://www.postgresql.org/docs/18/pgtesttiming.html[pg_test_timing] 评估被测系统的计时开销。
 
 ​    EXPLAIN结果不应该被外推到与你实际测试的非常不同的情况。例如，一个很小的表上的结果不能被假定成适合大型表。规划器的开销估计不是线性的，并且因此它可能为一个更大或更小的表选择一个不同的计划。一个极端例子是，在一个只占据一个磁盘页面的表上，你将几乎总是得到一个顺序扫描计划，而不管索引是否可用。规划器认识到它在任何情况下都将采用一次磁盘页面读取来处理该表，因此用额外的页面读取去查看一个索引是没有价值的（我们已经在前面的polygon_tbl例子中见过）。
 
