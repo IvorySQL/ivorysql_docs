@@ -2323,17 +2323,18 @@ select * from generate_series(1, 3) g(i) MINUS select * from generate_series(1, 
 
 #### Overview
 
-Use q\' to escape special characters. q\' escaped characters are usually used after ! [] {} () \<> and other escaping characters, you can also use \, letters, numbers, \=, +, -, *, \&, \$, \%, #, etc., no spaces are allowed.
+Start an alternative quoted string with `q` or `Q`, a single quote, then an opening delimiter. The paired delimiters are `[ ]`, `{ }`, `( )` and `< >`; other delimiters close with the same character that opened the string. The closing delimiter must be followed immediately by the final single quote.
+
+A delimiter cannot be whitespace. The string's contents may include spaces and apostrophes without doubling the apostrophes, provided they do not form the closing delimiter followed by a single quote.
 
 #### Example of 
 
-```undefined
-select q''' is goog '';
-  ?column?
-------------
- ' is goog
-(1 row)
-```
+[source,sql]
+----
+SELECT q'['s is good]' AS quoted_text;
+----
+
+This returns the text `'s is good`, including the apostrophe and spaces.
 
 === Sequence 
 
