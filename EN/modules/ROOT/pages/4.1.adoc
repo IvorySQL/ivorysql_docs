@@ -100,14 +100,17 @@ IvorySQL then will be installed in the /usr/ivory-5/ directory.
 ** Installing dependencies
 ```
 # CentOS
-$ sudo dnf install -y bison readline-devel zlib-devel openssl-devel uuid-devel
+$ sudo dnf install -y bison flex readline-devel zlib-devel openssl-devel uuid-devel libicu-devel
 $ sudo dnf groupinstall -y 'Development Tools'
 
 # Ubuntu
-$ sudo apt install -y bison libreadline-dev zlib1g-dev libssl-dev
+$ sudo apt install -y bison flex libreadline-dev zlib1g-dev libssl-dev libicu-dev
 $ sudo apt install -y build-essential
 $ sudo apt install -y pkg-config uuid-dev
 ```
+
+Flex generates scanner sources during the build. The default configuration also enables ICU and checks for the `icu-uc` and `icu-i18n` development libraries through `pkg-config`. Install `libicu-dev` on Ubuntu or `libicu-devel` on CentOS before running the configuration command below.
+
 ** Getting source code
 ```
 $ git clone https://github.com/IvorySQL/IvorySQL.git
