@@ -63,7 +63,20 @@ ivorysql=# \d+ mytable
 Access method: heap
 ```
 
+=== 修改已有列的可见性
+
+在 Oracle 模式下，可以用 `MODIFY column_name VISIBLE` 或 `MODIFY column_name INVISIBLE` 修改已有列的可见性。继续使用前文的 `mytable`，第一次通配符查询显示 `a`、`b`、`c`，第二次只显示 `a`、`c`。显式指定 `b` 仍能读取它的值。
+
+[source,sql]
+----
+ALTER TABLE mytable MODIFY b VISIBLE;
+SELECT * FROM mytable;
+
+ALTER TABLE mytable MODIFY b INVISIBLE;
+SELECT * FROM mytable;
+SELECT b FROM mytable;
+----
+
 == 限制
 
-- 目前不支持modify column，将在未来版本实现；
 - 在Oracle中，不可见列和列顺序有特别的注意事项。当一个表包含一个或多个不可见列时，这些不可见列不会包含在表的列顺序中。目前我们尚未对这块做处理。
