@@ -63,7 +63,20 @@ ivorysql=# \d+ mytable
 Access method: heap
 ```
 
+=== Change an existing column's visibility
+
+In Oracle mode, use `MODIFY column_name VISIBLE` or `MODIFY column_name INVISIBLE` to change an existing column. Continuing with `mytable` above, the first wildcard query includes `a`, `b` and `c`; the second includes only `a` and `c`. An explicit reference to `b` still reads its value.
+
+[source,sql]
+----
+ALTER TABLE mytable MODIFY b VISIBLE;
+SELECT * FROM mytable;
+
+ALTER TABLE mytable MODIFY b INVISIBLE;
+SELECT * FROM mytable;
+SELECT b FROM mytable;
+----
+
 == Limitations
 
-- Modify column is not supported currently. Will be enhanced in later version;
 - In Oracle, there are special considerations for invisible columns and column ordering. When a table contains one or more invisible columns, the invisible columns are not included in the column order for the table. We have not yet addressed this part.
