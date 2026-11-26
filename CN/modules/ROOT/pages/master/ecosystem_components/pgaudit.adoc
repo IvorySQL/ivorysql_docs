@@ -43,7 +43,8 @@ make install USE_PGXS=1 PG_CONFIG=$PGHOME/bin/pg_config
 
 修改 `ivorysql.conf`，启用插件并设置常用参数：
 ----
-shared_preload_libraries = 'pgaudit'   # 需实例重启生效
+# 保留 IvorySQL 默认加载的库，在末尾追加 pgaudit
+shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pgaudit'   # 需实例重启生效
 pgaudit.log = 'read, write, ddl'       # 审计范围示例，可按需调整
 ----
 

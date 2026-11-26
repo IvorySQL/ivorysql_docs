@@ -32,7 +32,8 @@ make install
 [literal]
 ----
 # Shared preload extensions
-shared_preload_libraries = 'pg_cron'
+# Keep the libraries IvorySQL loads by default and append pg_cron
+shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_cron'
 
 # Specify task metadata storage database (default current database)
 cron.database_name = 'ivorysql'

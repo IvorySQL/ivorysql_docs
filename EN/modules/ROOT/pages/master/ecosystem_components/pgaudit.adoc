@@ -42,7 +42,8 @@ The commands above expect the environment variable `PGHOME` to point to the inst
 
 1. Modify `ivorysql.conf` to load the plugin and configure common parameters:
    ----
-   shared_preload_libraries = 'pgaudit'   # Requires an instance restart
+   # Keep the libraries IvorySQL loads by default and append pgaudit
+   shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pgaudit'   # Requires an instance restart
    pgaudit.log = 'read, write, ddl'       # Sample audit scope; adjust as needed
    ----
 

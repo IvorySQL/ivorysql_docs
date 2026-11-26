@@ -45,7 +45,8 @@ make USE_PGXS=1 install
 
 [source,conf]
 ----
-shared_preload_libraries = 'pg_stat_monitor';
+# 保留 IvorySQL 默认加载的库，在末尾追加 pg_stat_monitor
+shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_stat_monitor';
 ----
 
 注意：若 shared_preload_libraries 参数中已存在其他模块（例如 pg_stat_statements），需用逗号分隔全部列出。pg_stat_monitor 必须排在 pg_stat_statements 之后，例如：
