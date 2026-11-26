@@ -33,7 +33,8 @@ make install
 [literal]
 ----
 # 共享预加载扩展
-shared_preload_libraries = 'pg_cron'
+# 保留 IvorySQL 默认加载的库，在末尾追加 pg_cron
+shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_cron'
 
 # 指定任务元数据存储库（默认当前库）
 cron.database_name = 'ivorysql'
