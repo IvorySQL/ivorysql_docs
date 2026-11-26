@@ -27,6 +27,51 @@ make USE_PGXS=1 PG_CONFIG=/usr/ivory-5/bin/pg_config
 sudo make USE_PGXS=1 PG_CONFIG=/usr/ivory-5/bin/pg_config install
 ----
 
+=== Building from Source on Windows
+
+[TIP]
+This section was verified on Windows 11 with Visual Studio 2022 Build Tools (MSVC 19.44). The Windows port of IvorySQL is still under review, so the verification used commit `947b50e1` of the https://github.com/jiabin777on-hue/IvorySQL/tree/win/reference[Windows test baseline]: master plus the open Windows port PRs (IvorySQL #2321, #2332, #2333, #2485, #2530, #2811, #3418, #3419, #3420 and #3421).
+
+Build and install IvorySQL in "Developer PowerShell for VS 2022". Git, Strawberry Perl, winflexbison and Meson (with Ninja) must be on `PATH`. The verification build also used `-Dcassert=true -Dtap_tests=enabled` to run the tests.
+
+[source,powershell]
+----
+git clone --branch win/reference https://github.com/jiabin777on-hue/IvorySQL.git
+Set-Location IvorySQL
+git checkout 947b50e1
+meson setup build --prefix=C:\ivorysql -Dauto_features=disabled -Duuid=none
+ninja -C build
+meson install -C build
+Set-Location ..
+----
+
+Windows has no PGXS, so compile the extension directly with MSVC's `cl` and `link`, linking against `postgres.lib` from the IvorySQL installation. Clone with `core.autocrlf=false` so that test data files are not converted to CRLF.
+
+[source,powershell]
+----
+$IVY = 'C:\ivorysql'
+$INC = "$IVY\include\postgresql\server"
+$CFLAGS = @("/nologo", "/c", "/O2", "/MD", "/utf-8", "/std:c11", "/DWIN32", "/DWINDOWS",
+    "/D__WINDOWS__", "/D__WIN32__", "/D_CRT_SECURE_NO_DEPRECATE", "/D_CRT_NONSTDC_NO_DEPRECATE",
+    "/I.", "/I$INC\port\win32_msvc", "/I$INC\port\win32", "/I$INC", "/I$IVY\include")
+git clone -c core.autocrlf=false https://github.com/pgbigm/pg_bigm.git
+Set-Location pg_bigm
+git checkout 557cc34afa90
+cl @CFLAGS bigm_op.c bigm_gin.c
+link /nologo /DLL /OUT:pg_bigm.dll bigm_op.obj bigm_gin.obj "$IVY\lib\postgres.lib"
+Copy-Item pg_bigm.dll "$IVY\lib\postgresql\"
+Copy-Item pg_bigm.control, pg_bigm--*.sql "$IVY\share\postgresql\extension\"
+----
+
+The verified version is pg_bigm 1.2 (commit `557cc34afa90`); the source needs no changes and the library does not need to be preloaded.
+
+Results: the extension's regression tests `pg_bigm` and `pg_bigm_ja` pass in PG mode (2/2); `pg_bigm_ja` also passes in Oracle mode.
+
+Two things to keep in mind in Oracle mode:
+
+* Oracle's `LIKE` has no default escape character, while `likequery()` escapes `%`, `_` and `\` with `\`. To search for those characters, give the escape character explicitly: `WHERE col LIKE likequery('100%') ESCAPE '\'`. Without `ESCAPE`, such searches miss rows.
+* An empty string is NULL, so for example `show_bigm('')` returns NULL rather than `{}`.
+
 == Create Extension
 Connect to the database via psql and execute the following commands:
 [literal]
