@@ -27,6 +27,52 @@ make PG_CONFIG=/usr/ivory-5/bin/pg_config
 make PG_CONFIG=/usr/ivory-5/bin/pg_config install
 ----
 
+=== 在 Windows 上从源码构建
+
+[TIP]
+本节在 Windows 11 上验证，编译器为 Visual Studio 2022 Build Tools（MSVC 19.44）。IvorySQL 的 Windows 移植仍在审查中，验证使用的 IvorySQL 是 https://github.com/jiabin777on-hue/IvorySQL/tree/win/reference[Windows 测试基线] 的提交 `947b50e1`，即 master 加上尚未合并的 Windows 移植 PR（IvorySQL #2321、#2332、#2333、#2485、#2530、#2811、#3418、#3419、#3420、#3421）。
+
+在 “Developer PowerShell for VS 2022” 中编译并安装 IvorySQL。需要 Git、Strawberry Perl、winflexbison 和 Meson（含 Ninja）在 `PATH` 中。验证时另外加了 `-Dcassert=true -Dtap_tests=enabled` 以运行测试。
+
+[source,powershell]
+----
+git clone --branch win/reference https://github.com/jiabin777on-hue/IvorySQL.git
+Set-Location IvorySQL
+git checkout 947b50e1
+meson setup build --prefix=C:\ivorysql -Dauto_features=disabled -Duuid=none
+ninja -C build
+meson install -C build
+Set-Location ..
+----
+
+Windows 上没有 PGXS，可以用 MSVC 的 `cl` 和 `link` 直接编译插件，并链接 IvorySQL 安装目录中的 `postgres.lib`。克隆时设置 `core.autocrlf=false`，避免测试数据文件被转换为 CRLF。
+
+[source,powershell]
+----
+$IVY = 'C:\ivorysql'
+$INC = "$IVY\include\postgresql\server"
+$CFLAGS = @("/nologo", "/c", "/O2", "/MD", "/utf-8", "/std:c11", "/DWIN32", "/DWINDOWS",
+    "/D__WINDOWS__", "/D__WIN32__", "/D_CRT_SECURE_NO_DEPRECATE", "/D_CRT_NONSTDC_NO_DEPRECATE",
+    "/I.", "/I$INC\port\win32_msvc", "/I$INC\port\win32", "/I$INC", "/I$IVY\include")
+git clone -c core.autocrlf=false https://github.com/cybertec-postgresql/pg_show_plans.git
+Set-Location pg_show_plans
+git checkout 92ecb21f8f23
+# MSVC C2375: remove the declaration that lacks PGDLLEXPORT; PG_FUNCTION_INFO_V1 declares the function
+(Get-Content pg_show_plans.c) | Where-Object { $_ -ne 'Datum pg_show_plans(PG_FUNCTION_ARGS);' } | Set-Content -Encoding ascii pg_show_plans.c
+cl @CFLAGS pg_show_plans.c
+link /nologo /DLL /OUT:pg_show_plans.dll pg_show_plans.obj "$IVY\lib\postgres.lib"
+Copy-Item pg_show_plans.dll "$IVY\lib\postgresql\"
+Copy-Item pg_show_plans.control, pg_show_plans--*.sql "$IVY\share\postgresql\extension\"
+----
+
+验证的版本为 pg_show_plans 2.1.8（提交 `92ecb21f8f23`）。
+
+MSVC 会报 C2375（重定义；不同的链接）：源码在 `PG_FUNCTION_INFO_V1(pg_show_plans)` 之前另外写了一个不带 `PGDLLEXPORT` 的 `pg_show_plans` 声明。上面的命令删掉了这一行，`PG_FUNCTION_INFO_V1` 已经声明了该函数。这是插件本身的问题，在 PostgreSQL 上用 MSVC 编译也一样。
+
+pg_show_plans 需要预加载。IvorySQL 在 `ivorysql.conf` 中默认设置了 `shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora'`，要把 pg_show_plans **追加**到这个列表后面，例如 `shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_show_plans'`。如果只写 `'pg_show_plans'`，会覆盖默认列表，Oracle 模式的连接会报 `liboracle_parser not found`。
+
+验证结果：插件自带的回归测试 `pg_show_plans` 和 `formats` 在 PG 模式下全部通过（2/2）。在 Oracle 模式下（脚本中补上 `/` 后）结果与期望输出完全一致。插件自带的回归测试脚本按 PostgreSQL 的语法编写。Oracle 模式的 psql 要看到单独一行的 `/` 才会发送 `CREATE FUNCTION`（即使函数体用 `$$` 引用），所以要在 Oracle 模式下运行这些脚本，需要在每个 `CREATE FUNCTION` 语句后面加一行 `/`。
+
 === 配置 shared_preload_libraries
 
 在 `ivorysql.conf` 中将 `pg_show_plans` 添加到 `shared_preload_libraries` 参数：
