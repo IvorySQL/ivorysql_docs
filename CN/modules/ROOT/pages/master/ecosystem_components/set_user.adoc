@@ -95,6 +95,57 @@ make USE_PGXS=1 PG_CONFIG=${IVY_BIN_DIR}/pg_config install
 shared_preload_libraries = 'set_user'
 ----
 
+=== 在 Windows 上从源码构建
+
+[TIP]
+本节在 Windows 11 上验证，编译器为 Visual Studio 2022 Build Tools（MSVC 19.44）。IvorySQL 的 Windows 移植仍在审查中，验证使用的 IvorySQL 是 https://github.com/jiabin777on-hue/IvorySQL/tree/win/reference[Windows 测试基线] 的提交 `947b50e1`，即 master 加上尚未合并的 Windows 移植 PR（IvorySQL #2321、#2332、#2333、#2485、#2530、#2811、#3418、#3419、#3420、#3421）。
+
+在 “Developer PowerShell for VS 2022” 中编译并安装 IvorySQL。需要 Git、Strawberry Perl、winflexbison 和 Meson（含 Ninja）在 `PATH` 中。验证时另外加了 `-Dcassert=true -Dtap_tests=enabled` 以运行测试。
+
+[source,powershell]
+----
+git clone --branch win/reference https://github.com/jiabin777on-hue/IvorySQL.git
+Set-Location IvorySQL
+git checkout 947b50e1
+meson setup build --prefix=C:\ivorysql -Dauto_features=disabled -Duuid=none
+ninja -C build
+meson install -C build
+Set-Location ..
+----
+
+Windows 上没有 PGXS，可以用 MSVC 的 `cl` 和 `link` 直接编译插件，并链接 IvorySQL 安装目录中的 `postgres.lib`。克隆时设置 `core.autocrlf=false`，避免测试数据文件被转换为 CRLF。
+
+[source,powershell]
+----
+$IVY = 'C:\ivorysql'
+$INC = "$IVY\include\postgresql\server"
+$CFLAGS = @("/nologo", "/c", "/O2", "/MD", "/utf-8", "/std:c11", "/DWIN32", "/DWINDOWS",
+    "/D__WINDOWS__", "/D__WIN32__", "/D_CRT_SECURE_NO_DEPRECATE", "/D_CRT_NONSTDC_NO_DEPRECATE",
+    "/I.", "/I$INC\port\win32_msvc", "/I$INC\port\win32", "/I$INC", "/I$IVY\include")
+git clone -c core.autocrlf=false https://github.com/pgaudit/set_user.git
+Set-Location set_user
+git checkout REL4_3_0
+# MSVC C2375: remove the declaration that lacks PGDLLEXPORT; PG_FUNCTION_INFO_V1 declares the function
+(Get-Content src\set_user.c) | Where-Object { $_ -ne 'extern Datum set_user(PG_FUNCTION_ARGS);' } | Set-Content -Encoding ascii src\set_user.c
+# EXTVERSION must be a string literal; a response file keeps the quotes away from PowerShell
+Set-Content -Encoding ascii extversion.rsp '/DEXTVERSION=\"4.3.0\"'
+cl @CFLAGS "@extversion.rsp" /Isrc src\set_user.c
+link /nologo /DLL /OUT:set_user.dll set_user.obj "$IVY\lib\postgres.lib"
+Copy-Item set_user.dll "$IVY\lib\postgresql\"
+Copy-Item extension\set_user.sql "$IVY\share\postgresql\extension\set_user--4.3.0.sql"
+Copy-Item set_user.control, updates\set_user--*.sql "$IVY\share\postgresql\extension\"
+----
+
+验证的版本为 set_user 4.3.0（标签 `REL4_3_0`）。
+
+MSVC 会报 C2375（重定义；不同的链接）：源码在 `PG_FUNCTION_INFO_V1(set_user)` 之前另外写了一个不带 `PGDLLEXPORT` 的 `set_user` 声明。上面的命令删掉了这一行，`PG_FUNCTION_INFO_V1` 已经声明了该函数。这是插件本身的问题，在 PostgreSQL 上用 MSVC 编译也一样。
+
+`EXTVERSION` 必须是字符串字面量，Makefile 中由 `PG_CPPFLAGS` 传入。PowerShell 传给原生命令的引号在不同版本中处理不同，所以上面的命令把这个宏写在 cl 的响应文件里。Makefile 还会把 `extension/set_user.sql` 复制为 `set_user--4.3.0.sql`，上面的命令也做了同样的复制。
+
+set_user 需要预加载。IvorySQL 在 `ivorysql.conf` 中默认设置了 `shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora'`，要把 set_user **追加**到这个列表后面，例如 `shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, set_user'`。如果只写 `'set_user'`，会覆盖默认列表，Oracle 模式的连接会报 `liboracle_parser not found`。
+
+验证结果：插件自带的回归测试 `set_user` 在 PG 模式下与期望输出一致，只有两处差异来自测试环境：测试假定超级用户名为 `postgres`，以及临时实例的 `log_line_prefix` 不同于默认值。Oracle 模式下本次没有完整验证该测试。已观察到的差异是：被拦截函数的签名中，内置类型显示为带模式名的形式（如 `pg_catalog.bool`，而不是 `boolean`）。插件自带的回归测试脚本按 PostgreSQL 的语法编写。Oracle 模式的 psql 要看到单独一行的 `/` 才会发送 `CREATE FUNCTION`（即使函数体用 `$$` 引用），所以要在 Oracle 模式下运行这些脚本，需要在每个 `CREATE FUNCTION` 语句后面加一行 `/`。
+
 === 创建测试数据库
 
 [NOTE]

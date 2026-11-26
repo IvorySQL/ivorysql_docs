@@ -94,6 +94,57 @@ make USE_PGXS=1 PG_CONFIG=${IVY_BIN_DIR}/pg_config install
 shared_preload_libraries = 'set_user'
 ----
 
+=== Building from Source on Windows
+
+[TIP]
+This section was verified on Windows 11 with Visual Studio 2022 Build Tools (MSVC 19.44). The Windows port of IvorySQL is still under review, so the verification used commit `947b50e1` of the https://github.com/jiabin777on-hue/IvorySQL/tree/win/reference[Windows test baseline]: master plus the open Windows port PRs (IvorySQL #2321, #2332, #2333, #2485, #2530, #2811, #3418, #3419, #3420 and #3421).
+
+Build and install IvorySQL in "Developer PowerShell for VS 2022". Git, Strawberry Perl, winflexbison and Meson (with Ninja) must be on `PATH`. The verification build also used `-Dcassert=true -Dtap_tests=enabled` to run the tests.
+
+[source,powershell]
+----
+git clone --branch win/reference https://github.com/jiabin777on-hue/IvorySQL.git
+Set-Location IvorySQL
+git checkout 947b50e1
+meson setup build --prefix=C:\ivorysql -Dauto_features=disabled -Duuid=none
+ninja -C build
+meson install -C build
+Set-Location ..
+----
+
+Windows has no PGXS, so compile the extension directly with MSVC's `cl` and `link`, linking against `postgres.lib` from the IvorySQL installation. Clone with `core.autocrlf=false` so that test data files are not converted to CRLF.
+
+[source,powershell]
+----
+$IVY = 'C:\ivorysql'
+$INC = "$IVY\include\postgresql\server"
+$CFLAGS = @("/nologo", "/c", "/O2", "/MD", "/utf-8", "/std:c11", "/DWIN32", "/DWINDOWS",
+    "/D__WINDOWS__", "/D__WIN32__", "/D_CRT_SECURE_NO_DEPRECATE", "/D_CRT_NONSTDC_NO_DEPRECATE",
+    "/I.", "/I$INC\port\win32_msvc", "/I$INC\port\win32", "/I$INC", "/I$IVY\include")
+git clone -c core.autocrlf=false https://github.com/pgaudit/set_user.git
+Set-Location set_user
+git checkout REL4_3_0
+# MSVC C2375: remove the declaration that lacks PGDLLEXPORT; PG_FUNCTION_INFO_V1 declares the function
+(Get-Content src\set_user.c) | Where-Object { $_ -ne 'extern Datum set_user(PG_FUNCTION_ARGS);' } | Set-Content -Encoding ascii src\set_user.c
+# EXTVERSION must be a string literal; a response file keeps the quotes away from PowerShell
+Set-Content -Encoding ascii extversion.rsp '/DEXTVERSION=\"4.3.0\"'
+cl @CFLAGS "@extversion.rsp" /Isrc src\set_user.c
+link /nologo /DLL /OUT:set_user.dll set_user.obj "$IVY\lib\postgres.lib"
+Copy-Item set_user.dll "$IVY\lib\postgresql\"
+Copy-Item extension\set_user.sql "$IVY\share\postgresql\extension\set_user--4.3.0.sql"
+Copy-Item set_user.control, updates\set_user--*.sql "$IVY\share\postgresql\extension\"
+----
+
+The verified version is set_user 4.3.0 (tag `REL4_3_0`).
+
+MSVC reports C2375 (redefinition; different linkage): the source declares `set_user` without `PGDLLEXPORT` before `PG_FUNCTION_INFO_V1(set_user)`. The commands above delete that declaration; `PG_FUNCTION_INFO_V1` already declares the function. This is a problem in the extension itself and happens with PostgreSQL and MSVC too.
+
+`EXTVERSION` must be a string literal; the Makefile passes it in `PG_CPPFLAGS`. PowerShell versions pass embedded quotes to native commands differently, so the commands above put this define in a cl response file. The Makefile also copies `extension/set_user.sql` to `set_user--4.3.0.sql`, and so do the commands above.
+
+set_user must be preloaded. IvorySQL sets `shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora'` in `ivorysql.conf` by default; *append* set_user to that list, for example `shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, set_user'`. Setting it to `'set_user'` alone replaces the default list, and connections in Oracle mode then fail with `liboracle_parser not found`.
+
+Results: the extension's regression test `set_user` matches the expected output in PG mode, except for two differences that come from the test setup: the test assumes a superuser named `postgres`, and the temporary instance's `log_line_prefix` differs from the default. This test was not fully verified in Oracle mode. One difference observed there: built-in types in the signatures of blocked functions are shown schema-qualified (`pg_catalog.bool` rather than `boolean`). The extension's regression scripts are written for PostgreSQL. In Oracle mode, psql sends a `CREATE FUNCTION` only after a line containing just `/`, even when the body is dollar-quoted, so to run these scripts in Oracle mode, add a `/` line after each `CREATE FUNCTION` statement.
+
 === Creating a Test Database
 
 [NOTE]
