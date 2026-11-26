@@ -58,6 +58,46 @@ git clone https://github.com/rjuju/pg_track_settings.git contrib/pg_track_settin
 make -C contrib/pg_track_settings install
 ----
 
+=== Building from Source on Windows
+
+[TIP]
+This section was verified on Windows 11 with Visual Studio 2022 Build Tools (MSVC 19.44). The Windows port of IvorySQL is still under review, so the verification used commit `947b50e1` of the https://github.com/jiabin777on-hue/IvorySQL/tree/win/reference[Windows test baseline]: master plus the open Windows port PRs (IvorySQL #2321, #2332, #2333, #2485, #2530, #2811, #3418, #3419, #3420 and #3421).
+
+Build and install IvorySQL in "Developer PowerShell for VS 2022". Git, Strawberry Perl, winflexbison and Meson (with Ninja) must be on `PATH`. The verification build also used `-Dcassert=true -Dtap_tests=enabled` to run the tests.
+
+[source,powershell]
+----
+git clone --branch win/reference https://github.com/jiabin777on-hue/IvorySQL.git
+Set-Location IvorySQL
+git checkout 947b50e1
+meson setup build --prefix=C:\ivorysql -Dauto_features=disabled -Duuid=none
+ninja -C build
+meson install -C build
+Set-Location ..
+----
+
+pg_track_settings consists of SQL scripts only. Nothing needs to be compiled: copy the control file and the scripts into the IvorySQL installation.
+
+[source,powershell]
+----
+$IVY = 'C:\ivorysql'
+git clone -c core.autocrlf=false https://github.com/rjuju/pg_track_settings.git
+Set-Location pg_track_settings
+git checkout 8f1bacbfb9e5
+Copy-Item pg_track_settings.control, pg_track_settings--*.sql "$IVY\share\postgresql\extension\"
+----
+
+The verified version is pg_track_settings 2.1.2 (commit `8f1bacbfb9e5`).
+
+Results: the extension's regression test passes in PG mode (the test assumes a superuser named `postgres`).
+
+In Oracle mode, an interval literal without a field qualifier is a syntax error (IvorySQL#1784), for example `pg_track_settings_diff(now() - interval '10 min', now())`. Write `INTERVAL '10' MINUTE` or `'10 min'::pg_catalog.interval` instead:
+
+[source,sql]
+----
+SELECT * FROM pg_track_settings_diff(now() - INTERVAL '10' MINUTE, now());
+----
+
 === Installing the extension
 
 The commands are the same in PG mode and Oracle mode sessions:

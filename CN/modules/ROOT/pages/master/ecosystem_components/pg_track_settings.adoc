@@ -59,6 +59,46 @@ git clone https://github.com/rjuju/pg_track_settings.git contrib/pg_track_settin
 make -C contrib/pg_track_settings install
 ----
 
+=== 在 Windows 上从源码构建
+
+[TIP]
+本节在 Windows 11 上验证，编译器为 Visual Studio 2022 Build Tools（MSVC 19.44）。IvorySQL 的 Windows 移植仍在审查中，验证使用的 IvorySQL 是 https://github.com/jiabin777on-hue/IvorySQL/tree/win/reference[Windows 测试基线] 的提交 `947b50e1`，即 master 加上尚未合并的 Windows 移植 PR（IvorySQL #2321、#2332、#2333、#2485、#2530、#2811、#3418、#3419、#3420、#3421）。
+
+在 “Developer PowerShell for VS 2022” 中编译并安装 IvorySQL。需要 Git、Strawberry Perl、winflexbison 和 Meson（含 Ninja）在 `PATH` 中。验证时另外加了 `-Dcassert=true -Dtap_tests=enabled` 以运行测试。
+
+[source,powershell]
+----
+git clone --branch win/reference https://github.com/jiabin777on-hue/IvorySQL.git
+Set-Location IvorySQL
+git checkout 947b50e1
+meson setup build --prefix=C:\ivorysql -Dauto_features=disabled -Duuid=none
+ninja -C build
+meson install -C build
+Set-Location ..
+----
+
+pg_track_settings 只包含 SQL 脚本，不需要编译，把控制文件和脚本复制到 IvorySQL 安装目录即可。
+
+[source,powershell]
+----
+$IVY = 'C:\ivorysql'
+git clone -c core.autocrlf=false https://github.com/rjuju/pg_track_settings.git
+Set-Location pg_track_settings
+git checkout 8f1bacbfb9e5
+Copy-Item pg_track_settings.control, pg_track_settings--*.sql "$IVY\share\postgresql\extension\"
+----
+
+验证的版本为 pg_track_settings 2.1.2（提交 `8f1bacbfb9e5`）。
+
+验证结果：插件自带的回归测试在 PG 模式下通过（测试假定存在名为 `postgres` 的超级用户）。
+
+在 Oracle 模式下，不带字段限定的 interval 字面量会报语法错误（IvorySQL#1784），例如 `pg_track_settings_diff(now() - interval '10 min', now())`。可以改写为 `INTERVAL '10' MINUTE` 或 `'10 min'::pg_catalog.interval`：
+
+[source,sql]
+----
+SELECT * FROM pg_track_settings_diff(now() - INTERVAL '10' MINUTE, now());
+----
+
 === 安装扩展
 
 PG 模式与 Oracle 模式会话下命令相同：
