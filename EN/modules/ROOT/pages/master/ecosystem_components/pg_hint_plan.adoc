@@ -29,6 +29,51 @@ make PG_CONFIG=/usr/ivory-5/bin/pg_config install
 
 ----
 
+=== Building from Source on Windows
+
+[TIP]
+This section was verified on Windows 11 with Visual Studio 2022 Build Tools (MSVC 19.44). The Windows port of IvorySQL is still under review, so the verification used commit `947b50e1` of the https://github.com/jiabin777on-hue/IvorySQL/tree/win/reference[Windows test baseline]: master plus the open Windows port PRs (IvorySQL #2321, #2332, #2333, #2485, #2530, #2811, #3418, #3419, #3420 and #3421).
+
+Build and install IvorySQL in "Developer PowerShell for VS 2022". Git, Strawberry Perl, winflexbison and Meson (with Ninja) must be on `PATH`. The verification build also used `-Dcassert=true -Dtap_tests=enabled` to run the tests.
+
+[source,powershell]
+----
+git clone --branch win/reference https://github.com/jiabin777on-hue/IvorySQL.git
+Set-Location IvorySQL
+git checkout 947b50e1
+meson setup build --prefix=C:\ivorysql -Dauto_features=disabled -Duuid=none
+ninja -C build
+meson install -C build
+Set-Location ..
+----
+
+Windows has no PGXS, so compile the extension directly with MSVC's `cl` and `link`, linking against `postgres.lib` from the IvorySQL installation. Clone with `core.autocrlf=false` so that test data files are not converted to CRLF.
+
+[source,powershell]
+----
+$IVY = 'C:\ivorysql'
+$INC = "$IVY\include\postgresql\server"
+$CFLAGS = @("/nologo", "/c", "/O2", "/MD", "/utf-8", "/std:c11", "/DWIN32", "/DWINDOWS",
+    "/D__WINDOWS__", "/D__WIN32__", "/D_CRT_SECURE_NO_DEPRECATE", "/D_CRT_NONSTDC_NO_DEPRECATE",
+    "/I.", "/I$INC\port\win32_msvc", "/I$INC\port\win32", "/I$INC", "/I$IVY\include")
+git clone -c core.autocrlf=false https://github.com/ossc-db/pg_hint_plan.git
+Set-Location pg_hint_plan
+git checkout 52af48fb1ab4
+win_flex --wincompat -o query_scan.c query_scan.l
+cl @CFLAGS pg_hint_plan.c query_scan.c
+link /nologo /DLL /OUT:pg_hint_plan.dll pg_hint_plan.obj query_scan.obj "$IVY\lib\postgres.lib"
+Copy-Item pg_hint_plan.dll "$IVY\lib\postgresql\"
+Copy-Item pg_hint_plan.control, pg_hint_plan--*.sql "$IVY\share\postgresql\extension\"
+----
+
+IvorySQL master is based on PostgreSQL 19, so the verification used the master branch of pg_hint_plan (2.0.0, commit `52af48fb1ab4`) rather than the `PG18` branch used for IvorySQL 5 above. The source needs no changes. `query_scan.c` is generated from `query_scan.l`; on Windows use `win_flex` from winflexbison.
+
+pg_hint_plan must be preloaded. IvorySQL sets `shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora'` in `ivorysql.conf` by default; *append* pg_hint_plan to that list, for example `shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_hint_plan'`. Setting it to `'pg_hint_plan'` alone replaces the default list, and connections in Oracle mode then fail with `liboracle_parser not found`.
+
+Results: in PG mode, 17 of the extension's 19 regression tests pass (`hypopg` was left out because it needs the hypopg extension). The other 2 (`pg_hint_plan`, `ut-S`) differ only in the automatically generated names of expression indexes: for example `p2_c1_val_120_idx` expected, `p2_c1_expr_idx` produced. This is a PostgreSQL version difference and is unrelated to Windows.
+
+In Oracle mode, the tests of scan, join and row hints (`ut-J`, `ut-L`, `ut-G`, `ut-R`, `ut-fdw`, `hint_table`, `query_parser` and others) pass. The other differences come from Oracle-mode syntax and semantics: nested block comments are not supported, an empty string is NULL, and built-in types are shown as `pg_catalog.int4` and so on. Also, `CREATE EXTENSION btree_gist`, which `ut-init` uses, fails in Oracle mode because of the bare `INTERVAL` type name (IvorySQL#1784). The extension's regression scripts are written for PostgreSQL. In Oracle mode, psql sends a `CREATE FUNCTION` only after a line containing just `/`, even when the body is dollar-quoted, so to run these scripts in Oracle mode, add a `/` line after each `CREATE FUNCTION` statement.
+
 === Modify Database Configuration File
 
 Modify the ivorysql.conf file to add pg_hint_plan to shared_preload_libraries:
