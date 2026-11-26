@@ -29,6 +29,51 @@ make PG_CONFIG=/usr/ivory-5/bin/pg_config install
 
 ----
 
+=== 在 Windows 上从源码构建
+
+[TIP]
+本节在 Windows 11 上验证，编译器为 Visual Studio 2022 Build Tools（MSVC 19.44）。IvorySQL 的 Windows 移植仍在审查中，验证使用的 IvorySQL 是 https://github.com/jiabin777on-hue/IvorySQL/tree/win/reference[Windows 测试基线] 的提交 `947b50e1`，即 master 加上尚未合并的 Windows 移植 PR（IvorySQL #2321、#2332、#2333、#2485、#2530、#2811、#3418、#3419、#3420、#3421）。
+
+在 “Developer PowerShell for VS 2022” 中编译并安装 IvorySQL。需要 Git、Strawberry Perl、winflexbison 和 Meson（含 Ninja）在 `PATH` 中。验证时另外加了 `-Dcassert=true -Dtap_tests=enabled` 以运行测试。
+
+[source,powershell]
+----
+git clone --branch win/reference https://github.com/jiabin777on-hue/IvorySQL.git
+Set-Location IvorySQL
+git checkout 947b50e1
+meson setup build --prefix=C:\ivorysql -Dauto_features=disabled -Duuid=none
+ninja -C build
+meson install -C build
+Set-Location ..
+----
+
+Windows 上没有 PGXS，可以用 MSVC 的 `cl` 和 `link` 直接编译插件，并链接 IvorySQL 安装目录中的 `postgres.lib`。克隆时设置 `core.autocrlf=false`，避免测试数据文件被转换为 CRLF。
+
+[source,powershell]
+----
+$IVY = 'C:\ivorysql'
+$INC = "$IVY\include\postgresql\server"
+$CFLAGS = @("/nologo", "/c", "/O2", "/MD", "/utf-8", "/std:c11", "/DWIN32", "/DWINDOWS",
+    "/D__WINDOWS__", "/D__WIN32__", "/D_CRT_SECURE_NO_DEPRECATE", "/D_CRT_NONSTDC_NO_DEPRECATE",
+    "/I.", "/I$INC\port\win32_msvc", "/I$INC\port\win32", "/I$INC", "/I$IVY\include")
+git clone -c core.autocrlf=false https://github.com/ossc-db/pg_hint_plan.git
+Set-Location pg_hint_plan
+git checkout 52af48fb1ab4
+win_flex --wincompat -o query_scan.c query_scan.l
+cl @CFLAGS pg_hint_plan.c query_scan.c
+link /nologo /DLL /OUT:pg_hint_plan.dll pg_hint_plan.obj query_scan.obj "$IVY\lib\postgres.lib"
+Copy-Item pg_hint_plan.dll "$IVY\lib\postgresql\"
+Copy-Item pg_hint_plan.control, pg_hint_plan--*.sql "$IVY\share\postgresql\extension\"
+----
+
+IvorySQL master 基于 PostgreSQL 19，所以验证使用 pg_hint_plan 的 master 分支（2.0.0，提交 `52af48fb1ab4`），而不是上面 IvorySQL 5 使用的 `PG18` 分支。源码不需要修改。`query_scan.c` 由 `query_scan.l` 生成，Windows 上用 winflexbison 提供的 `win_flex` 生成。
+
+pg_hint_plan 需要预加载。IvorySQL 在 `ivorysql.conf` 中默认设置了 `shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora'`，要把 pg_hint_plan **追加**到这个列表后面，例如 `shared_preload_libraries = 'gb18030_2022, liboracle_parser, ivorysql_ora, pg_hint_plan'`。如果只写 `'pg_hint_plan'`，会覆盖默认列表，Oracle 模式的连接会报 `liboracle_parser not found`。
+
+验证结果：在 PG 模式下，插件自带的回归测试除 `hypopg`（需要另外安装 hypopg 插件）外共 19 个，通过 17 个。另外 2 个（`pg_hint_plan`、`ut-S`）的差异只在于表达式索引的自动命名：例如期望输出为 `p2_c1_val_120_idx`，实际为 `p2_c1_expr_idx`。这是 PostgreSQL 版本的差异，与 Windows 无关。
+
+在 Oracle 模式下，扫描、连接、行数等 hint 的测试（`ut-J`、`ut-L`、`ut-G`、`ut-R`、`ut-fdw`、`hint_table`、`query_parser` 等）都通过。其余差异来自 Oracle 模式的语法和语义：不支持嵌套块注释；空字符串等同于 NULL；内置类型显示为 `pg_catalog.int4` 等形式。另外，`ut-init` 用到的 `CREATE EXTENSION btree_gist` 在 Oracle 模式下会失败，原因是不带字段限定的 `INTERVAL` 类型名（IvorySQL#1784）。插件自带的回归测试脚本按 PostgreSQL 的语法编写。Oracle 模式的 psql 要看到单独一行的 `/` 才会发送 `CREATE FUNCTION`（即使函数体用 `$$` 引用），所以要在 Oracle 模式下运行这些脚本，需要在每个 `CREATE FUNCTION` 语句后面加一行 `/`。
+
 === 修改数据库配置文件
 
 修改 ivorysql.conf 文件，添加 pg_hint_plan 到 shared_preload_libraries：
