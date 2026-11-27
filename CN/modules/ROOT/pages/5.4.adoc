@@ -35,7 +35,7 @@ make install
 # 共享预加载扩展
 shared_preload_libraries = 'pg_cron'
 
-# 指定任务元数据存储库（默认当前库）
+# 指定任务元数据存储库（默认为 postgres；创建扩展前需连接到该库）
 cron.database_name = 'ivorysql'
 
 # 允许的最大并发任务数
