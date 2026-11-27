@@ -232,7 +232,7 @@ createdb也接受下列命令行参数用于连接参数：
 
 - `--maintenance-db=*dbname*`
 
-指定要连接到来发现哪些其他数据库应该被聚簇的数据库名。如果没有指定，将使用 `postgres` 数据库。而如果它也不存在（或者如果它就是要创建新数据库的名称），将使用 `template1`。这可以是 http://www.postgresql.org/docs/17/libpq-connect.html#LIBPQ-CONNSTRING[connection string]。如果是这样，连接时字符串参数将覆盖所有冲突的命令行选项。
+指定在创建新数据库时要连接到的数据库名。如果没有指定，将使用 `postgres` 数据库。而如果它也不存在（或者如果它就是要创建新数据库的名称），将使用 `template1`。这可以是 http://www.postgresql.org/docs/17/libpq-connect.html#LIBPQ-CONNSTRING[connection string]。如果是这样，连接时字符串参数将覆盖所有冲突的命令行选项。
 
 ==== 环境
 
