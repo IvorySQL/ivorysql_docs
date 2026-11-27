@@ -2161,7 +2161,7 @@ Directory to write the output to.This parameter is required.
 
 - `-E *lsn*` `--endpos=*lsn*`
 
-Automatically stop replication and exit with normal exit status 0 when receiving reaches the specified LSN.If there is a record with LSN exactly equal to *`lsn`*, the record will be processed.
+Stop receiving WAL and exit with status 0 when the receive position moves past the specified *`lsn`*. At exactly that position, the receiver continues waiting for more WAL. The output may contain WAL beyond the specified LSN.
 
 - `--if-not-exists`
 
