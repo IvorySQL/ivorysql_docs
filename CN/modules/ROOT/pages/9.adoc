@@ -897,9 +897,17 @@ pg_basebackup — 获得一个IvorySQL集簇的一个基础备份
 
 为输出选择格式。*`format`* 可以是下列之一： `p` `plain` 把输出写成平面文件，使用和源服务器数据目录和表空间相同的布局。 当集簇没有额外表空间时，整个数据库将被放在目标目录中。 如果集簇包含额外的表空间，主数据目录将被放置在目标目录中，但是所有其他表空间将被放在它们位于源服务器上的相同的绝对路径中。 (参见 `--tablespace-mapping` 来更改。)这是默认格式。`t` `tar` 将输出作为tar文件写入目标目录中。 主数据目录的内容将被写入名为 `base.tar` 的文件，而其他表空间将被写入以该表空间的OID命名的单独的tar文件。如果将目标目录指定为 `-`（破折号），则tar内容将被写入标准输出，该标准输出适用于管道传输至gzip（例如）。 只有当集簇没有额外表空间并且没有使用WAL流时才允许这样做。
 
+- `-i *old_manifest_file*` `--incremental=*old_manifest_file*`
+
+执行增量备份。必须提供参考备份的备份清单，该清单将被上传到服务器，服务器将通过发送所请求的增量备份来进行响应。
+
 - `-R` `--write-recovery-conf`
 
 创建一个 http://www.postgresql.org/docs/17/warm-standby.html#FILE-STANDBY-SIGNAL[`standby.signal`] 文件，并将连接设置附加到目标目录（或使用tar格式的基本存档文件中）的 `postgresql.auto.conf` 文件中。 这样可以简化使用备份结果设置后备服务器的过程。 `postgresql.auto.conf` 文件将记录连接设置（如果有）以及pg_basebackup所使用的复制槽，这样流复制后面就会使用相同的设置。
+
+- `-t *target*` `--target=*target*`
+
+指示服务器将基础备份放置在何处。默认目标是 `client`，指定应将备份发送到运行 pg_basebackup 的计算机。指定 `--target=client` 会被规范化为默认的客户端输出目标：需要同时指定 `-D`（`--pgdata`），并且允许使用 `-Xstream`（以及 `-F`/`--format`）。如果目标改为设置为 `server:/some/path`，则备份将存储在运行服务器的计算机的 `/some/path` 目录中。将备份存储在服务器上需要超级用户权限或具有 `pg_write_server_files` 角色的权限。如果目标设置为 `blackhole`，则会丢弃内容且不存储在任何位置。这应仅用于测试目的，因为最终不会生成实际的备份。由于 WAL 流式传输由 pg_basebackup 而不是由服务器实现，因此非客户端目标（如 `server:/some/path` 和 `blackhole`）不能与 `-Xstream` 一起使用（由于 `-Xstream` 是默认设置，指定非客户端目标时必须同时指定 `-Xfetch` 或 `-Xnone`），且不能同时显式指定 `-D`（`--pgdata`）、`-F`（`--format`）或客户端压缩。
 
 - `-T *olddir*=*newdir*` `--tablespace-mapping=*olddir*=*newdir*`
 
@@ -985,6 +993,9 @@ pg_basebackup — 获得一个IvorySQL集簇的一个基础备份
 
 如果在取基础备份的服务器上启用了校验码验证，则禁用校验码验证。默认情况下，校验码会被验证并且校验码失败将会导致一种非零的退出状态。不过，基础备份在这种情况下将不会被移除，就好像使用了 `--no-clean` 选项一样。校验和验证失败也将报告在 http://www.postgresql.org/docs/17/monitoring-stats.html#MONITORING-PG-STAT-DATABASE-VIEW[`pg_stat_database`] 视图中。
 
+- `--sync-method=*method*`
+
+当设置为 `fsync`（默认值）时，pg_basebackup 将递归打开并同步备份目录中的所有文件。当使用普通（plain）格式时，搜索文件将跟随 WAL 目录和每个已配置表空间的符号链接。在 Linux 上，可以使用 `syncfs` 来请求操作系统同步包含备份目录的整个文件系统。当使用普通格式时，pg_basebackup 还将同步包含 WAL 文件和每个表空间的文件系统。有关使用 `syncfs` 时需要注意的事项，请参阅 `recovery_init_sync_method`。当使用 `--no-sync` 时，此选项无效。
 
 
 以下命令行选项控制到源服务器的连接：
