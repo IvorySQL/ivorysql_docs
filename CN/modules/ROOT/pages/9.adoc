@@ -907,7 +907,7 @@ pg_basebackup — 获得一个IvorySQL集簇的一个基础备份
 
 - `-t *target*` `--target=*target*`
 
-指示服务器将基础备份放置在何处。默认目标是 `client`，指定应将备份发送到运行 pg_basebackup 的计算机。如果目标改为设置为 `server:/some/path`，则备份将存储在运行服务器的计算机的 `/some/path` 目录中。将备份存储在服务器上需要超级用户权限或具有 `pg_write_server_files` 角色的权限。如果目标设置为 `blackhole`，则会丢弃内容且不存储在任何位置。这应仅用于测试目的，因为最终不会生成实际的备份。由于 WAL 流式传输由 pg_basebackup 而不是由服务器实现，因此此选项不能与 `-Xstream` 一起使用。由于这是默认设置，因此在指定此选项时，还必须指定 `-Xfetch` 或 `-Xnone`。
+指示服务器将基础备份放置在何处。默认目标是 `client`，指定应将备份发送到运行 pg_basebackup 的计算机。指定 `--target=client` 会被规范化为默认的客户端输出目标：需要同时指定 `-D`（`--pgdata`），并且允许使用 `-Xstream`（以及 `-F`/`--format`）。如果目标改为设置为 `server:/some/path`，则备份将存储在运行服务器的计算机的 `/some/path` 目录中。将备份存储在服务器上需要超级用户权限或具有 `pg_write_server_files` 角色的权限。如果目标设置为 `blackhole`，则会丢弃内容且不存储在任何位置。这应仅用于测试目的，因为最终不会生成实际的备份。由于 WAL 流式传输由 pg_basebackup 而不是由服务器实现，因此非客户端目标（如 `server:/some/path` 和 `blackhole`）不能与 `-Xstream` 一起使用（由于 `-Xstream` 是默认设置，指定非客户端目标时必须同时指定 `-Xfetch` 或 `-Xnone`），且不能同时显式指定 `-D`（`--pgdata`）、`-F`（`--format`）或客户端压缩。
 
 - `-T *olddir*=*newdir*` `--tablespace-mapping=*olddir*=*newdir*`
 
