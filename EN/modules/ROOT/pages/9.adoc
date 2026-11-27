@@ -2821,7 +2821,7 @@ Switches to HTML output mode. This is equivalent to `\pset format html` or the `
 
 - `-l` `--list`
 
-List all available databases, then exit. Other non-connection options are ignored. This is similar to the meta-command `\list`.When this option is used, psql will connect to the database `postgres`, unless a different database is named on the command line (option `-d` or non-option argument, possibly via a service entry, but not via an environment variable).
+List all available databases, then exit. Other non-connection options are ignored. This is similar to the meta-command `\list`.When this option is used, psql will connect to the database `ivorysql`, unless a different database is named on the command line (option `-d` or non-option argument, possibly via a service entry, but not via an environment variable).
 
 - `-L *filename*` `--log-file=*filename*`
 
