@@ -1588,7 +1588,7 @@ pg_dump版本并退出。
 
 - `--lock-wait-timeout=*`timeout`*`
 
-在转储的开始从不等待共享表锁的获得。而是在指定的 *`timeout`* 内不能锁定一个表时失败。超时时长可以用 `SET statement_timeout` 接受的任何格式指定。
+在转储的开始不要无限期地等待共享表锁的获得。而是在指定的 *`timeout`* 内不能锁定一个表时失败。超时时长可以用 `SET statement_timeout` 接受的任何格式指定。
 
 - `--no-comments`
 
@@ -1940,7 +1940,7 @@ pg_dumpall需要多次连接到IvorySQL服务器（每个数据库一次）。�
 
 - `--lock-wait-timeout=*timeout*`
 
-在转储的开始从不等待共享表锁的获得。 而是在指定的 *`timeout`* 内不能锁定一个表时失败。 超时时长可以用 `SET statement_timeout` 接受的任何格式指定。
+在转储的开始不要无限期地等待共享表锁的获得。 而是在指定的 *`timeout`* 内不能锁定一个表时失败。 超时时长可以用 `SET statement_timeout` 接受的任何格式指定。
 
 - `--no-comments`
 
