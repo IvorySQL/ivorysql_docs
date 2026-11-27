@@ -34,7 +34,7 @@ make install
 # Shared preload extensions
 shared_preload_libraries = 'pg_cron'
 
-# Specify task metadata storage database (default current database)
+# Specify task metadata storage database (defaults to postgres; connect to this database before CREATE EXTENSION)
 cron.database_name = 'ivorysql'
 
 # Maximum number of concurrent tasks allowed
