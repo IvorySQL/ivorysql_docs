@@ -46,6 +46,7 @@ When specified on the command line, user and database names have their case pres
 |  | pg_test_timing            | Measures timer resolution and detects backward time jumps, helping interpret `EXPLAIN ANALYZE` accuracy.
 |  | pg_upgrade                | Reuses existing data files to move between major releases quickly, checking binary compatibility and external module support.
 |  | pg_waldump                | Reads and prints WAL records for debugging or education; requires direct read access to the data directory.
+|  | pg_walsummary             | Prints the contents of WAL summary files stored in `pg_wal/summaries` to support incremental backups and debugging.
 |  | postgres                  | The actual IvorySQL server executable that accepts client connections and forks per-session backend processes.
 |===
 
@@ -4438,6 +4439,63 @@ Can give wrong results when the server is running.
 Only the specified timeline is displayed (or the default, if none is specified). Records in other timelines are ignored.
 
 pg_waldump cannot read WAL files with suffix `.partial`. If those files need to be read, `.partial` suffix needs to be removed from the file name.
+
+### pg_walsummary
+
+pg_walsummary — print contents of WAL summary files
+
+#### Synopsis
+
+`pg_walsummary` [`option`...] `file`...
+
+#### Description
+
+`pg_walsummary` prints the contents of WAL summary files in human-readable form. These binary files are stored in the `pg_wal/summaries` subdirectory of the data directory when `summarize_wal` is enabled (disabled by default; old summary files are retained according to `wal_summary_keep_time`, defaulting to `10d`). Although WAL summary files exist primarily to support incremental backups, inspecting them with `pg_walsummary` can be useful for debugging.
+
+A WAL summary file is indexed by tablespace OID, database OID, relation OID (`relfilenode`), and relation fork. For each relation fork, it stores the list of block numbers modified by WAL within the summarized LSN range. It can also store a "limit block", which is `0` if the relation fork was created or truncated within the relevant WAL range, and otherwise the shortest length to which the relation fork was truncated. If the relation fork was not created, deleted, or truncated within the relevant WAL range, the limit block is undefined or infinite and is not printed.
+
+At least one input `file` path must be specified; multiple files can be passed and are processed sequentially.
+
+#### Options
+
+The following command-line options are available:
+
+- `-i` `--individual`
+
+By default, `pg_walsummary` prints one line of output for each range of one or more consecutive modified blocks (for example, `blocks 0..999` rather than 1000 separate lines). This option prints a separate line of output for every individual modified block.
+
+- `-q` `--quiet`
+
+Do not print block-range output (only errors, and any limit block entry if present). This is useful when you want to verify whether a WAL summary file can be successfully parsed without inspecting its block contents.
+
+- `-V` `--version`
+
+Display version information, then exit.
+
+- `-?` `--help`
+
+Show help about `pg_walsummary` command line arguments, and exit.
+
+#### Output
+
+For each relation fork in a WAL summary file, `pg_walsummary` prints lines in the following formats (depending on whether a limit block is recorded and whether `-i`/`--individual` is specified):
+
+[source]
+----
+TS <tablespace_oid>, DB <database_oid>, REL <relfilenode>, FORK <fork_name>: limit <limit_block>
+TS <tablespace_oid>, DB <database_oid>, REL <relfilenode>, FORK <fork_name>: block <block_number>
+TS <tablespace_oid>, DB <database_oid>, REL <relfilenode>, FORK <fork_name>: blocks <start_block>..<end_block>
+----
+
+#### Environment
+
+- `PG_COLOR`
+
+Specifies whether to use color in diagnostic messages. Possible values are `always`, `auto`, and `never`.
+
+#### See Also
+
+`pg_basebackup`, `pg_combinebackup`, `pg_waldump`
 
 ### postgres
 

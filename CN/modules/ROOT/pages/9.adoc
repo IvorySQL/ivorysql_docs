@@ -45,6 +45,7 @@
 |            | pg_test_timing            | pg_test_timing是一种度量在你的系统上计时开销以及确认系统时间绝不会回退的工具。收集计时数据很慢的系统会给出不太准确的 `EXPLAIN ANALYZE` 结果。 
 |            | pg_upgrade                | pg_upgrade允许存储在IvorySQL数据文件中的数据被升级到一个较晚 的IvorySQL主版本而无需进行主版本升级通常所需的数据转储/重载。 对于次版本升级则不需要这个程序。IvorySQL主发行版本通常会加入新的特性，这些新特性常常会更改系统表的布局，但是内部数据存储格式很少会改变。pg_upgrade 使用这一事实来通过创建新系统表并且重用旧的用户数据文件来执行快速升级。 如果未来的主发行版本更改了数据存储格式，导致旧数据格式不可读，那么 pg_upgrade将无法用于此类升级。（社区将努力避免这种情况）。pg_upgrade会尽力（例如通过检查兼容的编译时设 置）确保新旧集簇在二进制上也是兼容的，包括 32/64 位二进制。保持外部模块也是二进制兼容的也很重要，不过pg_upgrade无法检查这一点。 
 |            | pg_waldump                | `pg_waldump` 显示预写式日志（WAL），它主要用于调试或者教育目的。这个工具只能由安装该服务器的用户运行，因为它要求对数据目录的只读访问。 
+|            | pg_walsummary             | `pg_walsummary` 打印存储在 `pg_wal/summaries` 目录中的 WAL 摘要文件内容，用于支持增量备份和调试。
 |            | postgres                  | `postgres` 是IvorySQL数据库服务器。一个客户端应用为了能访问一个数据库，它会（通过一个网络或者本地）连接到一个运行着的 `postgres` 实例。该 `postgres` 实例接着会开始一个独立的服务器进程来处理该连接。一个 `postgres` 实例总是管理正好一个数据库集簇的数据。一个数据库集簇是一个数据库的集合，它们被存储在一个共同的文件系统位置（“数据区”）上。 一个系统上可以同时运行多个 `postgres` 实例，只要它们使用不同的数据区和不同的通信端口（见下文）。`postgres` 启动时需要知道数据区的位置，该位置必须通过 `-D` 选项或 `PGDATA` 环境变量指定，对此是没有默认值的。通常，`-D` 或 `PGDATA` 会直接指向由 http://www.postgresql.org/docs/17/app-initdb.html[initdb] 创建的数据区目录。默认情况下，`postgres` 会在前台启动并将日志消息打印到标准错误流。但在实际应用中，`postgres` 应当作为一个后台进程启动，而且多数是在系统启动时自动启动。`postgres` 还能在单用户模式中被调用。这种模式的主要用途是在启动过程中由 http://www.postgresql.org/docs/17/app-initdb.html[initdb] 使用。有时候它也被用于调试或者灾难性恢复。注意，运行一个单用户模式服务器并不真地适合调试服务器，因为不会发生实际的进程间通信和锁定。当从 shell 中调用单用户模式时，用户可以输入查询并且结果会被以一种更适合开发者阅读（不适合普通用户）的形式打印在屏幕上。在单用户模式中，会话用户将被设置为 ID 为 1 的用户，并且这个用户会被隐式地赋予超级用户权限。该用户不必实际存在，因此单用户模式运行可以被用来对某些意外损坏的系统目录进行手工恢复。
 |====
 
@@ -4739,6 +4740,63 @@ pg_waldump — 以人类可读的形式显示一个IvorySQL 数据库集簇的�
 只有指定的时间线 会被显示（如果没有指定，则显示默认时间线）。 其他时间线上的记录会被忽略。
 
 pg_waldump不能读取具有后缀 `.partial` 的 WAL 文件。如果需要读取那些文件，需要从文件名中移除 `.partial` 后缀。
+
+=== pg_walsummary
+
+pg_walsummary — 打印 WAL 摘要文件的内容
+
+#### 大纲
+
+`pg_walsummary` [`option`...] `file`...
+
+#### 描述
+
+`pg_walsummary` 用于以人类可读的形式打印 WAL 摘要文件的内容。启用 `summarize_wal` 后（默认为关闭；旧的摘要文件会根据 `wal_summary_keep_time` 保留，默认为 `10d`），这些二进制文件存储在数据目录的 `pg_wal/summaries` 子目录中。虽然 WAL 摘要文件主要用于支持增量备份，但使用 `pg_walsummary` 查看其内容在调试时也很有用。
+
+WAL 摘要文件按表空间 OID、数据库 OID、关系 OID（`relfilenode`）以及关系分叉（fork）建立索引。对于每个关系分叉，它记录在所摘要的 WAL 范围内被 WAL 修改的块号列表。它还可以存储一个“限制块”（limit block）：如果该关系分叉在相关 WAL 范围内被创建或截断，则限制块为 `0`，否则为该关系分叉被截断到的最短长度。如果关系分叉在相关 WAL 范围内未被创建、删除或截断，则限制块是未定义的，不会被打印。
+
+必须至少指定一个输入 `file` 路径；如果指定了多个文件，将按顺序依次处理。
+
+#### 选项
+
+可以使用下列命令行选项：
+
+- `-i` `--individual`
+
+默认情况下，`pg_walsummary` 会为每个由一个或多个连续被修改块组成的范围打印一行输出（例如，对 0 到 999 号块只打印一行 `blocks 0..999`，而不是 1000 行）。指定该选项后，将为每个被修改的块单独打印一行输出。
+
+- `-q` `--quiet`
+
+除错误（以及已记录的限制块条目）外，不打印块范围详情。当您只想确认 WAL 摘要文件能否成功解析而不关心具体修改块内容时，此选项非常有用。
+
+- `-V` `--version`
+
+打印 `pg_walsummary` 版本并退出。
+
+- `-?` `--help`
+
+显示有关 `pg_walsummary` 命令行参数的帮助并退出。
+
+#### 输出
+
+对于 WAL 摘要文件中的每个关系分叉，`pg_walsummary` 会按以下格式打印输出（取决于是否存在限制块以及是否指定了 `-i`/`--individual`）：
+
+[source]
+----
+TS <tablespace_oid>, DB <database_oid>, REL <relfilenode>, FORK <fork_name>: limit <limit_block>
+TS <tablespace_oid>, DB <database_oid>, REL <relfilenode>, FORK <fork_name>: block <block_number>
+TS <tablespace_oid>, DB <database_oid>, REL <relfilenode>, FORK <fork_name>: blocks <start_block>..<end_block>
+----
+
+#### 环境
+
+- `PG_COLOR`
+
+规定在诊断消息中是否使用颜色。可能的值为 `always`、`auto` 和 `never`。
+
+#### 参见
+
+`pg_basebackup`、`pg_combinebackup`、`pg_waldump`
 
 === postgres
 
