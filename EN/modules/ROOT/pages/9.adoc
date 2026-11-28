@@ -3061,7 +3061,7 @@ vacuumdb — garbage-collect and analyze a IvorySQL database
 
 `vacuumdb` [*`connection-option`*...] [*`option`*...] [ `-n` | `--schema` *`schema`* ] ... [*`dbname`* | `-a` | `--all`]
 
-`vacuumdb` [*`connection-option`*...] [*`option`*...] [ `-N` | `--exclude-schema` *`schema`* ] ... *`dbname`* | `-a` | `--all`]
+`vacuumdb` [*`connection-option`*...] [*`option`*...] [ `-N` | `--exclude-schema` *`schema`* ] ... [*`dbname`* | `-a` | `--all`]
 
 #### Options
 
