@@ -3057,9 +3057,11 @@ vacuumdb — garbage-collect and analyze a IvorySQL database
 
 `vacuumdb` [*`connection-option`*...] [*`option`*...] [ `-t` | `--table` *`table`* [( *`column`* [,...] )] ] ... [*`dbname`*]
 
-```
-vacuumdb` [*`connection-option`*...] [*`option`*...] `-a` | `--all
-```
+`vacuumdb` [*`connection-option`*...] [*`option`*...] `-a` | `--all`
+
+`vacuumdb` [*`connection-option`*...] [*`option`*...] [ `-n` | `--schema` *`schema`* ] ... [*`dbname`* | `-a` | `--all`]
+
+`vacuumdb` [*`connection-option`*...] [*`option`*...] [ `-N` | `--exclude-schema` *`schema`* ] ... [*`dbname`* | `-a` | `--all`]
 
 #### Options
 
@@ -3068,6 +3070,10 @@ vacuumdb accepts the following command-line arguments:
 - `-a` `--all`
 
 Vacuum all databases.
+
+- `--buffer-usage-limit *size*`
+
+Specifies the Buffer Access Strategy ring buffer size for a given invocation of `vacuumdb`. This size is used to calculate the number of shared buffers that will be reused as part of this strategy, and `0` disables use of a Buffer Access Strategy. Requires a server version of PostgreSQL 16 or later. This option cannot be used together with `-f` (`--full`) unless `-z` (`--analyze`) is also specified (in which case the limit is passed to `ANALYZE`). See http://www.postgresql.org/docs/17/sql-vacuum.html[VACUUM].
 
 - `[-d] *`dbname`*` `[--dbname=]*`dbname`*`
 
@@ -3105,9 +3111,25 @@ Only execute the vacuum or analyze commands on tables with a multixact ID age of
 
 Only execute the vacuum or analyze commands on tables with a transaction ID age of at least *`xid_age`*. This setting is useful for prioritizing tables to process to prevent transaction ID wraparound.For the purposes of this option, the transaction ID age of a relation is the greatest of the ages of the main relation and its associated TOAST table, if one exists. Since the commands issued by vacuumdb will also process the TOAST table for the relation if necessary, it does not need to be considered separately.
 
+- `--missing-stats-only`
+
+Only analyze relations that are missing statistics for a column, index expression, or extended statistics object. When used with `--analyze-in-stages`, this option prevents `vacuumdb` from temporarily replacing existing statistics with ones generated using lower statistics targets, thus avoiding transiently worse query optimizer choices. This option can only be used in conjunction with `--analyze-only` or `--analyze-in-stages`, and requires a server version of PostgreSQL 15 or later. Note that `--missing-stats-only` requires `SELECT` privileges on `pg_statistic` and `pg_statistic_ext_data`, which are restricted to superusers by default.
+
+- `-n *schema*` `--schema=*schema*`
+
+Clean or analyze all tables in *`schema`* only. Multiple schemas can be vacuumed by writing multiple `-n` switches. Cannot be used together with `-t` (`--table`) or `-N` (`--exclude-schema`).
+
+- `-N *schema*` `--exclude-schema=*schema*`
+
+Do not clean or analyze any tables in *`schema`*. Multiple schemas can be excluded by writing multiple `-N` switches. Cannot be used together with `-t` (`--table`) or `-n` (`--schema`).
+
 - `--no-index-cleanup`
 
 Do not remove index entries pointing to dead tuples.
+
+- `--no-process-main`
+
+Skip the main relation and only process its associated `TOAST` table, if any (translates to `VACUUM (PROCESS_MAIN FALSE)`). Requires a server version of PostgreSQL 16 or later, and cannot be used with `--analyze-only` or `--analyze-in-stages`.
 
 - `--no-process-toast`
 
@@ -3119,7 +3141,7 @@ Do not truncate empty pages at the end of the table.
 
 - `-P *parallel_workers*` `--parallel=*parallel_workers*`
 
-Specify the number of parallel workers for *parallel vacuum*. This allows the vacuum to leverage multiple CPUs to process indexes. See http://www.postgresql.org/docs/17/sql-vacuum.html[VACUUM].
+Specify the number of parallel workers for *parallel vacuum*, allowing `VACUUM` to use multiple CPUs to process indexes (`VACUUM (PARALLEL *parallel_workers*)`). Specifying `0` (`--parallel=0`) emits `PARALLEL 0` and explicitly disables parallel vacuum workers on the server (whereas omitting `--parallel` leaves parallel vacuum enabled by default, bounded by eligible index count and `max_parallel_maintenance_workers`). Contrast with `-j` (`--jobs`), which runs separate client commands concurrently across connections. Requires PostgreSQL 13 or later, and cannot be used (even with `--parallel=0`) together with `-f` (`--full`), `-Z` (`--analyze-only`), or `--analyze-in-stages`. See http://www.postgresql.org/docs/17/sql-vacuum.html[VACUUM].
 
 - `-q` `--quiet`
 
