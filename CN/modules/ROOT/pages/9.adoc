@@ -3351,9 +3351,11 @@ vacuumdb — 对一个IvorySQL数据库进行垃圾收集和分析
 
 `vacuumdb` [*`connection-option`*...] [*`option`*...] [ `-t` | `--table` *`table`* [( *`column`* [,...] )] ] ... [*`dbname`*]
 
-```
-vacuumdb` [*`connection-option`*...] [*`option`*...] `-a` | `--all
-```
+`vacuumdb` [*`connection-option`*...] [*`option`*...] `-a` | `--all`
+
+`vacuumdb` [*`connection-option`*...] [*`option`*...] [ `-n` | `--schema` *`schema`* ] ... [*`dbname`* | `-a` | `--all`]
+
+`vacuumdb` [*`connection-option`*...] [*`option`*...] [ `-N` | `--exclude-schema` *`schema`* ] ... [*`dbname`* | `-a` | `--all`]
 
 #### 选项
 
@@ -3362,6 +3364,10 @@ vacuumdb接受下列命令行参数：
 - `-a` `--all`
 
 清理所有数据库。
+
+- `--buffer-usage-limit *size*`
+
+为本次 `vacuumdb` 调用指定缓冲区访问策略（Buffer Access Strategy）环形缓冲区的大小。该大小用于计算作为此策略一部分将被重用的共享缓冲区数量；设为 `0` 将禁用缓冲区访问策略。需要 PostgreSQL 16 或更高版本的服务器。除非同时指定 `-z`（`--analyze`）（此时该限制将传递给 `ANALYZE`），否则此选项不能与 `-f`（`--full`）一起使用。请参见 http://www.postgresql.org/docs/17/sql-vacuum.html[VACUUM]。
 
 - `[-d] *dbname*` `[--dbname=]*dbname*`
 
@@ -3399,9 +3405,25 @@ vacuumdb接受下列命令行参数：
 
 仅在事务ID 年龄至少为 *`xid_age`* 的表上执行清空或分析命令。 此设置对于确定要处理的表的优先级比较有用，以防止事务ID 回绕。对于此选项的用途，关系的事务ID年龄是主关系及其关联的TOAST表的年龄中最大的，如果存在的话。由于vacuumdb发出的命令在需要时还将处理TOAST表的关系，它无需单独考虑。
 
+- `--missing-stats-only`
+
+仅分析缺少列、索引表达式或扩展统计信息的表/关系。与 `--analyze-in-stages` 一起使用时，该选项可防止 `vacuumdb` 使用较低统计目标临时覆盖现有统计信息，从而避免查询优化器选择暂时变差。此选项只能与 `--analyze-only` 或 `--analyze-in-stages` 一起使用，并需要 PostgreSQL 15 或更高版本的服务器。请注意，`--missing-stats-only` 需要对 `pg_statistic` 和 `pg_statistic_ext_data` 的 `SELECT` 权限（默认仅限超级用户）。
+
+- `-n *schema*` `--schema=*schema*`
+
+仅清理或分析 *`schema`* 中的所有表。可以通过指定多个 `-n` 选项来清理多个模式。不能与 `-t`（`--table`）或 `-N`（`--exclude-schema`）同时使用。
+
+- `-N *schema*` `--exclude-schema=*schema*`
+
+不清理或分析 *`schema`* 中的任何表。可以通过指定多个 `-N` 选项来排除多个模式。不能与 `-t`（`--table`）或 `-n`（`--schema`）同时使用。
+
 - `--no-index-cleanup`
 
 不移除指向死元组的索引条目。
+
+- `--no-process-main`
+
+跳过主表关系，仅处理其关联的 `TOAST` 表（如果存在），会生成 `VACUUM (PROCESS_MAIN FALSE)`。需要 PostgreSQL 16 或更高版本的服务器，且不能与 `--analyze-only` 或 `--analyze-in-stages` 同时使用。
 
 - `--no-process-toast`
 
@@ -3413,7 +3435,7 @@ vacuumdb接受下列命令行参数：
 
 - `-P *parallel_workers*` `--parallel=*parallel_workers*`
 
-指定 *parallel vacuum* 的并发数量。这允许清理利用多个 CPU 来处理索引。请参见 http://www.postgresql.org/docs/17/sql-vacuum.html[VACUUM]。
+指定 *并行清理（parallel vacuum）* 的工作进程数，允许 `VACUUM` 利用多个 CPU 处理索引（生成 `VACUUM (PARALLEL *parallel_workers*)`）。指定 `0`（`--parallel=0`）会发送 `PARALLEL 0` 并显式禁用服务器端的并行清理工作进程（而省略 `--parallel` 时默认启用并行清理，实际数量受符合条件的索引数量及 `max_parallel_maintenance_workers` 限制）。与控制并发客户端命令数的 `-j`（`--jobs`）不同，此选项控制单个 `VACUUM` 命令内部的索引并行度。需要 PostgreSQL 13 或更高版本的服务器，且不能与 `-f`（`--full`）、`-Z`（`--analyze-only`）或 `--analyze-in-stages` 同时使用（即使指定 `--parallel=0` 也会被拒绝）。请参见 http://www.postgresql.org/docs/17/sql-vacuum.html[VACUUM]。
 
 - `-q` `--quiet`
 
