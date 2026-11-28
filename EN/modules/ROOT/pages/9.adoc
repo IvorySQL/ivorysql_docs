@@ -4062,6 +4062,10 @@ the old database cluster configuration directory; environment variable `PGDATAOL
 
 the new database cluster configuration directory; environment variable `PGDATANEW`
 
+- `-g` `--using-ora-pg`
+
+upgrade a PostgreSQL-mode cluster in Oracle mode (connects using the PostgreSQL port instead of the Oracle-mode port; the caller is responsible for ensuring compatible-mode compatibility between the old and new clusters)
+
 - `-j *`njobs`*` `--jobs=*`njobs`*`
 
 number of simultaneous processes or threads to use
@@ -4090,6 +4094,14 @@ the old cluster port number; environment variable `PGPORTOLD`
 
 the new cluster port number; environment variable `PGPORTNEW`
 
+- `-q` *`port`* `--old-oraport=`*`port`*
+
+the old cluster Oracle-mode port number; environment variable `ORAPORTOLD`, defaulting to `50433` if unset (an explicit option overrides the environment variable)
+
+- `-Q` *`port`* `--new-oraport=`*`port`*
+
+the new cluster Oracle-mode port number; environment variable `ORAPORTNEW`, defaulting to `50433` if unset (an explicit option overrides the environment variable)
+
 - `-r` `--retain`
 
 retain SQL and log files even after successful completion
@@ -4113,6 +4125,30 @@ display version information, then exit
 - `--clone`
 
 Use efficient file cloning (also known as “reflinks” on some systems) instead of copying files to the new cluster. This can result in near-instantaneous copying of the data files, giving the speed advantages of `-k`/`--link` while leaving the old cluster untouched.File cloning is only supported on some operating systems and file systems. If it is selected but not supported, the pg_upgrade run will error. At present, it is supported on Linux (kernel 4.5 or later) with Btrfs and XFS (on file systems created with reflink support), and on macOS with APFS.
+
+- `--copy`
+
+Copy files to the new cluster. This is the default. (See also `--link`, `--clone`, `--copy-file-range`, and `--swap`.)
+
+- `--copy-file-range`
+
+Use the `copy_file_range` system call for efficient copying. On some file systems this gives results similar to `--clone`, sharing physical disk blocks, while on others it may still copy blocks, but via an optimized path. At present, it is supported on Linux and FreeBSD.
+
+- `--no-statistics`
+
+Do not restore optimizer statistics from the old cluster into the new cluster.
+
+- `--set-char-signedness=`*`option`*
+
+Manually set the default `char` signedness of the new cluster; possible values are `signed` and `unsigned`. By default, `pg_upgrade` preserves the source cluster's char signedness when upgrading from version 18 or later, or adopts the build platform's default char signedness when upgrading from version 17 or earlier. This option cannot be used when upgrading from version 18 or later.
+
+- `--swap`
+
+Move the data directories from the old cluster to the new cluster, and then replace the system catalog files with those generated for the new cluster. This mode can outperform `--link`, `--clone`, `--copy`, and `--copy-file-range`, especially on clusters with many relations. It requires the old and new cluster data directories to be on the same file system and can only upgrade clusters from version 10 and later. Because `--swap` leaves moved-aside files in the old cluster, `--sync-method=fsync` is recommended rather than `--sync-method=syncfs`. Once `pg_upgrade` disables the old cluster and begins moving its data directories, the old cluster is destructively modified and can no longer be safely started.
+
+- `--sync-method=`*`method`*
+
+Set the method used for the final synchronization of the upgraded cluster's data directory to disk. When set to `fsync` (the default), `pg_upgrade` recursively opens and synchronizes all files in the upgraded cluster's data directory, following symbolic links for the WAL directory and each configured tablespace. On builds with `syncfs` support (such as Linux), `syncfs` may be specified instead to synchronize the entire file systems containing the upgraded cluster's data directory, WAL files, and tablespaces. This option has no effect on final synchronization when `-N`/`--no-sync` is used.
 
 - `-?` `--help`
 
@@ -4186,9 +4222,9 @@ Verify that the old standby servers are caught up by running pg_controldata agai
 ****
 10.**Run pg_upgrade**
 ****
-Always run the pg_upgrade binary of the new server, not the old one. pg_upgrade requires the specification of the old and new cluster's data and executable (`bin`) directories. You can also specify user and port values, and whether you want the data files linked or cloned instead of the default copy behavior.
+Always run the pg_upgrade binary of the new server, not the old one. pg_upgrade requires the specification of the old and new cluster's data and executable (`bin`) directories. You can also specify user and port values, and whether you want the data files linked, cloned, copied with `copy_file_range`, or swapped instead of the default copy behavior.
 
-If you use link mode, the upgrade will be much faster (no file copying) and use less disk space, but you will not be able to access your old cluster once you start the new cluster after the upgrade. Link mode also requires that the old and new cluster data directories be in the same file system. (Tablespaces and `pg_wal` can be on different file systems.) Clone mode provides the same speed and disk space advantages but does not cause the old cluster to be unusable once the new cluster is started. Clone mode also requires that the old and new data directories be in the same file system. This mode is only available on certain operating systems and file systems.
+If you use link mode, the upgrade will be much faster (no file copying) and use less disk space, but you will not be able to access your old cluster once you start the new cluster after the upgrade. Link mode also requires that the old and new cluster data directories be in the same file system. (Tablespaces and `pg_wal` can be on different file systems.) Clone mode provides the same speed and disk space advantages but does not cause the old cluster to be unusable once the new cluster is started. Clone mode also requires that the old and new data directories be in the same file system. This mode is only available on certain operating systems and file systems. Swap mode moves data directories instead of copying or linking files and can be the fastest option when there are many relations; it requires the old and new cluster data directories to be in the same file system (and source version 10 or later), and once `pg_upgrade` disables the old cluster just before moving its directories, the old cluster can no longer be safely started.
 
 The `--jobs` option allows multiple CPU cores to be used for copying/linking of files and to dump and restore database schemas in parallel; a good place to start is the maximum of the number of CPU cores and tablespaces. This option can dramatically reduce the time to upgrade a multi-database server running on a multiprocessor machine.
 
@@ -4209,9 +4245,9 @@ pg_upgrade.exe
         --new-bindir "C:/Program Files/IvorySQL/2.1/bin"
 ```
 
-Once started, `pg_upgrade` will verify the two clusters are compatible and then do the upgrade. You can use `pg_upgrade --check` to perform only the checks, even if the old server is still running. `pg_upgrade --check` will also outline any manual adjustments you will need to make after the upgrade. If you are going to be using link or clone mode, you should use the option `--link` or `--clone` with `--check` to enable mode-specific checks. `pg_upgrade` requires write permission in the current directory.
+Once started, `pg_upgrade` will verify the two clusters are compatible and then do the upgrade. You can use `pg_upgrade --check` to perform only the checks, even if the old server is still running. `pg_upgrade --check` will also outline any manual adjustments you will need to make after the upgrade. If you are going to be using link, clone, copy-file-range, or swap mode, you should use the option `--link`, `--clone`, `--copy-file-range`, or `--swap` with `--check` to enable mode-specific checks. `pg_upgrade` requires write permission in the current directory.
 
-Obviously, no one should be accessing the clusters during the upgrade. pg_upgrade defaults to running servers on port 50432 to avoid unintended client connections. You can use the same port number for both clusters when doing an upgrade because the old and new clusters will not be running at the same time. However, when checking an old running server, the old and new port numbers must be different.
+Obviously, no one should be accessing the clusters during the upgrade. pg_upgrade defaults to running servers on port 50432 (and Oracle-mode port 50433) to avoid unintended client connections. You can use the same port number for both clusters when doing an upgrade because the old and new clusters will not be running at the same time. However, when checking an old running server, the old and new port numbers must be different.
 
 If an error occurs while restoring the database schema, `pg_upgrade` will exit and you will have to revert to the old cluster .To try `pg_upgrade` again, you will need to modify the old cluster so the pg_upgrade schema restore succeeds. If the problem is a `contrib` module, you might need to uninstall the `contrib` module from the old cluster and install it in the new cluster after the upgrade, assuming the module is not being used to store user data.
 ****
@@ -4290,7 +4326,7 @@ In general it is unsafe to access tables referenced in rebuild scripts until the
 ****
 15.**Statistics**
 
-Because optimizer statistics are not transferred by `pg_upgrade`, you will be instructed to run a command to regenerate that information at the end of the upgrade. You might need to set connection parameters to match your new cluster.
+Unless `--no-statistics` is specified, `pg_upgrade` transfers most optimizer statistics from the old cluster to the new cluster (excluding, for example, extended statistics created with `CREATE STATISTICS`, custom extension statistics, and cumulative statistics). You will be instructed at the end of the upgrade to run `vacuumdb --all --analyze-in-stages --missing-stats-only` followed by `vacuumdb --all --analyze-only` to generate missing statistics and refresh cumulative statistics. You might need to set connection parameters to match your new cluster.
 
 16.**Delete old cluster**
 
@@ -4301,11 +4337,14 @@ Once you are satisfied with the upgrade, you can delete the old cluster's data d
 If, after running `pg_upgrade`, you wish to revert to the old cluster, there are several options:
 
     - If the `--check` option was used, the old cluster was unmodified; it can be restarted.
-    - If the `--link` option was *not* used, the old cluster was unmodified; it can be restarted.
+    - If neither `--link` nor `--swap` was used (for example, default copy, `--copy`, `--copy-file-range`, or `--clone`), the old cluster was unmodified; it can be restarted.
     - If the `--link` option was used, the data files might be shared between the old and new cluster:
       * If `pg_upgrade` aborted before linking started, the old cluster was unmodified; it can be restarted.
       * If you did *not* start the new cluster, the old cluster was unmodified except that, when linking started, a `.old` suffix was appended to `$PGDATA/global/pg_control`. To reuse the old cluster, remove the `.old` suffix from `$PGDATA/global/pg_control`; you can then restart the old cluster.
       * If you did start the new cluster, it has written to shared files and it is unsafe to use the old cluster. The old cluster will need to be restored from backup in this case.
+    - If the `--swap` option was used, the old cluster might be destructively modified:
+      * If `pg_upgrade` aborts before reporting that the old cluster is no longer safe to start (before disabling the old cluster and moving its data directories), the old cluster was unmodified; it can be restarted.
+      * Once `pg_upgrade` has reported that the old cluster is no longer safe to start, the old cluster was destructively modified even if the new cluster has never been started. Leave the old cluster stopped and restore it from backup to revert.
 
 #### Notes
 
