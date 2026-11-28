@@ -3504,6 +3504,112 @@ Default data directory location
 
 Specifies whether to use color in diagnostic messages. Possible values are `always`, `auto` and `never`.
 
+=== pg_createsubscriber
+
+pg_createsubscriber — convert a physical replica into a new logical replica
+
+==== Synopsis
+
+`pg_createsubscriber` [*`option`*...] { `-d` | `--database` } *`dbname`* { `-D` | `--pgdata` } *`datadir`* { `-P` | `--publisher-server` } *`connstr`*
+
+`pg_createsubscriber` [*`option`*...] `-a` | `--all` { `-D` | `--pgdata` } *`datadir`* { `-P` | `--publisher-server` } *`connstr`*
+
+==== Description
+
+`pg_createsubscriber` converts an existing physical standby server into a new logical replica. All tables in each specified database are included in the logical replication setup, with a publication and subscription pair created per database. It must be run on the target server while the target standby server is stopped.
+
+Unlike standard `CREATE SUBSCRIPTION` with `copy_data = true`, `pg_createsubscriber` does not perform an initial table data copy; it creates replication slots on the source server, advances target recovery to the consistent LSN, configures replication origins, and starts logical replication from that point.
+
+==== Options
+
+`pg_createsubscriber` accepts the following command-line arguments:
+
+- `-a` `--all`
+
+Create one subscription per database on the target server, excluding template databases and databases that do not allow connections. To discover all databases, `pg_createsubscriber` connects to the source server using the `dbname` specified in `--publisher-server`, or falls back to `postgres` (and then `template1`). Automatically generated names are used for publications, replication slots, and subscriptions. This option cannot be used together with `-d`/`--database`, `--publication`, `--replication-slot`, or `--subscription`.
+
+- `-d` *`dbname`* `--database=`*`dbname`*
+
+The name of the database in which to create a subscription. Multiple databases can be selected by writing multiple `-d` switches (specifying the same database more than once is rejected). This option cannot be used together with `-a`/`--all`. If neither `-d` nor `-a` is specified, the database name is obtained from the `-P`/`--publisher-server` connection string; if no database name is available there either, an error is reported.
+
+- `-D` *`directory`* `--pgdata=`*`directory`*
+
+The target directory that contains a cluster data directory from a physical standby server (required).
+
+- `-n` `--dry-run`
+
+Perform all validation and check steps without actually modifying the target data directory.
+
+- `-p` *`port`* `--subscriber-port=`*`port`*
+
+The port number on which the target server listens for temporary connections during conversion. Defaults to `50432` to avoid unintended client connections.
+
+- `-P` *`connstr`* `--publisher-server=`*`connstr`*
+
+The libpq connection string to the source (publisher) server (required).
+
+- `-s` *`dir`* `--socketdir=`*`dir`*
+
+The directory to use for postmaster Unix-domain sockets on the target server. Defaults to the current working directory.
+
+- `-t` *`seconds`* `--recovery-timeout=`*`seconds`*
+
+The maximum number of seconds to wait for target recovery to end. Setting to `0` (the default) disables the timeout.
+
+- `-T` `--enable-two-phase`
+
+Enables `two_phase` commit for the created subscription(s). When multiple databases are processed, this option applies uniformly to all subscriptions. Defaults to `false`.
+
+- `-U` *`username`* `--subscriber-username=`*`username`*
+
+The user name to connect as on the target server. Defaults to the current operating system user name.
+
+- `-v` `--verbose`
+
+Enables verbose mode, printing progress messages and detailed step information to standard error. Repeating the option outputs additional debug-level messages.
+
+- `--clean=`*`objtype`*
+
+Drop all objects of the specified type from the specified databases on the target server. Currently, the only accepted value is `publications` (matched case-insensitively; specifying the same object type more than once is rejected): the `FOR ALL TABLES` publications created for this subscriber are always dropped, and `--clean=publications` drops all other publications replicated from the source server as well. Objects selected to be dropped are individually logged, including during `--dry-run`.
+
+- `--config-file=`*`filename`*
+
+Use the specified main server configuration file for the target data directory when `pg_createsubscriber` starts and stops the target server via `pg_ctl`, allowing you to specify `postgresql.conf` when it is stored outside the data directory.
+
+- `--publication=`*`name`*
+
+The publication name to create on the source server for logical replication. Multiple names can be specified with multiple `--publication` switches (duplicate names are rejected); the number and order of publication names must match `-d`/`--database`. If omitted, a generated name (`pg_createsubscriber_%u_%x`) is assigned. Cannot be used together with `-a`/`--all`.
+
+- `--replication-slot=`*`name`*
+
+The replication slot name to create on the source server. Multiple names can be specified with multiple `--replication-slot` switches (duplicate names are rejected); the number and order of slot names must match `-d`/`--database`. If omitted, the subscription name is assigned as the replication slot name. Cannot be used together with `-a`/`--all`.
+
+- `--subscription=`*`name`*
+
+The subscription name to create on the target server. Multiple names can be specified with multiple `--subscription` switches (duplicate names are rejected); the number and order of subscription names must match `-d`/`--database`. If omitted, a generated name (`pg_createsubscriber_%u_%x`) is assigned. Cannot be used together with `-a`/`--all`.
+
+- `-V` `--version`
+
+Print the `pg_createsubscriber` version and exit.
+
+- `-?` `--help`
+
+Show help about `pg_createsubscriber` command-line arguments, and exit.
+
+==== Notes
+
+*Prerequisites*: Both source and target servers must have the same major version and system identifier, and `pg_ctl` and `pg_resetwal` of the same version must be in the same directory as `pg_createsubscriber`. On Unix platforms, `pg_createsubscriber` cannot be executed as `root`. The target server must be a stopped physical standby accepting local connections, with `max_active_replication_origins`, `max_logical_replication_workers`, and `max_worker_processes` at least equal to the number of databases (plus `max_prepared_transactions` configured if `--enable-two-phase` is used). The source server must accept connections from the target server, not be in recovery, have `wal_level = logical`, and have sufficient `max_replication_slots` and `max_wal_senders`. Setting `max_slot_wal_keep_size = -1` on the source is recommended so required WAL files are not prematurely removed.
+
+*Warnings*: If `pg_createsubscriber` fails after the target server has been promoted, the target data directory is generally unrecoverable and creating a new standby is recommended. On failure before promotion, `pg_createsubscriber` attempts to drop any publications and replication slots it created on the source server and stops the target server. Once conversion completes, `pg_createsubscriber` drops `primary_slot_name` on the source (if used), removes any synced failover replication slots on the target, and updates the target server's system identifier with `pg_resetwal` (which breaks any downstream standbys of the target server).
+
+==== Examples
+
+To create a logical replica for databases `hr` and `finance` from a physical standby at `foo`:
+
+```
+$ pg_createsubscriber -D /opt/IvorySQL/data -P "host=foo" -d hr -d finance
+```
+
 === pg_ctl
 
 pg_ctl — initialize, start, stop, or control a IvorySQL server
