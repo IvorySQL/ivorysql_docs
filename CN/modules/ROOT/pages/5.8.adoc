@@ -1,4 +1,3 @@
-
 :sectnums:
 :sectnumlevels: 5
 
@@ -39,18 +38,23 @@ make install USE_PGXS=1 PG_CONFIG=$PGHOME/bin/pg_config
 
 上述命令依赖环境变量 `PGHOME` 指向安装好的 IvorySQL 主目录。安装成功后，`pgaudit.so` 会被放置到 IvorySQL 的扩展目录中。
 
-=== 注册扩展前的基础配置
+=== 预加载共享库并重启实例
 
-修改 `ivorysql.conf`，启用插件并设置常用参数：
+1. 修改 `ivorysql.conf`，将 `pgaudit` 追加到现有的 `shared_preload_libraries` 列表中（保留 IvorySQL 的 Oracle 兼容模块等已有预加载库，避免覆盖原有配置）：
++
+[source,ini]
 ----
-shared_preload_libraries = 'pgaudit'   # 需实例重启生效
-pgaudit.log = 'read, write, ddl'       # 审计范围示例，可按需调整
+shared_preload_libraries = 'liboracle_parser, ivorysql_ora, pgaudit'   # 需实例重启生效
 ----
++
+NOTE: `shared_preload_libraries` 属于仅在启动时加载的参数（`PGC_POSTMASTER`），必须重启数据库实例才能生效（仅重载配置无效）。请在创建 `pgaudit` 扩展之后再配置 `pgaudit.log`。
 
-重启数据库实例，使共享库配置生效。
+2. 重启数据库实例，使共享库配置生效。
 
-=== 创建扩展并验证
+=== 创建扩展、配置审计范围并验证
 
+1. 连接到需要审计的每个数据库，在设置 `pgaudit.log` 之前先创建 `pgaudit` 扩展，以确保 PgAudit 的 DDL 审计事件触发器正确安装：
++
 [source,sql]
 ----
 CREATE EXTENSION IF NOT EXISTS pgaudit;
@@ -61,8 +65,20 @@ SELECT name,
   FROM pg_available_extensions
  WHERE name = 'pgaudit';
 ----
-
++
 若返回的 `installed_version` 与期望版本一致，说明扩展安装成功。
+
+2. 在 `ivorysql.conf` 中设置 `pgaudit.log` 并重载配置，使审计日志生效：
++
+[source,ini]
+----
+pgaudit.log = 'read, write, ddl'       # 审计范围示例，可按需调整
+----
++
+[source,sql]
+----
+SELECT pg_reload_conf();
+----
 
 == 使用
 

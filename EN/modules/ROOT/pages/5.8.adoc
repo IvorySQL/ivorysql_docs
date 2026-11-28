@@ -38,18 +38,23 @@ make install USE_PGXS=1 PG_CONFIG=$PGHOME/bin/pg_config
 
 The commands above expect the environment variable `PGHOME` to point to the installed IvorySQL home directory. After installation, `pgaudit.so` will be placed in IvorySQL's extension directory.
 
-=== Baseline Configuration Before Registering the Extension
+=== Preload the Shared Library and Restart
 
-1. Modify `ivorysql.conf` to load the plugin and configure common parameters:
-   ----
-   shared_preload_libraries = 'pgaudit'   # Requires an instance restart
-   pgaudit.log = 'read, write, ddl'       # Sample audit scope; adjust as needed
-   ----
+1. Append `pgaudit` to the existing `shared_preload_libraries` list in `ivorysql.conf` (for example, keeping IvorySQL's Oracle compatibility modules intact rather than overwriting the list):
++
+[source,ini]
+----
+shared_preload_libraries = 'liboracle_parser, ivorysql_ora, pgaudit'   # Requires an instance restart
+----
++
+NOTE: `shared_preload_libraries` is a startup-only (`PGC_POSTMASTER`) parameter, so you must restart the database instance (a configuration reload is not sufficient). Do not configure `pgaudit.log` until after creating the `pgaudit` extension.
 
-2. Restart or reload the database instance so the shared library configuration takes effect.
+2. Restart the database instance so the shared library configuration takes effect.
 
-=== Create the Extension and Verify
+=== Create the Extension, Configure Audit Scope, and Verify
 
+1. Connect to each database to be audited and register the `pgaudit` extension before setting `pgaudit.log`, so PgAudit's DDL audit event triggers are installed:
++
 [source,sql]
 ----
 CREATE EXTENSION IF NOT EXISTS pgaudit;
@@ -60,8 +65,20 @@ SELECT name,
   FROM pg_available_extensions
  WHERE name = 'pgaudit';
 ----
-
++
 If the returned `installed_version` matches the expected release, the extension has been installed successfully.
+
+2. Set `pgaudit.log` in `ivorysql.conf` and reload the configuration so audit logging takes effect:
++
+[source,ini]
+----
+pgaudit.log = 'read, write, ddl'       # Sample audit scope; adjust as needed
+----
++
+[source,sql]
+----
+SELECT pg_reload_conf();
+----
 
 == Usage
 
