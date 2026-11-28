@@ -38,6 +38,7 @@
 |            | pg_archivecleanup | pg_archivecleanup被设计用作  `archive_cleanup_command` 在作为后备服务器运行时来清理 WAL 文件归档。 pg_archivecleanup也可以被用作一个单独的程序来清理 WAL 文件归档。要配置一个后备服务器以使用pg_archivecleanup，把下面 的内容放在 `postgresql.conf` 配置文件中：archive_cleanup_command = 'pg_archivecleanup archivelocation %r' 其中 *`archivelocation`* 是要从中移除 WAL 段文件的目录。当被用在 http://www.postgresql.org/docs/17/runtime-config-wal.html#GUC-ARCHIVE-CLEANUP-COMMAND[archive_cleanup_command]中时，所有逻辑上在 `%r` 参数的值之前的 WAL 文件都将被从 *`archivelocation`* 移除。这能最小化需要被保留的文件数量， 同时能保留崩溃后重启的能力。如果对于这台特定的后备服务器， *`archivelocation`* 是一个短暂需要的区域，使用这个参数就是合适的，但是当 *`archivelocation`* 要用作一个长期的 WAL 归档 区域或者当多个后备服务器正在从这个归档位置恢复时，使用这个参数就 不合适。当被用作一个单独的程序时，所有逻辑上在 *`oldestkeptwalfile`* 之前的 WAL 文件将被从 *`archivelocation`* 中移除。在这种模式中，如果指定了 `.partial` 或者 `.backup` 文件名，则 只有该文件前缀将被用作 *`oldestkeptwalfile`*。这种对 `.backup` 文件名的处理允许你移除所有在一个特定基础备份之前归档的 WAL 文件而不出错。 
 |            | pg_checksums              | pg_checksums在IvorySQL集簇中检查、启用或禁用数据校验和。运行pg_checksums之前，必须彻底关闭服务器。验证校验和时，如果没有校验和错误，则退出状态为零，如果检测到至少一个校验和失败，则退出状态为非零。启用或禁用校验和时，如果操作失败，则退出状态为非零。验证校验和时，集簇中的每个文件都要被扫描。启用校验和时，集簇中的每个文件都会被原地重写。禁用校验和时，仅更新 `pg_control` 文件。 
 |            | pg_controldata            | `pg_controldata` 打印在 `initdb` 期间初始化的信息，例如目录版本。它也显示关于预写式日志和检查点处理的信息。这种信息是集簇范围的，并且不针对任何一个数据库。这个工具只能由初始化集簇的用户运行，因为它要求对数据目录的读访问。你可以在命令行中指定数据目录，或者使用环境变量 `PGDATA`。这个工具支持选项 `-V` 和 `--version`，它们打印pg_controldata版本并退出。它也支持选项 `-?` 和 `--help`，它们输出支持的参数。 
+|            | pg_createsubscriber       | `pg_createsubscriber` 将一个物理备服务器转换为新的逻辑副本。它在目标服务器上运行，为每个指定数据库创建发布和订阅对象，且不复制初始表数据，从而避免大型数据库系统在逻辑复制初始化阶段长时间拷贝全量表数据。使用前需要满足以下前提条件：源服务器与目标服务器大版本一致且具有相同的系统标识符、源服务器处于可写主库状态且配置了 `wal_level = logical`、目标服务器为物理备库且处于停止状态，同时两边均有足够的复制槽、复制源与工作进程配额。转换过程中它会通过 `pg_resetwal` 修改目标服务器的系统标识符，并可通过 `--dry-run` 演练验证配置与前提条件。
 |            | pg_ctl                    | pg_ctl是一个用于初始化IvorySQL数据库集簇，启动、停止或重启IvorySQL数据库服务器（ http://www.postgresql.org/docs/17/app-postgres.html[postgres]），或者显示一个正在运行服务器的状态的工具。尽管服务器可以被手工启动，pg_ctl包装了重定向日志输出以及正确地从终端和进程组脱离等任务。它也提供了方便的选项用来控制关闭。 
 |            | pg_resetwal               | `pg_resetwal` 会清除预写式日志（WAL）并且有选择地重置存储在 `pg_control` 文件中的一些其他控制信息。如果这些文件已经被损坏，某些时候就需要这个功能。当服务器由于这样的损坏而无法启动时，这只应该被用作最后的手段。在运行这个命令之后，就可能可以启动服务器，但是记住数据库可能包含由于部分提交事务产生的不一致数据。你应当立刻转储你的数据、运行 `initdb` 并且重新载入。重新载入后，检查不一致并且根据需要修复之。这个工具只能被安装服务器的用户运行，因为它要求对数据目录的读写访问。出于安全原因，你必须在命令行中指定数据目录。`pg_resetwal` 不使用环境变量 `PGDATA`。如果 `pg_resetwal` 抱怨它无法为 `pg_control` 决定合法数据，你可以通过指定 `-f` （强制）选项强制它继续。在这种情况下，丢失的数据将被替换为看似合理的值。可以期望大部分域是匹配的，但是下一个 OID、下一个事务 ID 和纪元、下一个多事务 ID 和偏移以及 WAL 开始位置域可能还是需要人工协助。这些域可以使用下面讨论的选项设置。如果你不能为所有这些域决定正确的值，`-f` 还是可以被使用，但是恢复的数据库还是值得怀疑：一次立即的转储和重新载入是势在必行的。在你转储之前不要在该数据库中执行任何数据修改操作，因为任何这样的动作都可能使破坏更严重。 
 |            | pg_rewind                 | pg_rewind是用于在集簇的时间线分叉以后，同步一个 IvorySQL 集簇和同一集簇的另一份拷贝的工具。一种典型的场景是在失效后让一个旧的主服务器重新上线，同时有一个后备机跟随着新的主机。成功回放后，目标数据目录的状态类似于源数据目录的基本备份。与进行新的基本备份或使用rsync等工具不同，pg_rewind不需要比较或复制集群中未更改的关系块。仅复制现有关系文件中更改的块；所有其他文件（包括新的关系文件、配置文件和WAL段）都将被完整复制。因此，当数据库很大并且集群之间只有一小部分块不同时，倒带操作比其他方法要快得多。pg_rewind检查源集簇和目标集簇的时间线历史来判断它们在哪一点分叉，并且期望在目标集簇的 `pg_wal` 目录中找到 WAL 来返回到分叉点。分叉点可能会在目标时间线、源时间线或者它们的共同祖先上找到。在典型的失效场景中，目标集簇在分叉后很快就被关闭，这不是问题，但是如果目标集簇在分叉后已经运行了很长时间，旧的 WAL 文件可能已经不存在了。在这样的情况下，您可以手动将它们从WAL存档复制到 `pg_wal` 目录，或使用 `-c` 选项运行pg_rewind以自动从WAL存档检索它们。pg_rewind的使用并不限于失效的场景，例如一个后备服务器可能被提升、运行一些写事务，然后被倒回再次成为一个后备。在运行pg_rewind之后，需要完成WAL重放以使数据目录处于一致状态。当目标服务器再次启动时，它将进入归档恢复，并从分歧点之前的最后一个检查点重放源服务器中生成的所有 WAL。当pg_rewind被运行时有某些 WAL 在源服务器上不可用，并且因此无法被pg_rewind会话所复制，则在目标服务器被启动时必须让这些 WAL 可用。 这可以通过在目标数据目录中创建一个 `recovery.signal` 文件并且在 `postgresql.conf` 中配置适合的 http://www.postgresql.org/docs/17/runtime-config-wal.html#GUC-RESTORE-COMMAND[restore_command] 来实现。pg_rewind要求目标服务器在 `postgresql.conf` 中启用了 http://www.postgresql.org/docs/17/runtime-config-wal.html#GUC-WAL-LOG-HINTS[wal_log_hints] 选项，或者在用initdb初始化集簇时启用了数据校验。目前默认情况下这两者都没有被打开。http://www.postgresql.org/docs/17/runtime-config-wal.html#GUC-FULL-PAGE-WRITES[full_page_writes] 也必须被设置为 `on`，这是默认的。 
@@ -3799,6 +3800,156 @@ pg_controldata — 显示一个IvorySQL数据库集簇的控制信息
 - `PG_COLOR`
 
 规定在诊断消息中是否使用颜色。可能的值为 `always`、 `auto`、 `never`。
+
+=== pg_createsubscriber
+
+pg_createsubscriber — 将物理副本转换为新的逻辑副本
+
+#### 大纲
+
+`pg_createsubscriber` [*option*...] { `-d` | `--database` } *dbname* { `-D` | `--pgdata` } *datadir* { `-P` | `--publisher-server` } *connstr*
+
+#### 描述
+
+`pg_createsubscriber` 从物理备服务器创建一个新的逻辑副本。指定数据库中的所有表都会包含在逻辑复制配置中，并为每个数据库创建一对发布（publication）和订阅（subscription）对象。该工具必须在目标服务器上运行，且运行前目标服务器必须处于停止状态（可通过 `--dry-run` 验证执行步骤而不实际修改目标数据目录）。
+
+成功运行后，目标服务器的状态与新搭建的逻辑复制环境等效。两者与常规逻辑复制的主要区别在于数据同步方式：`pg_createsubscriber` 不会复制初始表数据，而是仅执行追平同步阶段，使各个表基于已有物理备库数据达到同步状态。
+
+`pg_createsubscriber` 主要面向大型数据库系统，因为在常规逻辑复制搭建过程中，大部分时间都消耗在初始数据拷贝上，而这又会导致同步期间产生大量增量变更需要追赶，从而进一步推迟逻辑副本可用的时间。对于小型数据库，仍建议使用带初始数据同步的逻辑复制（参见 `CREATE SUBSCRIPTION` 的 `copy_data` 选项）。
+
+#### 选项
+
+`pg_createsubscriber` 接受以下命令行参数：
+
+- `-a` `--all`
+
+  为目标服务器上的所有数据库各创建一个订阅（模板数据库和不允许连接的数据库除外）。为获取数据库列表，会使用 `--publisher-server` 连接字符串中指定的数据库名连接源服务器；如果连接字符串中未指定数据库名，则使用 `postgres` 数据库，若该数据库也不存在则使用 `template1`。指定该选项时，订阅、发布和复制槽均采用自动生成的名称。此选项不能与 `--database`、`--publication`、`--replication-slot` 或 `--subscription` 同时使用。
+
+- `-d` *dbname* `--database=`*dbname*
+
+  要在其中创建订阅的数据库名称。可以多次指定 `-d` 选项以选择多个数据库（同一数据库名不能重复指定）。此选项不能与 `-a`/`--all` 同时使用。如果未提供 `-d` 选项，则会尝试从 `-P` 连接字符串中获取数据库名；如果 `-d` 和 `-P` 中均未指定数据库名且未指定 `-a`，则会报错。
+
+- `-D` *directory* `--pgdata=`*directory*
+
+  包含物理副本集簇目录的目标数据目录路径（必需参数）。
+
+- `-n` `--dry-run`
+
+  演练模式：执行所有检查与预演操作，但不实际修改目标数据目录。
+
+- `-p` *port* `--subscriber-port=`*port*
+
+  转换过程中目标服务器监听连接的端口号。默认使用端口 `50432`，以避免意外的客户端连接。
+
+- `-P` *connstr* `--publisher-server=`*connstr*
+
+  连接到发布服务器（源服务器）的连接字符串（必需参数）。
+
+- `-s` *dir* `--socketdir=`*dir*
+
+  目标服务器用于 postmaster 套接字的目录。默认值为当前工作目录。
+
+- `-t` *seconds* `--recovery-timeout=`*seconds*
+
+  等待恢复结束的最大秒数。设置为 `0` 表示禁用超时等待。默认值为 `0`。
+
+- `-T` `--enable-two-phase`
+
+  为订阅启用 `two_phase` 两阶段提交。当指定多个数据库时，此选项统一应用于在这些数据库上创建的所有订阅。默认值为 `false`。
+
+- `-U` *username* `--subscriber-username=`*username*
+
+  连接目标服务器时使用的用户名。默认值为当前操作系统用户名。
+
+- `-v` `--verbose`
+
+  启用详细模式。这会使 `pg_createsubscriber` 向标准错误输出进度消息以及每个步骤的详细信息。重复指定该选项会在标准错误上输出额外的调试级消息。
+
+- `--clean=`*objtype*
+
+  从目标服务器上指定的数据库中删除指定类型的所有对象。
+
+  * `publications`：为本订阅创建的 `FOR ALL TABLES` 发布始终会被删除；指定此对象类型还会一并删除从源服务器复制过来的所有其他发布。（当前唯一支持的有效值即为 `publications`。）
+
+  选定要删除的对象会被逐一记录到日志中（包括在 `--dry-run` 模式下）。由于执行过程中无法中途干预或停止删除所选对象，请考虑事先使用 `pg_dump` 对其进行备份。
+
+- `--config-file=`*filename*
+
+  为目标数据目录指定主服务器配置文件。`pg_createsubscriber` 内部使用 `pg_ctl` 命令启动和停止目标服务器；当 `postgresql.conf` 配置文件存放在数据目录之外时，可通过此选项指定其实际路径。
+
+- `--publication=`*name*
+
+  用于建立逻辑复制的发布名称。可以通过多次指定 `--publication` 选项来设置多个发布。指定发布名称的数量和顺序必须与指定的数据库数量及顺序一致，否则会报错。如果未指定此选项，则会为发布分配自动生成的名称。此选项不能与 `--all` 同时使用。
+
+- `--replication-slot=`*name*
+
+  用于建立逻辑复制的复制槽名称。可以通过多次指定 `--replication-slot` 选项来设置多个复制槽。指定复制槽名称的数量和顺序必须与指定的数据库数量及顺序一致，否则会报错。如果未指定此选项，则使用订阅名称作为复制槽名称。此选项不能与 `--all` 同时使用。
+
+- `--subscription=`*name*
+
+  用于建立逻辑复制的订阅名称。可以通过多次指定 `--subscription` 选项来设置多个订阅。指定订阅名称的数量和顺序必须与指定的数据库数量及顺序一致，否则会报错。如果未指定此选项，则会为订阅分配自动生成的名称。此选项不能与 `--all` 同时使用。
+
+- `-V` `--version`
+
+  打印 `pg_createsubscriber` 版本并退出。
+
+- `-?` `--help`
+
+  显示关于 `pg_createsubscriber` 命令行参数的帮助信息并退出。
+
+#### 注意事项
+
+##### 前提条件
+
+要使用 `pg_createsubscriber` 将目标服务器转换为逻辑副本，必须满足以下前提条件，否则将报错：
+
+- 源服务器和目标服务器必须具有与 `pg_createsubscriber` 相同的主版本号。
+- 指定的目标数据目录必须与源数据目录具有相同的系统标识符（system identifier）。
+- 连接目标数据目录的指定数据库用户必须具备创建订阅（`CREATE SUBSCRIPTION`）和调用 `pg_replication_origin_advance()` 的权限。
+- 目标服务器必须是一个物理备库且当前已停止运行，不能在操作系统服务管理器托管下运行。
+- 目标服务器必须将 `max_active_replication_origins` 和 `max_logical_replication_workers` 配置为大于或等于指定数据库数量的值，且 `max_worker_processes` 也必须大于或等于指定数据库数量。
+- 目标服务器必须接受本地连接。如果计划使用 `--enable-two-phase` 选项，还需要在目标服务器上适当配置 `max_prepared_transactions`。
+- 源服务器必须接受来自目标服务器的连接，不能处于恢复状态，且必须配置 `wal_level = logical`。
+- 源服务器的 `max_replication_slots` 必须大于或等于指定数据库数量与现有复制槽数量之和，`max_wal_senders` 必须大于或等于指定数据库数量与现有 WAL 发送进程数量之和。
+
+##### 警告
+
+- 如果 `pg_createsubscriber` 在目标服务器被提升之后失败，则目标数据目录很可能处于不可恢复的状态，此时建议重新搭建一个新的物理备服务器。
+- `pg_createsubscriber` 在转换期间会使用临时连接设置启动目标服务器，在此期间外部连接到目标服务器应会失败。
+- 由于逻辑复制不复制 DDL 命令，因此在运行 `pg_createsubscriber` 期间应避免执行修改数据库模式的 DDL 命令；如果目标服务器已转换为逻辑副本，这些 DDL 变更可能不会被复制并导致错误。
+- 如果 `pg_createsubscriber` 在处理过程中失败，会清理在源服务器上创建的发布和复制槽等对象；如果目标服务器无法连接到源服务器，清理可能失败并输出残留对象警告。若目标服务器仍在运行，工具会将其停止。
+- 如果备库物理复制使用了 `primary_slot_name`，逻辑复制配置完成后会将其从源服务器上删除。
+- 如果目标服务器是同步备库，则在运行 `pg_createsubscriber` 期间主库上的事务提交可能会等待复制响应。
+- 除非指定了 `--enable-two-phase`，否则 `pg_createsubscriber` 创建的逻辑复制默认禁用两阶段提交；未完成的两阶段事务会在执行 `COMMIT PREPARED` 时再进行复制。配置完成后可手动删除并重新创建启用 `two_phase` 的订阅。
+- `pg_createsubscriber` 会使用 `pg_resetwal` 修改目标服务器的系统标识符，以防止目标服务器误用源服务器的 WAL 文件。如果该目标服务器下还挂有级联备库，级联复制会中断，需要重新构建新的备库。
+- 如果所需的 WAL 文件缺失，可能导致复制失败；建议在源服务器上将 `max_slot_wal_keep_size` 设置为 `-1`，以防所需 WAL 文件被提前清理。
+
+##### 工作原理
+
+基本思路是从源服务器确定一个复制起始点，并配置从该起始点开始的逻辑复制：
+
+1. 使用指定命令行选项启动目标服务器（若目标服务器已在运行则报错退出）。
+2. 检查目标服务器和源服务器是否满足转换所需的各项前提条件。
+3. 在源服务器上为每个指定数据库创建使用 `FOR ALL TABLES` 的发布和复制槽（未指定名称时均按 `pg_createsubscriber_%u_%x` 模式自动命名），并以最后一个复制槽的 LSN 作为 `recovery_target_lsn` 的停止点及订阅的复制起始点。
+4. 将恢复参数（包括 `recovery_target_lsn` 和 `recovery_target_action = 'promote'`）写入目标数据目录并重启目标服务器，待恢复追平到目标 LSN 并提升为可读写状态（若设置了 `--recovery-timeout` 且超时则中止）。
+5. 在目标服务器上为每个指定数据库创建订阅（不复制已有数据，也不新建复制槽，而是复用步骤 3 在源端创建的复制槽，初始处于未启用状态）。
+6. 删除目标服务器上因在复制起始点之前创建而被同步过来的发布（若指定了 `--clean=publications` 则删除所有发布）。
+7. 通过 `pg_replication_origin_advance()` 为每个订阅将复制进度推进到复制起始点 LSN，随后启用各订阅开始应用事务。
+8. 如果原备库使用了 `primary_slot_name` 则从源服务器删除该物理复制槽，并删除目标服务器上的故障转移复制槽（failover replication slots）。
+9. 停止目标服务器并运行 `pg_resetwal` 修改目标服务器的系统标识符。
+
+#### 示例
+
+从位于 `foo` 的物理副本为数据库 `hr` 和 `finance` 创建逻辑副本：
+
+[source,bash]
+----
+$ pg_createsubscriber -D /usr/local/pgsql/data -P "host=foo" -d hr -d finance
+----
+
+#### 另见
+
+`pg_basebackup`、`pg_resetwal`
 
 === pg_ctl
 
